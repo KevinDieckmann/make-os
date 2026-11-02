@@ -21,7 +21,8 @@ import { ladeCrm } from '@/lib/crm/speicher';
 import { ladeFormular } from '@/lib/crm/formulare-speicher';
 import { FormularFehler, angebotAnfordern, einstellungenSpeichern, internerKatalog, linkAendern, linkAnlegen } from '@/lib/crm/formulare-server';
 import { absenderPruefen } from '@/lib/crm/angebot-versand';
-import { eingangFuerNurBusiness, formularPostfachBereichOk, linkLage, MAIL_PLATZHALTER, MAIL_STANDARD, type Eingang, type ExternerLink } from '@/lib/crm/formulare';
+import { eingangFuerNurBusiness, formularPostfachBereichOk, linkLage, linkProdukteInaktiv, MAIL_PLATZHALTER, MAIL_STANDARD, type Eingang, type ExternerLink } from '@/lib/crm/formulare';
+import type { Leistung } from '@/lib/crm/typen';
 import { adresseMaskiert, namenVon } from '@/lib/zugang/konten';
 import { localDay } from '@/lib/zeit';
 
@@ -31,9 +32,11 @@ export const dynamic = 'force-dynamic';
 const fehler = (text: string, status: number, extra: Record<string, unknown> = {}) => NextResponse.json({ ok: false, fehler: text, ...extra }, { status });
 
 /** Ein Link, wie er an den Browser geht — nie der Fingerabdruck. */
-const linkSicht = (l: ExternerLink, heute: string) => {
+const linkSicht = (l: ExternerLink, heute: string, leistungen: readonly Pick<Leistung, 'id' | 'status' | 'geloeschtAm'>[] = []) => {
   const { tokenHash: _t, ...rest } = l;
-  return { ...rest, lage: linkLage(l, heute) };
+  // 02.11. (R2-3 Fund 7): welche freigegebenen Produkte auf der Seite nicht mehr erscheinen — die Linkliste warnt.
+  const inaktiv = linkProdukteInaktiv(l, leistungen);
+  return { ...rest, lage: linkLage(l, heute), ...(inaktiv.length ? { inaktiv } : {}) };
 };
 
 export async function GET(req: Request) {
@@ -80,7 +83,7 @@ export async function GET(req: Request) {
       platzhalter: MAIL_PLATZHALTER, standard: MAIL_STANDARD, datenschutzFehlt: !!ds.fehlt,
     },
     ...(absenderWahl ? { absenderWahl } : {}),
-    links: inhaber ? b.links.map(l => linkSicht(l, heute)) : [], ...(inhaber ? {} : { linksNurInhaber: true }),
+    links: inhaber ? b.links.map(l => linkSicht(l, heute, crm.leistungen)) : [], ...(inhaber ? {} : { linksNurInhaber: true }),
     eingaenge,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }

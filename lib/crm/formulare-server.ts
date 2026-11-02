@@ -444,6 +444,8 @@ async function dealSichern(D: AnfrageDaten & { kontaktId: string; firmaId?: stri
     const r = await dealAnlegen({
       id, kontaktIds: [D.kontaktId], ...(D.firmaId ? { firmaId: D.firmaId } : {}), wert: dealWertAusAngebot({ positionen: D.positionen }), ...(l ? { leistungId: l.id, art: mandatArtVon(l) } : {}),
       gesellschaft: D.gesellschaft, trotzdem: true, schritt: { text: 'Angebot nachfassen', datum: werktagePlus(D.heute, 5) }, notiz, besitzer: D.zustaendig,
+      // Der gewünschte Start reist als Feld mit (02.11., R2-3 Fund 6) — das Mandat bei der Annahme beginnt dann, nicht am Annahmetag.
+      ...(D.eingabe.start ? { startWunsch: D.eingabe.start } : {}),
     }, D.person, D.jetzt, wer);
     if (r.ok) dealId = r.chance.id;
     else if (r.offen?.id === id) dealId = id;

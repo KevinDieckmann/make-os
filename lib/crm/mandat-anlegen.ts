@@ -8,6 +8,7 @@
 
 import type { Firma, Gesellschaft, Lead, Leistung, Mandat } from './typen';
 import { honorarAusPreis, mandatVorlageAusProdukt } from './produkt-karte';
+import { jahresHonorarVon } from './mandat-laufzeit';
 import { istGesellschaft, istRegisterKennung } from '@/lib/einheiten';
 import { leereKriterien } from './leads';
 import { istKontaktKennung } from '@/lib/kennung';
@@ -167,6 +168,8 @@ export function mandatEntwurf(o: { id: string; firma: Pick<Firma, 'id' | 'name'>
     verlaengerung: v?.verlaengerung ?? 'offen',
     honorar: h.honorar, ustSatz: v?.ustSatz ?? 19,
     rechnungsrhythmus: h.rechnungsrhythmus, zahlungszielTage: v?.zahlungszielTage ?? 14, ziele: [],
+    // Jahrespreis (02.11., R2-3 Fund 3): eine Rechnung je Vertragsjahr — nur, solange das Honorar dazu passt (im Dialog geändert: Monatshonorar).
+    ...(jahresHonorarVon(h) !== null ? { jahresHonorar: jahresHonorarVon(h)! } : {}),
     health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: v?.leistungen ?? [], offen: ['Vertrag unterschreiben lassen', 'Kickoff-Termin festlegen', ...(v?.hinweise ?? [])],
     ...(v?.zusatz?.length ? { zusatz: v.zusatz } : {}),
     // Zahlplan (21.10., B2): nur, solange das Honorar einmalig bleibt (im Dialog auf „je Monat“ umgestellt: keiner).

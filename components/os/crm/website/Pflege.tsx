@@ -10,6 +10,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leer, Schalter, Feldzeile, feld, LEUCHT } from '../../ui';
 import { neueWebKennung, preisAbgleich, type WebAngebot, type WebFaq, type WebFakt } from '@/lib/website/regeln';
 import type { CrmApi } from '../daten';
+import { preisAenderung } from '@/lib/crm/produkt-karte';
 import { euro, centAus, centText, type WebsiteApi, type WebsiteDaten } from './daten';
 import { BausteineKarte } from '../marketing/BausteineKarte';
 
@@ -125,7 +126,11 @@ export function AngeboteReiter({ w, api }: { w: WebsiteApi; api: CrmApi }) {
   const uebernehmenKatalog = async (a: (typeof liste)[number]) => {
     const l = api.crm?.stand.leistungen.find(x => x.id === a.produktId);
     if (!l || typeof a.preisNetto !== 'number') return;
-    if (await api.teil('leistungen', l.id, { preis: { ...l.preis, betrag: a.preisNetto / 100 } })) await w.laden();
+    // Mit Preis-Teilen über den Hauptpreis-Teil (02.11., R2-3 Fund 12) — das alte Preisfeld folgt beim Speichern; vorher immer 409.
+    if (await api.teil('leistungen', l.id, preisAenderung(l, a.preisNetto))) await w.laden();
+  };
+  const verbergen = async (a: (typeof liste)[number]) => {
+    await w.senden([{ liste: 'angebote', art: 'setze', id: a.id, stand: a.stand, eintrag: { ...a, sichtbar: false } }]);
   };
   return (
     <>
@@ -143,9 +148,15 @@ export function AngeboteReiter({ w, api }: { w: WebsiteApi; api: CrmApi }) {
                   {!a.sichtbar && <Chip farbe={C.inkLeise}>verborgen</Chip>}
                   {g.art === 'abweichung' && <Chip farbe={LEUCHT.kritisch}>Preis weicht ab</Chip>}
                   {g.art === 'produkt-fehlt' && <Chip farbe={LEUCHT.achtung}>Produkt fehlt</Chip>}
+                  {g.art === 'nicht-aktiv' && a.sichtbar && <Chip farbe={LEUCHT.achtung}>Produkt nicht aktiv</Chip>}
                 </>}>
                 {zu => (
                   <div style={zeileStil}>
+                    {g.art === 'nicht-aktiv' && a.sichtbar && (
+                      <Hinweis art="achtung" titel="Produkt ist nicht mehr aktiv" aktion={<Knopf leise onClick={async () => { await verbergen(a); }}>Auf der Website verbergen</Knopf>}>
+                        Das Produkt im Katalog ist archiviert — auf der Website steht das Angebot noch.
+                      </Hinweis>
+                    )}
                     {g.art === 'abweichung' && (
                       <Hinweis art="kritisch" titel="Preis weicht vom Produktkatalog ab">
                         Website {euro(g.website)} · Katalog {euro(g.katalog)}

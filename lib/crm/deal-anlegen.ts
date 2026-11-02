@@ -50,6 +50,8 @@ export interface DealEingabe {
   schritt?: { text?: string; datum?: string };
   quelle?: Quelle; quelleBezug?: string;
   leistungId?: string; gesellschaft?: Gesellschaft; erwartetAm?: string; notiz?: string;
+  /** Gewünschter Start des Mandats (02.11., R2-3 Fund 6) — Tag JJJJ-MM-TT, sonst weg. */
+  startWunsch?: string;
   besitzer?: string;
   /** Zweiten offenen Deal an derselben Firma bewusst anlegen. */
   trotzdem?: boolean;
@@ -129,6 +131,7 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
     naechsterSchritt: schritt, qualifizierung: kriterien,
     ...(quelle ? { quelle } : {}), ...(quelleBezug ? { quelleBezug } : {}),
     ...(tagOk(e.erwartetAm) ? { erwartetAm: tagOk(e.erwartetAm) } : {}),
+    ...(tagOk(e.startWunsch) ? { startWunsch: tagOk(e.startWunsch) } : {}),
     gesellschaft: GES.includes(e.gesellschaft as Gesellschaft) || istRegisterKennung(e.gesellschaft) ? (e.gesellschaft as Gesellschaft) : 'offen', besitzer,
     angelegt: ctx.jetzt, geaendert: ctx.jetzt, geaendertVon: ctx.person, letzteAktivitaet: tagVon(ctx.jetzt),
     ...(String(e.notiz ?? '').trim() ? { notiz: String(e.notiz).trim().slice(0, 3000) } : {}),

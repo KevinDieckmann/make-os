@@ -170,6 +170,7 @@ export const PRUEFUNGEN = {
   'mandat-firma-tot': { schwere: 'fehler', bereich: 'mandate', reparierbar: false, art: 'mandat', text: n => `${n} ${e(n, 'Mandat zeigt', 'Mandate zeigen')} auf eine Firma, die es nicht mehr gibt.` },
   'mandat-kontakt-tot': { schwere: 'fehler', bereich: 'mandate', reparierbar: true, art: 'mandat', text: n => `${n} ${e(n, 'Mandat nennt', 'Mandate nennen')} Personen, die es nicht mehr gibt.` },
   'mandat-produkt-tot': { schwere: 'fehler', bereich: 'mandate', reparierbar: false, art: 'mandat', text: n => `${n} ${e(n, 'Mandat zeigt', 'Mandate zeigen')} auf ein Produkt, das es nicht mehr gibt.` },
+  'zusatz-produkt-tot': { schwere: 'fehler', bereich: 'mandate', reparierbar: false, art: 'mandat', text: n => `${n} ${e(n, 'Mandat trägt', 'Mandate tragen')} ein Zusatzmodul aus einem Produkt, das es nicht mehr gibt — Name, Deckel und Optionen fehlen auf Rechnung und Liquidität.` },
   'mandat-ohne-rechnung': { schwere: 'hinweis', bereich: 'mandate', reparierbar: false, art: 'mandat', text: n => `${n} ${e(n, 'aktives Mandat hat', 'aktive Mandate haben')} keine Rechnung in den letzten 60 Tagen (Quartal: 120) — oder die Rechnung ist nicht mit dem Mandat verknüpft.` },
   'rechnung-mandat-tot': { schwere: 'fehler', bereich: 'rechnungen', reparierbar: false, art: 'rechnung', text: n => `${n} ${e(n, 'Rechnung zeigt', 'Rechnungen zeigen')} auf ein Mandat, das es nicht mehr gibt.` },
   'rechnung-gesellschaft-tot': { schwere: 'fehler', bereich: 'rechnungen', reparierbar: false, art: 'rechnung', text: n => `${n} ${e(n, 'Rechnung gehört', 'Rechnungen gehören')} zu keiner Gesellschaft im Finanzplan.` },
@@ -438,6 +439,7 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
     if (x.firmaId && !m.firmen.has(x.firmaId)) melde('mandat-firma-tot', x.id);
     if (liste(x.kontaktIds).some(id => !m.kontakte.has(id))) melde('mandat-kontakt-tot', x.id);
     if (x.leistungId && !m.leistungen.has(x.leistungId)) melde('mandat-produkt-tot', x.id);
+    if (liste(x.zusatz).some(z => z?.leistungId && !m.leistungen.has(z.leistungId))) melde('zusatz-produkt-tot', x.id);
     if (rechnungen && x.status === 'aktiv' && x.rechnungsrhythmus !== 'einmalig') {
       const fenster = x.rechnungsrhythmus === 'quartal' ? 120 : 60;
       const ab = tagPlus(b.heute, -fenster);

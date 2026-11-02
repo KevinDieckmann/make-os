@@ -12,6 +12,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, Chance, Mandat } from './typen';
 import { nurBusinessGezaehlt } from './zaehlung-business';
+import { monatswertVon } from './monatswert';
 import { kennzahlen, messlatte, type Kpi } from './kennzahlen';
 import { marketingKennzahlen, dealAusMarketing, marketingDealKontext, abmeldequote, abmeldungenUeberLink, abmeldungenWirksam, marketingTrichter, veroeffentlichungen, veroeffentlichungenKpi } from './marketing';
 import { eventKennzahlen, WELTEN, IM_SCORE, GRUNDLAGE, type Welt, type Traktion } from './traktion';
@@ -209,7 +210,7 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   },
   mrr(b) {
     const je = new Map<string, { mrr: number; m: Mandat }>();
-    for (const m of b.crm.mandate.filter(m => m.status === 'aktiv' && m.honorar.basis === 'monat' && m.honorar.betrag > 0)) je.set(m.kunde, { mrr: (je.get(m.kunde)?.mrr ?? 0) + m.honorar.betrag, m });
+    for (const m of b.crm.mandate.filter(m => m.status === 'aktiv' && monatswertVon(m) > 0)) je.set(m.kunde, { mrr: (je.get(m.kunde)?.mrr ?? 0) + monatswertVon(m), m });
     const gesamt = Array.from(je.values()).reduce((a, x) => a + x.mrr, 0) || 1;
     const g = grenzen(b, 'mrr');
     return Array.from(je.entries()).sort((x, y) => y[1].mrr - x[1].mrr).slice(0, 3)
@@ -359,7 +360,7 @@ export function traktionsIndex(b0: TraktionBestand): TraktionsIndex {
   // „Größter Kunde“: die Kpi mrr trägt die Konzentration nur in der Quelle — hier als Prozentwert.
   if (kpis.mrr) {
     const je = new Map<string, number>();
-    for (const m of b.crm.mandate.filter(m => m.status === 'aktiv' && m.honorar.basis === 'monat' && m.honorar.betrag > 0)) je.set(m.kunde, (je.get(m.kunde) ?? 0) + m.honorar.betrag);
+    for (const m of b.crm.mandate.filter(m => m.status === 'aktiv' && monatswertVon(m) > 0)) je.set(m.kunde, (je.get(m.kunde) ?? 0) + monatswertVon(m));
     const gesamt = Array.from(je.values()).reduce((a, x) => a + x, 0);
     const max = Math.max(0, ...Array.from(je.values()));
     kpis.mrr = gesamt ? { ...kpis.mrr, wert: (max / gesamt) * 100, anzeige: `${Math.round((max / gesamt) * 100)} % · ${kpis.mrr.anzeige}` } : { ...kpis.mrr, wert: null, ampel: 'grau' };

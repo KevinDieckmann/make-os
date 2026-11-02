@@ -95,7 +95,8 @@ describe('B4 · Mandat und Zusatzmodul: geplante Tage bzw. Stunden, änderbar �
   });
   it('Zusatzmodul je Tag: geplante Tage → Posten; Säuberer und Prüfung (nur beim Tagessatz)', () => {
     expect(zusatzExtras(TAG_PLAN)).toEqual({ tageJeMonat: 2 });
-    expect(zusatzExtras(STD_PLAN)).toEqual({ stundenJeMonat: 10 });
+    // 02.11. (R2-3 Fund 5): der Deckel wird festgeschrieben (`deckelStunden`).
+    expect(zusatzExtras(STD_PLAN)).toMatchObject({ stundenJeMonat: 10 });
     const m = mandat({ honorar: { betrag: 2000, basis: 'monat', netto: true }, zusatz: [{ id: 'mz-t', leistungId: 'l-tag', honorar: { betragCent: 140_000, basis: 'tag' }, tageJeMonat: 1.5 }] });
     const z = zusatzLiquiditaet(m, '2026-11', geplantesEnde(m), { katalog: [TAG], nettoAusBrutto });
     expect(z.map(p => [p.id, p.betrag, p.rhythmus])).toEqual([['z-mz-t', 2499, 'monatlich']]);

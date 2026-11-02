@@ -311,7 +311,7 @@ export function mitStand(i: WebsiteInhalt): WebsiteInhalt & { einstellungenStand
 // ── Abgleich Website ↔ Produktkatalog ──────────────────────────────────────────────────────────────────────────────────────────
 
 export interface ProduktKurz { id: string; name: string; /** Netto in Cent (aus `preis.betrag` in Euro). */ preisNetto: number | null; status: string }
-export type Abgleich = { art: 'gleich' } | { art: 'ohne' } | { art: 'produkt-fehlt' } | { art: 'abweichung'; website: number | null; katalog: number | null };
+export type Abgleich = { art: 'gleich' } | { art: 'ohne' } | { art: 'produkt-fehlt' } | { art: 'nicht-aktiv' } | { art: 'abweichung'; website: number | null; katalog: number | null };
 /** Euro aus dem Katalog in Cent (kaufmännisch). */
 export const euroInCent = (betrag: unknown): number | null => (typeof betrag === 'number' && Number.isFinite(betrag) && betrag >= 0 ? Math.round(betrag * 100) : null);
 
@@ -320,6 +320,8 @@ export function preisAbgleich(a: Pick<WebAngebot, 'produktId' | 'preisNetto'>, p
   if (!a.produktId) return { art: 'ohne' };
   const p = produkte.find(x => x.id === a.produktId);
   if (!p) return { art: 'produkt-fehlt' };
+  // 02.11. (R2-3 Fund 8): ein eingestelltes (archiviertes) Produkt kann niemand mehr anfragen — die Website zeigte es weiter. Vorschlag: verbergen.
+  if (p.status === 'eingestellt') return { art: 'nicht-aktiv' };
   const w = a.preisNetto ?? null;
   return w === p.preisNetto ? { art: 'gleich' } : { art: 'abweichung', website: w, katalog: p.preisNetto };
 }

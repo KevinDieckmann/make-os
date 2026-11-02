@@ -6,7 +6,7 @@
 import type { Angebot, Mandat } from '@/lib/crm/typen';
 import type { Rechnung } from '@/lib/finanzen/finanzplan-bestand';
 import type { Mahnstufe, RechnungPosition } from './typen';
-import { mandatLaeuftIm } from '@/lib/crm/mandat-laufzeit';
+import { jahresHonorarVon, mandatLaeuftIm, vertragsjahrBeginnt } from '@/lib/crm/mandat-laufzeit';
 import { restMonat, zahlplanMonate } from '@/lib/crm/mandat-zusatz';
 import { ratenCent } from '@/lib/crm/angebote';
 import { kaufmaennisch } from '@/lib/finanzen/ust';
@@ -34,7 +34,7 @@ export interface VorbereitenFaellig {
   monat: string;
   art: VorbereitenArt;
 }
-type MandatTeil = Pick<Mandat, 'status' | 'honorar' | 'start' | 'ende' | 'rechnungsrhythmus'> & Partial<Pick<Mandat, 'zahlplan' | 'raten' | 'mindestlaufzeitMonate' | 'geloeschtAm'>>;
+type MandatTeil = Pick<Mandat, 'status' | 'honorar' | 'start' | 'ende' | 'rechnungsrhythmus'> & Partial<Pick<Mandat, 'zahlplan' | 'raten' | 'mindestlaufzeitMonate' | 'geloeschtAm' | 'jahresHonorar'>>;
 /** Die drei Monate eines Quartals ab seinem ersten Monat (JJJJ-MM). */
 export const quartalMonate = (q: string): string[] => [q, naechsterMonat(q), naechsterMonat(naechsterMonat(q))];
 
@@ -69,6 +69,11 @@ export function vorbereitenFaellig(m: MandatTeil, heute: string, abgerechnet: Re
     return s >= abMonat && s <= jetzt && !abgerechnet.has(s) ? [{ monat: s, art: 'einmalig' }] : [];
   }
   if (m.honorar.basis !== 'monat') return [];
+  // Jahreshonorar (02.11., R2-3 Fund 3): EIN Entwurf je Vertragsjahr — im Monat, in dem es beginnt (Beginn + 12·k, Mandat läuft).
+  if (jahresHonorarVon(m) !== null) {
+    for (let mo = ab, n = 0; mo <= jetzt && n < 240; n++, mo = naechsterMonat(mo)) if (vertragsjahrBeginnt(m, mo) && !abgerechnet.has(mo)) raus.push({ monat: mo, art: 'monat' });
+    return raus;
+  }
   if (m.rechnungsrhythmus === 'quartal') {
     for (let q = s, n = 0; q <= jetzt && n < 80; n++, q = quartalMonate(q).map(naechsterMonat)[2]) {
       if (q < abMonat) continue;
@@ -141,9 +146,15 @@ export function einmalZahlungText(z: EinmalZahlung): string {
 export function einmalTeilPositionen(pos: readonly RechnungPosition[], z: EinmalZahlung): RechnungPosition[] {
   if (z.art === 'ganz') return pos.map(p => ({ ...p }));
   const was = einmalZahlungText(z);
-  return pos.map(p => {
-    const netto = positionNetto(p);
-    const cent = z.art === 'rate' ? ratenCent(netto, z.von)[z.nr - 1] : z.art === 'anzahlung' ? kaufmaennisch((netto * (z.prozent ?? 0)) / 100) : netto - kaufmaennisch((netto * (100 - (z.prozent ?? 0))) / 100);
+  // 02.11. (R2-3 Fund 10): wie im PDF (`zahlweiseText`) auf die SUMME gerechnet — Rate i der Summe (Rest auf der letzten Rate) bzw. Anzahlung/Rest der Summe;
+  // auf die Positionen anteilig verteilt, der Rundungsrest auf der letzten Position. Vorher je Position gerundet: die Raten wichen um Cent vom Angebot ab.
+  const netto = pos.map(p => positionNetto(p));
+  const summe = netto.reduce((a, x) => a + x, 0);
+  const ziel = z.art === 'rate' ? ratenCent(summe, z.von)[z.nr - 1] : z.art === 'anzahlung' ? kaufmaennisch((summe * (z.prozent ?? 0)) / 100) : summe - kaufmaennisch((summe * (100 - (z.prozent ?? 0))) / 100);
+  let vergeben = 0;
+  return pos.map((p, i) => {
+    const cent = i === pos.length - 1 ? ziel - vergeben : summe ? kaufmaennisch((ziel * netto[i]) / summe) : 0;
+    vergeben += cent;
     const { rabattProzent: _r, ...ohne } = p;
     return { ...ohne, titel: `${p.titel} — ${was}`.slice(0, 200), menge: 1, einheit: 'pauschal', einzelpreisCent: Math.max(0, cent) };
   });

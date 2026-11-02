@@ -113,6 +113,11 @@ export interface Chance {
   geaendertVon?: string;
   letzteAktivitaet?: string;
   notiz?: string;
+  /**
+   * Gewünschter Start (02.11., Prüfung R2-3 Fund 6 — optional, additiv, Tag JJJJ-MM-TT): aus „Angebot anfordern“ bzw. dem Deal-Formular. Das Mandat, das bei der
+   * Annahme von selbst entsteht, beginnt dann (frühestens heute); ohne Wunsch am Ersten des Folgemonats — dieselbe Vorgabe wie „Mandat anlegen“ von Hand.
+   */
+  startWunsch?: string;
 }
 
 export type MandatStatus = 'angebot' | 'verhandlung' | 'aktiv' | 'pausiert' | 'beendet';
@@ -178,6 +183,13 @@ export interface Mandat {
    * Rechnung nimmt die echten Tage. Vorgabe: die geplante Menge des Produkts.
    */
   tageJeMonat?: number;
+  /**
+   * Jahreshonorar (02.11., Prüfung R2-3 Fund 3 — optional, additiv, Euro wie `honorar.betrag`): ein Produkt mit Jahrespreis wird EINE Rechnung je Vertragsjahr
+   * über den vollen Betrag (im Monat des Beginns und alle 12 Monate danach), Liquidität ebenso jährlich. `honorar` bleibt die Kennzahl je Monat (Basis „monat“,
+   * Jahr ÷ 12 auf den Cent — MRR, Business-Index) und ist zugleich der Rückweg: der alte Stand kennt das Feld nicht, verwirft es und rechnet monatlich Jahr ÷ 12.
+   * Gilt nur, solange es zu `honorar` passt (`jahresHonorarVon`, lib/crm/mandat-laufzeit.ts) — wer das Monatshonorar von Hand ändert, hat wieder ein Monatshonorar.
+   */
+  jahresHonorar?: number;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
@@ -213,6 +225,18 @@ export interface MandatZusatz {
   stundenJeMonat?: number;
   /** Nur Tagessatz (21.10., B4): geplante Tage je Monat für die Liquidität — Vorgabe die geplante Menge des Produkts; abgerechnet wird nach Tagen. */
   tageJeMonat?: number;
+  /**
+   * Raten eines einmaligen Zusatzmoduls (02.11., Prüfung R2-3 Fund 1 — optional, additiv, schließt `zahlplan` aus): die Zahlungsweise des angenommenen Angebots
+   * („in 3 Raten“) gilt auch für den Festpreis einer Kombination, den das Mandat als Zusatzmodul trägt — erste Rate im Monat des Beginns, dann alle
+   * `abstandMonate` Monate (dieselbe Regel wie `Mandat.raten`). Der alte Stand verwirft das Feld: das Modul steht dann ganz im Monat des Beginns.
+   */
+  raten?: { anzahl: number; abstandMonate: number };
+  /**
+   * Beim Anlegen festgeschrieben (02.11., Prüfung R2-3 Fund 5 — optional, additiv): Deckel (Stunden je Monat) und Preise der optionalen Teile des Produkts, wie
+   * sie galten, als das Modul ans Mandat kam. Rechnung und Liquidität nehmen sie statt des heutigen Produkts; ohne die Felder (Altbestand) wie bisher das Produkt.
+   */
+  deckelStunden?: number;
+  optionPreise?: { teilId: string; betragCent: number }[];
 }
 export type MandatZusatzBasis = 'monat' | 'jahr' | 'einmalig' | 'einheit' | 'tag' | 'stunde';
 
@@ -418,6 +442,11 @@ export interface AngebotPosition {
   satz?: 'tag' | 'stunde';
   /** Artikelnummer aus dem Preis-Teil (25.10., optional, additiv) — wandert in die Rechnungsposition; der alte Stand verwirft sie beim Speichern des Entwurfs. */
   artikelnummer?: string;
+  /**
+   * Was beim Erstellen der Position am Preis-Teil galt (02.11., Prüfung R2-3 Fund 5 — optional, additiv): Zahlplan (Anzahlung %) und Deckel (Stunden je Monat).
+   * Vorhanden = festgeschrieben (auch leer `{}` = „ohne“); die Annahme nimmt dann das Angebot, nicht das heutige Produkt. Fehlt es (Altbestand), wie bisher das Produkt.
+   */
+  vereinbart?: { anzahlungProzent?: number; deckelStunden?: number };
 }
 /**
  * Festgehaltener Absender beim Stellen (ohne IBAN im Klartext — die steht nur im PDF). `annahme`/`agb` (25.10., optional, nur Angebote): Annahmeblock an und

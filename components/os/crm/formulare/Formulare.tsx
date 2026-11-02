@@ -20,7 +20,7 @@ import { alleAdressen } from '@/lib/crm/emails';
 import { WEG } from '@/lib/wege';
 
 interface EingangSicht { id: string; am: string; quelle: 'intern' | 'link'; status: EingangStatus; vertriebler: string; firma?: string; nummer?: string; angebotId?: string; an?: string; gruende: string[]; vorschlagId?: string; versendet?: { am: string; ueber: string }; entschieden?: { am: string; art: string; von: string; grund?: string } }
-interface LinkSicht { id: string; name: string; email?: string; vorsatz: string; produkte: string[]; bis?: string; lage: LinkLage; angelegt: string; zuletzt?: string; anzahl?: number; widerrufenAm?: string }
+interface LinkSicht { id: string; name: string; email?: string; vorsatz: string; produkte: string[]; bis?: string; lage: LinkLage; angelegt: string; zuletzt?: string; anzahl?: number; widerrufenAm?: string; /** Freigegebene Produkte, die nicht mehr erscheinen (02.11.). */ inaktiv?: string[] }
 interface Daten {
   ok: boolean; istInhaber: boolean; katalog: KatalogProdukt[];
   einstellungen: { absender: { postfach: string; person: string; adresse?: string; eigenes: boolean } | null; absenderOk: boolean; absenderGrund?: string; betreff?: string; text?: string; platzhalter: string[]; standard: { betreff: string; text: string }; datenschutzFehlt: boolean };
@@ -198,7 +198,12 @@ function LinksKarte({ d, neu }: { d: Daten; neu: () => void }) {
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Chip farbe={LAGE_FARBE[l.lage]}>{l.lage}</Chip><b style={{ fontSize: TYP.body }}>{l.name}</b>{l.email && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{l.email}</span>}
               </div>
-              <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{[l.produkte.map(name2).join(', '), l.bis ? `gilt bis ${l.bis.slice(8, 10)}.${l.bis.slice(5, 7)}.${l.bis.slice(0, 4)}` : 'unbefristet', l.anzahl ? `${l.anzahl} Anfrage${l.anzahl === 1 ? '' : 'n'}` : ''].filter(Boolean).join(' · ')}</div>
+              {l.lage === 'aktiv' && !!l.inaktiv?.length && (
+                <Hinweis art={l.inaktiv.length === l.produkte.length ? 'kritisch' : 'achtung'}>
+                  {l.inaktiv.length === l.produkte.length ? 'Auf diesem Link erscheint kein Produkt mehr — alle freigegebenen sind archiviert oder gelöscht.' : `${l.inaktiv.length} ${l.inaktiv.length === 1 ? 'freigegebenes Produkt erscheint' : 'freigegebene Produkte erscheinen'} nicht mehr (archiviert oder gelöscht).`}
+                </Hinweis>
+              )}
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{[l.produkte.filter(id => !l.inaktiv?.includes(id)).map(name2).join(', '), l.bis ? `gilt bis ${l.bis.slice(8, 10)}.${l.bis.slice(5, 7)}.${l.bis.slice(0, 4)}` : 'unbefristet', l.anzahl ? `${l.anzahl} Anfrage${l.anzahl === 1 ? '' : 'n'}` : ''].filter(Boolean).join(' · ')}</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {l.lage === 'aktiv' && <Knopf leise onClick={() => aktion(l, 'erneuern')}>Neuer Link</Knopf>}
                 {l.lage === 'aktiv' && <Knopf leise onClick={() => aktion(l, 'widerrufen')}>Widerrufen</Knopf>}

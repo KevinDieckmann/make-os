@@ -46,6 +46,7 @@ import { facturXEinbetten } from '@/lib/finanzen/erechnung/pdf';
 import { en16931Luecken } from '@/lib/finanzen/erechnung/pruefen';
 import type { AnschriftAnFirma, Mahnstufe } from './typen';
 import { einmalTeilPositionen, einmalZahlungen, einmalZahlungText, quartalMonate, type EinmalZahlung } from './kreislauf-regeln';
+import { jahresHonorarVon, naechstesVertragsjahr } from '@/lib/crm/mandat-laufzeit';
 
 export class RechnungFehler extends Error {
   constructor(msg: string, readonly status: number, readonly extra: Record<string, unknown> = {}) { super(msg); }
@@ -418,6 +419,11 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     const honorarPositionen = quartal
       ? qMonate.flatMap(mo => monatsPositionen(m, mo, { katalog: crm.leistungen, kleinunternehmer: ku(g), nettoAusBrutto }))
       : monatsPositionen(m, monat, { katalog: crm.leistungen, kleinunternehmer: ku(g), nettoAusBrutto });
+    // Jahreshonorar (02.11., R2-3 Fund 3): eine Rechnung je Vertragsjahr — in einem Monat ohne Beginn eines Vertragsjahrs (und ohne anderes) entstünde eine leere Rechnung.
+    if (!quartal && !honorarPositionen.length && !abgerechnet.length && jahresHonorarVon(m) !== null) {
+      const naechstes = naechstesVertragsjahr(m, monat);
+      throw new RechnungFehler(`Jahreshonorar: für ${monatsName(monat)} ist keine Rechnung fällig${naechstes ? ` — die nächste ist für ${monatsName(naechstes)}` : ''}.`, 409, { grund: 'keine-zahlung', ...(naechstes ? { monat: naechstes } : {}) });
+    }
     // Tagessatz (31.10.): die Tage aus der erfassten Zeit (Morgenlauf) sind die Menge der Honorar-Position — der Satz dazu steht im Text (prüfen!).
     const tage = m.honorar.basis === 'tag' && typeof p.tage === 'number' && p.tage > 0 && p.tage <= 31 ? Math.round(p.tage * 100) / 100 : null;
     const hinweis = tage && typeof p.tageHinweis === 'string' ? p.tageHinweis.slice(0, 300) : '';

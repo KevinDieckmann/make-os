@@ -25,6 +25,7 @@ import { vorschau, nurBusiness, businessFirmen } from '@/lib/make-one/liquiditae
 import type { Mandat, Chance } from '@/lib/crm/typen';
 import { winRate, prognose, gesamtwert, wahrscheinlichkeit, OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { markttraktion } from '@/lib/crm/adresse';
+import { monatswertVon } from '@/lib/crm/monatswert';
 import { WEG } from '@/lib/wege';
 import { anzahl } from '@/lib/text/zahlwort';
 import { BUSINESS_GESELLSCHAFTEN, bereichVonFirma, bereichVonGesellschaft, firmaFuerGesellschaft, finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
@@ -714,18 +715,19 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
 /** Monatshonorare je Kunde dieser Sicht (aktiv, > 0). */
 function mrrKunden(b: Bestand): Map<string, number> {
   const je = new Map<string, number>();
-  for (const m of aktiveMandate(b).filter(m => m.status === 'aktiv' && m.honorar.basis === 'monat' && m.honorar.betrag > 0)) je.set(m.kunde, (je.get(m.kunde) ?? 0) + m.honorar.betrag);
+  // Monatswert je Mandat (02.11., R2-3 Fund 9): Honorar + Zusatzmodule, geplante Sätze — EINE Regel mit dem MRR im CRM (`monatswertVon`).
+  for (const m of aktiveMandate(b).filter(m => m.status === 'aktiv' && monatswertVon(m) > 0)) je.set(m.kunde, (je.get(m.kunde) ?? 0) + monatswertVon(m));
   return je;
 }
 
 /** Kundenwert: Ø Monatshonorar je Kunde × Ø Laufzeit (beendete: Start→Ende, laufende: Start→heute, mind. 1 Monat). */
 function kundenwert(b: Bestand): { wert: number; mrrSchnitt: number; laufzeit: number; kunden: number } | null {
-  const l = aktiveMandate(b).filter(m => m.start && m.honorar.basis === 'monat' && m.honorar.betrag > 0 && ['aktiv', 'pausiert', 'beendet'].includes(m.status));
+  const l = aktiveMandate(b).filter(m => m.start && monatswertVon(m) > 0 && ['aktiv', 'pausiert', 'beendet'].includes(m.status));
   if (!l.length) return null;
   const monate = (a: string, z: string) => Math.max(1, (Date.parse(`${z.slice(0, 10)}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / (30.44 * 86_400_000));
   const laufzeit = l.reduce((s, m) => s + monate(m.start!, m.status === 'beendet' && m.ende ? m.ende : b.heute), 0) / l.length;
   const kunden = new Set(l.map(m => m.kunde)).size;
-  const mrrSchnitt = l.reduce((s, m) => s + m.honorar.betrag, 0) / kunden;
+  const mrrSchnitt = l.reduce((s, m) => s + monatswertVon(m), 0) / kunden;
   return { wert: mrrSchnitt * laufzeit, mrrSchnitt, laufzeit, kunden };
 }
 
@@ -769,7 +771,7 @@ function tagMinus(tag: string, n: number): string {
 /** MRR je Kunde dieser Sicht (für die Monats-Schnappschüsse). */
 export function mrrJeKunde(mandate: Mandat[], scope: Scope): Record<string, number> {
   const je: Record<string, number> = {};
-  for (const m of mandate.filter(m => gesellschaftInSicht(m.gesellschaft, scope) && m.status === 'aktiv' && m.honorar.basis === 'monat')) je[m.kunde] = (je[m.kunde] ?? 0) + m.honorar.betrag;
+  for (const m of mandate.filter(m => gesellschaftInSicht(m.gesellschaft, scope) && m.status === 'aktiv' && monatswertVon(m) > 0)) je[m.kunde] = (je[m.kunde] ?? 0) + monatswertVon(m);
   return je;
 }
 
