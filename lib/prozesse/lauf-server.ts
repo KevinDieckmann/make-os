@@ -21,7 +21,7 @@ import type { Ereignis } from '@/lib/ereignisse/typen';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import type { TasksState } from '@/types/tasks';
 import {
-  aufgabeFertig, budgetReicht, ereignisEingetreten, fallAusEreignis, fallSchluessel, freigabeEntschieden, kostenBuchen, laeufeAus, monatVon, nachAktion,
+  aufgabeFertig, budgetReicht, ereignisEingetreten, fallAusEreignis, fallNachEreignis, fallSchluessel, freigabeEntschieden, kostenBuchen, laeufeAus, monatVon, nachAktion,
   starten, teilprozessFertig, voran, wartetAuf, laufWartetAufArt, weckenZeit, wirkungZaehlen, anhalten, fortsetzen, abbrechen, verlaufAnhaengen, tagVonIso, startGesperrt, rechercheVorTagen, datumSchonGestartet,
   type Aktion, type AktionErgebnis, type Empfaenger, type LaufUmfeld, type StartAnfrage, type StartErgebnis, type AgentFreigabe, type ProbeBeobachtung,
 } from './lauf-regeln';
@@ -1188,6 +1188,19 @@ let wacheStand = '';
 export interface TaktErgebnis { gestartet: number; geweckt: number; voran: number; ereignisse: number; beendet: number }
 
 /**
+ * Herzschlag des Lauf-Motors (R2-2 Fund 4, 02.11.; Vorbild `kampagnen-motor-lauf`): Zeit des letzten Takts, letzter guter Takt, Fehler in Folge, Fehler je
+ * Ereignis bzw. Lauf im letzten Takt, wegen Alter übersprungene Ereignisse (je Berliner Tag), Zahlen des letzten Takts und der letzte Stand der Wache
+ * (Fingerabdruck von Kartei/CRM — damit ein Neustart keinen Wechsel verschluckt, Fund 7). Nur Zeiten und Zähler, keine Personen, keine Inhalte.
+ */
+export const MOTOR_HERZ = 'prozesse-motor-lauf';
+export interface MotorHerz {
+  zuletzt: string; ok?: string; fehler?: { seit: string; n: number };
+  ereignisFehler?: number; laufFehler?: number; verworfen?: { tag: string; n: number }; zahlen?: TaktErgebnis; wache?: string;
+}
+/** Zähler des laufenden Takts (nur im Prozess, je Takt neu). */
+let taktZaehler = { ereignisFehler: 0, laufFehler: 0, verworfen: 0 };
+
+/**
  * Der Motor im Takt (eine Zeile in app/api/zoe/takt/route.ts): Status der Prozesse nachziehen (pausiert → anhalten, aktiv → fortsetzen, archiviert →
  * abbrechen), Ereignisse ab dem eigenen Cursor (Starts + Warten auf Ereignis), Zeitpläne des Tages, Wecker (Zeit, Datum, Obergrenzen, Fenster, Pause nach
  * Fehler, Frist einer Freigabe), Art. 18/Werbesperre/Ziel/Abbruch bei geänderter Kartei bzw. CRM, dann die bereiten Läufe voran. Wirft nie.
@@ -1200,7 +1213,7 @@ export async function prozesseImTakt(jetzt = new Date()): Promise<TaktErgebnis |
     const kx = await kontextLaden(jetzt);
     const mitVersion = kx.prozesse.prozesse.filter(p => p.versionen.length);
     let d = await laeufeLesen(kx.h);
-    if (!mitVersion.length && !d.laeufe.length) return erg;
+    if (!mitVersion.length && !d.laeufe.length) { await herzschlag(jetzt, erg, null); return erg; }
     const iso = jetzt.toISOString();
 
     // 1) Status der Prozesse → offene Läufe anhalten bzw. fortsetzen; archiviert → abbrechen.
@@ -1232,24 +1245,70 @@ export async function prozesseImTakt(jetzt = new Date()): Promise<TaktErgebnis |
     // 4) Wecker.
     erg.geweckt += await weckerPruefen(kx);
 
-    // 5) Feste Wache (Art. 18, Werbesperre, Fall weg, Ziel/Abbruch) — nur, wenn sich Kartei oder CRM geändert haben.
+    // 5) Feste Wache (Art. 18, Werbesperre, Fall weg, Ziel/Abbruch) — nur, wenn sich Kartei oder CRM geändert haben. Der Stand gilt erst als gesehen, wenn
+    // Wache UND MQL-Blick gelaufen sind (R2-2 Fund 7) — vorher ging ein MQL-Wechsel verloren, wenn der Blick zu früh kam oder scheiterte; gemerkt im Herzschlag.
     const s = await speicherStand(['kontakte', 'crm']).catch(() => '');
+    if (!wacheStand) wacheStand = (await loadJson<MotorHerz>(MOTOR_HERZ).catch(() => null))?.wache ?? '';
     if (s && s !== wacheStand) {
-      wacheStand = s; erg.beendet += await wachePruefen(kx);
+      erg.beendet += await wachePruefen(kx);
       // 29.10. (Kreislauf): Lead wird MQL — die EINE Stelle (nur wenn Kartei/CRM sich geändert haben, höchstens einmal je Minute; nie im Lese-/Schreibpfad). Wirft nie.
-      await import('@/lib/ereignisse/quellen').then(q => q.mqlEreignisse()).catch(() => 0);
+      const mql = await import('@/lib/ereignisse/quellen').then(q => q.mqlBlick()).catch(() => null);
+      if (mql !== null) wacheStand = s;
     }
 
-    // 6) Bereite Läufe voran (höchstens `laeufeJeTakt`).
+    // 6) Bereite Läufe voran (höchstens `laeufeJeTakt`) — ein Fehler in EINEM Lauf hält die übrigen nicht an (R2-2 Fund 4).
     d = await laeufeLesen(kx.h);
-    for (const l of d.laeufe.filter(x => x.status === 'laeuft').slice(0, LAUF_GRENZEN.laeufeJeTakt)) { await laufVoran(l.id, kx); erg.voran++; }
+    for (const l of d.laeufe.filter(x => x.status === 'laeuft').slice(0, LAUF_GRENZEN.laeufeJeTakt)) {
+      try { await laufVoran(l.id, kx); erg.voran++; }
+      catch (e) { taktZaehler.laufFehler++; console.error(`[prozesse/takt] Lauf: ${e instanceof Error ? e.message.slice(0, 200) : 'Fehler'}`); }
+    }
+    await herzschlag(jetzt, erg, null);
     return erg;
   } catch (err) {
     console.error(`[prozesse/takt] ${err instanceof Error ? err.message.slice(0, 200) : 'Fehler'}`);
+    await herzschlag(jetzt, erg, err);
     return null;
   } finally {
     taktLaeuft = false;
   }
+}
+
+/** Herzschlag schreiben (wirft nie); übersprungene alte Ereignisse → EINE neutrale Glocke an die Steuernden. */
+async function herzschlag(jetzt: Date, erg: TaktErgebnis, fehler: unknown): Promise<void> {
+  const z = taktZaehler;
+  taktZaehler = { ereignisFehler: 0, laufFehler: 0, verworfen: 0 };
+  const am = jetzt.toISOString();
+  const tag = (await import('@/lib/zeit')).localDay(jetzt);
+  try {
+    await updateJson<MotorHerz>(MOTOR_HERZ, cur => {
+      const verworfen = z.verworfen ? { tag, n: (cur?.verworfen?.tag === tag ? cur.verworfen.n : 0) + z.verworfen } : cur?.verworfen?.tag === tag ? cur.verworfen : undefined;
+      return {
+        zuletzt: am, ...(fehler ? { ...(cur?.ok ? { ok: cur.ok } : {}), fehler: { seit: cur?.fehler?.seit ?? am, n: (cur?.fehler?.n ?? 0) + 1 } } : { ok: am }),
+        ...(z.ereignisFehler ? { ereignisFehler: z.ereignisFehler } : {}), ...(z.laufFehler ? { laufFehler: z.laufFehler } : {}), ...(verworfen ? { verworfen } : {}),
+        zahlen: erg, ...(wacheStand ? { wache: wacheStand } : cur?.wache ? { wache: cur.wache } : {}),
+      };
+    });
+  } catch (e) { console.error(`[prozesse/takt] Herzschlag: ${e instanceof Error ? e.message.slice(0, 160) : 'Fehler'}`); }
+  if (!z.verworfen) return;
+  try {
+    const [{ alleSteuerer }, { melde }, { WEG }] = await Promise.all([import('@/lib/zugang/steuern'), import('@/lib/meldungen/melden'), import('@/lib/wege')]);
+    for (const an of await alleSteuerer().catch(() => [] as string[])) {
+      await melde({ an, art: 'prozess', titel: `Prozesse: ${z.verworfen} ältere ${z.verworfen === 1 ? 'Meldung wurde' : 'Meldungen wurden'} übersprungen — bitte Läufe prüfen`, link: WEG.prozesse({}), bezug: { art: 'prozess', id: `motor-verworfen-${tag}` } });
+    }
+  } catch { /* nur Hinweis */ }
+}
+
+/** Lagebild des Herzschlags für den HOI (nur Zahlen). Beschädigter Bestand → `beschaedigt` statt still null. */
+export interface MotorHerzLage { zuletzt: string | null; minutenSeit: number | null; fehlerInFolge: number; ereignisFehler: number; laufFehler: number; verworfenHeute: number; beschaedigt?: true }
+export async function prozesseMotorLage(jetzt = new Date()): Promise<MotorHerzLage | null> {
+  let h: MotorHerz | null;
+  try { h = await loadJson<MotorHerz>(MOTOR_HERZ); } catch { return { zuletzt: null, minutenSeit: null, fehlerInFolge: 0, ereignisFehler: 0, laufFehler: 0, verworfenHeute: 0, beschaedigt: true }; }
+  if (!h) return null;
+  const tag = (await import('@/lib/zeit')).localDay(jetzt);
+  return {
+    zuletzt: h.zuletzt ?? null, minutenSeit: h.zuletzt ? Math.round((jetzt.getTime() - Date.parse(h.zuletzt)) / 60_000) : null, fehlerInFolge: h.fehler?.n ?? 0,
+    ereignisFehler: h.ereignisFehler ?? 0, laufFehler: h.laufFehler ?? 0, verworfenHeute: h.verworfen?.tag === tag ? h.verworfen.n : 0,
+  };
 }
 
 /** Ereignisse ab dem Cursor: Starts (Ereignis- und Webhook-Auslöser) und wartende Läufe (Warten auf Ereignis). */
@@ -1265,9 +1324,14 @@ async function ereignisseVerarbeiten(kx: MotorKontext, erg: TaktErgebnis): Promi
   const alt = kx.jetzt.getTime() - LAUF_GRENZEN.ereignisAlterStunden * 3_600_000;
   for (const e of neu) {
     // Private Ereignisse nie — außer Arbeit (25.10.: Mandate/Fälle der Privat-Arbeits-Einheit, `arbeit`); welcher Prozess darauf hört, entscheidet `arbeitErlaubt`.
-    if ((e.bereich === 'privat' && !e.arbeit) || Date.parse(e.am) < alt) continue;
-    erg.gestartet += await aufEreignisStarten(e, kx);
-    erg.geweckt += await aufEreignisWecken(e, kx);
+    if (e.bereich === 'privat' && !e.arbeit) continue;
+    // Zu alt (über `ereignisAlterStunden`): übersprungen — seit R2-2 Fund 4 gezählt (Herzschlag, HOI) und einmal gemeldet, nie mehr still.
+    if (Date.parse(e.am) < alt) { taktZaehler.verworfen++; continue; }
+    // Ein Fehler an EINEM Ereignis hält die übrigen nicht an (R2-2 Fund 4) — gezählt, im Log nur der Grund.
+    try {
+      erg.gestartet += await aufEreignisStarten(e, kx);
+      erg.geweckt += await aufEreignisWecken(e, kx);
+    } catch (err) { taktZaehler.ereignisFehler++; console.error(`[prozesse/takt] Ereignis: ${err instanceof Error ? err.message.slice(0, 200) : 'Fehler'}`); }
   }
   const bis = neu.at(-1)!.nr;
   await laeufeAendern(d => ({ datei: { ...d, cursor: { nr: Math.max(d.cursor?.nr ?? 0, bis), am: kx.jetzt.toISOString() } }, r: null }), kx.h);
@@ -1413,7 +1477,9 @@ async function aufEreignisWecken(e: Ereignis, kx: MotorKontext): Promise<number>
     const ok = await laeufeAendern(dd => {
       const x = dd.laeufe.find(y => y.id === l.id);
       if (!x) return { datei: dd, r: false };
-      const y = ereignisEingetreten(x, def, kx.jetzt.toISOString());
+      // Ein vorläufiger Fall (Buchung vor der Freigabe, R2-2 Fund 2) übernimmt die Person aus dem weckenden Ereignis.
+      const y0 = ereignisEingetreten(x, def, kx.jetzt.toISOString());
+      const y = y0 === x ? y0 : fallNachEreignis(y0, e.bezug);
       return y === x ? { datei: dd, r: false } : { datei: mitLauf(dd, y), r: true };
     }, kx.h);
     if (ok) n++;

@@ -13,7 +13,7 @@
 // Personen mit Art.-18-Einschränkung lösen nie etwas aus (kein Ereignis); im Bezug stehen nur Kennungen.
 
 import { bereichVon, bereichVonFirma, bereichVonGesellschaft, privatArbeitsEinheit } from '@/lib/einheiten';
-import { tagePlus } from '@/lib/zeit';
+import { localDay, tagePlus } from '@/lib/zeit';
 import { ereignis } from './server';
 import { ereignisKennung, type EreignisBereich, type EreignisEingabe } from './typen';
 import type { CrmBestand } from '@/lib/crm/typen';
@@ -231,12 +231,13 @@ export function mandatEreignisBereich(g: string | null | undefined): { bereich: 
  * angelegt bzw. neu auf „beendet“ (nur, wenn beide Stände Mandate tragen; Bereich aus der Gesellschaft — die Selbstständigkeit gehört zu Privat).
  */
 type CrmFuerDiff = Pick<CrmBestand, 'chancen' | 'firmen'> & Partial<Pick<CrmBestand, 'mandate'>>;
-export function crmDiff(vorher: CrmFuerDiff, nachher: CrmFuerDiff): EreignisEingabe[] {
+export function crmDiff(vorher: CrmFuerDiff, nachher: CrmFuerDiff, tag: string = localDay()): EreignisEingabe[] {
   const raus: EreignisEingabe[] = [];
   const alt = new Map(vorher.chancen.map(c => [c.id, c.stufe]));
   for (const c of nachher.chancen) {
     if (alt.get(c.id) === c.stufe) continue;
-    raus.push({ id: ereignisKennung('crm', 'deal', c.id, c.stufe), art: 'deal-stufe', quelle: 'crm', stufe: c.stufe, bereich: bereichVonGesellschaft(c.gesellschaft),
+    // Tag in der Kennung (R2-2 Fund 8): dieselbe Stufe ein zweites Mal (zurück und wieder hin) meldet sich wieder — vorher sperrte die Kennung 30 Tage.
+    raus.push({ id: ereignisKennung('crm', 'deal', c.id, c.stufe, tag), art: 'deal-stufe', quelle: 'crm', stufe: c.stufe, bereich: bereichVonGesellschaft(c.gesellschaft),
       bezug: { dealId: c.id, ...(c.firmaId ? { firmaId: c.firmaId } : {}), ...(c.kontaktIds[0] ? { kontaktId: c.kontaktIds[0] } : {}) } });
   }
   const leadAlt = new Map(vorher.firmen.map(f => [f.id, f.lead?.status]));
@@ -341,29 +342,50 @@ export function mqlDiff(vorher: ReadonlySet<string>, jetzt: readonly { id: strin
     bezug: z.art === 'firma' ? { firmaId: z.id } : { kontaktId: z.id, ...(z.firmaId ? { firmaId: z.firmaId } : {}) },
   }));
 }
-/** Die MQL-Leads des letzten Blicks (nur im Prozess — beim ersten Blick nach dem Start nur gemerkt: nie eine Flut über Altbestand). */
+/**
+ * Die MQL-Leads des letzten Blicks — seit 02.11. (R2-2 Fund 7) im Bestand `lead-mql-stand` (nur Fingerabdrücke der Kennungen, `mqlFingerabdruck`), damit ein
+ * Neustart keinen Wechsel verschluckt; im Prozess zusätzlich gemerkt. Gibt es noch keinen Stand, wird beim ersten Blick nur gemerkt (nie eine Flut über Altbestand).
+ */
+export const MQL_STAND = 'lead-mql-stand';
+interface MqlStandDatei { fp: string[]; am: string }
 let mqlStand: { ids: Set<string>; am: number } | null = null;
 const MQL_ABSTAND_MS = 60_000;
+/** Fingerabdruck einer Lead-Kennung (nur zum Vergleichen — der Bestand trägt keine Kennungen). Rein. */
+export function mqlFingerabdruck(id: string): string {
+  let a = 0x811c9dc5, b = 0x01000193 ^ id.length;
+  for (let i = 0; i < id.length; i++) { const c = id.charCodeAt(i); a = Math.imul(a ^ c, 0x01000193) >>> 0; b = Math.imul(b ^ c ^ (i & 0xff), 0x01000193) >>> 0; }
+  return `${a.toString(16).padStart(8, '0')}${b.toString(16).padStart(8, '0')}`;
+}
 /**
  * Lead wird MQL (29.10.): die Regel ist abgeleitet (`mqlErreicht`, lib/crm/leads.ts — nur Marketing-Herkunft), darum kein Feld-Diff: die Leads rechnen und mit dem
  * letzten Blick vergleichen. NUR im Takt des Lauf-Motors, und nur, wenn sich Kartei oder CRM geändert haben (dort gemerkt) — nie im Lese- oder Schreibpfad; dazu
- * höchstens einmal je Minute (außer `sofort`). Eingeschränkte Personen fehlen (`kontakteFuerVerarbeitung`). Wirft nie.
+ * höchstens einmal je Minute (außer `sofort`). Eingeschränkte Personen fehlen (`kontakteFuerVerarbeitung`).
+ * Ergebnis: Zahl neuer Ereignisse — `null`, wenn der Blick NICHT lief (zu früh, kein CRM, Fehler): dann merkt sich der Takt den Stand nicht und schaut wieder.
+ * Wirft nie.
  */
-export async function mqlEreignisse(o: { sofort?: boolean; jetzt?: Date } = {}): Promise<number> {
+export async function mqlBlick(o: { sofort?: boolean; jetzt?: Date } = {}): Promise<number | null> {
   try {
     const jetzt = o.jetzt ?? new Date();
-    if (!o.sofort && mqlStand && jetzt.getTime() - mqlStand.am < MQL_ABSTAND_MS) return 0;
-    const [crm, { kontakteFuerVerarbeitung }, { leads, mqlErreicht }, { localDay }] = await Promise.all([crmLaden(), import('@/lib/crm/verarbeitung'), import('@/lib/crm/leads'), import('@/lib/zeit')]);
-    if (!crm) return 0;
+    if (!o.sofort && mqlStand && jetzt.getTime() - mqlStand.am < MQL_ABSTAND_MS) return null;
+    const [crm, { kontakteFuerVerarbeitung }, { leads, mqlErreicht }, { localDay }, { loadJson, saveJson }] = await Promise.all([crmLaden(), import('@/lib/crm/verarbeitung'), import('@/lib/crm/leads'), import('@/lib/zeit'), import('@/lib/store/local-db')]);
+    if (!crm) return null;
     const jetztMql = leads(await kontakteFuerVerarbeitung(), crm, localDay(jetzt)).filter(mqlErreicht).map(z => ({ id: z.id, art: z.art, ...(z.firmaId ? { firmaId: z.firmaId } : {}) }));
-    const vorher = mqlStand;
+    const gespeichert = mqlStand ? null : await loadJson<MqlStandDatei>(MQL_STAND);
+    const vorher: Set<string> | null = mqlStand ? new Set(Array.from(mqlStand.ids, mqlFingerabdruck)) : gespeichert ? new Set(gespeichert.fp) : null;
+    const neuMql = vorher ? jetztMql.filter(z => !vorher.has(mqlFingerabdruck(z.id))) : [];
+    const neu = neuMql.length ? (await ereignis(mqlDiff(new Set(), neuMql), { jetzt })).neu : 0;
+    const fp = jetztMql.map(z => mqlFingerabdruck(z.id)).sort();
+    // Erst NACH dem Ablegen der Ereignisse merken — scheitert es, schaut der nächste Blick wieder (nichts geht verloren).
+    if (!vorher || Array.from(vorher).sort().join() !== fp.join()) await saveJson<MqlStandDatei>(MQL_STAND, { fp, am: jetzt.toISOString() });
     mqlStand = { ids: new Set(jetztMql.map(z => z.id)), am: jetzt.getTime() };
-    if (!vorher) return 0;
-    const l = mqlDiff(vorher.ids, jetztMql);
-    return l.length ? (await ereignis(l, { jetzt })).neu : 0;
-  } catch { return 0; }
+    return neu;
+  } catch { return null; }
 }
-/** Nur für Tests: den letzten Blick vergessen. */
+/** Wie `mqlBlick`, aber immer eine Zahl (0, wenn der Blick nicht lief). Wirft nie. */
+export async function mqlEreignisse(o: { sofort?: boolean; jetzt?: Date } = {}): Promise<number> {
+  return (await mqlBlick(o)) ?? 0;
+}
+/** Nur für Tests: den letzten Blick vergessen (nur im Prozess — der Bestand bleibt). */
 export const _mqlStandLeeren = () => { mqlStand = null; };
 
 // ── „An ZOE geben“ ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -475,7 +497,7 @@ export async function terminVorbeiEreignisse(termine: readonly TerminMitBezug[],
  * Eigene Mail an Kontakte gesendet (E8 „antwort-gesendet“): Adressen → Kontakte (alle Adressen, keine Sammeladressen, eingeschränkte nie), Bereich des
  * Postfachs, `person` = wer gesendet hat. Wirft nie.
  */
-export async function antwortGesendetEreignis(a: { person: string; quelle: 'gmail' | 'imap'; nachricht: string; an: readonly string[]; postfach: string; gespraech?: string }): Promise<number> {
+export async function antwortGesendetEreignis(a: { person: string; quelle: 'gmail' | 'imap'; nachricht: string; an: readonly string[]; postfach: string; gespraech?: string; automatisch?: boolean }): Promise<number> {
   try {
     if (!a.an.length) return 0;
     const adresse = await adressenIndex();
@@ -491,7 +513,7 @@ export async function antwortGesendetEreignis(a: { person: string; quelle: 'gmai
       gesehen.add(k.id);
       const bezug = await personBezug(k, crmEinmal);
       if (bezug === null) continue;
-      liste.push({ id: ereignisKennung('antwort', a.quelle, a.nachricht, k.id), art: 'antwort-gesendet', quelle: a.quelle, bereich: bereichAusPostfach(bereich), person: a.person, bezug: { ...bezug, ...(a.gespraech ? { gespraech: a.gespraech } : {}) } });
+      liste.push({ id: ereignisKennung('antwort', a.quelle, a.nachricht, k.id), art: 'antwort-gesendet', quelle: a.quelle, bereich: bereichAusPostfach(bereich), person: a.person, bezug: { ...bezug, ...(a.gespraech ? { gespraech: a.gespraech } : {}) }, ...(a.automatisch ? { automatisch: true as const } : {}) });
     }
     return liste.length ? (await ereignis(liste)).neu : 0;
   } catch { return 0; }
@@ -505,6 +527,22 @@ export async function whatsappGesendetEreignis(a: { person: string; wamid: strin
     const bezug = await personBezug(k, () => crmLaden());
     if (!bezug || !k) return 0;
     return (await ereignis({ id: ereignisKennung('antwort', 'wa', a.wamid), art: 'antwort-gesendet', quelle: 'whatsapp', bereich: bereichAusPostfach(a.bereich), person: a.person, bezug })).neu;
+  } catch { return 0; }
+}
+
+/**
+ * Vertrag unterschrieben (R2-2 Fund 6, 02.11.) — aus dem Absichts-Schritt der Unterschrift (lib/vertraege/server.ts), idempotent über die Kennung je Vertrag.
+ * Bezug Vertrag + Deal (am Vertrag bzw. des Mandats) + Mandat + Firma/Kontakt; Bereich aus der Gesellschaft (die Selbstständigkeit gehört zu Privat). Wirft nie.
+ */
+export async function vertragUnterschriebenEreignis(v: { id: string; gesellschaft: string; dealId?: string; mandatId?: string; firmaId?: string; kontaktId?: string }): Promise<number> {
+  try {
+    // Eingeschränkte Personen (Art. 18) lösen nie etwas aus — wie `followupErledigtEreignis`.
+    if (v.kontaktId) {
+      const k = (await (await import('@/lib/crm/verarbeitung')).kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).find(x => x.id === v.kontaktId);
+      if (k?.eingeschraenkt) return 0;
+    }
+    const bezug = { vertragId: v.id, ...(v.dealId ? { dealId: v.dealId } : {}), ...(v.mandatId ? { mandatId: v.mandatId } : {}), ...(v.firmaId ? { firmaId: v.firmaId } : {}), ...(v.kontaktId ? { kontaktId: v.kontaktId } : {}) };
+    return (await ereignis({ id: ereignisKennung('vertrag', v.id, 'unterschrieben'), art: 'vertrag-unterschrieben', quelle: 'crm', bereich: bereichVonGesellschaft(v.gesellschaft), bezug })).neu;
   } catch { return 0; }
 }
 

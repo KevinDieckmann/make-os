@@ -131,7 +131,9 @@ export async function POST(req: Request) {
         if (lage === 'schon') return NextResponse.json({ ok: true, schon: true, text: 'Diese Antwort ist schon bearbeitet — nichts doppelt festgehalten.' });
         const r = await ergebnisFesthalten({ kampagneId: x.kampagneId, ziel: x.ziel, ergebnis: 'chance', von: z.person, person: z.person, wer, heute: localDay() });
         if (r.status !== 200 && lage === 'neu') await aendereCrm(c => ({ ...c, followups: (c.followups ?? []).map(y => (y.id === fuId && y.status === 'erledigt' && y.erledigtAm === jetzt ? { ...y, status: 'offen' as const, ergebnis: undefined, erledigtAm: undefined, geaendert: new Date().toISOString() } : y)) }), wer);
-        return NextResponse.json(r.status === 200 ? { ...r.body, text: `Als Lead übernommen — ${x.an.name} steht jetzt in der Qualifizierung.${r.body.hinweis ? ` ${String(r.body.hinweis)}` : ''}` } : r.body, { status: r.status });
+        // Ehrlich (02.11., R2-2 · B): ein Kunde mit laufendem Mandat bzw. ein Lead mit offenem Deal geht NICHT in die Qualifizierung — die Meldung sagt, wo es weitergeht.
+        const inQuali = r.body.qualifizierung !== false;
+        return NextResponse.json(r.status === 200 ? { ...r.body, text: inQuali ? `Als Lead übernommen — ${x.an.name} steht jetzt in der Qualifizierung.${r.body.hinweis ? ` ${String(r.body.hinweis)}` : ''}` : `Antwort festgehalten — ${x.an.name}: ${String(r.body.hinweis ?? 'nicht in die Qualifizierung.')}` } : r.body, { status: r.status });
       }
       case 'entwurf': {
         if (typeof b.id !== 'string' || typeof b.betreff !== 'string' || typeof b.text !== 'string') return fehler('id, betreff und text.', 400);

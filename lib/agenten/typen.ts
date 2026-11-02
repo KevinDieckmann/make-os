@@ -357,6 +357,8 @@ export type SkillEreignis = 'neue-mail' | 'neuer-lead' | 'zahlungseingang' | 'ne
   | 'mandat-angelegt' | 'mandat-beendet' | 'rechnung-gestellt' | 'fall-schritt-erledigt' | 'antwort-gesendet' | 'followup-erledigt' | 'ziel-erreicht'
   // Prozesse × Fulfillment (22.10.): ein Zusatzmodul wird an einem bestehenden Mandat gebucht (CRM-Schreibweg) — startet u. a. den Prozess seines Produkts.
   | 'zusatz-gebucht'
+  // Vertragsstrecke (02.11., R2-2 Fund 6): ein Vertrag ist unterschrieben (lib/vertraege/server.ts, Absichts-Schritt der Unterschrift) — Bezug Vertrag/Deal/Mandat.
+  | 'vertrag-unterschrieben'
   // Kundengewinnung (22.10., research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › 5.1: E2, E3, E5, E6, E7, E10, E11) — Quellen in lib/ereignisse/quellen-kundengewinnung.ts.
   | 'netzwerken-erfasst' | 'angebot-gestellt' | 'angebot-antwort' | 'buchung-angefragt' | 'buchung-bestaetigt' | 'einwilligung-erteilt'
   | 'event-vorbei' | 'event-status' | 'linkedin-antwort' | 'vernetzt' | 'kampagne-aktiv' | 'kampagnen-ergebnis'

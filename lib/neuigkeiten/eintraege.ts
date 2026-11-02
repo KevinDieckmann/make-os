@@ -33,6 +33,26 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-16',
+    datum: '2026-11-02',
+    titel: 'Abläufe greifen sauber ineinander',
+    kurz: 'Ein Gespräch oder Termin mit einem Betrieb bringt ihn in die Lead-Liste und legt den nächsten Schritt an. Abläufe zu Kampagnen und Buchungen starten jetzt wirklich, und eure eigene Antwort hält die Uhr an.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Gespräch oder Termin bei einem Betrieb ohne Ansprechpartner: der Betrieb rückt in die Lead-Liste („im Gespräch“ bzw. „Qualifizierung“), und der nächste Schritt steht gleich an — nachfassen bzw. Termin vorbereiten.', bereich: 'business', weg: WEG.powerHour() },
+        { text: 'Betriebe, die auf eine Kampagne geantwortet haben, stehen auch ohne Ansprechpartner unter den Leads — mit dem Schritt „Ansprechpartner anlegen“.', bereich: 'business', weg: WEG.qualifizierung() },
+        { text: 'Antworten auf Kampagnen-Mails lassen sich auch an der Karte eines Betriebs als Lead übernehmen. Meldet sich ein früherer Kunde wieder, kommt er erneut in die Qualifizierung.', bereich: 'business', weg: WEG.powerHour() },
+        { text: 'Die Prozesslandkarte zeigt den heutigen Stand: Mail-Stapel, Druckliste, Rückläufer, Willkommens-Mails, Website-Anfragen, Mahnstufen, Vertrag und Laufzeit.', bereich: 'business', weg: WEG.prozesse() },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Abläufe zu Kampagnen und Buchungsanfragen starten jetzt. Die Werkstatt sagt, wenn ein Auslöser nie zu einem Ablauf passen kann.', bereich: 'business', weg: WEG.prozesse() },
+        { text: 'Wer eine vorbereitete Antwort freigibt, stoppt damit die Uhr des Ablaufs — automatische Mails zählen nicht als Antwort.', bereich: 'business', weg: WEG.prozesse() },
+        { text: 'Ist ein Vertrag unterschrieben, geht die Übergabe von selbst weiter — es gibt nur noch eine Erinnerung zur Unterschrift.', bereich: 'business', weg: WEG.prozesse() },
+        { text: 'Die Abläufe melden sich in der Systemübersicht, wenn sie stocken; ältere Meldungen, die liegen blieben, kommen in die Glocke.', bereich: 'business', weg: WEG.prozesse() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-13',
     datum: '2026-11-02',
     titel: 'Kundengewinnung meldet sich',

@@ -54,7 +54,9 @@ export function ueberfuehrungsVorlage(u: UeberfuehrbarDef): ProzessDefinition {
             S.glocke('a2g', 'Mandat abgelehnt', 'Das Mandat zum gewonnenen Deal wurde nicht angelegt — bitte ansehen.', EIGNER, { zweige: { ja: 'e0' } }),
             S.aufgabe('a3', 'Übergabe vervollständigen', { titel: 'Übergabe vervollständigen (acht Blöcke)', fristTage: 2, prioritaet: 'high', beschreibung: 'Kunde · Umfang · Zeit · Geld · Personal · Risiken · Erwartungen · Kickoff.' }),
             S.regel('a4', 'Vertrag unterschrieben?', [B.ist('deal.vertrag-unterschrieben', true)], { zweige: { nein: 'a4v' } }),
-            S.aufgabe('a4v', 'Vertrag unterschreiben lassen', { titel: 'Vertrag unterschreiben lassen', fristTage: 5, prioritaet: 'high' }),
+            // 02.11. (R2-2 Fund 6, wie kg-v12): keine zweite Erinnerung neben dem Follow-up der Vertragsstrecke — warten auf „Vertrag unterschrieben“.
+            S.wartenEreignis('a4v', 'Unterschrift abwarten', 'vertrag-unterschrieben', 30, { zweige: { abgelaufen: 'a4g' } }),
+            S.glocke('a4g', 'Unterschrift steht aus', 'Der Vertrag zu einem gewonnenen Deal ist nach einem Monat noch nicht unterschrieben — bitte ansehen.', EIGNER),
             S.ziel('e2', 'Übergabe vorbereitet — der Fall startet über den Vorschlag'),
             S.abbruch('e0', 'Ohne Mandat beendet'),
             // Der Kern als Seitenzweig der Raute (ohne Deal): danach gleich ins eigene Ziel.

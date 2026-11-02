@@ -674,7 +674,7 @@ export async function versenden(jetzt = new Date()): Promise<{ gesendet: number;
     let r: { status: number; body: Record<string, unknown> };
     try {
       // `uwgBestaetigt` nur auf eigenes Risiko — ohne den Modus sperrt `pruefeEmpfaenger` eine rote Ampel mit werblichen Wörtern (409 uwg → gesperrt).
-      r = await inboxSenden(person, { neu: { postfach: x.freigabe!.postfach, betreff: x.betreff }, an: [{ email: x.an.email!, name: x.an.name }], text: fertig.text, uwgBestaetigt: !!x.freigabe!.eigenesRisiko }, { art: 'person', person }, { listeAbmelden: { link: ab.link } });
+      r = await inboxSenden(person, { neu: { postfach: x.freigabe!.postfach, betreff: x.betreff }, an: [{ email: x.an.email!, name: x.an.name }], text: fertig.text, uwgBestaetigt: !!x.freigabe!.eigenesRisiko }, { art: 'person', person }, { listeAbmelden: { link: ab.link }, automatisch: true });
     } catch (err) {
       r = { status: 502, body: { fehler: err instanceof Error ? err.message.slice(0, 200) : 'Versand gescheitert.', geworfen: true, ...(err instanceof Error && err.name === 'GoogleUeberlastet' ? { ueberlastet: true } : {}) } };
     }

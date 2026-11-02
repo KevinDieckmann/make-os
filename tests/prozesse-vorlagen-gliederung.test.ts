@@ -3,6 +3,7 @@
 // höchstens `PROZESS_GRENZEN.schritteHinweis` Schritte je Phase, und zwar OHNE den Ablauf zu ändern: dieselben Schritte (Knoten, Schlösser, Enden) und dieselben
 // Kanten wie vorher (tests/fixtures/vorlagen-ablauf-vorher.json, erzeugt vor der Gliederung). Einzige gewollte Änderung (Befund 2): mehrere Auslöser führen
 // JEDER direkt in den ersten Schritt — vorher führte der erste in den zweiten Auslöser (die Werkstatt zeigte den Faden nicht, nur ein „+“).
+// Nachtrag 02.11. (R2-2 Fund 6): kg-v12 wartet auf „Vertrag unterschrieben“ (a4v) mit Glocke nach Ablauf (a4g) — die Aufnahme trägt diese zwei Kanten zusätzlich.
 import { describe, it, expect } from 'vitest';
 import vorherJson from './fixtures/vorlagen-ablauf-vorher.json';
 import { KUNDENGEWINNUNG_VORLAGEN } from '@/lib/prozesse/kundengewinnung/bibliothek';

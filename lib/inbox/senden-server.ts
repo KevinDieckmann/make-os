@@ -33,6 +33,11 @@ export interface InboxSendenOptionen {
    * Willkommensstrecke. Bewusst NICHT aus dem Körper `b` (der kommt bei der Route aus dem Browser): nur Server-Aufrufer setzen ihn.
    */
   listeAbmelden?: { link: string };
+  /**
+   * Automatischer Versand (R2-2 Fund 3, 02.11.): Kampagnen-Motor, Website-Post, Newsletter-Bestätigung, Angebots-Formular, Download-Links. Das Ereignis
+   * „Antwort gesendet“ trägt dann `automatisch` und zählt NICHT als persönliche Reaktion (stoppt keine Uhr). Nur Server-Aufrufer setzen es.
+   */
+  automatisch?: true;
 }
 
 export async function inboxSenden(person: string, b: Record<string, unknown>, wer: Wer, opt: InboxSendenOptionen = {}): Promise<{ status: number; body: Record<string, unknown> }> {
@@ -90,7 +95,7 @@ export async function inboxSenden(person: string, b: Record<string, unknown>, we
     // Ereignis (21.10., Prozesse C1, E8): eigene Antwort an Kontakte gesendet — stoppt z. B. die Uhr eines Lead-Eingangs. Nur Kennungen, wirft nie.
     await import('@/lib/ereignisse/quellen').then(q => q.antwortGesendetEreignis({
       person, quelle: postfach === GMAIL_POSTFACH ? 'gmail' : 'imap', nachricht: x.id ?? `${postfach}:${new Date().toISOString()}`, an: x.an, postfach,
-      ...(typeof b.gespraech === 'string' ? { gespraech: b.gespraech } : {}),
+      ...(typeof b.gespraech === 'string' ? { gespraech: b.gespraech } : {}), ...(opt.automatisch ? { automatisch: true } : {}),
     })).catch(() => 0);
     return { status: 200, body: { ok: true, ...x } };
   } catch (e) {

@@ -11,7 +11,22 @@ import { notizAnhaengen } from './notiz-anhaengen';
 import { wendeAktivitaetAn, type AktivitaetArt, type Kontakt } from '@/lib/make-one/crm';
 import { tagePlus } from '@/lib/zeit';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
-import type { KampagnenErgebnis, KampagnenZiel } from './typen';
+import type { CrmBestand, Firma, KampagnenErgebnis, KampagnenZiel, LeadStatus } from './typen';
+import { OFFENE_STUFEN } from './pipeline';
+import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
+
+/**
+ * „Interesse → Lead“ bei einem Lead, der schon SQL bzw. Kunde ist (02.11., Zusatz zu R2-2 Fund 1 · B — Reaktivierung wurde verschluckt): ohne offenen Deal
+ * und ohne aktives Mandat geht er WIEDER in die Qualifizierung (ein früherer Kunde mit neuem Bedarf); sonst bleibt der Status und die Meldung sagt ehrlich,
+ * wo es weitergeht. Rein, getestet.
+ */
+export function chanceInQualifizierung(status: LeadStatus | undefined, crm: Pick<CrmBestand, 'chancen' | 'mandate'>, w: { firma?: Pick<Firma, 'id' | 'name'>; kontaktIds: readonly string[] }): { ja: true } | { ja: false; grund: string } {
+  if (status !== 'sql' && status !== 'kunde') return { ja: true };
+  const ids = new Set(w.kontaktIds);
+  if (crm.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && ((!!w.firma && dealZuFirma(c, w.firma)) || c.kontaktIds.some(id => ids.has(id))))) return { ja: false, grund: 'Es gibt schon einen offenen Deal — dort weiterführen; der Lead bleibt, wie er ist.' };
+  if (crm.mandate.some(m => m.status === 'aktiv' && !m.geloeschtAm && ((!!w.firma && mandatZuFirma(m, w.firma)) || (m.kontaktIds ?? []).some(id => ids.has(id))))) return { ja: false, grund: 'Ist schon Kunde mit laufendem Mandat — für den neuen Bedarf direkt einen Deal anlegen.' };
+  return { ja: true };
+}
 
 export const KAMPAGNEN_ERGEBNISSE: readonly KampagnenErgebnis[] = ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'];
 const TEXT: Record<KampagnenErgebnis, string> = { angesprochen: 'angesprochen', reagiert: 'hat reagiert', gespraech: 'Gespräch', chance: 'Chance entstanden', kein_interesse: 'kein Interesse' };
@@ -28,6 +43,8 @@ export async function ergebnisFesthalten(e: { kampagneId: string; ziel: Kampagne
   let hinweis: string | undefined;
   const status = (s: typeof k.status) => (s === 'entwurf' ? 'aktiv' as const : s);
 
+  // Reaktivierung (B): ob der Lead in die Qualifizierung geht, sagt EINE Regel; `qualifizierung` in der Antwort trägt es zur Meldung.
+  let quali: { ja: true } | { ja: false; grund: string } = { ja: true };
   if (e.ziel.art === 'firma') {
     const fid = e.ziel.id;
     const f = crm.firmen.find(x => x.id === fid && !x.geloeschtAm);
@@ -37,13 +54,16 @@ export async function ergebnisFesthalten(e: { kampagneId: string; ziel: Kampagne
       ...c,
       kampagnen: c.kampagnen.map(x => (x.id === k.id ? { ...x, firmenErgebnisse: [...(x.firmenErgebnisse ?? []), { firmaId: fid, ergebnis: e.ergebnis, am: e.heute, von: e.von }], status: status(x.status), geaendert: jetzt, geaendertVon: e.person } : x)),
       ...(e.ergebnis === 'chance' ? { firmen: c.firmen.map(y => {
-        if (y.id !== fid || ['sql', 'kunde'].includes(y.lead?.status ?? '')) return y;
+        if (y.id !== fid) return y;
+        quali = chanceInQualifizierung(y.lead?.status, c, { firma: y, kontaktIds: [] });
+        if (!quali.ja) return y;
         const n = notizAnhaengen(y.lead?.notiz, vermerk);
         if (!n.ok) hinweis = n.hinweis;
         return { ...y, lead: { ...(y.lead ?? { kriterien: leereKriterien() }), status: 'qualifizierung' as const, ...(n.notiz ? { notiz: n.notiz } : {}), geaendert: jetzt, geaendertVon: e.person } };
       }) } : {}),
     }), e.wer);
-    return { status: 200, body: { ok: true, ...(hinweis ? { hinweis } : {}) } };
+    const q = quali as { ja: boolean; grund?: string };
+    return { status: 200, body: { ok: true, ...(e.ergebnis === 'chance' ? { qualifizierung: q.ja } : {}), ...(hinweis || q.grund ? { hinweis: [q.grund, hinweis].filter(Boolean).join(' ') } : {}) } };
   }
 
   // Person — unverändert gegenüber dem Weg bis 01.11. (Verlauf der Akte, Ergebnis, Lead der Firma bzw. der Person).
@@ -71,7 +91,9 @@ export async function ergebnisFesthalten(e: { kampagneId: string; ziel: Kampagne
     const neu = { ...c, kampagnen: c.kampagnen.map(x => (x.id === k.id ? { ...x, ergebnisse: [...x.ergebnisse, { kontaktId: kt.id, ergebnis: erg, am: e.heute, von: e.von }], status: status(x.status), geaendert: jetzt, geaendertVon: e.person } : x)) };
     // Ebene 1 (25.09.): „Interesse“ aus einer Kampagne ist noch kein Deal — der Lead der Firma geht in die Qualifizierung.
     if (erg === 'chance' && kt.firmaId) neu.firmen = c.firmen.map(f => {
-      if (f.id !== kt.firmaId || ['sql', 'kunde'].includes(f.lead?.status ?? '')) return f;
+      if (f.id !== kt.firmaId) return f;
+      quali = chanceInQualifizierung(f.lead?.status, c, { firma: f, kontaktIds: [kt.id] });
+      if (!quali.ja) return f;
       const n = notizAnhaengen(f.lead?.notiz, vermerk);
       if (!n.ok) hinweis = n.hinweis;
       return { ...f, lead: { ...(f.lead ?? { kriterien: leereKriterien() }), status: 'qualifizierung' as const, ...(n.notiz ? { notiz: n.notiz } : {}), geaendert: jetzt, geaendertVon: e.person } };
@@ -79,7 +101,8 @@ export async function ergebnisFesthalten(e: { kampagneId: string; ziel: Kampagne
     return neu;
   });
   // Ohne Firma liegt der Lead an der Person — die vorhandene Notiz bleibt (vorher wurde sie ersetzt).
-  if (erg === 'chance' && !kt.firmaId && !['sql', 'kunde'].includes(kt.lead?.status ?? '')) {
+  if (erg === 'chance' && !kt.firmaId) quali = chanceInQualifizierung(kt.lead?.status, await ladeCrm(), { kontaktIds: [kt.id] });
+  if (erg === 'chance' && !kt.firmaId && quali.ja) {
     await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(x => {
       if (x.id !== kt.id || x.eingeschraenkt) return x;
       const n = notizAnhaengen(x.lead?.notiz, vermerk);
@@ -87,5 +110,6 @@ export async function ergebnisFesthalten(e: { kampagneId: string; ziel: Kampagne
       return { ...x, lead: { ...(x.lead ?? { kriterien: leereKriterien() }), status: 'qualifizierung' as const, ...(n.notiz ? { notiz: n.notiz } : {}), geaendert: jetzt, geaendertVon: e.person } };
     }) }), e.wer);
   }
-  return { status: 200, body: { ok: true, ...(hinweis ? { hinweis } : {}) } };
+  const q = quali as { ja: boolean; grund?: string };
+  return { status: 200, body: { ok: true, ...(erg === 'chance' ? { qualifizierung: q.ja } : {}), ...(hinweis || q.grund ? { hinweis: [q.grund, hinweis].filter(Boolean).join(' ') } : {}) } };
 }

@@ -142,6 +142,11 @@ export interface LeadZeile {
   /** Besitzer wurde nie gesetzt — in der Runde per Klick übernehmen. */
   ohneBesitzer: boolean;
   /**
+   * Betrieb ohne Ansprechpartner (02.11., Zusatz zu R2-2 Fund 1 · A): ein Betrieb mit gesetztem Lead-Status bzw. einem Kampagnen-Ergebnis (reagiert,
+   * Gespräch, Chance), an dem noch keine Person hängt. `personen` ist leer, der nächste Schritt heißt „Ansprechpartner anlegen“.
+   */
+  ohnePerson?: true;
+  /**
    * Frisch angelegt (08.10., Markttraktion Sofort-Paket 1.1): eine Person dieses Leads wurde in den letzten `FRISCH_TAGE` Tagen
    * angelegt (`frischAngelegt`) — so ein Lead zählt nie als kalt. Fehlt bei älteren Leads und bei von Hand gebauten Zeilen.
    */
@@ -155,8 +160,10 @@ export interface LeadZeile {
 
 /**
  * Alle Leads: je Firma eine Zeile (mit ihren Personen), dazu Personen ohne
- * Firma einzeln. Firmen ohne Person und reine Dienstleister/Investoren fehlen
- * — sie sind kein Vertrieb.
+ * Firma einzeln. Reine Dienstleister/Investoren fehlen — sie sind kein Vertrieb. Firmen ohne Person fehlen, außer sie sind
+ * schon ein Lead (Status gesetzt) bzw. haben in einer Kampagne reagiert, ein Gespräch oder Interesse (02.11., R2-2 · A: sonst
+ * verschwand ein Betrieb aus Welle A nach „Als Lead übernehmen“ aus Liste, Runde, Trichter und Scoreboard) — dann mit `personen: []`,
+ * `ohnePerson` und dem nächsten Schritt „Ansprechpartner anlegen“; Werbesperre, Papierkorb und Archiv nie.
  *
  * `heute` ist Pflicht (28.09., K3 · #75): der Berliner Tag des Aufrufers (`localDay()`),
  * nie ein UTC-Tag aus `toISOString()` — der liegt nachts bis 2 Uhr einen Tag daneben.
@@ -211,10 +218,35 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
     };
   };
   const raus: LeadZeile[] = [];
+  // Betriebe ohne Person (A): das beste Kampagnen-Ergebnis je Betrieb (reagiert < Gespräch < Chance) und die Zuständigkeit der Kampagne.
+  const ERG_RANG: Partial<Record<string, number>> = { reagiert: 1, gespraech: 2, chance: 3 };
+  const ERG_STATUS: Record<number, LeadStatus> = { 1: 'kontaktiert', 2: 'im_gespraech', 3: 'qualifizierung' };
+  const kampagnenFirma = new Map<string, { rang: number; zustaendig?: string }>();
+  for (const k of crm.kampagnen ?? []) {
+    if (k.geloeschtAm) continue;
+    for (const e of k.firmenErgebnisse ?? []) {
+      const r = ERG_RANG[e.ergebnis];
+      if (!r || (kampagnenFirma.get(e.firmaId)?.rang ?? 0) >= r) continue;
+      kampagnenFirma.set(e.firmaId, { rang: r, ...(k.zustaendig ? { zustaendig: k.zustaendig } : {}) });
+    }
+  }
   for (const f of crm.firmen) {
     const personen = (jeFirma.get(f.id) ?? []).filter(k => !ausgenommen(k));
-    if (!personen.length || f.rolle === 'dienstleister' || f.rolle === 'investor' || f.rolle === 'wettbewerb') continue;
-    raus.push(zeile(f.id, 'firma', f.name, personen, f.lead, f));
+    if (f.rolle === 'dienstleister' || f.rolle === 'investor' || f.rolle === 'wettbewerb') continue;
+    if (personen.length) { raus.push(zeile(f.id, 'firma', f.name, personen, f.lead, f)); continue; }
+    // Ohne Person nur ein Betrieb, der schon Lead ist bzw. in einer Kampagne geantwortet hat — und nie mit Werbesperre, im Papierkorb oder Archiv.
+    // Personen der Firma, die gesperrt bzw. eingeschränkt sind, lassen den Betrieb ebenfalls draußen (er ist dann nicht „ohne Person“).
+    if (f.werbesperre || f.geloeschtAm || f.archiviertAm || (jeFirma.get(f.id) ?? []).length) continue;
+    const kp = kampagnenFirma.get(f.id);
+    if (!f.lead?.status && !kp) continue;
+    const z = zeile(f.id, 'firma', f.name, [], f.lead, f);
+    const status = !f.lead?.status && kp && (z.status === 'neu' || z.status === 'kontaktiert') ? ERG_STATUS[kp.rang] : z.status;
+    const zustaendig = kp?.zustaendig;
+    raus.push({
+      ...z, status, ohnePerson: true,
+      ...(z.naechsterSchritt ? {} : { naechsterSchritt: { text: 'Ansprechpartner anlegen', datum: heute, bei: f.name } }),
+      ...(zustaendig ? { besitzer: zustaendig, ohneBesitzer: false } : {}),
+    });
   }
   for (const k of ohneFirma.filter(k => !ausgenommen(k))) raus.push(zeile(k.id, 'person', `${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''}`, [k], k.lead));
   const rang = (s: LeadStatus) => ['qualifizierung', 'im_gespraech', 'kontaktiert', 'sql', 'neu', 'kunde', 'ruht', 'kein_fit'].indexOf(s);

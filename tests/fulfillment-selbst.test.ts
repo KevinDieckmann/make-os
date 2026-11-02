@@ -276,6 +276,12 @@ describe('Produkt-Ablauf der Selbstständigkeit im Lauf-Motor', () => {
     expect((await rufe('prozesse/laeufe', 'GET', sitzung('bea'), undefined, '?fall=mandat:m-selbst-neu&space=business')).j.laeufe).toEqual([]);
     expect((await rufe('prozesse/laeufe', 'GET', sitzung('bea'), undefined, `?lauf=${lauf.id}&space=business`)).status).toBe(404);
     expect((await rufe('prozesse/laeufe', 'GET', sitzung('pia'), undefined, '?fall=mandat:m-selbst-neu&space=business')).j.laeufe).toHaveLength(1);
+    // R2-2 Fund 9 (02.11.): auch die Zahlen je Prozess und „heute“ zählen Läufe der Selbstständigkeit für ein Konto „nur Business“ nicht mit.
+    const zahl = async (wer: string) => ((await rufe('prozesse/laeufe', 'GET', sitzung(wer), undefined, '?space=business')).j.prozesse as Record<string, { offen: number; wartend: number }>)[PZ_SELBST];
+    const offen = ['laeuft', 'wartet', 'angehalten', 'fehler'].includes(lauf.status);
+    expect((await zahl('pia'))?.offen ?? 0).toBe(offen ? 1 : 0);
+    expect((await zahl('bea'))?.offen ?? 0).toBe(0);
+    expect(JSON.stringify((await rufe('prozesse/laeufe', 'GET', sitzung('bea'), undefined, '?heute=1&space=business')).j)).not.toContain(lauf.id);
   }, 60_000);
 
   it('private Ereignisse OHNE Arbeits-Marke gehen nie an Prozesse', async () => {

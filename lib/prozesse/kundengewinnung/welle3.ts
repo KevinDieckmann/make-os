@@ -125,7 +125,7 @@ const V17: KgVorlage = {
     { id: 'freigabeStunden', label: 'Freigabe binnen (Stunden)', vorgabe: 4 }, { id: 'eskalationStunden', label: 'Eskalation nach (Stunden)', vorgabe: 24, knoten: 'a2', feld: 'hoechstensStunden' },
     { id: 'budgetCent', label: 'Budget (Cent)', vorgabe: 8, knoten: 'a5', feld: 'budgetCent' },
   ],
-  offen: [{ punkt: 'Fall', text: 'Vor der Freigabe gibt es noch keinen Lead — der Lauf hängt erst ab „Buchung bestätigt“ an der Person (der Motor liest den Fall aus dem Ereignis).' }],
+  offen: [{ punkt: 'Fall', text: 'Vor der Freigabe gibt es noch keinen Lead: der Lauf startet mit der Buchung als vorläufigem Fall (nur diese Buchung weckt ihn) und hängt sich bei „Buchung bestätigt“ an die Person. Bleibt die Freigabe aus, meldet die Glocke — ohne Person entstehen dann weder Qualifizierung noch Deal.' }],
   demo: 'Eine erfundene Buchungsseite „Erstgespräch (Beispiel)“ bekommt eine Anfrage: Freigabe nach 2 Std., im Stapel „Qualifizierung starten“ und der Leitfaden für den Vortag.',
   teile: [],
   definition: prozess({

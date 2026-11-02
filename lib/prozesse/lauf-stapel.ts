@@ -163,7 +163,7 @@ export const PROZESS_STAPEL_ART: StapelArtFreigabe = {
       const weiter = await laeufeAendern(d => {
         const l = d.laeufe.find(x => x.id === lid);
         if (!l) return { datei: d, r: false };
-        const n = freigabeEntschieden(l, def, kennung, 'ja', iso, danachAufgabe ? { danachAufgabe } : {});
+        const n = freigabeEntschieden(l, def, kennung, 'ja', iso, { ...(danachAufgabe ? { danachAufgabe } : {}), ...(sende ? { gesendet: true } : {}) });
         return n === l ? { datei: d, r: false } : { datei: { ...d, laeufe: d.laeufe.map(x => (x.id === lid ? n : x)) }, r: true };
       }, z.kx.h);
       if (weiter) await laufVoran(lid, z.kx);

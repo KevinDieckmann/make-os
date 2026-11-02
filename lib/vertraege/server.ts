@@ -534,7 +534,7 @@ export async function vertragStatus(p: { haushalt: string; person: string; id: s
 // Unterschrift-Status, und ein zweiter Upload legte einen ZWEITEN Beleg an. Jetzt Art `vertrag-unterschrieben` (lib/store/absichten.ts): jeder Schritt
 // idempotent, der Beleg wird wiedererkannt (Eintrag mit `vertragId`, nicht das PDF des fertigen Vertrags); Wiederaufnahme `vertragUnterschriebenFortsetzen`.
 export const ABSICHT_VERTRAG_UNTERSCHRIEBEN = 'vertrag-unterschrieben' as const;
-export const UNTERSCHRIFT_SCHRITTE = ['beleg', 'status', 'mandat', 'register', 'followup'] as const;
+export const UNTERSCHRIFT_SCHRITTE = ['beleg', 'status', 'mandat', 'register', 'followup', 'ereignis'] as const;
 interface UnterschriftDaten { haushalt: string; vertragId: string; person: string; am: string; jetzt: string; wer?: Wer; dateiId?: string }
 
 /** Der schon abgelegte Unterschrift-Beleg eines Vertrags (nicht das PDF des fertigen Vertrags) — null, wenn keiner da ist. */
@@ -600,6 +600,17 @@ async function unterschriftSchritte(v0: import('@/lib/store/absichten').Vorgang,
     }
   });
   await v0.schritt('followup', () => vertragFollowup(v, 'erledigt', { person: D.person, heute: D.am, jetzt: D.jetzt, wer }));
+  // Ereignis „Vertrag unterschrieben“ (R2-2 Fund 6): weckt z. B. die Übergabe (V12 „Unterschrift abwarten“) — statt einer zweiten Erinnerung neben dem Follow-up.
+  // Deal auch über das Mandat des Vertrags; idempotent (eine Kennung je Vertrag), wirft nie.
+  // Eine vor dem 02.11. begonnene Absicht kennt den Schritt nicht — dann wird er ohne Haken ausgeführt (die Kennung je Vertrag hält ihn einmalig).
+  const ereignisSchritt = (fn: () => Promise<void>) => (v0.absicht.schritte.some(s => s.name === 'ereignis') ? v0.schritt('ereignis', fn) : fn());
+  await ereignisSchritt(async () => {
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    const crm = await ladeCrm().catch(() => null);
+    const m = crm ? mandatZumVertrag(crm.mandate, v, crm.angebote ?? []) : undefined;
+    const dealId = v.dealId ?? m?.chanceId;
+    await (await import('@/lib/ereignisse/quellen')).vertragUnterschriebenEreignis({ id: v.id, gesellschaft: v.gesellschaft, ...(dealId ? { dealId } : {}), ...(v.mandatId ?? m?.id ? { mandatId: v.mandatId ?? m!.id } : {}), ...(v.firmaId ? { firmaId: v.firmaId } : {}), ...(v.kontaktId ? { kontaktId: v.kontaktId } : {}) });
+  });
   return (await vertraegeLaden(D.haushalt)).find(x => x.id === D.vertragId) ?? v;
 }
 

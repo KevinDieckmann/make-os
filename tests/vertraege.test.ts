@@ -255,6 +255,11 @@ describe('Route: Nummer, festgeschrieben, Version, unterschrieben, Rechte', () =
     expect(vertragsStichtage(reg!.gesellschaften as never).some(s => s.vertragId === rv.id && s.kuendigung)).toBe(true);
     const crm = await (await import('@/lib/crm/speicher')).ladeCrm();
     expect(crm.mandate.find(m => m.id === 'm-test-0001')?.vertragUnterschrieben).toBe(true);
+    // R2-2 Fund 6 (02.11.): das Ereignis „Vertrag unterschrieben“ weckt die Übergabe (V12) — eine Kennung je Vertrag, Bezug Vertrag + Mandat, Business.
+    const { ereignisseLaden } = await import('@/lib/ereignisse/server');
+    const ev = (await ereignisseLaden()).eintraege.filter(x => x.art === 'vertrag-unterschrieben');
+    expect(ev).toHaveLength(1);
+    expect(ev[0]).toMatchObject({ id: `vertrag:${v.id}:unterschrieben`, bereich: 'business', bezug: { vertragId: v.id, mandatId: 'm-test-0001' } });
   });
 
   it('Import-Vorschau speichert nichts', async () => {

@@ -182,8 +182,9 @@ describe('Quellen (rein): CRM-Diff, Kartei, Kontoauszug, Absage', () => {
     const ch = (stufe: string) => ({ id: 'ch-1', titel: 'Deal', stufe, kontaktIds: ['c-anna'], firmaId: 'f-firma', gesellschaft: 'ug' });
     const vorher = { chancen: [ch('bedarf')], firmen: [{ id: 'f-firma', lead: { status: 'qualifizierung' } }] } as never;
     expect(Q.crmDiff(vorher, vorher)).toEqual([]);
-    const l = Q.crmDiff(vorher, { chancen: [ch('angebot')], firmen: [{ id: 'f-firma', lead: { status: 'sql' } }] } as never);
-    expect(l.map(x => [x.art, x.id])).toEqual([['deal-stufe', 'crm:deal:ch-1:angebot'], ['lead-sql', 'crm:lead:f-firma:sql']]);
+    const l = Q.crmDiff(vorher, { chancen: [ch('angebot')], firmen: [{ id: 'f-firma', lead: { status: 'sql' } }] } as never, '2026-11-02');
+    // Seit 02.11. (R2-2 Fund 8) mit dem Tag — dieselbe Stufe an einem anderen Tag meldet sich wieder.
+    expect(l.map(x => [x.art, x.id])).toEqual([['deal-stufe', 'crm:deal:ch-1:angebot:2026-11-02'], ['lead-sql', 'crm:lead:f-firma:sql']]);
     expect(l[0]).toMatchObject({ bereich: 'business', stufe: 'angebot', bezug: { dealId: 'ch-1', firmaId: 'f-firma', kontaktId: 'c-anna' } });
   });
   it('Kartei: Personen-Lead neu auf SQL (eingeschränkte nie)', () => {
@@ -314,7 +315,9 @@ describe('Quellen → Ereignisse (Fakes)', () => {
     const { aendereKontakte } = await import('@/lib/crm/kartei-schreiben');
     await aendereKontakte(cur => ({ ...cur!, kontakte: cur!.kontakte.map(k => (k.id === 'c-bert' ? { ...k, lead: { status: 'sql', kriterien: {} } as never } : k)) }));
     const ids = (await bestand()).eintraege.map(e => e.id);
-    expect(ids).toEqual(expect.arrayContaining(['crm:deal:ch-e1:bedarf', 'crm:deal:ch-e1:angebot', 'crm:lead:c-bert:sql']));
+    expect(ids).toEqual(expect.arrayContaining(['crm:lead:c-bert:sql']));
+    // Seit 02.11. (R2-2 Fund 8) trägt die Kennung den Tag: `crm:deal:<deal>:<stufe>:<tag>`.
+    expect(ids.filter(i => i.startsWith('crm:deal:')).map(i => i.split(':').slice(0, 4).join(':')).sort()).toEqual(['crm:deal:ch-e1:angebot', 'crm:deal:ch-e1:bedarf']);
     expect(ids.filter(i => i.startsWith('crm:deal:'))).toHaveLength(2);
   });
   it('Anfrage-Route: neue Anfrage → neuer Lead (Kennung = Follow-up)', async () => {
