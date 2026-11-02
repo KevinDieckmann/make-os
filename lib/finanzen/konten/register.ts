@@ -213,6 +213,9 @@ export function mitRegister<B extends { firmen?: FirmaArt[] }>(b: B, kasse: Gese
 /**
  * Was die Finanzplanung aus dem Register liest (nie gespeichert — der Server setzt es beim Lesen, wie den 0-Punkt): `privat` (Haushalt = privat +
  * gemeinsam) ersetzt die Kontostände der Planung (Posten „Konto“, Privat) für Runway und „frei“; `selbststaendigkeit` ersetzt „Kontostand heute“.
+ * Keine Doppelzählung (02.11.): die Konten der Selbstständigkeit (`kdc`) zählen NIE zur Privat-Kasse (nur privat + gemeinsam) — sie gehen nur in die
+ * Achse der Selbstständigkeit; ob deren freies Geld zu Privat (Runway) oder zum Business zählt, entscheidet `auswertung` (lib/finanzen/szenarien.ts)
+ * über `selbstImBusiness()`.
  */
 export type KontenIst = NonNullable<FinanzDaten['kontenIst']>;
 export function kontenIstAus(konten: readonly RegisterKonto[]): KontenIst | undefined {

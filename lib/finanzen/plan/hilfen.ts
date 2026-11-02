@@ -5,7 +5,7 @@
 
 import type { Einheit, FinanzDaten, Zeile } from '@/lib/finanzen/rechenkern';
 import { histIndex } from '@/lib/finanzen/rechenkern';
-import { UG_KURZ, finanzOrtAusKern, finanzOrtName } from '@/lib/einheiten';
+import { UG_KURZ, finanzOrtAusKern, finanzOrtName, selbstImBusiness } from '@/lib/einheiten';
 import { HAND_FELDER } from '@/lib/finanzen/handwerte';
 /** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
 const KDV = finanzOrtName('kdv');
@@ -54,7 +54,8 @@ export const BLAETTER: readonly BlattDef[] = [
   { id: 'planen', label: 'Planen' },
   { id: 'monat', label: 'Monat' },
   { id: 'privat', label: 'Privat', nurPrivat: true },
-  { id: 'selbst', label: finanzOrtName('kdc'), nurPrivat: true },
+  // Die Selbstständigkeit: unter Privat, solange die Instanz sie dort führt; steht sie im Business (02.11.), auch im Business-Bereich (ohne ESt).
+  { id: 'selbst', label: finanzOrtName('kdc'), ...(selbstImBusiness() ? {} : { nurPrivat: true }) },
   { id: 'gesellschaften', label: 'Gesellschaften' },
   { id: 'gesamt', label: 'Gesamt' },
   { id: 'faellig', label: 'Fällig & Schulden' },
@@ -92,6 +93,7 @@ export const FRAGE_BUSINESS: Partial<Record<Unterseite, string>> = {
   monat: 'Was wurde im Business gebucht — und wohin gehört es?',
   gesamt: 'Die Gesellschaften zusammen — Gehalt und Ausschüttung als Abfluss (brutto).',
   faellig: 'Offene Posten, Fälligkeiten und Schulden der Gesellschaften.',
+  selbst: 'Umsatz, Kosten und Ergebnis der Selbstständigkeit mit Gewerbesteuer und USt — die Einkommensteuer läuft gemeinsam unter Privat.',
   szenarien: 'Treiber vergleichen, Annahmen eintragen, Steuern einstellen — und wer im Business was geändert hat.',
 };
 

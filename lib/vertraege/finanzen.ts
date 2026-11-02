@@ -35,7 +35,8 @@ export const darlehenIdFuer = (vertragId: string) => `dl-v-${vertragFp(vertragId
 export const zahlungPraefix = (vertragId: string) => `dl-${vertragFp(vertragId)}-`;
 
 /** Ist die Seite privat (Privat oder die Selbstständigkeit, die in der Finanzplanung zu Privat gehört)? */
-const privatSeite = (o: DarlehenOrt) => o === 'privat' || o === 'kdc';
+// Privat und jede Seite, die nicht zum Business gehört (02.11.: die Selbstständigkeit nur, solange die Instanz sie unter Privat führt).
+const privatSeite = (o: DarlehenOrt) => o !== 'extern' && !DARLEHEN_BUSINESS.includes(o);
 
 /** Vorgabe der Seiten: Nehmer = die Absender-Gesellschaft (sofern sie in der Finanzplanung steht), Geber = außerhalb. */
 export function seitenVorgabe(v: Pick<Vertrag, 'gesellschaft'>): { geber: DarlehenOrt; nehmer: DarlehenOrt | null } {

@@ -286,6 +286,15 @@ export function privatArbeitsEinheit(v: unknown): Gesellschaftskennung | undefin
   const g = istGesellschaft(v) ? v : gesellschaftAusEinheit(typeof v === 'string' ? v : undefined);
   return g && BEREICH_JE_EINHEIT[g] === 'privat' && ZAEHLT_ALS_ARBEIT[g] ? g : undefined;
 }
+/**
+ * Die Selbstständigkeit (Name oder Kennung, auch Altnamen), wenn ihre Zeit als Arbeit zählt — EGAL in welchem Bereich (02.11.). Für Altbestand:
+ * Fokus-Blöcke, die unter Privat mit dieser Einheit gespeichert sind, zählen weiter als Arbeit, auch wenn die Instanz sie ins Business stellt.
+ * Ohne Umstellung ist sie ohnehin eine `privatArbeitsEinheit` (gleiches Ergebnis).
+ */
+export function selbstArbeitsEinheit(v: unknown): Gesellschaftskennung | undefined {
+  const g = istGesellschaft(v) ? v : gesellschaftAusEinheit(typeof v === 'string' ? v : undefined);
+  return g && g === finanzOrtAusKern('selbststaendigkeit') && ZAEHLT_ALS_ARBEIT[g] ? g : undefined;
+}
 /** Eine Einheit (Name oder Kennung, auch Altnamen), die zu Privat gehört — unsere Instanz: die Selbstständigkeit. Sonst undefined. */
 export function privatEinheit(v: unknown): Gesellschaftskennung | undefined {
   const g = istGesellschaft(v) ? v : gesellschaftAusEinheit(typeof v === 'string' ? v : undefined);
@@ -367,3 +376,9 @@ export function businessFirmaAus(roh: unknown): { ok: true; firma: Gesellschafts
 export type KernEinheit = 'privat' | 'selbststaendigkeit' | 'ug' | 'kdv';
 export const finanzOrtAusKern = (e: KernEinheit): FinanzOrt => (e === 'selbststaendigkeit' ? 'kdc' : e);
 export const kernEinheitAus = (o: FinanzOrt): KernEinheit => (o === 'kdc' ? 'selbststaendigkeit' : o);
+/**
+ * Gehört die Achse `selbststaendigkeit` des Rechenkerns (die Gesellschaft dahinter) zum Business? (02.11., Kevin: „Selbstständigkeit komplett wieder
+ * ins Business“) — EINE Frage für Finanzplanung, Sichten und Kennzahlen; die Antwort kommt aus `BEREICH_JE_EINHEIT` (Instanz-Einstellung
+ * `NEXT_PUBLIC_MAKE_OS_EINHEITEN`), nie fest. Vorgabe ohne Einstellung: nein (wie seit 05.10.).
+ */
+export const selbstImBusiness = (): boolean => BEREICH_JE_EINHEIT[finanzOrtAusKern('selbststaendigkeit') as Gesellschaftskennung] === 'business';

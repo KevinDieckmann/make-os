@@ -39,6 +39,32 @@ Einlesen und Ausgeben (Paket + CSV).
   ansehen → „Übernehmen“. (3) Malin geht Finanzen › Buchungen › „Zu prüfen“ durch (Passt/Ändern, Fragen beantworten, Bewirtung ergänzen, zum Schluss
   „Alle ohne Frage bestätigen“).
 
+## 02.11.2026 — Selbstständigkeit wieder im Business (nur lokal — Branch `kdc-business`)
+Kevin 02.11.: die Selbstständigkeit gehört mit Finanzen, Buchhaltung, Business-Index, Monatsabschluss, Finanzplanung, Gewerbe- und Umsatzsteuer und
+eigener USt-IdNr. wieder ins Business; die Einkommensteuer bleibt gemeinsam und privat (`estGemeinsamFuer`/`estJahre` unverändert). Business zählt ab
+01.06.2026 über den eigenen 0-Punkt. **Nicht fest eingebaut:** die Zuordnung kommt aus `NEXT_PUBLIC_MAKE_OS_EINHEITEN` (`bereichVon`); ohne die Variable
+rechnet und zeigt alles bit-gleich wie vorher (Wächter: finanzplan-regression-Gold, selbst-privat*, `tests/kdc-business-ohne.test.ts`).
+- **Was sich mit der Variable ändert:** Finanzplanung › Business bekommt das Blatt „Selbstständigkeit“ (Umsatz, Kosten, Konto, GewSt/USt; die ESt-Zeilen
+  und Vorsorge/Gehalt bleiben privat — gerechnet ohne ESt, private Handwerte nur Anzeige); Business darf Posten, Kontostart, Darlehen an die UG und die
+  GewSt/USt-Einstellungen schreiben (alles Private → 403). Runway Privat ohne `frei` der Selbstständigkeit, dafür `frei.business`, Rücklage und nächste
+  Steuerzahlung Business mit. Konten (`kdc`) sichtbar im Business, nie in der Privat-Kasse. Steuern › Business: Firmen-Einstellungen + GewSt-Vorauszahlung
+  der Selbstständigkeit, ESt nie. Business-Index, `?scope=kdc`, Monatsabschluss im Cockpit, 0-Punkt (Karte bietet kdc an, Hinweis „fehlt noch ein
+  0-Punkt“), Darlehen/Verträge folgen `bereichVon`. Alte Privat-Fokus-Blöcke und Aufgaben mit gespeichertem `space: 'privat'` im Space der
+  Selbstständigkeit zählen weiter als Arbeit bzw. Business (`selbstArbeitsEinheit`, `gespeicherterSpace`) — nichts wird umgeschrieben.
+- **Bewusst nicht geändert:** der Rechenkern startet die Achse der Selbstständigkeit weiter mit `selbst.kontoStart`, nicht mit dem 0-Punkt
+  (`FinanzDaten.eroeffnung` kennt nur ug/kdv — Formeln bleiben bis Kevins Wort); die gespeicherten Bestände (Abschlüsse, Buchungen, Konten, Aufgaben).
+- **Workflow/Compose:** `pruefen-und-ausrollen.yml` reicht `vars.MAKE_OS_EINHEITEN`, `vars.MAKE_OS_CRM_TEAM`, `vars.MAKE_OS_EVENT_MARKE` als Build-Args
+  durch (`compose.yml` ebenso, leer = wie bisher); der Test-Schritt läuft ohne die Variable. Werte stehen nie in den Dateien.
+- **Einmal-Schritte (Kevin):**
+  1. Repository-Variable setzen: `gh variable set MAKE_OS_EINHEITEN --body '{"kdc":{"bereich":"business"}}' -R KevinDieckmann/make-os` — wirkt ab dem
+     nächsten Bild (Build-Variable).
+  2. Business-Cockpit › 0-Punkt: Selbstständigkeit wählen, Stichtag 01.06.2026 + Anfangsbestand (Kontostand, offene Posten) eintragen.
+  3. Unternehmen › Gesellschaft (Selbstständigkeit) › Absender: USt-IdNr. eintragen.
+- **Rückweg:** Variable löschen (`gh variable delete MAKE_OS_EINHEITEN -R KevinDieckmann/make-os`) und neu ausrollen — die Selbstständigkeit steht wieder
+  unter Privat, alle Daten bleiben (es wurde nichts umgeschrieben); ein gesetzter 0-Punkt der Selbstständigkeit bleibt gespeichert und wirkt dann nicht.
+- **Tests:** `tests/kdc-business.test.ts` (mit Variable: Sichten, Schreiben, Runway, Kasse, Steuern, Darlehen, Fokus, Aufgaben, „Business bekommt nichts aus
+  Privat“), `tests/kdc-business-ohne.test.ts`.
+
 ## 31.10.2026 — ICP-Kampagnen: Start-ups, innovative Unternehmer, Scale-ups (nur lokal — Branch `icp-startups`, Basis `welle-a-firmen`)
 Drei neue Profile im Funde-Modul mit je eigener Kampagne, Segment, Label und Ansprache; ICP-Raster und Lead-Score als Daten (lib/funde/icp.ts); ICP und
 Steckbrief strukturiert an der Firma (lib/crm/icp-firma.ts). Kein neuer Bestand, keine neue Route; neue optionale Felder `Firma.icp`, `Firma.steckbrief`,

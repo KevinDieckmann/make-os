@@ -58,6 +58,23 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-11-02-23',
+    datum: '2026-11-02',
+    titel: 'Ein Einzelunternehmen kann ganz im Business stehen',
+    kurz: 'Wer sein Einzelunternehmen als Business führt, findet es jetzt überall im Business: Finanzen, Buchungen, Monatsabschluss, Finanzplanung, Gewerbe- und Umsatzsteuer und den Business-Index. Die Einkommensteuer bleibt gemeinsam unter Privat.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Finanzplanung › Business: eigenes Blatt für das Einzelunternehmen — Umsatz, Kosten, Konto, Gewerbesteuer und Umsatzsteuer. Die Einkommensteuer darauf steht nur unter Privat.', bereich: 'business', weg: WEG.finanzplanung('business') },
+        { text: '0-Punkt: auch das Einzelunternehmen bekommt Stichtag und Anfangsbestand. Die Karte sagt, für welche Gesellschaft noch ein 0-Punkt fehlt — bis dahin zählt Gesamt alle Monate.', bereich: 'business', weg: WEG.eroeffnung() },
+        { text: 'Steuern › Business: Gewerbe- und Umsatzsteuer des Einzelunternehmens mit Einstellungen und Vorauszahlung.', bereich: 'business', weg: WEG.steuern(undefined, 'business') },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Runway Privat zählt das Konto des Einzelunternehmens dann nicht mehr mit — es zählt im Business. Nichts wird doppelt gerechnet.', bereich: 'privat' },
+        { text: 'Ältere Fokus-Zeiten und Aufgaben des Einzelunternehmens zählen weiter als Arbeit — nichts geht verloren, nichts wird umgeschrieben.', bereich: 'alle' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-21',
     datum: '2026-11-02',
     titel: 'Nächste Rechnungsnummer selbst festlegen',

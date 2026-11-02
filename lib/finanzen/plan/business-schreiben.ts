@@ -9,7 +9,17 @@ import type { FinanzDaten } from '@/lib/finanzen/rechenkern';
 import { zelleTeile } from '@/lib/finanzen/handwerte';
 import { darlehenBusinessAenderbar } from '@/lib/finanzen/darlehen';
 import { OperationZuGross, wendeOperationenAn, type Angewandt, type Operation } from './operationen';
-import { BUSINESS_BAUSTEIN, ZIEL_QUELLEN_BUSINESS, businessPfadErlaubt, istBusinessEinheit, kennungIstBusiness } from './sicht';
+import { BUSINESS_BAUSTEIN, ZIEL_QUELLEN_BUSINESS, businessPfadErlaubt, istBusinessEinheit, kennungIstBusiness, selbstInBusinessSicht, selbstSteuernPrivat } from './sicht';
+
+/**
+ * Der private Teil des Abschlusses der Selbstständigkeit: ganz, solange sie privat ist; steht sie im Business (02.11.), nur die gemeinsame ESt
+ * (Vorsorge, Sonderausgaben, Sicherheit, Ablösung, Gehälter vor dem Plan, ESt-Vorauszahlungen) — Posten, Konto-Start und Darlehen an die GmbH sind Business.
+ */
+function selbstPrivat(s: FinanzDaten['selbst']): unknown {
+  if (!selbstInBusinessSicht()) return s;
+  const { posten: _p, kontoStart: _k, darlehenAnUG: _d, ...rest } = s ?? ({} as FinanzDaten['selbst']);
+  return rest;
+}
 
 const nichtBusiness = <T>(o: Record<string, T> | undefined, zeilen: Pick<FinanzDaten, 'sachkosten'>): Record<string, T> =>
   Object.fromEntries(Object.entries(o ?? {}).filter(([k]) => { const t = zelleTeile(k); return !t || !kennungIstBusiness(t.id, zeilen); }));
@@ -24,7 +34,7 @@ export function privatTeil(d: FinanzDaten, vergleich?: FinanzDaten): unknown {
   const st = d.steuern as Record<string, unknown> | undefined;
   return {
     privatEinnahmen: d.privatEinnahmen, privatBudget: d.privatBudget, privatSchulden: d.privatSchulden, check: d.check, fokus: d.fokus,
-    abschluesse: d.abschluesse, regeln: d.regeln, schwellen: d.schwellen ?? null, selbst: d.selbst, handAlt: d.handAlt ?? null, haushaltBruecke: d.haushaltBruecke ?? null,
+    abschluesse: d.abschluesse, regeln: d.regeln, schwellen: d.schwellen ?? null, selbst: selbstPrivat(d.selbst), handAlt: d.handAlt ?? null, haushaltBruecke: d.haushaltBruecke ?? null,
     nettoTabelle: d.annahmen?.nettoTabelle ?? null,
     plan: nichtBusiness(d.plan, zeilen), ist: nichtBusiness(d.ist, zeilen), notizen: nichtBusiness(d.notizen, zeilen),
     sachkosten: d.sachkosten.filter(z => !istBusinessEinheit(z.einheit)),
@@ -35,10 +45,15 @@ export function privatTeil(d: FinanzDaten, vergleich?: FinanzDaten): unknown {
     szenarien: d.szenarien.map(s => ({ id: s.id, e: (s.ereignisse ?? []).filter(e => e.einheit === 'privat') })).filter(x => x.e.length),
     planszenarien: (d.planszenarien ?? []).map(ps => {
       const a = ps.annahmen as unknown as Record<string, unknown> | undefined, sst = (a?.steuern ?? {}) as Record<string, unknown>;
-      const p = { ausschuettungSteuer: a?.ausschuettungSteuer ?? null, entnahme: a?.entnahme ?? null, privat: sst.privat ?? null, kdc: sst.kdc ?? null };
+      // Mit der Selbstständigkeit im Business (02.11.) ist die Entnahme Business und vom Steuerprofil nur der ESt-Teil privat.
+      const selbst = selbstInBusinessSicht();
+      const p = {
+        ausschuettungSteuer: a?.ausschuettungSteuer ?? null, entnahme: selbst ? null : a?.entnahme ?? null, privat: sst.privat ?? null,
+        kdc: selbst ? selbstSteuernPrivat(sst.kdc as never) : sst.kdc ?? null,
+      };
       return { id: ps.id, b: ps.bausteine.filter(b => b.einheit !== undefined && !BUSINESS_BAUSTEIN(b.einheit)), p };
     }).filter(x => x.b.length || Object.values(x.p).some(v => v !== null)),
-    steuern: { privat: st?.privat ?? null, kdc: st?.kdc ?? null },
+    steuern: { privat: st?.privat ?? null, kdc: selbstInBusinessSicht() ? selbstSteuernPrivat(st?.kdc as never) : st?.kdc ?? null },
     darlehen: (d.darlehen ?? []).filter(l => !darlehenBusinessAenderbar(l)),
     bereichPrivat: d.bereiche?.privat ?? null,
   };

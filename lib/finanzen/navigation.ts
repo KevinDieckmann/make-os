@@ -21,7 +21,7 @@
 // Finance mit Monatsabschluss und Rechnung) und im Fuß Einstellungen · 0-Punkt (Anker im Cockpit). Privat: Überblick (mit #gesamt) · Konten & Buchungen ·
 // Planung · Steuern, „Automationen & Head“ (Head „Finanzen privat“, keine Prozesse), im Fuß der Altbestand.
 
-import { PRIVAT_GESELLSCHAFTEN, finanzOrtName, gehoertZuPrivat } from '@/lib/einheiten';
+import { PRIVAT_GESELLSCHAFTEN, finanzOrtName, gehoertZuPrivat, grundlageImBusiness } from '@/lib/einheiten';
 
 export type FinanzBereich = 'privat' | 'business';
 /** Reiter der Ebene 1. `privat` = Privat › Überblick, `business` = Business › Cockpit. */
@@ -57,16 +57,21 @@ export const BUSINESS_REITER = FINANZ_MENUE.business.map(p => ({ id: p.id, label
 
 /** Der Fuß des Menüs: Business Einstellungen und 0-Punkt (Anker im Cockpit), Privat der Altbestand der Selbstständigkeit (Anker unter Planung). */
 export interface FinanzFussPunkt { id: 'einstellungen' | 'eroeffnung' | 'altbestand'; label: string; titel: string }
+// Der Altbestand steht dort, wo die Selbstständigkeit steht (02.11.: Instanz-Einstellung, `grundlageImBusiness`) — Vorgabe Privat wie seit 05.10.
+const ALTBESTAND: FinanzFussPunkt = { id: 'altbestand', label: 'Altbestand', titel: 'Grundlage und Kassenbuch der Selbstständigkeit' };
+/** Bereich des Altbestands (Grundlage/Kassenbuch der Selbstständigkeit). */
+export const ALTBESTAND_BEREICH: FinanzBereich = grundlageImBusiness() ? 'business' : 'privat';
 export const FINANZ_FUSS: Readonly<Record<FinanzBereich, readonly FinanzFussPunkt[]>> = {
   business: [
     { id: 'einstellungen', label: 'Einstellungen', titel: 'Schwellen, Jahresziele und Feinjustierung der Kennzahlen' },
     { id: 'eroeffnung', label: '0-Punkt', titel: 'Stichtag und Anfangsbestand je Gesellschaft' },
+    ...(ALTBESTAND_BEREICH === 'business' ? [ALTBESTAND] : []),
   ],
-  privat: [{ id: 'altbestand', label: 'Altbestand', titel: 'Grundlage und Kassenbuch der Selbstständigkeit' }],
+  privat: ALTBESTAND_BEREICH === 'privat' ? [ALTBESTAND] : [],
 };
 /** Die Adresse eines Fuß-Punkts (vorhandene Anker: `#einstellungen`, `#eroeffnung` im Cockpit; `#altbestand` unter Planung › Selbstständigkeit). */
 export function finanzFussAdresse(id: FinanzFussPunkt['id']): string {
-  if (id === 'altbestand') return '/os/finanzen?s=finanzplanung&space=privat&u=selbst#altbestand';
+  if (id === 'altbestand') return `/os/finanzen?s=finanzplanung&space=${ALTBESTAND_BEREICH}&u=selbst#altbestand`;
   return `${finanzAdresse('business', 'business')}#${id}`;
 }
 

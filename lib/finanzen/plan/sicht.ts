@@ -22,14 +22,22 @@
 // wäre bei Business nur noch KD Ventures und MAKE Innovation GmbH.“): Die Selbstständigkeit ist PRIVAT — ihr Abschluss (`selbst`), ihre
 // Sachkosten-Zeilen, Bausteine, Posten, Buchungen, Schulden, ihr Steuerprofil, die Entnahme-Regel und alle Werte `kdc.*`/`ab.*` gehen nie in die
 // Business-Sicht. Darlehen mit privater Seite zeigt die Business-Sicht nur von der Gesellschaft aus (die private Seite heißt „außerhalb des Plans“).
+//
+// 02.11. (Kevin: „Selbstständigkeit komplett wieder ins Business … ESt bleibt gemeinsam privat“): Ob die Selbstständigkeit Business ist, entscheidet die
+// Instanz (`selbstImBusiness()` aus lib/einheiten.ts, Variable `NEXT_PUBLIC_MAKE_OS_EINHEITEN`) — ohne Einstellung bit-gleich wie seit 05.10. Steht sie im
+// Business, gehören ihre Werte `kdc.*`/`ab.*`, Sachkosten-Zeilen, Bausteine, Posten, Buchungen, Schulden, Darlehen, ihr Abschluss (Posten, Konto-Start) und
+// ihr Steuerprofil (Gewerbesteuer, USt) zur Business-Sicht, die Entnahme-Regel ebenso (Abfluss aus dem Business). PRIVAT bleiben die gemeinsame
+// Einkommensteuer (ESt-Zeile des Profils, Tarif, Veranlagung, Gehalt-Einbezug, Werte `kdc.est`/`kdc.soli`/`kdc.anrechnung`/`kdc.steuer`/
+// `kdc.steuerRuecklage`/`kdc.verlustvortrag`, `ab.zve`/`ab.est`/`ab.frei`/`ab.nachConsors`), die Gehälter vor dem Plan, Vorsorge, Sonderausgaben,
+// Sicherheit, Ablösung und die ESt-Vorauszahlungen. Die Business-Sicht rechnet die Achse deshalb OHNE Einkommensteuer (Zeile `est` aus).
 
 import type { Aenderung, Einheit, FinanzDaten, Zeile } from '@/lib/finanzen/rechenkern';
-import type { Steuern } from '@/lib/finanzen/steuern';
+import type { Steuern, Steuerprofil } from '@/lib/finanzen/steuern';
 import { HAND_FELDER, zelleTeile } from '@/lib/finanzen/handwerte';
 import { lies } from './operationen';
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { darlehenBusinessAenderbar, darlehenFuerBusiness } from '@/lib/finanzen/darlehen';
-import { BUSINESS_GESELLSCHAFTEN } from '@/lib/einheiten';
+import { BUSINESS_GESELLSCHAFTEN, istBusinessGesellschaft, kernEinheitAus, selbstImBusiness } from '@/lib/einheiten';
 
 export type PlanSicht = 'privat' | 'business';
 export const PLAN_SICHTEN: PlanSicht[] = ['privat', 'business'];
@@ -48,9 +56,22 @@ export function wirksameSicht(recht: PlanSicht, anfrage: string | null | undefin
   return recht === 'business' || anfrage === 'business' ? 'business' : 'privat';
 }
 
-/** Business = nur die Gesellschaften (seit 05.10. ohne die Selbstständigkeit — sie gehört zu Privat; Zuordnung aus lib/einheiten.ts `BUSINESS_GESELLSCHAFTEN`). */
-const BUSINESS_EINHEITEN: Einheit[] = BUSINESS_GESELLSCHAFTEN.filter(g => g !== 'kdc');   // die Achse `kdc` ist hier fest privat (selbst, ab.*, Entnahme)
-export const istBusinessEinheit = (e: unknown): boolean => typeof e === 'string' && (BUSINESS_EINHEITEN as string[]).includes(e);
+/**
+ * Business = die Business-Gesellschaften der Instanz (lib/einheiten.ts `BUSINESS_GESELLSCHAFTEN`) in der Schreibweise des Kerns — die Selbstständigkeit
+ * nur, wenn die Instanz sie ins Business stellt (02.11.; Vorgabe: Privat). Zusätzlich die Schreibweise der Bausteine/Darlehen (`kdc`).
+ */
+const SELBST = selbstImBusiness();
+const BUSINESS_EINHEITEN: Einheit[] = BUSINESS_GESELLSCHAFTEN.map(kernEinheitAus).filter(e => SELBST || e !== 'selbststaendigkeit');
+export const istBusinessEinheit = (e: unknown): boolean => typeof e === 'string' && ((BUSINESS_EINHEITEN as string[]).includes(e) || (SELBST && istBusinessGesellschaft(e)));
+/** Steht die Selbstständigkeit in dieser Instanz im Business? (Oberflächen und Tests — eine Stelle.) */
+export const selbstInBusinessSicht = (): boolean => SELBST;
+/**
+ * Werte der Selbstständigkeit, die auch mit ihr im Business PRIVAT bleiben — die gemeinsame Einkommensteuer und alles, was sie enthält
+ * (Steuerzahlung/Rücklage = ESt + GewSt, Verlustvortrag der ESt, Abschluss nach ESt).
+ */
+export const SELBST_PRIVAT_WERTE: ReadonlySet<string> = new Set([
+  'kdc.est', 'kdc.soli', 'kdc.anrechnung', 'kdc.steuer', 'kdc.steuerRuecklage', 'kdc.verlustvortrag', 'ab.zve', 'ab.est', 'ab.frei', 'ab.nachConsors',
+]);
 
 /** Planzeilen, die zum Business gehören (Sachkosten der Gesellschaften — die der Selbstständigkeit sind seit 05.10. privat). */
 const businessZeilen = (d: Pick<FinanzDaten, 'sachkosten'>): Set<string> => new Set(d.sachkosten.filter(z => istBusinessEinheit(z.einheit)).map(z => z.id));
@@ -61,7 +82,11 @@ const businessZeilen = (d: Pick<FinanzDaten, 'sachkosten'>): Set<string> => new 
  */
 export function kennungIstBusiness(id: string, d: Pick<FinanzDaten, 'sachkosten'>): boolean {
   const f = HAND_FELDER[id];
-  if (f) return f.ort === 'ug' || f.ort === 'kdv';   // kdc.* und ab.* (Selbstständigkeit, Abschluss) sind seit 05.10. privat
+  if (f) {
+    if (f.ort === 'ug' || f.ort === 'kdv') return true;
+    // kdc.* und ab.* (Selbstständigkeit, Abschluss): seit 05.10. privat — Business nur, wenn die Instanz die Selbstständigkeit dorthin stellt (02.11.), ohne die ESt.
+    return SELBST && (f.ort === 'kdc' || f.ort === 'abschluss') && !SELBST_PRIVAT_WERTE.has(id);
+  }
   return businessZeilen(d).has(id);
 }
 /** Zellen-Schlüssel `<kennung>:<monat>` → Business? */
@@ -73,13 +98,37 @@ const nurBusiness = <T>(o: Record<string, T>, d: Pick<FinanzDaten, 'sachkosten'>
 const NETTO_PLATZHALTER: [number, number][] = [[0, 0], [1, 1]];
 /** Die Selbstständigkeit ist privat — die Business-Sicht trägt einen leeren Abschluss (rechenbar, ohne Wert). */
 const SELBST_LEER: FinanzDaten['selbst'] = { posten: [], vorsorge: 0, sonderausgaben: 0, sicherheit: 0, darlehenAnUG: 0, consorsAbloesung: 0, kontoStart: 0 };
-/** Bausteine der Gesellschaften (MAKE, KD Ventures) — private und die der Selbstständigkeit fallen weg. */
-export const BUSINESS_BAUSTEIN = (e: unknown): boolean => e === 'ug' || e === 'kdv';
-/** Steuerprofile nur der Gesellschaften (Privat und Selbstständigkeit fallen weg); leer → undefined. */
-function nurBusinessSteuern(st: Steuern | undefined): Steuern | undefined {
-  if (!st) return undefined;
-  const { privat: _p, kdc: _k, ...rest } = st;
-  return Object.keys(rest).length ? rest : undefined;
+/** Bausteine der Business-Gesellschaften (MAKE, KD Ventures; die Selbstständigkeit nur im Business, 02.11.) — private fallen weg. */
+export const BUSINESS_BAUSTEIN = (e: unknown): boolean => istBusinessGesellschaft(e);
+/**
+ * Das Steuerprofil der Selbstständigkeit für die Business-Sicht (02.11.): Rechtsform, Gewerbesteuer, USt und die Regeln der Gewerbesteuer —
+ * die Einkommensteuer-Zeile ist aus (sie läuft gemeinsam unter Privat), Tarif/Veranlagung/Gehalt-Einbezug/Soli-Freigrenze/Anrechnung fehlen.
+ */
+export function selbstSteuernBusiness(p: Steuerprofil | undefined, estAus = true): Steuerprofil {
+  const zeilen = { ...(p?.zeilen ?? {}) };
+  delete zeilen.est; delete zeilen.soli;
+  const pa = p?.param ?? {};
+  const param = Object.fromEntries(Object.entries({ freibetrag: pa.freibetrag, zahlweise: pa.zahlweise, zahlMonat: pa.zahlMonat, verlustvortrag: pa.verlustvortrag }).filter(([, v]) => v !== undefined));
+  // Das Profil des Plans schaltet die ESt aus; eine Szenario-Überlagerung trägt sie gar nicht (sonst schriebe ein im Business angelegtes Szenario „ESt aus“ für Privat).
+  const z = estAus ? { ...zeilen, est: { an: false } } : zeilen;
+  return { ...(p?.rechtsform ? { rechtsform: p.rechtsform } : {}), ...(Object.keys(z).length ? { zeilen: z } : {}), ...(Object.keys(param).length ? { param } : {}) };
+}
+/** Der private Rest dieses Profils (alles, was `selbstSteuernBusiness` weglässt) — für den Vergleich im Schreibweg. */
+export function selbstSteuernPrivat(p: Steuerprofil | undefined): unknown {
+  if (!p) return null;
+  const { freibetrag: _f, zahlweise: _z, zahlMonat: _m, verlustvortrag: _v, ...param } = p.param ?? {};
+  const r = { est: p.zeilen?.est ?? null, soli: p.zeilen?.soli ?? null, param };
+  return r.est !== null || r.soli !== null || Object.keys(param).length > 0 ? r : null;   // nichts Privates = null (Anlegen im Business stört den Vergleich nicht)
+}
+/** Trägt ein Steuerprofil der Selbstständigkeit etwas von der gemeinsamen ESt? */
+const selbstSteuernHatPrivates = (p: unknown): boolean => istObj(p) && selbstSteuernPrivat(p as Steuerprofil) !== null;
+/** Steuerprofile nur der Business-Gesellschaften (Privat fällt weg; die Selbstständigkeit nur im Business und ohne ESt); leer → undefined. */
+function nurBusinessSteuern(st: Steuern | undefined, plan = false): Steuern | undefined {
+  if (!st && !plan) return undefined;
+  const { privat: _p, kdc, ...rest } = st ?? {};
+  const selbst = SELBST && (kdc || plan) ? selbstSteuernBusiness(kdc, plan) : undefined;
+  const out: Steuern = { ...rest, ...(selbst && Object.keys(selbst).length ? { kdc: selbst } : {}) };
+  return Object.keys(out).length ? out : undefined;
 }
 const istObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 
@@ -98,20 +147,27 @@ export function businessSicht(d: FinanzDaten): FinanzDaten {
   // Haushalt → Finanzplanung (31.10.): der Schalter und die Quelle (was aus dem Haushalt kommt) sind privat — die übernommenen Zeilen, Schulden und
   // Buchungen tragen Einheit privat und fallen unten mit den übrigen privaten weg.
   const { schwellen: _schwellen, steuern: _steuern, darlehen: _darlehen, handAlt: _handAlt, kontenIst: _kontenIst, haushaltBruecke: _hb, haushaltQuelle: _hq, ...rest } = d;
-  const steuern = nurBusinessSteuern(d.steuern);
+  // Mit der Selbstständigkeit im Business trägt die Sicht ihr Profil immer (ESt aus) — sonst rechnete die Achse die ESt mit der Vorgabe.
+  const steuern = nurBusinessSteuern(d.steuern, true);
   const darlehen = (d.darlehen ?? []).map(darlehenFuerBusiness).filter((l): l is NonNullable<typeof l> => !!l);
+  // 02.11.: Steht die Selbstständigkeit im Business, liest die Sicht ihr Ist aus dem Konten-Register („Kontostand heute“) — die Privat-Konten nie.
+  const selbstIst = SELBST ? d.kontenIst?.selbststaendigkeit : undefined;
   return {
     ...rest,
     ...(steuern ? { steuern } : {}),
     ...(darlehen.length ? { darlehen } : {}),
-    selbst: { ...SELBST_LEER, posten: [] },
+    ...(selbstIst ? { kontenIst: { selbststaendigkeit: selbstIst } } : {}),
+    // Mit der Selbstständigkeit im Business (02.11.): ihr Abschluss (Posten), Konto-Start und Darlehen an die GmbH bleiben — Vorsorge, Sonderausgaben,
+    // Sicherheit, Ablösung, Gehälter vor dem Plan und ESt-Vorauszahlungen sind die gemeinsame ESt und bleiben privat.
+    selbst: SELBST ? { ...SELBST_LEER, posten: d.selbst.posten, kontoStart: d.selbst.kontoStart, darlehenAnUG: d.selbst.darlehenAnUG } : { ...SELBST_LEER, posten: [] },
     // Einstellung je Bereich: nur der Business-Bereich bleibt.
     ...(d.bereiche ? { bereiche: d.bereiche.business ? { business: d.bereiche.business } : {} } : {}),
     planszenarien: (d.planszenarien ?? []).map(ps => {
       // Steuer auf die Ausschüttung und Entnahme der Selbstständigkeit wirken nur privat; Steuer-Überlagerung nur der Gesellschaften.
-      const { ausschuettungSteuer: _privat, entnahme: _entnahme, steuern: stn, ...annahmen } = ps.annahmen;
+      // 02.11.: Mit der Selbstständigkeit im Business ist die Entnahme ein Abfluss aus dem Business (sichtbar, änderbar); ihre Steuer-Überlagerung ohne ESt.
+      const { ausschuettungSteuer: _privat, entnahme, steuern: stn, ...annahmen } = ps.annahmen;
       const st = nurBusinessSteuern(stn);
-      return { ...ps, bausteine: ps.bausteine.filter(b => BUSINESS_BAUSTEIN(b.einheit)), annahmen: { ...annahmen, ...(st ? { steuern: st } : {}) } };
+      return { ...ps, bausteine: ps.bausteine.filter(b => BUSINESS_BAUSTEIN(b.einheit)), annahmen: { ...annahmen, ...(SELBST && entnahme !== undefined ? { entnahme } : {}), ...(st ? { steuern: st } : {}) } };
     }),
     schulden: d.schulden.filter(s => istBusinessEinheit(s.einheit)),
     meta: nurBusiness(d.meta, d),
@@ -141,12 +197,13 @@ export const fuerSicht = (d: FinanzDaten, sicht: PlanSicht): FinanzDaten => (sic
  * nicht — die Antwort trug Privat-Luft, private Rücklage, Privat-Runway. Jetzt fallen alle privaten bzw. mit Privat gemischten
  * Werte weg (die Liste ist abschließend: unbekannt = bleibt nur, wenn sie nicht nach Privat klingt — Wächter im Test).
  */
-export const PRIVAT_KENNZAHLEN = ['privatLuftMin', 'privatKumDez28', 'privatAngespartDez27', 'gruppeDez28', 'runwayPrivat', 'privatLuftOkt', 'kdcFreiDez28'] as const;
+export const PRIVAT_KENNZAHLEN = ['privatLuftMin', 'privatKumDez28', 'privatAngespartDez27', 'gruppeDez28', 'runwayPrivat', 'privatLuftOkt', ...(SELBST ? [] : ['kdcFreiDez28'])] as const;
 export function kennzahlenFuerSicht<T extends Record<string, unknown>>(k: T, sicht: PlanSicht): T {
   if (sicht !== 'business') return k;
   const raus: Record<string, unknown> = {};
-  // Seit 05.10. gehört die Selbstständigkeit (kdc) zu Privat — ihre Kennzahlen fallen in der Business-Sicht ebenso weg.
-  for (const [s, v] of Object.entries(k)) if (!(PRIVAT_KENNZAHLEN as readonly string[]).includes(s) && !/privat|kdc|selbst|gruppe/i.test(s)) raus[s] = v;
+  // Seit 05.10. gehört die Selbstständigkeit (kdc) zu Privat — ihre Kennzahlen fallen in der Business-Sicht ebenso weg; steht sie im Business (02.11.), bleiben sie.
+  const privatMuster = SELBST ? /privat|gruppe/i : /privat|kdc|selbst|gruppe/i;
+  for (const [s, v] of Object.entries(k)) if (!(PRIVAT_KENNZAHLEN as readonly string[]).includes(s) && !privatMuster.test(s)) raus[s] = v;
   return raus as T;
 }
 
@@ -154,12 +211,25 @@ const teileVon = (pfad: string): string[] => (typeof pfad === 'string' && pfad.s
 /** Listenelement über `id=…` finden. */
 const finde = <T extends { id: string }>(liste: T[] | undefined, teil: string | undefined): T | undefined => (teil?.startsWith('id=') ? (liste ?? []).find(x => x.id === teil.slice(3)) : undefined);
 
-/** Bereiche, die nur Privat sind — in der Business-Sicht weder lesbar noch schreibbar. */
-const NUR_PRIVAT = new Set(['privatEinnahmen', 'privatBudget', 'privatSchulden', 'check', 'fokus', 'abschluesse', 'regeln', 'schwellen', 'selbst', 'handAlt', 'haushaltBruecke']);
+/** Bereiche, die nur Privat sind — in der Business-Sicht weder lesbar noch schreibbar. `selbst` nur, solange die Selbstständigkeit privat ist (02.11.). */
+const NUR_PRIVAT = new Set(['privatEinnahmen', 'privatBudget', 'privatSchulden', 'check', 'fokus', 'abschluesse', 'regeln', 'schwellen', ...(SELBST ? [] : ['selbst']), 'handAlt', 'haushaltBruecke']);
+/** Felder des Abschlusses der Selbstständigkeit, die mit ihr im Business änderbar sind (02.11.) — der Rest ist die gemeinsame ESt. */
+const SELBST_BUSINESS_FELDER = new Set(['posten', 'kontoStart', 'darlehenAnUG']);
+/** Regeln der Gewerbesteuer, die das Business für die Selbstständigkeit setzen darf (02.11.); Tarif, Veranlagung, Gehalt-Einbezug, Anrechnung, Soli = ESt. */
+const SELBST_STEUER_PARAM = new Set(['freibetrag', 'zahlweise', 'zahlMonat', 'verlustvortrag']);
+/** Darf die Business-Sicht diesen Teilpfad des Steuerprofils der Selbstständigkeit ändern? (`t` = Teile NACH `kdc`) */
+function selbstSteuerPfadOk(t: string[]): boolean {
+  if (!SELBST) return false;
+  if (t[0] === 'rechtsform' && t.length === 1) return true;
+  if (t[0] === 'zeilen' && (t[1] === 'gewst' || t[1] === 'ust') && t.length >= 2) return true;
+  if (t[0] === 'param' && t.length === 2 && SELBST_STEUER_PARAM.has(t[1])) return true;
+  return false;
+}
 /** Annahmen eines Planszenarios, die privat sind (wirken nur auf Privat bzw. die Selbstständigkeit). */
-const PRIVATE_PS_ANNAHMEN = ['ausschuettungSteuer', 'entnahme'];
+const PRIVATE_PS_ANNAHMEN = ['ausschuettungSteuer', ...(SELBST ? [] : ['entnahme'])];
 /** Enthalten Szenario-Annahmen etwas Privates (Steuer auf die Ausschüttung, Entnahme, Steuerprofil Privat/Selbstständigkeit)? */
-export const psAnnahmenPrivat = (a: unknown): boolean => istObj(a) && (PRIVATE_PS_ANNAHMEN.some(k => k in a) || (istObj(a.steuern) && ('privat' in a.steuern || 'kdc' in a.steuern)));
+export const psAnnahmenPrivat = (a: unknown): boolean => istObj(a) && (PRIVATE_PS_ANNAHMEN.some(k => k in a)
+  || (istObj(a.steuern) && ('privat' in a.steuern || ('kdc' in a.steuern && (!SELBST || selbstSteuernHatPrivates(a.steuern.kdc))))));
 
 /**
  * Darf ein Pfad in der Business-Sicht geändert werden? Geprüft gegen das gespeicherte Dokument (bestehende Einträge) und den neuen Wert
@@ -174,6 +244,7 @@ export function businessPfadErlaubt(pfad: string, d: FinanzDaten, neu?: unknown)
   const b = t[0];
   if (!b) return 'Pfad unbrauchbar.';
   if (NUR_PRIVAT.has(b)) return `„${b}“ gehört zu Privat.`;
+  if (b === 'selbst') return t.length >= 2 && SELBST_BUSINESS_FELDER.has(t[1]) ? null : 'Das gehört zur gemeinsamen Einkommensteuer (Privat).';
   const neuObj = neu && typeof neu === 'object' && !Array.isArray(neu) ? (neu as Record<string, unknown>) : null;
   const neuEinheit = neuObj ? (neuObj.einheit ?? neuObj.e) : undefined;
   switch (b) {
@@ -217,7 +288,8 @@ export function businessPfadErlaubt(pfad: string, d: FinanzDaten, neu?: unknown)
       if (t.length === 2 && t[1] !== '-' && neu === undefined && ps && (ps.bausteine.some(x => !BUSINESS_BAUSTEIN(x.einheit) && x.einheit !== undefined) || psAnnahmenPrivat(ps.annahmen)))
         return 'Dieses Planszenario enthält Privates — löschen nur in der Privat-Sicht.';
       if (t[2] === 'annahmen' && t[3] === 'ausschuettungSteuer') return 'Die Steuer auf die Ausschüttung gehört zu Privat.';
-      if (t[2] === 'annahmen' && t[3] === 'entnahme') return 'Die Entnahme der Selbstständigkeit gehört zu Privat.';
+      if (t[2] === 'annahmen' && t[3] === 'entnahme' && !SELBST) return 'Die Entnahme der Selbstständigkeit gehört zu Privat.';
+      if (t[2] === 'annahmen' && t[3] === 'steuern' && t[4] === 'kdc' && t.length > 5 && selbstSteuerPfadOk(t.slice(5))) return null;
       if (t[2] === 'annahmen' && t[3] === 'steuern' && (t.length === 4 || t[4] === 'privat' || t[4] === 'kdc')) return 'Diese Steuern gehören zu Privat.';
       if (t[2] === 'annahmen' && t.length === 3) return 'Die Annahmen ganz ersetzen geht nur in der Privat-Sicht.';
       // Bausteine ohne Einheit liest der Säuberer als MAKE — sie sind Business; Privat und Selbstständigkeit nicht.
@@ -238,7 +310,8 @@ export function businessPfadErlaubt(pfad: string, d: FinanzDaten, neu?: unknown)
       return null;
     }
     case 'steuern':
-      return t[1] === 'privat' || t[1] === 'kdc' || t.length === 1 ? 'Diese Steuern gehören zu Privat (Privat und Selbstständigkeit).' : null;
+      if (t[1] === 'kdc' && t.length > 2 && selbstSteuerPfadOk(t.slice(2))) return null;
+      return t[1] === 'privat' || t[1] === 'kdc' || t.length === 1 ? 'Diese Steuern gehören zu Privat (Privat und die gemeinsame Einkommensteuer).' : null;
     case 'darlehen': {
       if (t.length === 1) return 'Die ganze Liste gehört auch zu Privat.';
       const l = finde(d.darlehen, t[1]);
@@ -327,7 +400,8 @@ export const zeileIstPrivat = (z: Pick<Zeile, 'einheit'>): boolean => z.einheit 
 export const protokollBusiness = (p: Aenderung, d: FinanzDaten): boolean => typeof p.pfad === 'string' && pfadIstBusiness(p.pfad, d, p.eintrag);
 
 /** Punkte aus „Was jetzt zu entscheiden ist“ / „Noch offen“, die Privat betreffen — die Business-Sicht zeigt sie nicht. */
-export const PRIVATE_PUNKTE = new Set(['privat-minus', 'privat-runway', 'konten', 'netto', 'umsatz-kdc']);   // umsatz-kdc: die Selbstständigkeit gehört seit 05.10. zu Privat
+// umsatz-kdc: die Selbstständigkeit gehört seit 05.10. zu Privat — steht sie im Business (02.11.), ist der Punkt Business.
+export const PRIVATE_PUNKTE = new Set(['privat-minus', 'privat-runway', 'konten', 'netto', ...(SELBST ? [] : ['umsatz-kdc'])]);
 export const nurBusinessPunkte = <T extends { id: string }>(liste: T[]): T[] => liste.filter(p => !PRIVATE_PUNKTE.has(p.id) && !p.id.startsWith('privat'));
-/** Termine des Zahlungskalenders ohne Privat (Gehälter netto, Ausschüttung netto, private Raten …) und — seit 05.10. — ohne die Selbstständigkeit. */
+/** Termine des Zahlungskalenders ohne Privat (Gehälter netto, Ausschüttung netto, private Raten …) und — seit 05.10. — ohne die Selbstständigkeit (außer sie steht im Business, 02.11.). */
 export const nurBusinessTermine = <T extends { einheit: Einheit }>(liste: T[]): T[] => liste.filter(t => istBusinessEinheit(t.einheit));

@@ -65,8 +65,19 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # Seit 26.09. abends: Das Bild entsteht HIER, nicht auf dem 1-CPU-Server (der war beim Bauen 10 Minuten kaum benutzbar).
+      # 02.11.: Instanz-Einstellungen (Zuordnung je Einheit, CRM-Team, Event-Marke) kommen als Repository-Variablen an den Bau —
+      # nie Werte in dieser Datei. Fehlt eine Variable, ist das Argument leer = Verhalten wie bisher. Der Prüf-Schritt läuft ohne sie.
       - name: Bild bauen
-        run: docker build --pull -t make-os:aktuell .
+        env:
+          EINHEITEN: ${{ vars.MAKE_OS_EINHEITEN }}
+          CRM_TEAM: ${{ vars.MAKE_OS_CRM_TEAM }}
+          EVENT_MARKE: ${{ vars.MAKE_OS_EVENT_MARKE }}
+        run: |
+          docker build --pull \
+            --build-arg NEXT_PUBLIC_MAKE_OS_EINHEITEN="$EINHEITEN" \
+            --build-arg NEXT_PUBLIC_MAKE_OS_CRM_TEAM="$CRM_TEAM" \
+            --build-arg NEXT_PUBLIC_MAKE_OS_EVENT_MARKE="$EVENT_MARKE" \
+            -t make-os:aktuell .
       - name: Server zieht den Stand und bekommt das Bild
         env:
           HOST: ${{ secrets.MAKE_OS_HOST }}

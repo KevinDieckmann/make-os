@@ -39,6 +39,8 @@ interface Antwort {
 
 const EINHEIT_FARBE: Record<Einheit, string> = { kdc: LEUCHT.business, kdv: LEUCHT.schlaf, ug: LEUCHT.puls, privat: LEUCHT.geld };
 /** Die eine Einheitenliste (28.09.), seit 05.10. nach Bereich: Privat · Selbstständigkeit (Privat-Bereich), dann KD Ventures · MAKE (Business). */
+/** Steht die Selbstständigkeit in dieser Instanz im Business (02.11., `bereichVon` über lib/einheiten.ts)? Ihre ESt bleibt gemeinsam privat. */
+const KDC_BUSINESS = steuerBereich('kdc') === 'business';
 const einheitenFuer = (bereich: 'privat' | 'business'): Einheit[] => STEUER_EINHEITEN.filter(x => bereich === 'privat' || steuerBereich(x) === 'business');
 const euro = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n));
 const deutsch = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}`;
@@ -163,7 +165,7 @@ export function SteuernView({ bereich = 'business' }: { bereich?: 'privat' | 'bu
                 const neuerBereich = bereich === 'privat' && (i === 0 || steuerBereich(EINHEITEN[i - 1]) !== steuerBereich(x));
                 return (
                   <div key={x} style={{ display: 'grid', gap: 6 }}>
-                    {neuerBereich && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase', marginTop: i ? 6 : 0 }}>{steuerBereich(x) === 'privat' ? 'Privat · mit Selbstständigkeit (gemeinsam versteuert)' : 'Business'}</span>}
+                    {neuerBereich && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase', marginTop: i ? 6 : 0 }}>{steuerBereich(x) === 'privat' ? (KDC_BUSINESS ? 'Privat · Einkommensteuer gemeinsam' : 'Privat · mit Selbstständigkeit (gemeinsam versteuert)') : 'Business'}</span>}
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(80px, 1.2fr) auto', gap: 12, alignItems: 'center' }}>
                       <span style={{ fontWeight: 700, color: EINHEIT_FARBE[x], fontSize: TYP.bedien }}>{EINHEIT_LABEL[x]}</span>
                       <Fortschritt anteil={j.deckung == null ? 0 : Math.min(1, j.deckung)} farbe={j.deckung == null ? C.inkLeise : j.deckung >= 1 ? LEUCHT.gut : j.deckung >= 0.7 ? LEUCHT.achtung : LEUCHT.kritisch} />
@@ -182,7 +184,7 @@ export function SteuernView({ bereich = 'business' }: { bereich?: 'privat' | 'bu
                 );
               })}
             </div>
-            {bereich === 'privat' && <VorauszahlungQuelle v={d.prognose.vorauszahlung} />}
+            {(bereich === 'privat' || KDC_BUSINESS) && <VorauszahlungQuelle v={d.prognose.vorauszahlung} bereich={bereich} />}
             <RuecklageEingabe e={d.einstellungen} einheiten={EINHEITEN} onSpeichern={x => tun({ einstellungen: { ruecklageIst: x } })} />
           </Abschnitt>
         </Spalte>
@@ -306,13 +308,13 @@ function RuecklageEingabe({ e, einheiten: EINHEITEN, onSpeichern }: { e: SteuerE
  * Woher die abgezogenen Vorauszahlungen (Einkommen- und Gewerbesteuer der Selbstständigkeit) kommen — EINE Quelle (05.10. abends): mit
  * Finanzplanung nur von dort; Beträge der Steuer-Einstellungen, die deshalb nicht zählen, nennt der Hinweis (kein stiller Doppelabzug).
  */
-function VorauszahlungQuelle({ v }: { v: Antwort['prognose']['vorauszahlung'] }) {
+function VorauszahlungQuelle({ v, bereich }: { v: Antwort['prognose']['vorauszahlung']; bereich: 'privat' | 'business' }) {
   if (v.quelle === 'keine' && !v.ungenutzt) return null;
   const summe = v.est + v.gewst;
   return (
     <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginTop: 10 }}>
       {v.quelle === 'finanzplanung'
-        ? <>Vorauszahlungen abgezogen: {euro(summe)} — aus der <Link href={WEG.finanzplanung('privat', 'selbst')} style={{ color: C.inkDim }}>Finanzplanung › Selbstständigkeit</Link> („Vorauszahlungen schon bezahlt“ und Quartalszahlungen im Plan).</>
+        ? <>Vorauszahlungen abgezogen: {euro(summe)} — aus der <Link href={WEG.finanzplanung(bereich, 'selbst')} style={{ color: C.inkDim }}>Finanzplanung › Selbstständigkeit</Link> („Vorauszahlungen schon bezahlt“ und Quartalszahlungen im Plan).</>
         : v.quelle === 'einstellungen' ? <>Vorauszahlungen aus den Steuer-Einstellungen (je Quartal laut Bescheid, bis heute fällig): {euro(summe)}.</> : null}
       {v.ungenutzt && <span style={{ color: LEUCHT.achtung }}> Die Vorauszahlungen in den Steuer-Einstellungen ({[v.ungenutzt.est ? `ESt ${euro(v.ungenutzt.est)}` : '', v.ungenutzt.gewstKdc ? `GewSt ${euro(v.ungenutzt.gewstKdc)}` : ''].filter(Boolean).join(', ')} bis heute) zählen hier nicht — führend ist die Finanzplanung; dort eintragen, was schon gezahlt ist.</span>}
     </div>
@@ -330,7 +332,7 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
   }, [e]);
   // Business-Sicht (05.10.): nur die Felder der Business-Gesellschaften — Privates und die Selbstständigkeit schickt sie nie mit.
   const vzFelder = ([['est', 'ESt je Quartal'], ['kst', `KSt ${EINHEIT_LABEL.kdv}`], ['gewstKdc', 'GewSt Selbstständigkeit'], ['gewstKdv', `GewSt ${EINHEIT_LABEL.kdv}`], ['kstUg', `KSt ${EINHEIT_LABEL.ug}`], ['gewstUg', `GewSt ${EINHEIT_LABEL.ug}`]] as const)
-    .filter(([k]) => bereich === 'privat' || (k !== 'est' && k !== 'gewstKdc'));
+    .filter(([k]) => bereich === 'privat' || (k !== 'est' && (k !== 'gewstKdc' || KDC_BUSINESS)));
   const vzSenden = Object.fromEntries(vzFelder.map(([k]) => [k, vz[k]]));
   const eingabe = { ...feld, width: 110 };
   const wahl = auswahl;
@@ -349,7 +351,7 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
         {ausPlan && f !== 'kdc' && x.saetze ? (
           <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Rechtsform: {x.rechtsform === 'einzel' ? 'keine Kapitalgesellschaft' : `${x.rechtsform === 'ug' ? 'UG' : 'GmbH'} (Kapitalgesellschaft)`} · KSt {(x.saetze.kst * 100).toLocaleString('de-DE')} %{x.saetze.soli ? ` + Soli ${(x.saetze.soli * 100).toLocaleString('de-DE')} %` : ''}{x.gewerbe ? ` · Hebesatz ${x.saetze.hebesatz} %` : ' · ohne Gewerbesteuer'} · aus der <Link href={steuerWegFuer(f).href} style={{ color: C.inkDim }}>Finanzplanung › Welche Steuern gelten?</Link></span>
         ) : ausPlan ? (
-          <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Rechtsform: {x.gewerbe ? 'Einzelunternehmen (Gewerbe) — mit Gewerbesteuer' : 'Freiberuf — ohne Gewerbesteuer'} · aus der <Link href={WEG.finanzplanung('privat', 'selbst')} style={{ color: C.inkDim }}>Finanzplanung › Selbstständigkeit › Welche Steuern gelten?</Link></span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Rechtsform: {x.gewerbe ? 'Einzelunternehmen (Gewerbe) — mit Gewerbesteuer' : 'Freiberuf — ohne Gewerbesteuer'} · aus der <Link href={WEG.finanzplanung(bereich, 'selbst')} style={{ color: C.inkDim }}>Finanzplanung › Selbstständigkeit › Welche Steuern gelten?</Link></span>
         ) : (
         <label style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Rechtsform</span>
           <select value={x.rechtsform} onChange={ev => setze({ rechtsform: ev.target.value })} style={wahl}>
@@ -373,11 +375,11 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
     <Karte i={5} id="einstellungen">
       <Ueberschrift rechts={<Knopf leise onClick={() => setOffen(!offen)}>{offen ? 'schließen' : 'öffnen'}</Knopf>}>Steuer-Einstellungen</Ueberschrift>
       {!offen ? (
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{bereich === 'privat' && e.kdc && <>{EINHEIT_LABEL.kdc}: {e.kdc.rechtsform === 'freiberuf' ? 'Freiberufler' : e.kdc.rechtsform === 'einzel' ? 'Gewerbe' : e.kdc.rechtsform}, USt {e.kdc.ust} · Einkommensteuer gemeinsam aus der Finanzplanung · </>}{EINHEIT_LABEL.kdv}: {e.kdv.rechtsform.toUpperCase()}, USt {e.kdv.ust} · {EINHEIT_LABEL.ug}: {e.ug.rechtsform === 'einzel' ? 'Einzelunternehmen' : e.ug.rechtsform.toUpperCase()}, USt {e.ug.ust} · {e.mitBerater ? 'mit Steuerberater' : 'ohne Steuerberater'} · Hebesatz {kapitalMitPlan.length ? KAPITAL.map(f => `${EINHEIT_LABEL[f]} ${e[f].saetze?.hebesatz ?? e.hebesatz} %`).join(', ') : `${e.hebesatz} %`}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{(bereich === 'privat' || KDC_BUSINESS) && e.kdc && <>{EINHEIT_LABEL.kdc}: {e.kdc.rechtsform === 'freiberuf' ? 'Freiberufler' : e.kdc.rechtsform === 'einzel' ? 'Gewerbe' : e.kdc.rechtsform}, USt {e.kdc.ust}{bereich === 'privat' ? ' · Einkommensteuer gemeinsam aus der Finanzplanung' : ''} · </>}{EINHEIT_LABEL.kdv}: {e.kdv.rechtsform.toUpperCase()}, USt {e.kdv.ust} · {EINHEIT_LABEL.ug}: {e.ug.rechtsform === 'einzel' ? 'Einzelunternehmen' : e.ug.rechtsform.toUpperCase()}, USt {e.ug.ust} · {e.mitBerater ? 'mit Steuerberater' : 'ohne Steuerberater'} · Hebesatz {kapitalMitPlan.length ? KAPITAL.map(f => `${EINHEIT_LABEL[f]} ${e[f].saetze?.hebesatz ?? e.hebesatz} %`).join(', ') : `${e.hebesatz} %`}</div>
       ) : (
         <div style={{ display: 'grid', gap: 18 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 18 }}>
-            {bereich === 'privat' && e.kdc && firma('kdc')}{firma('kdv')}{firma('ug')}
+            {(bereich === 'privat' || KDC_BUSINESS) && e.kdc && firma('kdc')}{firma('kdv')}{firma('ug')}
             <div style={{ display: 'grid', gap: 8 }}>
               <span style={{ fontWeight: 700, color: EINHEIT_FARBE.privat }}>{bereich === 'privat' ? 'Privat & allgemein' : 'Allgemein'}</span>
               <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}><Haken an={e.mitBerater} onChange={() => void tun({ einstellungen: { mitBerater: !e.mitBerater } })} />mit Steuerberater (längere Fristen)</label>
@@ -392,7 +394,7 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
             <label style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Aufgabe Tage vorher</span><input inputMode="numeric" value={vorlauf} onChange={ev => setVorlauf(ev.target.value)} style={eingabe} /></label>
             <Knopf onClick={() => void tun({ einstellungen: { vorauszahlung: vzSenden, hebesatz: hebe, vorlaufTage: vorlauf } })}>Speichern</Knopf>
           </div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{bereich === 'privat' && est && <>Vorauszahlungen auf Einkommen- und Gewerbesteuer der Selbstständigkeit: für die Rücklage zählen die der Finanzplanung (eine Quelle) — „ESt je Quartal“ und „GewSt Selbstständigkeit“ hier gelten nur ohne Finanzplanung und als Betrag an den Fristen. </>}{bereich === 'privat' && <>Einkommensteuer und Gewerbesteuer der Selbstständigkeit rechnet die Finanzplanung (gemeinsam mit dem Gehalt, Gewerbesteuer mit Freibetrag 24.500 € und dem Hebesatz aus „Welche Steuern gelten?“, Anrechnung § 35, Soli) — die frühere Steuerquote gilt nicht mehr. </>}{kapitalOhnePlan.length > 0 && <>{kapitalOhnePlan.map(f => EINHEIT_LABEL[f]).join(' und ')} rechne{kapitalOhnePlan.length === 1 ? 't' : 'n'} mit 15,825 % (KSt + Soli) und 3,5 % × Hebesatz Gewerbesteuer{kapitalMitPlan.length ? '; ' : '.'}</>}{kapitalMitPlan.length > 0 && <>{kapitalMitPlan.map(f => EINHEIT_LABEL[f]).join(' und ')} mit den Sätzen aus der <Link href={steuerWegFuer(kapitalMitPlan[0]).href} style={{ color: C.inkDim }}>Finanzplanung</Link> (dieselben wie dort).</>}</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{bereich === 'privat' && est && <>Vorauszahlungen auf Einkommen- und Gewerbesteuer der Selbstständigkeit: für die Rücklage zählen die der Finanzplanung (eine Quelle) — „ESt je Quartal“ und „GewSt Selbstständigkeit“ hier gelten nur ohne Finanzplanung und als Betrag an den Fristen. </>}{bereich === 'business' && KDC_BUSINESS && <>Die Gewerbesteuer der Selbstständigkeit rechnet die Finanzplanung (Freibetrag 24.500 €, Hebesatz aus „Welche Steuern gelten?“) — die Einkommensteuer darauf läuft gemeinsam mit dem Gehalt unter Privat. </>}{bereich === 'privat' && <>Einkommensteuer und Gewerbesteuer der Selbstständigkeit rechnet die Finanzplanung (gemeinsam mit dem Gehalt, Gewerbesteuer mit Freibetrag 24.500 € und dem Hebesatz aus „Welche Steuern gelten?“, Anrechnung § 35, Soli) — die frühere Steuerquote gilt nicht mehr. </>}{kapitalOhnePlan.length > 0 && <>{kapitalOhnePlan.map(f => EINHEIT_LABEL[f]).join(' und ')} rechne{kapitalOhnePlan.length === 1 ? 't' : 'n'} mit 15,825 % (KSt + Soli) und 3,5 % × Hebesatz Gewerbesteuer{kapitalMitPlan.length ? '; ' : '.'}</>}{kapitalMitPlan.length > 0 && <>{kapitalMitPlan.map(f => EINHEIT_LABEL[f]).join(' und ')} mit den Sätzen aus der <Link href={steuerWegFuer(kapitalMitPlan[0]).href} style={{ color: C.inkDim }}>Finanzplanung</Link> (dieselben wie dort).</>}</div>
         </div>
       )}
     </Karte>

@@ -17,7 +17,7 @@ import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Spalten, Spalte, Knopf, LEUCHT, feld, Hinweis as UiHinweis } from '../ui';
 import { WEG } from '@/lib/wege';
 import { eur, prozent, monatLabel, neueKennung } from '@/lib/finanzen/plan/hilfen';
-import { UG_KURZ, GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
+import { UG_KURZ, GESELLSCHAFTEN, finanzOrtName, istBusinessGesellschaft } from '@/lib/einheiten';
 import type { Operation } from '@/lib/finanzen/plan/operationen';
 import {
   planszenarienVon, neuesPlanszenario, neuerBaustein, betragImMonat, vergleich, STEUER_HINWEIS, AUSSCHUETTUNG_STEUER_VORGABE,
@@ -283,7 +283,7 @@ export function Baukasten() {
             <Hinweis>Leer heißt: wie im Plan (Treiber &amp; Annahmen).{business ? '' : ' Die Entnahme aus der Selbstständigkeit ist schon versteuert.'} Alle weiteren Steuer-Sätze und -Regeln dieses Szenarios (Hebesatz, Verlustvortrag, Zahlweise …) stehen darunter je Gesellschaft. Ausschüttung nimmt Geld brutto aus der {UG_KURZ}-Kasse; privat kommt brutto minus pauschale Steuer an (Vorgabe Kapitalertragsteuer + Soli {prozent(AUSSCHUETTUNG_STEUER_VORGABE, 1)}), der Abzug steht unter Gesamt bei den Übergängen. {STEUER_HINWEIS}</Hinweis>
           </Karte>
 
-          {GESELLSCHAFTEN.filter(o => !business || o !== 'kdc').map((o, k) => <SteuerKarte key={o} ort={o} szenario={ps} i={3 + k} />)}
+          {GESELLSCHAFTEN.filter(o => !business || istBusinessGesellschaft(o)).map((o, k) => <SteuerKarte key={o} ort={o} szenario={ps} i={3 + k} />)}
 
           <Karte i={3}>
             <Ueberschrift rechts={Object.keys(live).length ? <span style={{ color: LEUCHT.achtung, fontSize: TYP.bedien }}>Loslassen speichert</span> : undefined}>Was wäre, wenn — Regler</Ueberschrift>
