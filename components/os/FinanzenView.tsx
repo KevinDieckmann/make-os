@@ -42,7 +42,7 @@ import { GrundlageView } from './GrundlageView';
 import { useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
 import { useHaushaltZugang } from './useInhaber';
-import { FINANZ_MENUE, finanzOrt, finanzAdresse, finanzMenueId, finanzMenueErlaubt, kontenUnter, type FinanzMenueId, type FinanzOrt, type KontenUnter } from '@/lib/finanzen/navigation';
+import { ALTBESTAND_BEREICH, FINANZ_MENUE, finanzOrt, finanzAdresse, finanzMenueId, finanzMenueErlaubt, kontenUnter, type FinanzMenueId, type FinanzOrt, type KontenUnter } from '@/lib/finanzen/navigation';
 import { FINANZEN_WERKZEUG } from '@/lib/make-one/werkzeuge';
 import { BereichAutomationen } from './werkzeug/BereichAutomationen';
 
@@ -116,7 +116,7 @@ function Inhalt({ ort, punkt, zugang, inhaber, planZugang, altbestand, u, t }: {
         <Finanzplan key={b} bereich={b} eingebettet />
         {/* Altbestand der Selbstständigkeit (05.10.: sie gehört zu Privat): das Kassenbuch — nur hier, nie in der Hauptnavigation.
             Das erste Cockpit (public/finanz-dashboard.html) ist seit 08.10. spät entfernt (echte Kontobewegungen im Repo). */}
-        {b === 'privat' && u === 'selbst' && <Altbestand offen={altbestand} />}
+        {b === ALTBESTAND_BEREICH && zugang && u === 'selbst' && <Altbestand offen={altbestand} />}
       </>
     );
   }

@@ -22,7 +22,13 @@ x-logs: &logs
 services:
   app:
     <<: [*haertung, *logs]
-    build: .
+    # 02.11.: Instanz-Einstellungen für den Bau auf dem Server (Rückfall, wenn nicht in der Action gebaut) — Werte aus der .env, nie hier.
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_MAKE_OS_EINHEITEN: "${NEXT_PUBLIC_MAKE_OS_EINHEITEN:-}"
+        NEXT_PUBLIC_MAKE_OS_CRM_TEAM: "${NEXT_PUBLIC_MAKE_OS_CRM_TEAM:-}"
+        NEXT_PUBLIC_MAKE_OS_EVENT_MARKE: "${NEXT_PUBLIC_MAKE_OS_EVENT_MARKE:-}"
     image: make-os:aktuell
     restart: unless-stopped
     # 27.09.: Summe der Grenzen (1280 + 384 + 128 = 1792 MB) bleibt unter den 2 GB des Servers — vorher 2304 MB.

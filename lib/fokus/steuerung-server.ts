@@ -16,7 +16,7 @@ import { ladeZeit, aufgabenKurz } from '@/lib/zeitmessung/speicher';
 import { bild } from '@/lib/zeitmessung/modell';
 import { bloeckeImZeitraum, nurBusinessBloecke, einheitVonBlock, brauchtMandate, type AufgabeKurz } from '@/lib/zeitmessung/einheiten';
 import { mandateKurz } from '@/lib/planung/mandat-server';
-import { gesellschaftAusEinheit, privatArbeitsEinheit } from '@/lib/einheiten';
+import { gesellschaftAusEinheit, istBusinessGesellschaft, privatArbeitsEinheit, selbstArbeitsEinheit } from '@/lib/einheiten';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { montagVon } from '@/lib/zeit/kalender-kern';
@@ -66,7 +66,7 @@ async function einheitSekunden(b: SteuerBereich, person: string, heute: string, 
   const mandate = brauchtMandate([datei], aufgaben) ? await mandateKurz().catch(() => null) : null;
   const einheit = (x: Parameters<typeof einheitVonBlock>[0]) => gesellschaftAusEinheit(einheitVonBlock(x, karte, mandate));
   const pruefer = b === 'business'
-    ? (x: Parameters<typeof nurBusinessBloecke>[0]) => nurBusinessBloecke(x) && !privatArbeitsEinheit(einheit(x))
+    ? (x: Parameters<typeof nurBusinessBloecke>[0]) => (nurBusinessBloecke(x) || (!!selbstArbeitsEinheit(einheit(x)) && istBusinessGesellschaft(einheit(x)))) && !privatArbeitsEinheit(einheit(x))
     : (x: Parameters<typeof nurBusinessBloecke>[0]) => !!privatArbeitsEinheit(einheit(x));
   const aus: Record<string, number> = {};
   for (const x of bloeckeImZeitraum(datei, tagPlus(heute, -6), heute, pruefer)) {

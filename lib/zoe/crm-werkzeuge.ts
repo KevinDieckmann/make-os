@@ -20,6 +20,7 @@ import { fehlschlag, istWerkzeugErgebnis, type WerkzeugErgebnis, type WerkzeugRu
 import { MARKE_EVENTS } from '@/lib/crm/marke';
 import { preiseText } from '@/lib/crm/produkt-karte';
 import { nachfassWerktage as nachfassWerktageVon, qualiWiedervorlageTage } from '@/lib/crm/stellschrauben';
+import { gespeicherterSpace } from '@/lib/make-one/space-regeln';
 
 type Eingabe = Record<string, unknown>;
 type Lauf = (input: Eingabe, origin: string, person?: string) => Promise<WerkzeugRueckgabe>;
@@ -132,7 +133,7 @@ async function aufgabenFuerBezug(s: CrmSicht, wer: { kontaktId?: string; firmaId
   // Privates hat in der Markttraktion nichts zu suchen — nur Business-Spaces (eigene Firmen, Mandanten). EINE Regel (09.10., E4):
   // `aufgabeImPrivat` (Bereich des Space) — vorher `spaceId !== 'privat'`, damit zählte die Selbstständigkeit (Privat-Einheit) als Business.
   const nachId = new Map(state.tasks.map(t => [t.id, t]));
-  return aufgabenFuer(state.tasks, wer).filter(t => !aufgabeImPrivat(t, nachId) && t.space !== 'privat')
+  return aufgabenFuer(state.tasks, wer).filter(t => !aufgabeImPrivat(t, nachId) && gespeicherterSpace(t) !== 'privat')
     .map(t => `- ${t.id} · ${t.title} · ${t.status}${t.dueDate ? ` · fällig ${t.dueDate}` : ''} · ${t.assignee}`);
 }
 

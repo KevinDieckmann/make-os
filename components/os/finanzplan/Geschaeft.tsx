@@ -12,7 +12,7 @@ import { schwellenVon } from '@/lib/finanzen/schwellen';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, LEUCHT } from '../ui';
-import { finanzOrtName, type Gesellschaftskennung } from '@/lib/einheiten';
+import { finanzOrtName, selbstImBusiness, type Gesellschaftskennung } from '@/lib/einheiten';
 import { monatLabel, neueKennung, prozent } from '@/lib/finanzen/plan/hilfen';
 import { wert } from '@/lib/finanzen/rechenkern';
 import {
@@ -23,6 +23,7 @@ import {
 } from '@/lib/finanzen/geschaeft';
 import { rechtsformVon, zeigeSteuer, steuerParameter } from '@/lib/finanzen/steuern';
 import { gesamtquote } from '@/lib/finanzen/ertragsteuer';
+import { SELBST_PRIVAT_WERTE } from '@/lib/finanzen/plan/sicht';
 import { usePlan } from './daten';
 import { useArbeitsplan } from './arbeitsplan';
 import { Geld, Kachel, Kacheln, Etikett, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Schalter, Nichts, personName } from './teile';
@@ -108,10 +109,16 @@ function BausteinKarten({ ort }: { ort: Gesellschaftskennung }) {
 
 const runwayText = (r: number | null, N: number, m0: number) => (r == null ? `über ${N - m0 + 1} Monate` : r === 0 ? 'jetzt unter null' : `${r} Monat${r === 1 ? '' : 'e'}`);
 
+/**
+ * Business-Sicht (02.11.): Werte der Selbstständigkeit, die die gemeinsame Einkommensteuer enthalten (`SELBST_PRIVAT_WERTE`), sind dort nur Anzeige —
+ * die Sicht rechnet sie ohne ESt, ein Handwert gehört zu Privat (der Server lehnt ihn aus der Business-Sicht ab).
+ */
+const ohnePrivateKennung = (zeilen: BlattZeile[]): BlattZeile[] => zeilen.map(z => ('edit' in z && z.edit && SELBST_PRIVAT_WERTE.has(z.edit) ? { ...z, edit: undefined } : z));
+
 /** Das Business-Blatt einer Gesellschaft. */
 export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
   const ctx = usePlan();
-  const { d, dd, ug, kdc, ps, aw, aendere, params, sz } = ctx;
+  const { d, dd, ug, kdc, ps, aw, aendere, params, sz, sicht } = ctx;
   const N = d.monate.length, m0 = aw.m0;
   const U = (m: number) => ug[m - 1], K = (m: number) => kdc[m - 1];
   const gb = useMemo(() => geschaeftsblatt(dd, ort, { ug, kdc }, ps, m0), [dd, ort, ug, kdc, ps, m0]);
@@ -261,7 +268,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       ...(ustAn ? [] : [{ name: 'USt vereinnahmt (Durchlauf)', edit: 'kdc.ustEin', get: (m: number) => K(m).ustEin, ind: true, optional: true } as DatenZeile]),
       { name: 'Darlehen erhalten oder zurückerhalten', edit: 'kdc.darlehenEin', get: m => K(m).darlehenEin, ind: true, optional: true },
       { name: ustAn ? 'Einzahlungen' : 'Einzahlungen (inkl. USt-Durchlauf)', edit: 'kdc.einzahlungen', sum: true, get: m => K(m).einzahlungen },
-      { name: 'Steuerzahlung (Einkommen- und Gewerbesteuer)', edit: 'kdc.steuer', minus: true, get: m => -K(m).st.zahlung, ind: true, optional: true },
+      { name: sicht === 'business' ? 'Steuerzahlung (Gewerbesteuer)' : 'Steuerzahlung (Einkommen- und Gewerbesteuer)', edit: 'kdc.steuer', minus: true, get: m => -K(m).st.zahlung, ind: true, optional: true },
       { name: 'Entnahme an Privat', edit: 'kdc.entnahme', minus: true, get: m => -K(m).entnahme, ind: true, optional: true },
       { name: 'Darlehen ausgezahlt oder zurückgezahlt', edit: 'kdc.darlehenAus', minus: true, get: m => -K(m).darlehenAus, ind: true, optional: true },
       { name: ustAn ? 'Auszahlungen' : 'Auszahlungen (inkl. USt-Durchlauf)', edit: 'kdc.auszahlungen', minus: true, sum: true, get: m => -K(m).auszahlungen },
@@ -297,12 +304,14 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
       </Kacheln>
       <BausteinKarten ort={ort} />
       <Karte i={3}>
-        <Blatt zeilen={zeilen} titel={`${label} · ${ps?.name ?? sz.name}`} werkzeuge={<Etikett einheit={ort === 'kdc' ? 'selbststaendigkeit' : ort} />}
+        <Blatt zeilen={sicht === 'business' ? ohnePrivateKennung(zeilen) : zeilen} titel={`${label} · ${ps?.name ?? sz.name}`} werkzeuge={<Etikett einheit={ort === 'kdc' ? 'selbststaendigkeit' : ort} />}
           abMonat={(ort === 'ug' || ort === 'kdv') && d.eroeffnung?.[ort]?.quelle !== 'register' ? d.eroeffnung?.[ort]?.monat : undefined}
           onZeile={setDialog} onNeueZeile={async (liste, gruppe, einheit) => { const { op, id } = neueZeileOp(liste, gruppe, einheit); if (await aendere([op], 'Zeile angelegt')) setDialog(id); }} />
         <Hinweis>
           Bei Produkten und Kosten-Bausteinen gilt ein eingetippter Wert für diesen Monat des Bausteins; jede andere Zahl überschreibt die Formel von Hand (✎) — Summen, Steuern, Ein- und Auszahlungen und Kontostand rechnen damit weiter.
-          Leere Zeilen stehen hinter „weitere …“. {ort === 'kdc' && 'Die Selbstständigkeit gehört zu Privat und rechnet auf eigener Monatsachse (eigenes Konto). Die Einkommensteuer ist EINE Steuer je Jahr über Gewinn und Gehalt (Progression) — im Blatt steht der Teil, den die Selbstständigkeit zusätzlich zur Lohnsteuer kostet; 2026 beginnt mit dem Gewinn Jan–Sep aus dem Abschluss darunter. '}
+          Leere Zeilen stehen hinter „weitere …“. {ort === 'kdc' && (sicht === 'business'
+            ? 'Die Selbstständigkeit steht im Business und rechnet auf eigener Monatsachse (eigenes Konto) mit Gewerbesteuer und Umsatzsteuer. Die Einkommensteuer läuft gemeinsam unter Privat › Planung und steht hier nicht. '
+            : `Die Selbstständigkeit ${selbstImBusiness() ? 'steht im Business, ihre Einkommensteuer läuft aber gemeinsam hier unter Privat;' : 'gehört zu Privat und'} rechnet auf eigener Monatsachse (eigenes Konto). Die Einkommensteuer ist EINE Steuer je Jahr über Gewinn und Gehalt (Progression) — im Blatt steht der Teil, den die Selbstständigkeit zusätzlich zur Lohnsteuer kostet; 2026 beginnt mit dem Gewinn Jan–Sep aus dem Abschluss darunter. `)}
           {STEUER_HINWEIS}
         </Hinweis>
         {dialog && <ZeileDialog id={dialog} onZu={() => setDialog(null)} />}

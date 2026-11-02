@@ -14,7 +14,7 @@ import type { Eroeffnung, Geltende, OffenerPosten, ArchivZahl } from '@/lib/busi
 import type { ArchivAnsicht } from '@/lib/business/eroeffnung-server';
 import { POSTEN_ARTEN, POSTEN_FELDER, type PostenArt, type PostenModus } from '@/lib/business/eroeffnung-tabelle';
 import type { Datensatz, VorschauAntwort } from '@/lib/tabelle/einfuegen';
-import type { Gesellschaftskennung } from '@/lib/einheiten';
+import { finanzOrtAusKern, type Gesellschaftskennung } from '@/lib/einheiten';
 
 interface Antwort { ok: true; eintraege: Eroeffnung[]; geltend: Geltende; firmen: { id: Gesellschaftskennung; label: string }[]; archiv: ArchivAnsicht; darf: boolean }
 
@@ -115,6 +115,7 @@ export function EroeffnungKarte({ i = 4, onGeaendert }: { i?: number; onGeaender
   const geltend = aktiv ? daten?.geltend[aktiv] : undefined;
   const label = firmen.find(f => f.id === aktiv)?.label ?? '';
   const darf = !!daten?.darf;
+  const fehlendeNullpunkte = firmen.filter(f => !daten?.geltend[f.id]).map(f => f.label);
 
   const [stichtag, setStichtag] = useState(localDay());
   const [kontostand, setKontostand] = useState('');
@@ -198,6 +199,13 @@ export function EroeffnungKarte({ i = 4, onGeaendert }: { i?: number; onGeaender
         hier als offene Forderung eintragen.
       </div>
       <div style={{ marginBottom: 12 }}><Pillen liste={firmen} aktiv={aktiv} onWahl={f => { setFirma(f); setMeldung(null); }} farbe={LEUCHT.geld} /></div>
+      {/* 02.11.: Gesamt (Controlling) zählt erst ab dem 0-Punkt, wenn JEDE Business-Gesellschaft einen hat (`gesamtAbMonat`) — sagen, wer fehlt. */}
+      {fehlendeNullpunkte.length > 0 && fehlendeNullpunkte.length < firmen.length && (
+        <div style={{ marginBottom: 10, fontSize: TYP.bedien, color: C.inkLeise }}>Für {fehlendeNullpunkte.join(', ')} fehlt noch ein 0-Punkt — bis dahin zählt Gesamt alle Monate.</div>
+      )}
+      {aktiv === finanzOrtAusKern('selbststaendigkeit') && (
+        <div style={{ marginBottom: 10, fontSize: TYP.bedien, color: C.inkLeise }}>Die Finanzplanung startet {label} weiter mit ihrem eigenen Kontostart (Planung › Selbstständigkeit) — der 0-Punkt wirkt auf Konten, Liquidität und Business-Index.</div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 10 }}>
         <label style={{ display: 'grid', gap: 4 }}>
           <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 600 }}>Stichtag</span>

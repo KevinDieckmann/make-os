@@ -5,7 +5,7 @@
 // Client-safe, keine Server-Importe.
 
 import { ortVon } from './orte';
-import { bereichVon, istGesellschaft } from '@/lib/einheiten';
+import { bereichVon, finanzOrtAusKern, istGesellschaft, selbstImBusiness } from '@/lib/einheiten';
 
 export type SpaceId = 'privat' | 'business';
 export const SPACE_LABEL: Record<SpaceId, string> = { privat: 'Privat', business: 'Business' };
@@ -31,6 +31,16 @@ export const spaceBereich = (spaceId: string): SpaceId => (spaceId === 'privat' 
 export function spaceVonAufgabe(t: { id: string; title: string; description?: string; projectId: string; space?: SpaceId; spaceId?: string }, orgZuordnung: Record<string, string> = {}): SpaceId {
   if (typeof t.spaceId === 'string' && t.spaceId) return spaceBereich(t.spaceId);
   return t.space ?? spaceVonOrg(ortVon(t, orgZuordnung));
+}
+
+/**
+ * Bereich einer Aufgabe nach dem GESPEICHERTEN `space`-Feld (Leser, die bisher `t.space` roh lasen) — mit EINER Ausnahme (02.11.): eine Aufgabe im
+ * Space der Selbstständigkeit gilt als Business, wenn die Instanz sie ins Business stellt (`NEXT_PUBLIC_MAKE_OS_EINHEITEN`), auch wenn ihr
+ * gespeichertes `space` noch „privat“ sagt (Altbestand, nichts wird umgeschrieben). Ohne Umstellung genau `t.space`.
+ */
+export function gespeicherterSpace(t: { space?: string; spaceId?: string }): string | undefined {
+  if (t.spaceId && t.spaceId === finanzOrtAusKern('selbststaendigkeit') && selbstImBusiness()) return 'business';
+  return t.space;
 }
 
 // ── Fokus je Space (26.09., Kevin: „Privat und Business separat aufbauen“) ──

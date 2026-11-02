@@ -310,13 +310,15 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Partial<
   // Umsatzsteuer: laufender Zeitraum, noch nicht angemeldet.
   for (const f of STEUER_FIRMEN) if (ustOffen[f] != null) z.push({ id: `ust-${f}`, einheit: f, titel: 'Umsatzsteuer laufender Zeitraum', betrag: Math.max(0, ustOffen[f]!), formel: 'USt aus Rechnungen − bekannte Vorsteuer', href: WEG.steuern('ust') });
   // Einkommensteuer gemeinsam (privat) und Gewerbesteuer der Selbstständigkeit — aus der Finanzplanung (05.10., EINE Rechenquelle).
+  // Die ESt läuft immer gemeinsam unter Privat; die Gewerbesteuer der Selbstständigkeit verlinkt dorthin, wo die Instanz sie führt (02.11.).
   const PLAN = WEG.finanzplanung('privat', 'selbst');
+  const PLAN_GEWST = WEG.finanzplanung(bereichVon('kdc'), 'selbst');
   const zahl = (n: number) => Math.round(n).toLocaleString('de-DE');
   const titelEst = `Einkommensteuer ${jahr} gemeinsam (Gehalt + Selbstständigkeit)`;
   let vorauszahlung: Prognose['vorauszahlung'];
   if (!est) {
     z.push({ id: 'est', einheit: 'privat', titel: titelEst, betrag: null, formel: 'Finanzplanung › Selbstständigkeit › Einkommensteuer gemeinsam', luecke: `Die Finanzplanung rechnet ${jahr} nicht (kein Plan oder Jahr außerhalb des Plans) — keine Schätzung`, href: PLAN });
-    if (e.kdc.gewerbe) z.push({ id: 'gewst-kdc', einheit: 'kdc', titel: `Gewerbesteuer ${jahr}`, betrag: null, formel: '(Gewinn − Freibetrag) × Messzahl × Hebesatz, aus der Finanzplanung', luecke: `Die Finanzplanung rechnet ${jahr} nicht — keine Schätzung`, href: PLAN });
+    if (e.kdc.gewerbe) z.push({ id: 'gewst-kdc', einheit: 'kdc', titel: `Gewerbesteuer ${jahr}`, betrag: null, formel: '(Gewinn − Freibetrag) × Messzahl × Hebesatz, aus der Finanzplanung', luecke: `Die Finanzplanung rechnet ${jahr} nicht — keine Schätzung`, href: PLAN_GEWST });
     // Ohne Finanzplanung bleibt die Steuer-Einstellung die Quelle der Vorauszahlungen (hier nur benannt — ohne Plan gibt es keinen Betrag).
     const vEst = gezahlt(e.vorauszahlung.est, VZ_EST_KST), vGew = gezahlt(e.vorauszahlung.gewstKdc, VZ_GEWST);
     vorauszahlung = { quelle: vEst || vGew ? 'einstellungen' : 'keine', est: vEst, gewst: vGew };
@@ -337,7 +339,7 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Partial<
       formel: `zvE ${zahl(est.zve)} € (Gewinn ${zahl(est.gewinn)} € + Lohneinkünfte ${zahl(est.lohn)} €${est.splitting ? ', Splitting' : ''}) → Mehrsteuer ${zahl(est.est)} €${est.anrechnung ? ` − ${zahl(est.anrechnung)} € Anrechnung § 35` : ''}${est.soli ? ` + ${zahl(est.soli)} € Soli` : ''}${est.korr ? ` ${est.korr > 0 ? '+' : '−'} ${zahl(Math.abs(est.korr))} € von Hand` : ''} − ${zahl(vzEst)} € ${quelleText} · Finanzplanung${est.plan ? ` „${est.plan}“` : ''}`, href: PLAN });
     if (est.gewerbe) {
       z.push({ id: 'gewst-kdc', einheit: 'kdc', titel: `Gewerbesteuer ${jahr}`, betrag: Math.max(0, est.gewst - vzGew),
-        formel: `(${zahl(est.gewinn)} € Gewinn − ${zahl(est.freibetrag)} € Freibetrag) × Messzahl × ${zahl(est.hebesatz)} % Hebesatz = ${zahl(est.gewst)} € − ${zahl(vzGew)} € ${vzGew ? 'Rest der ' : ''}${quelleText} (bis zum ${est.anrechnungFaktor}-fachen Messbetrag auf die Einkommensteuer angerechnet)`, href: PLAN });
+        formel: `(${zahl(est.gewinn)} € Gewinn − ${zahl(est.freibetrag)} € Freibetrag) × Messzahl × ${zahl(est.hebesatz)} % Hebesatz = ${zahl(est.gewst)} € − ${zahl(vzGew)} € ${vzGew ? 'Rest der ' : ''}${quelleText} (bis zum ${est.anrechnungFaktor}-fachen Messbetrag auf die Einkommensteuer angerechnet)`, href: PLAN_GEWST });
     }
   }
   // Kapitalgesellschaften (KD Ventures, seit 15.10. auch die Hauptgesellschaft): Körperschaftsteuer + Soli, Gewerbesteuer — EINE Rechnung je Firma.
@@ -472,11 +474,14 @@ export function steuernNurBusiness<T extends SteuerSichtTeile>(st: T): T {
   const biz = (x: string) => bereichVon(x) === 'business';
   const je = Object.fromEntries(Object.entries(st.prognose.je).map(([k, v]) => [k, biz(k) ? v : { soll: 0, ist: null, deckung: null }])) as Prognose['je'];
   const e = st.einstellungen;
-  const vz = Object.fromEntries(Object.entries(e.vorauszahlung).filter(([k]) => (k === 'kst' || k === 'gewstKdv' ? biz('kdv') : k === 'kstUg' || k === 'gewstUg' ? biz('ug') : false))) as SteuerEinstellungen['vorauszahlung'];
+  // 02.11.: die Gewerbesteuer-Vorauszahlung der Selbstständigkeit geht mit, wenn die Instanz sie im Business führt — die ESt-Vorauszahlung (`est`) nie.
+  const vz = Object.fromEntries(Object.entries(e.vorauszahlung).filter(([k]) => (k === 'kst' || k === 'gewstKdv' ? biz('kdv') : k === 'kstUg' || k === 'gewstUg' ? biz('ug') : k === 'gewstKdc' ? biz('kdc') : false))) as SteuerEinstellungen['vorauszahlung'];
   const ruecklageIst = Object.fromEntries(Object.entries(e.ruecklageIst).filter(([k]) => biz(k))) as SteuerEinstellungen['ruecklageIst'];
   // Einstellungen der Privat-Einheiten (Selbstständigkeit, Privat) gehen gar nicht hinaus (17.10., Abnahme 3 · B9) — vorher stand dort die Vorgabe
   // (Einzelunternehmen, Ist-Versteuerung, ESt-Vorauszahlung), die wie private Steuermerkmale aussah. Die Business-Ansicht liest sie nie.
-  const einstellungen = { ...e, kdc: { ...STANDARD_STEUERN.kdc }, privat: { ...STANDARD_STEUERN.privat }, steuerquote: null, vorauszahlung: vz, ruecklageIst } as Partial<SteuerEinstellungen>;
+  // Steht die Selbstständigkeit im Business (Instanz-Einstellung, 02.11.), gehen ihre Firmen-Einstellungen (Rechtsform, USt-Rhythmus, Ist-Versteuerung,
+  // Gewerbe) mit — sie tragen nichts von der gemeinsamen Einkommensteuer.
+  const einstellungen = { ...e, kdc: biz('kdc') ? e.kdc : { ...STANDARD_STEUERN.kdc }, privat: { ...STANDARD_STEUERN.privat }, steuerquote: null, vorauszahlung: vz, ruecklageIst } as Partial<SteuerEinstellungen>;
   if (!biz('kdc')) delete einstellungen.kdc; // die Ansicht liest die Selbstständigkeit nur unter Privat
   delete einstellungen.privat;
   return {

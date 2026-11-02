@@ -24,7 +24,7 @@ import { Geschaeft } from './Geschaeft';
 import { AnnahmenAlle, SchwellenKarte, EinstellungenKarte } from './Annahmen';
 import { SteuerKarte } from './Steuern';
 import { STEUER_HINWEIS } from '@/lib/finanzen/szenarien';
-import { GESELLSCHAFTEN } from '@/lib/einheiten';
+import { GESELLSCHAFTEN, istBusinessGesellschaft } from '@/lib/einheiten';
 import { HAND_FELDER, zelleTeile } from '@/lib/finanzen/handwerte';
 import { useRueckfrage } from '../ui/zeile-aktionen';
 import { MonatsabschlussKarte } from '../business/Abschluss';
@@ -147,8 +147,12 @@ export function Toepfe() {
 // ── KD Ventures ──────────────────────────────────────────────────────────────
 export function KDV() { return <Geschaeft ort="kdv" />; }
 
-// ── Selbstständigkeit (seit 05.10. unter Privat) ─────────────────────────────
+// ── Selbstständigkeit (seit 05.10. unter Privat; 02.11. je Instanz auch im Business) ─────────────
 export function Selbst() {
+  const { sicht } = usePlan();
+  // Business-Sicht (nur, wenn die Instanz die Selbstständigkeit ins Business stellt): ohne die gemeinsame Einkommensteuer, ohne alte Handwerte
+  // (privat) und ohne den Monatsabschluss unter Privat — der steht dann im Business-Cockpit.
+  if (sicht === 'business') return <><Geschaeft ort="kdc" /><SelbstAbschluss /></>;
   return <><AlteHandwerte /><Geschaeft ort="kdc" /><EinkommensteuerGemeinsam /><SelbstAbschluss /><SelbstMonatsabschluss /></>;
 }
 
@@ -263,7 +267,10 @@ function EinkommensteuerGemeinsam() {
 
 /** Abschluss 2026 der Selbstständigkeit: Posten des laufenden Jahres, Einkommensteuer, frei nach Abschluss. */
 function SelbstAbschluss() {
-  const { d, dd, aendere, lohn } = usePlan();
+  const { d, dd, aendere, lohn, sicht } = usePlan();
+  // Business-Sicht (02.11.): nur Posten, Gewinn und Kontostand — Vorsorge, Gehälter, Einkommensteuer, Vorauszahlungen, Sicherheit und Ablösung
+  // gehören zur gemeinsamen Einkommensteuer (Privat); der Server liefert sie dort gar nicht.
+  const business = sicht === 'business';
   const formel: Record<string, number> = {};
   // Wie die Monatsachse: mit den Überlagerungen des gerechneten Szenarios (Steuerprofil, Szenario-Handwerte) und den Lohneinkünften.
   const r = rechneSelbst(dd, formel, lohn); const s = d.selbst;
@@ -294,12 +301,13 @@ function SelbstAbschluss() {
       </Spalte>
       <Spalte>
         <Karte i={1}>
-          <Ueberschrift>Abschluss &amp; Steuer</Ueberschrift>
+          <Ueberschrift>{business ? 'Abschluss' : <>Abschluss &amp; Steuer</>}</Ueberschrift>
           <Tabelle klein>
             <tbody>
               {zeile('Einnahmen', hz('ab.ein', r.ein, 'Einnahmen 2026'))}
               {zeile('Ausgaben', hz('ab.aus', r.aus, 'Ausgaben 2026', { minus: true }))}
               {zeile('Gewinn', hz('ab.gewinn', r.gewinn, 'Gewinn 2026'), true)}
+              {!business && <>
               {zeile('Vorsorge', <ZahlFeld wert={s.vorsorge} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/vorsorge', alt: s.vorsorge, neu: v ?? 0 }], 'Selbstständigkeit Vorsorge')} titel="Vorsorge" />)}
               {zeile('Sonderausgaben', <ZahlFeld wert={s.sonderausgaben} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/sonderausgaben', alt: s.sonderausgaben, neu: v ?? 0 }], 'Selbstständigkeit Sonderausgaben')} titel="Sonderausgaben" />)}
               {zeile('Gehalt brutto Jan–Sep 2026 (zählt in die Einkommensteuer)', <ZahlFeld wert={s.lohnVorPlan ?? null} leer platzhalter="0" dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/lohnVorPlan', alt: s.lohnVorPlan, ...(v == null ? {} : { neu: v }) }], 'Selbstständigkeit Gehalt Jan–Sep')} titel="Gehalt brutto Jan–Sep 2026" />)}
@@ -309,18 +317,21 @@ function SelbstAbschluss() {
               {zeile('Einkommensteuer-Anteil Jan–Sep (Näherung)', hz('ab.est', r.est, 'Einkommensteuer 2026', { farbe: r.est > 0 ? LEUCHT.achtung : undefined }), true)}
               {zeile('Steuer auf Jan–Sep gesamt (mit Gewerbesteuer, Soli)', <Geld v={r.steuer} />)}
               {zeile('Vorauszahlungen 2026 schon bezahlt', <ZahlFeld wert={s.estVorausgezahlt ?? null} leer platzhalter="0" dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/estVorausgezahlt', alt: s.estVorausgezahlt, ...(v == null ? {} : { neu: v }) }], 'Selbstständigkeit Vorauszahlungen 2026')} titel="Vorauszahlungen 2026 schon bezahlt" />)}
+              </>}
               {/* Konten-Register (08.10., R4): führt es die Selbstständigkeit, kommt „Kontostand heute“ von dort (beim Lesen gesetzt) — gepflegt wird er im Register. */}
               {zeile('Kontostand heute', d.kontenIst?.selbststaendigkeit
-                ? <Link href={WEG.kontenRegister('privat')} title="aus dem Konten-Register — dort pflegen" style={{ textDecoration: 'none', color: 'inherit' }}><Geld v={s.kontoStart} /> <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Konten ›</span></Link>
+                ? <Link href={WEG.kontenRegister(business ? 'business' : 'privat')} title="aus dem Konten-Register — dort pflegen" style={{ textDecoration: 'none', color: 'inherit' }}><Geld v={s.kontoStart} /> <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Konten ›</span></Link>
                 : <ZahlFeld wert={s.kontoStart} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/kontoStart', alt: s.kontoStart, neu: v ?? 0 }], 'Selbstständigkeit Kontostand')} titel="Kontostand" />)}
               {zeile('Darlehen, die noch hinausgehen', <Geld v={r.darlehen} />)}
+              {!business && <>
               {zeile('Sicherheit Steuer', <ZahlFeld wert={s.sicherheit} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/sicherheit', alt: s.sicherheit, neu: v ?? 0 }], 'Selbstständigkeit Sicherheit')} titel="Sicherheit Steuer" />)}
               {zeile('Frei nach Abschluss', hz('ab.frei', r.frei, 'Frei nach Abschluss'), true)}
               {zeile('Ablösung', <ZahlFeld wert={s.consorsAbloesung} dezimal={0} onFertig={v => void aendere([{ pfad: '/selbst/consorsAbloesung', alt: s.consorsAbloesung, neu: v ?? 0 }], 'Selbstständigkeit Ablösung')} titel="Ablösung" />)}
               {zeile('nach Ablösung', hz('ab.nachConsors', r.nachConsors, 'nach Ablösung'))}
+              </>}
             </tbody>
           </Tabelle>
-          <Hinweis>Seit 05.10. EIN Steuerjahr: Jan–Sep (hier) und Okt–Dez (Blatt oben) werden zusammen versteuert, mit dem Gehalt in derselben Progression. Die Steuer 2026 steht ab Okt in der Rücklage der Selbstständigkeit und wird im Zahlmonat 2027 bezahlt (minus schon bezahlter Vorauszahlungen). Darlehen erfassen Sie unter Planung › Fällig & Schulden › Schulden. Grundtarif 2026 (§ 32a EStG) als Näherung — Hinweis, keine Steuerberatung.</Hinweis>
+          {business ? <Hinweis>Einnahmen und Ausgaben Jan–Sep 2026 und der Kontostand heute. Die Einkommensteuer darauf läuft gemeinsam mit dem Gehalt unter Privat › Planung — Hinweis, keine Steuerberatung.</Hinweis> : <Hinweis>Seit 05.10. EIN Steuerjahr: Jan–Sep (hier) und Okt–Dez (Blatt oben) werden zusammen versteuert, mit dem Gehalt in derselben Progression. Die Steuer 2026 steht ab Okt in der Rücklage der Selbstständigkeit und wird im Zahlmonat 2027 bezahlt (minus schon bezahlter Vorauszahlungen). Darlehen erfassen Sie unter Planung › Fällig & Schulden › Schulden. Grundtarif 2026 (§ 32a EStG) als Näherung — Hinweis, keine Steuerberatung.</Hinweis>}
         </Karte>
       </Spalte>
     </Spalten>
@@ -424,7 +435,7 @@ export function Szenarien() {
       </Spalten>
       <div style={{ ...MIKRO, margin: '18px 0 8px' }}>Steuern — welche gelten, wie hoch</div>
       {/* 05.10.: die Selbstständigkeit (Einkommensteuer gemeinsam mit Privat) gehört zu Privat — die Business-Sicht zeigt nur die Gesellschaften. */}
-      {[...GESELLSCHAFTEN.filter(o => !business || o !== 'kdc'), ...(business ? [] : ['privat' as const])].map((o, k) => <SteuerKarte key={o} ort={o} i={5 + k} />)}
+      {[...GESELLSCHAFTEN.filter(o => !business || istBusinessGesellschaft(o)), ...(business ? [] : ['privat' as const])].map((o, k) => <SteuerKarte key={o} ort={o} i={5 + k} />)}
       <EinstellungenKarte i={9} />
       {!business && <SchwellenKarte i={10} />}
       {name !== null && (

@@ -6,13 +6,16 @@
 
 import type { Darlehen, DarlehenOrt } from './rechenkern';
 import { DARLEHEN_PLAN_GRENZEN, istZinsart } from './darlehen-plan';
-import { finanzOrtName } from '@/lib/einheiten';
+import { finanzOrtName, istBusinessGesellschaft } from '@/lib/einheiten';
 
 export const DARLEHEN_ORTE: DarlehenOrt[] = ['privat', 'kdc', 'ug', 'kdv', 'extern'];
 /** Namen aus der einen Einheitenliste (lib/einheiten.ts); `extern` = außerhalb des Plans (Bank, Dritte). */
 export const darlehenOrtName = (o: DarlehenOrt): string => (o === 'extern' ? 'außerhalb des Plans' : finanzOrtName(o));
-/** Seiten, die zum Business gehören (seit 05.10. nur die Gesellschaften). */
-export const DARLEHEN_BUSINESS: DarlehenOrt[] = ['ug', 'kdv'];
+/**
+ * Seiten, die zum Business gehören: die Business-Gesellschaften der Instanz (lib/einheiten.ts) — seit 05.10. ohne die Selbstständigkeit, es sei denn,
+ * die Instanz stellt sie ins Business (02.11.). Reihenfolge wie DARLEHEN_ORTE.
+ */
+export const DARLEHEN_BUSINESS: DarlehenOrt[] = DARLEHEN_ORTE.filter(o => istBusinessGesellschaft(o));
 export const istDarlehenOrt = (v: unknown): v is DarlehenOrt => typeof v === 'string' && (DARLEHEN_ORTE as string[]).includes(v);
 
 const fin = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);

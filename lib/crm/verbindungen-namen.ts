@@ -13,6 +13,7 @@
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { altSchluessel } from '@/lib/kalender/bezug';
 import type { VerbindungsBestaende, VerbindungsBefund, Schwere } from './verbindungen';
+import { gespeicherterSpace } from '@/lib/make-one/space-regeln';
 
 /** Ein Termin aus dem Kalender-Leser, schon für die fragende Person maskiert (lib/kalender/bezug.ts `maskieren`). */
 export interface NamenTermin { id: string; titel: string; start: string; maskiert?: true }
@@ -44,7 +45,7 @@ export function beispielNamen(
       setze(o.id, text(o.name) ?? text(o.titel) ?? text(o.nummer) ?? text(o.text));
     }
   }
-  for (const a of b.aufgaben?.liste ?? []) if (a.space !== 'privat') setze(a.id, text(a.title));
+  for (const a of b.aufgaben?.liste ?? []) if (gespeicherterSpace(a) !== 'privat') setze(a.id, text(a.title));
   for (const d of b.dateien?.eintraege ?? []) setze(d.id, text(d.titel) ?? text(d.datei?.name));
   // Termine: neue Form `kalender|uid(::RID)` UND alte Form ohne Kalender — maskierte nie.
   for (const t of termine) {

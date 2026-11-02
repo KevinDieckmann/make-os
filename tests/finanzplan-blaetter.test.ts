@@ -10,7 +10,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import type { FinanzDaten } from '@/lib/finanzen/rechenkern';
 import { HAND_FELDER } from '@/lib/finanzen/handwerte';
-import { GESELLSCHAFTEN } from '@/lib/einheiten';
+import { GESELLSCHAFTEN, selbstImBusiness } from '@/lib/einheiten';
 import { blaetterFuer, ZAHNRAD, ABSCHNITTE, type Unterseite } from '@/lib/finanzen/plan/hilfen';
 import { FinanzplanKontext, rechne, type PlanKontext } from '@/components/os/finanzplan/daten';
 import { BlattSeite, ABSCHNITT_INHALT, BLATT_KOPF } from '@/components/os/finanzplan/Blaetter';
@@ -35,7 +35,8 @@ const ALLE: Unterseite[] = [...blaetterFuer('privat').map(b => b.id), ZAHNRAD.id
 describe('Blätter — wenige, flach, alles erreichbar', () => {
   it('höchstens 9 Blätter unter Privat, höchstens 6 unter Business', () => {
     expect(blaetterFuer('privat').length).toBeLessThanOrEqual(9);
-    expect(blaetterFuer('business').length).toBeLessThanOrEqual(6);
+    // 02.11.: Stellt die Instanz die Selbstständigkeit ins Business, hat Business ihr Blatt dazu (dasselbe wie unter Privat, ohne ESt) — sonst 6.
+    expect(blaetterFuer('business').length).toBeLessThanOrEqual(6 + (selbstImBusiness() ? 1 : 0));
   });
   it('jede Ansicht von vor dem 08.10. steht auf einem Blatt (als Kopf oder Abschnitt)', () => {
     const erreichbar = new Set<unknown>([...Object.values(ABSCHNITT_INHALT), ...Object.values(BLATT_KOPF), Lage, LageBusiness]);

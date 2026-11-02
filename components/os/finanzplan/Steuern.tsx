@@ -15,6 +15,7 @@ import { finanzOrtName, type FinanzOrt } from '@/lib/einheiten';
 import { prozent } from '@/lib/finanzen/plan/hilfen';
 import { STEUER_HINWEIS, AUSSCHUETTUNG_STEUER_VORGABE, type Planszenario } from '@/lib/finanzen/szenarien';
 import { nettoTabellePlatzhalter } from '@/lib/finanzen/plan/operationen';
+import { businessPfadErlaubt } from '@/lib/finanzen/plan/sicht';
 import { gesamtquote } from '@/lib/finanzen/ertragsteuer';
 import {
   RECHTSFORM_LABEL, rechtsformVon, steuerFelder, steuerOps, steuerParameter, steuerZeilen, steuernMit, steuerArtenFuer,
@@ -110,8 +111,11 @@ export function SteuerKarte({ ort, offen: offenStart = false, i = 0, szenario }:
   const dTop = imSzenario ? { ...d, steuern: steuernMit(d.steuern, ps?.annahmen.steuern) } : d;
   const rf = rechtsformVon(dTop, ort);
   const ausSatz = ps?.annahmen.ausschuettungSteuer ?? AUSSCHUETTUNG_STEUER_VORGABE;
-  const zeilen = steuerZeilen(dTop, ort, ausSatz);
-  const felder = steuerFelder(dTop, ort, schicht, unter);
+  // Business-Sicht (02.11.): Steuerprofile mit privatem Teil (die Selbstständigkeit — ihre Einkommensteuer läuft gemeinsam unter Privat) zeigen nur, was
+  // der Server dort auch schreiben lässt: dieselbe Regel `businessPfadErlaubt` (lib/finanzen/plan/sicht.ts), keine zweite Liste.
+  const businessOk = (a: SteuerAenderung) => sicht !== 'business' || steuerOps(d, ort, a).every(op => businessPfadErlaubt(op.pfad, d, op.neu) === null);
+  const zeilen = steuerZeilen(dTop, ort, ausSatz).filter(z => !z.schaltbar || businessOk({ art: 'an', steuer: z.art as SteuerArt, wert: !z.an }));
+  const felder = steuerFelder(dTop, ort, schicht, unter).filter(f => businessOk({ art: 'feld', id: f.id, wert: 1 }));
   const sp = steuerParameter(dTop, ort);
   const gelten = zeilen.filter(z => z.an).length;
   const bereichFuer = (id: string): SteuerBereich => (imSzenario ? { art: 'szenario', id } : { art: 'plan' });

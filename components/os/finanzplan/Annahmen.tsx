@@ -8,7 +8,7 @@
 import type { ReactNode } from 'react';
 import { FARBE as C, MIKRO, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift } from '../ui';
-import { finanzOrtName, GESELLSCHAFTEN, type Gesellschaftskennung } from '@/lib/einheiten';
+import { finanzOrtName, GESELLSCHAFTEN, istBusinessGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 import { annahmeGruppen, type AnnahmeFeld } from '@/lib/finanzen/annahmen-felder';
 import { SCHWELLEN_FELDER, SCHWELLEN_VORGABE, schwellenVon, type Schwellen } from '@/lib/finanzen/schwellen';
 import { eur } from '@/lib/finanzen/plan/hilfen';
@@ -57,7 +57,7 @@ export function AnnahmenKarte({ ort, i = 5 }: { ort: Gesellschaftskennung; i?: n
 export function AnnahmenAlle({ i = 3 }: { i?: number }) {
   const { sicht } = usePlan();
   // Business-Sicht (05.10.): nur die Gesellschaften — die Selbstständigkeit gehört zu Privat.
-  const orte = sicht === 'business' ? GESELLSCHAFTEN.filter(o => o !== 'kdc') : GESELLSCHAFTEN;
+  const orte = sicht === 'business' ? GESELLSCHAFTEN.filter(o => istBusinessGesellschaft(o)) : GESELLSCHAFTEN;
   return <>{orte.map((o, k) => <AnnahmenKarte key={o} ort={o} i={i + k} />)}</>;
 }
 

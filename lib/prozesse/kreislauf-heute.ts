@@ -11,6 +11,7 @@
 
 import { WEG } from '@/lib/wege';
 import { tagVon, tagePlus } from '@/lib/zeit';
+import { gespeicherterSpace } from '@/lib/make-one/space-regeln';
 
 export type KreislaufHeuteArt = 'mandate' | 'entwuerfe' | 'mahn-neu' | 'mahn-zu' | 'faelle' | 'laeufe-gestartet' | 'laeufe-beendet' | 'probelaeufe';
 export interface KreislaufHeuteZeile {
@@ -29,7 +30,7 @@ export interface KreislaufHeuteQuellen {
   mandatAuto?: Readonly<Record<string, { am: string; zurueckAm?: string }>>;
   /** Mandat → gehört zu Business? (die Gesellschaft entscheidet, `bereichVon`). Unbekannte Mandate zählen nicht. */
   mandatBusiness: (mandatId: string) => boolean;
-  tasks: readonly { id: string; space?: string; status?: string; createdAt?: string; verlauf?: readonly { am: string; was: string; durch?: string }[] }[];
+  tasks: readonly { id: string; space?: string; spaceId?: string; status?: string; createdAt?: string; verlauf?: readonly { am: string; was: string; durch?: string }[] }[];
   ereignisse: readonly { art: string; am: string; stufe?: string; bereich: string | null }[];
   laeufe: readonly { modus: string; start: string; ende?: string; fall: { art: string; id?: string } }[];
   /** Mandate, die diese Sicht nicht sehen darf (Privat-Arbeits-Einheit ohne Privat-Recht) — ihre Läufe zählen nicht. */
@@ -44,7 +45,7 @@ const istHeute = (iso: string | undefined, heute: string) => !!iso && tagVon(iso
 /** Die Zeilen (siehe Kopf) — eine Null zeigt sich nie: Arten ohne Wirkung fehlen. Rein. */
 export function kreislaufHeute(q: KreislaufHeuteQuellen): KreislaufHeuteZeile[] {
   const { heute } = q;
-  const business = (t: { space?: string }) => t.space === 'business';
+  const business = (t: { space?: string; spaceId?: string }) => gespeicherterSpace(t) === 'business';
   const mandate = Object.entries(q.mandatAuto ?? {}).filter(([id, v]) => !v.zurueckAm && istHeute(v.am, heute) && q.mandatBusiness(id)).length;
   const entwuerfe = q.tasks.filter(t => t.id.startsWith('rv-') && business(t) && istHeute(t.createdAt, heute)).length;
   const mahn = q.tasks.filter(t => t.id.startsWith('mahn-') && business(t));

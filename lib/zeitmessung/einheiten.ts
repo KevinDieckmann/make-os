@@ -19,7 +19,7 @@
 // die Einheit der Aufgabe später gesetzt, zählt sie rückwirkend); der am Block
 // gespeicherte Wert ist Rückfall (Aufgabe gelöscht) bzw. die direkte Wahl.
 
-import { ARBEIT_EINHEITEN_NAMEN, KERN_EINHEITEN, bereichVon, einheitName, privatArbeitsEinheit, type Bereich } from '@/lib/einheiten';
+import { ARBEIT_EINHEITEN_NAMEN, KERN_EINHEITEN, bereichVon, einheitName, istBusinessGesellschaft, privatArbeitsEinheit, selbstArbeitsEinheit, type Bereich } from '@/lib/einheiten';
 import { sauberEinheit } from '@/lib/planung/einheiten';
 import { aufgabeEinheit, EINHEIT_OHNE } from '@/lib/aufgaben/einheit';
 import { spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
@@ -201,7 +201,8 @@ export const nurBusinessBloecke: ArbeitsPruefer = b => teile(b.schluessel).space
  */
 export function arbeitsPruefer(aufgaben?: ReadonlyMap<string, AufgabeKurz> | null, mandate?: ReadonlyMap<string, Pick<MandatKurz, 'einheit'>> | null): ArbeitsPruefer {
   const karte = aufgaben ?? new Map<string, AufgabeKurz>();
-  return b => nurBusinessBloecke(b) || !!privatArbeitsEinheit(einheitVonBlock(b, karte, mandate));
+  // 02.11.: Altbestand — ein Privat-Block der Selbstständigkeit bleibt Arbeit, auch wenn die Instanz sie ins Business stellt.
+  return b => { if (nurBusinessBloecke(b)) return true; const e = einheitVonBlock(b, karte, mandate); return !!privatArbeitsEinheit(e) || !!selbstArbeitsEinheit(e); };
 }
 
 /** Bereich einer Einheiten-Zeile (Anzeige „Privat · …“): eine feste Einheit nach ihrem Bereich, sonst Business. */
@@ -304,7 +305,9 @@ export function zeitJeEinheit(
 export function sichtPruefer(s: Bereich, aufgaben?: ReadonlyMap<string, AufgabeKurz> | null, mandate?: ReadonlyMap<string, Pick<MandatKurz, 'einheit'>> | null): ArbeitsPruefer {
   const karte = aufgaben ?? new Map<string, AufgabeKurz>();
   const privat = (b: FokusBlock) => !!privatArbeitsEinheit(einheitVonBlock(b, karte, mandate));
-  return s === 'business' ? b => nurBusinessBloecke(b) && !privat(b) : privat;
+  // 02.11.: ein alter Privat-Block der Selbstständigkeit gehört zur Sicht Business, wenn die Instanz sie ins Business stellt (ohne Umstellung: privat).
+  const altImBusiness = (b: FokusBlock) => { const g = selbstArbeitsEinheit(einheitVonBlock(b, karte, mandate)); return !!g && istBusinessGesellschaft(g); };
+  return s === 'business' ? b => (nurBusinessBloecke(b) || altImBusiness(b)) && !privat(b) : privat;
 }
 
 /** Nur die Zeilen eines Bereichs (Business: ohne „Privat · …“; Privat: nur die Privat-Einheiten, ohne „ohne Einheit“). Summen bleiben die der Blöcke. */

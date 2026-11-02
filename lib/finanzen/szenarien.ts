@@ -31,7 +31,7 @@ import type { Sprung } from './plan/hilfen';
 import { schwellenVon } from './schwellen';
 import { planMitSzenario, type Formeln } from './handwerte';
 import { eur } from './plan/hilfen';
-import { UG_KURZ, UG_NAME, finanzOrtName, type FinanzOrt, type KernEinheit } from '@/lib/einheiten';
+import { UG_KURZ, UG_NAME, finanzOrtName, selbstImBusiness, type FinanzOrt, type KernEinheit } from '@/lib/einheiten';
 
 export type Rhythmus = 'monatlich' | 'jaehrlich' | 'einmalig';
 export type BausteinArt = 'umsatz' | 'kosten';
@@ -287,7 +287,11 @@ export function auswertung(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[], kdc
   // Runway Privat (05.10., Kevin: „Runway Privat zählt das Konto der Selbstständigkeit mit“): Privatkonten + aufgelaufene Luft + das, was
   // auf dem Konto der Selbstständigkeit frei ist (Konto − Steuerrücklage − offene USt, `frei` der Achse) — die Selbstständigkeit gehört zu
   // Privat. Die Entnahme zählt nicht doppelt: sie verlässt das Konto der Selbstständigkeit und kommt als Luft bei Privat an.
-  for (let m = 1; m <= N; m++) { if (m >= m0) kum += pr[m - 1].luft; privatKonto[m - 1] = pk.summe + kum + (kdc?.[m - 1]?.frei ?? 0); }
+  // 02.11.: Steht die Selbstständigkeit im Business (Instanz-Einstellung), zählt ihr Konto NICHT mehr zu Privat — nur die Entnahme kommt als Luft an;
+  // ihr freies Geld zählt dann im Business (frei.business, Steuer-Rücklage und nächste Zahlung Business).
+  const selbstB = selbstImBusiness();
+  const kdcPrivat = (m: number): number => (selbstB ? 0 : kdc?.[m - 1]?.frei ?? 0);
+  for (let m = 1; m <= N; m++) { if (m >= m0) kum += pr[m - 1].luft; privatKonto[m - 1] = pk.summe + kum + kdcPrivat(m); }
   const runway = {
     ug: runwayAb(m => ug[m - 1].frei < -0.5),
     privat: runwayAb(m => privatKonto[m - 1] < -0.5),
@@ -306,18 +310,18 @@ export function auswertung(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[], kdc
     if (zahl > 0.005) { naechste = { monat: m, betrag: zahl }; break; }
   }
   for (let m = m0; m <= N; m++) {
-    const zahl = ug[m - 1].steuer + ug[m - 1].kdvSt.zahlung;
+    const zahl = ug[m - 1].steuer + ug[m - 1].kdvSt.zahlung + (selbstB ? kdc?.[m - 1]?.st.zahlung ?? 0 : 0);
     if (zahl > 0.005) { naechsteB = { monat: m, betrag: zahl }; break; }
   }
   return {
     m0,
     frei: { gesamt: u0.frei + u0.kdvFrei + (k0?.frei ?? 0) + privat, ug: u0.frei, kdv: u0.kdvFrei, kdc: k0?.frei ?? 0, privat, privatLuft: p0.luft, privatKonten: pk.summe, kontenFehlen: pk.fehlen,
-      business: u0.frei + u0.kdvFrei, privatBereich: privat + (k0?.frei ?? 0) },
+      business: u0.frei + u0.kdvFrei + (selbstB ? k0?.frei ?? 0 : 0), privatBereich: privat + kdcPrivat(m0) },
     runway,
     ziele: { imPlan, knapp, gekippt: staende.length - imPlan - knapp, gesamt: staende.length, staende },
     mindestumsatz: { jetzt: kosten(u0), schnitt12: schnitt(kosten), umsatzSchnitt12: schnitt(u => u.umsatz) },
     steuer: { ruecklage: u0.steuerRuecklage, ruecklageKdv: u0.kdvSt.ruecklage, ruecklageKdc: k0?.steuerRuecklage ?? 0, ruecklageGesamt: u0.steuerRuecklage + u0.kdvSt.ruecklage + (k0?.steuerRuecklage ?? 0), ust: u0.ustOffen + (k0?.ustOffen ?? 0), naechsteZahlung: naechste, ausschuettung: p0.ausschuettungSteuer,
-      ruecklageBusiness: u0.steuerRuecklage + u0.kdvSt.ruecklage, naechsteZahlungBusiness: naechsteB },
+      ruecklageBusiness: u0.steuerRuecklage + u0.kdvSt.ruecklage + (selbstB ? k0?.steuerRuecklage ?? 0 : 0), naechsteZahlungBusiness: naechsteB },
     uebergaenge: { gehaelterNetto: p0.kevinNetto + p0.malinNetto, gehaelterBrutto: u0.kevinBrutto + u0.malinBrutto, ausschuettung: u0.ausschuettung, ausschuettungSteuer: p0.ausschuettungSteuer, ausschuettungNetto: p0.ausschuettung, entnahme: p0.entnahme },
   };
 }
