@@ -47,18 +47,26 @@ export function monatsGrenzen(monat: string): { von: string; bis: string } | nul
  * `tage` 0 = das Mandat läuft in diesem Monat gar nicht. null = kein gültiger Monat „JJJJ-MM“.
  */
 export interface Leistungsmonat { monat: string; von: string; bis: string; tage: number; monatsTage: number; anteilig: boolean }
-export function leistungsmonat(m: Partial<Pick<Mandat, 'start' | 'ende'>>, monat: string): Leistungsmonat | null {
+export function leistungsmonat(m: Partial<Pick<Mandat, 'start' | 'ende' | 'pausen'>>, monat: string): Leistungsmonat | null {
   const g = monatsGrenzen(monat);
   if (!g) return null;
   const von = tagOk(m.start) && m.start > g.von ? m.start : g.von;
   const bis = tagOk(m.ende) && m.ende < g.bis ? m.ende : g.bis;
   const monatsTage = tageZwischen(g.von, g.bis) + 1;
   const tage = von <= bis ? tageZwischen(von, bis) + 1 : 0;
-  return { monat, von, bis, tage, monatsTage, anteilig: tage > 0 && tage < monatsTage };
+  const lm = { monat, von, bis, tage, monatsTage, anteilig: tage > 0 && tage < monatsTage };
+  // Pausen (02.11., Kreislauf Runde 3): pausierte Tage zählen nicht — ganz pausiert = 0 Tage, angebrochen = anteilig (Zeitraum vom ersten bis zum
+  // letzten unpausierten Tag). Ohne Pausen im Monat bit-gleich wie vorher.
+  const pausen = (m.pausen ?? []).filter(p => tagOk(p.von) && p.von <= bis && (!tagOk(p.bis) || p.bis >= von));
+  if (!pausen.length || !tage) return lm;
+  const frei: string[] = [];
+  for (let d = von, n = 0; d <= bis && n < 32; n++, d = plusTage(d, 1)) if (!pausen.some(p => p.von <= d && (!tagOk(p.bis) || d <= p.bis))) frei.push(d);
+  if (!frei.length) return { ...lm, tage: 0, anteilig: false };
+  return { monat, von: frei[0], bis: frei[frei.length - 1], tage: frei.length, monatsTage, anteilig: frei.length < monatsTage };
 }
 
-/** Läuft das Mandat in diesem Monat (mindestens einen Tag)? */
-export const mandatLaeuftIm = (m: Partial<Pick<Mandat, 'start' | 'ende'>>, monat: string) => (leistungsmonat(m, monat)?.tage ?? 0) > 0;
+/** Läuft das Mandat in diesem Monat (mindestens einen Tag, pausierte Tage zählen nicht)? */
+export const mandatLaeuftIm = (m: Partial<Pick<Mandat, 'start' | 'ende' | 'pausen'>>, monat: string) => (leistungsmonat(m, monat)?.tage ?? 0) > 0;
 
 /**
  * Honorar eines Leistungsmonats, wie es am Mandat steht (netto bzw. brutto): angebrochen und Honorar je Monat → Honorar × Tage ÷ Tage

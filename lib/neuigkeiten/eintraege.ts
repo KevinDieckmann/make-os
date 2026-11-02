@@ -73,6 +73,18 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-11-02-18',
+    datum: '2026-11-02',
+    titel: 'Rechnungen folgen dem Ende und den Pausen eines Mandats',
+    kurz: 'Ein beendetes Mandat bekommt seine Rechnungsentwürfe bis zum Ende weiter, der letzte Monat anteilig. Pausierte Monate werden nicht mehr nachträglich abgerechnet.',
+    abschnitte: [
+      { art: 'behoben', punkte: [
+        { text: 'Wer ein Mandat mit einem Ende in der Zukunft beendet, bekommt die Monats-, Quartals- und Tagessatz-Entwürfe bis zum Ende weiter — der letzte Monat anteilig, danach nichts mehr. Raten und Restzahlungen laufen wie geplant weiter.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Nach einer Pause legt der Morgenlauf keine Entwürfe für die pausierten Monate mehr nach. Ein Monat, der nur teilweise pausiert war, wird anteilig abgerechnet.', bereich: 'business', weg: WEG.mandat() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-6',
     datum: '2026-11-02',
     titel: 'Verträge aus Vorlagen',

@@ -178,10 +178,20 @@ export interface Mandat {
    * Rechnung nimmt die echten Tage. Vorgabe: die geplante Menge des Produkts.
    */
   tageJeMonat?: number;
+  /**
+   * Pausen (02.11., Kreislauf Runde 3 — optional, additiv): je Wechsel aktiv → pausiert ein Eintrag `{ von }` (erster pausierter Tag), beim Wechsel zurück
+   * `bis` (letzter pausierter Tag, beide eingeschlossen). Setzt NUR der Server im CRM-Schreibweg (`pausenStempeln`, lib/crm/mandat-pausen.ts) — der Browser
+   * nie. Leistungsmonate zählen pausierte Tage nicht (`leistungsmonat`, lib/crm/mandat-laufzeit.ts): ganz pausierte Monate bekommen keine Rechnung,
+   * angebrochene anteilig. Rückweg: der alte Stand kennt das Feld nicht und verwirft es beim nächsten Speichern (nur die Pausen-Geschichte geht verloren).
+   */
+  pausen?: MandatPause[];
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
 }
+
+/** Eine Pause eines Mandats (02.11.): erster und letzter pausierter Tag (JJJJ-MM-TT, eingeschlossen); ohne `bis` läuft die Pause noch. */
+export interface MandatPause { von: string; bis?: string }
 
 /** Ein Zusatzmodul am Mandat (19.10.): ein Produkt mit Rolle „zusatz“/„beides“, optional mit eigenem Honorar (Cent) oder inklusive. */
 export interface MandatZusatz {
