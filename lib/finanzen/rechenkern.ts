@@ -49,6 +49,7 @@ import { estTarif, jahresSteuer, neuerSteuerrechner, type Steuerparameter, type 
 import type { Formeln } from './handwerte';
 import type { Schwellen } from './schwellen';
 import { UG_KURZ, UG_NAME, finanzOrtName } from '@/lib/einheiten';
+import { darlehenPlan, type DarlehenPlanMonat, type DarlehenZinsart } from './darlehen-plan';
 
 export type Einheit = 'privat' | 'selbststaendigkeit' | 'ug' | 'kdv';
 
@@ -142,10 +143,19 @@ export interface Schritt { id: string; text: string; wer: string; bis: string; e
  * Darlehen zwischen den Einheiten (05.10., Kevin: „Es gibt kein Gesellschafterdarlehen, außer ungefähr 1.500 € privat in der KD Ventures.“):
  * Geber und Nehmer frei wählbar (`extern` = außerhalb des Plans, z. B. eine Bank oder — in der Business-Sicht — eine private Seite).
  * Auszahlung im Monat `aus` (Geber −, Nehmer +; 0 = schon vor Planbeginn geflossen, steckt in den Kontoständen), Rückzahlung im Monat `zurueck`
- * (Nehmer −, Geber +; 0 = offen). Kein Zins, keine Wirkung aufs Ergebnis oder die Steuern — nur Kasse.
+ * (Nehmer −, Geber +; 0 = offen). Ohne Ratenplan kein Zins, keine Wirkung aufs Ergebnis oder die Steuern — nur Kasse.
+ * Ratenplan (02.11., Kevin: „Ja, mit Raten und Zinsen“ — die Regel „Formeln unverändert“ ist NUR dafür aufgehoben): mit `ratenAb` ≥ 1,
+ * `ratenAnzahl` ≥ 1 und `rate` > 0 zahlt der Nehmer Raten nach `darlehenPlan` (lib/finanzen/darlehen-plan.ts) statt einer Rückzahlung im Monat
+ * `zurueck` (der dann nicht zählt). Zinsen (`zinsProzent` p.a., `zinsen` gestundet | laufend) sind Aufwand beim Nehmer und Ertrag beim Geber
+ * (mindern bzw. erhöhen Ergebnis und Steuerbasis der Gesellschaften und der Selbstständigkeit; Privat: nur Kasse, keine Steuer). Ohne diese Felder
+ * rechnet der Kern bit-genau wie vorher. `wartezeit` nur bei Auszahlung vor Planbeginn (`aus` = 0): Monate von der Auszahlung bis vor die 1. Rate.
+ * `vertragId` = Herkunft aus einem Darlehensvertrag (lib/vertraege, „In Finanzen übernehmen“).
  */
 export type DarlehenOrt = 'privat' | 'kdc' | 'ug' | 'kdv' | 'extern';
-export interface Darlehen { id: string; name: string; geber: DarlehenOrt; nehmer: DarlehenOrt; betrag: number; aus: number; zurueck: number; notiz?: string }
+export interface Darlehen {
+  id: string; name: string; geber: DarlehenOrt; nehmer: DarlehenOrt; betrag: number; aus: number; zurueck: number; notiz?: string;
+  zinsProzent?: number; ratenAb?: number; ratenAnzahl?: number; rate?: number; zinsen?: DarlehenZinsart; wartezeit?: number; vertragId?: string;
+}
 /** Protokolleintrag. `pfad` (seit 04.10.) = der geänderte Pfad — damit die Business-Sicht nur Business-Einträge zeigt; ältere Einträge haben keinen. */
 export interface Aenderung {
   wer: string; wann: string; feld: string; alt: string; neu: string; pfad?: string;
@@ -278,7 +288,21 @@ export function darlehenListe(d: Pick<FinanzDaten, 'darlehen' | 'annahmen'>): (D
   if (Number.isFinite(a.darlehenKevin) && a.darlehenKevin > 0) out.push({ id: DARLEHEN_ALT, name: 'Gesellschafterdarlehen (alt)', geber: 'extern', nehmer: 'ug', betrag: a.darlehenKevin, aus: 1, zurueck: Math.max(0, Math.round(a.darlehenRueckMonat || 0)), alt: true });
   return out;
 }
-export interface DarlehenFluss { ein: number[]; aus: number[] }
+/** `zins` je Monat: Ertrag (+) bzw. Aufwand (−) aus Ratenplänen — ohne Ratenplan überall 0. */
+export interface DarlehenFluss { ein: number[]; aus: number[]; zins: number[] }
+/** Hat das Darlehen einen Ratenplan (Raten + optional Zins)? */
+export const hatRatenplan = (l: Darlehen): boolean => (l.ratenAb ?? 0) >= 1 && (l.ratenAnzahl ?? 0) >= 1 && (l.rate ?? 0) > 0;
+/** Wartezeit in Monaten (Auszahlung bis vor die 1. Rate). */
+export const darlehenWartezeit = (l: Darlehen): number => (l.aus >= 1 ? (l.ratenAb ?? 0) - l.aus : Math.max(0, Math.round(l.wartezeit ?? 0)));
+/** Der Plan des Darlehens mit Plan-Monat je Eintrag (`m` = Plan-Monat; vor Planbeginn < 1) — oder null ohne Ratenplan bzw. bei ungültiger Eingabe. */
+export function darlehenRatenplan(l: Darlehen): (DarlehenPlanMonat & { m: number })[] | null {
+  if (!hatRatenplan(l)) return null;
+  const w = darlehenWartezeit(l);
+  const p = darlehenPlan({ betrag: l.betrag, zinsProzent: l.zinsProzent ?? 0, wartezeit: w, ratenAnzahl: l.ratenAnzahl!, rate: l.rate!, zinsen: l.zinsen ?? 'gestundet' });
+  if ('fehler' in p) return null;
+  const start = (l.ratenAb ?? 0) - w;
+  return p.monate.map(x => ({ ...x, m: start + x.k }));
+}
 type DarlehenKasse = Exclude<DarlehenOrt, 'extern'>;
 /** Handwert-Kennung je Seite und Richtung (lib/finanzen/handwerte.ts). Die GmbH zahlt über `ug.darlehen` aus (mit dem Altdarlehen). */
 export const DARLEHEN_HAND: Record<DarlehenKasse, { ein: string; aus: string }> = {
@@ -293,7 +317,7 @@ export const DARLEHEN_HAND: Record<DarlehenKasse, { ein: string; aus: string }> 
  * (bit-genau wie vorher). Ein Handwert in einer Zelle ohne Darlehen hat keine Gegenseite.
  */
 export function darlehenFluesse(d: Pick<FinanzDaten, 'darlehen' | 'annahmen'> & { plan?: Record<string, number> }, N: number): Record<DarlehenKasse, DarlehenFluss> {
-  const leer = (): DarlehenFluss => ({ ein: new Array<number>(N).fill(0), aus: new Array<number>(N).fill(0) });
+  const leer = (): DarlehenFluss => ({ ein: new Array<number>(N).fill(0), aus: new Array<number>(N).fill(0), zins: new Array<number>(N).fill(0) });
   const r: Record<DarlehenKasse, DarlehenFluss> = { privat: leer(), kdc: leer(), ug: leer(), kdv: leer() };
   /** Je Zelle (Ort, Richtung, Monat) die Anteile der Darlehen: Betrag und Gegenseite (Ort + Richtung) — für die Handwert-Weitergabe. */
   const anteile = new Map<string, { b: number; gegen: DarlehenOrt; gegenArt: 'ein' | 'aus' }[]>();
@@ -306,6 +330,18 @@ export function darlehenFluesse(d: Pick<FinanzDaten, 'darlehen' | 'annahmen'> & 
   };
   for (const l of darlehenListe(d)) {
     if (l.aus >= 1) { buche(l.geber, 'aus', l.aus, l.betrag, l.nehmer, l.alt); buche(l.nehmer, 'ein', l.aus, l.betrag, l.geber, l.alt); }
+    const plan = l.alt ? null : darlehenRatenplan(l);
+    if (plan) {
+      for (const x of plan) {
+        if (x.m < 1 || x.m > N) continue;
+        if (x.zahlung) { buche(l.nehmer, 'aus', x.m, x.zahlung, l.geber); buche(l.geber, 'ein', x.m, x.zahlung, l.nehmer); }
+        if (x.zins) {
+          if (l.nehmer !== 'extern') r[l.nehmer].zins[x.m - 1] -= x.zins;
+          if (l.geber !== 'extern') r[l.geber].zins[x.m - 1] += x.zins;
+        }
+      }
+      continue;
+    }
     if (l.zurueck >= 1 && l.zurueck > l.aus) { buche(l.nehmer, 'aus', l.zurueck, l.betrag, l.geber, l.alt); buche(l.geber, 'ein', l.zurueck, l.betrag, l.nehmer, l.alt); }
   }
   // Handwerte: die Gegenseite folgt dem wirksamen Wert.
@@ -331,7 +367,14 @@ export function darlehenFluesse(d: Pick<FinanzDaten, 'darlehen' | 'annahmen'> & 
   return r;
 }
 /** Offener Betrag eines Darlehens am Ende von Plan-Monat m (ausgezahlt und noch nicht zurück). */
-export const darlehenOffen = (l: Darlehen, m: number): number => ((l.aus <= 0 || m >= l.aus) && (l.zurueck <= 0 || m < l.zurueck) ? l.betrag : 0);
+export const darlehenOffen = (l: Darlehen, m: number): number => {
+  const plan = darlehenRatenplan(l);
+  if (!plan) return (l.aus <= 0 || m >= l.aus) && (l.zurueck <= 0 || m < l.zurueck) ? l.betrag : 0;
+  if (l.aus >= 1 && m < l.aus) return 0;
+  let rest = l.betrag;
+  for (const x of plan) if (x.m <= m) rest = x.restschuld;
+  return rest;
+};
 
 /** Handwerte des Steuerrechners für einen Ort und Monat (`<ort>.kst`, `<ort>.steuer`, `<ort>.verlustvortrag` …). */
 const steuerHand = (h: ReturnType<typeof hand>, ort: string, m: number): SteuerHand => (feld, basis) => h(`${ort}.${feld}`, m, basis);
@@ -440,7 +483,9 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz, f?: Formeln):
     const laufend = h('ug.laufend', m, laufendRoh), dLauf = laufend - laufendRoh;
     const kostenRoh = personal + stellen + sach + gruendung + holding + dLauf;
     const kosten = h('ug.kosten', m, kostenRoh), dKost = kosten - kostenRoh;
-    const gewinn = h('ug.gewinn', m, umsatz - kevin - malin - unterstuetzung - stellen - sach - gruendung - holding - dPers - dLauf - dKost);
+    // Darlehenszinsen (02.11., nur mit Ratenplan; 0 → Formel unverändert, bit-genau).
+    const gewinnRoh = umsatz - kevin - malin - unterstuetzung - stellen - sach - gruendung - holding - dPers - dLauf - dKost, zU = dl.ug.zins[i];
+    const gewinn = h('ug.gewinn', m, zU === 0 ? gewinnRoh : gewinnRoh + zU);
     const st0 = stUG(m, gewinn, steuerHand(h, 'ug', m));
     const steuer = st0.zahlung;
     const abgeloest = sz.bjoernAbloesen && sz.exit1.monat > 0 && m >= sz.exit1.monat;
@@ -478,7 +523,8 @@ export function rechneUG(d: FinanzDaten, sz: Szenario, x?: Zusatz, f?: Formeln):
     const kdvAusgaben = h('kdv.ausgaben', m, ausgRoh), dA = kdvAusgaben - ausgRoh;
     const ergRoh = kdvEinnahmen - kdvAusgaben;
     const kdvErgebnis = h('kdv.ergebnis', m, ergRoh), dErg = kdvErgebnis - ergRoh;
-    const kdvGewinn = (kdvUmlage - kdvHolding) + (kdvBjoernEin - kdvTilgung) + (kdvEin - kdvAus) + dE - dA + dErg;
+    const kdvGewinnRoh = (kdvUmlage - kdvHolding) + (kdvBjoernEin - kdvTilgung) + (kdvEin - kdvAus) + dE - dA + dErg, zK = dl.kdv.zins[i];
+    const kdvGewinn = zK === 0 ? kdvGewinnRoh : kdvGewinnRoh + zK;
     const kdvSt0 = stKdv(m, kdvGewinn, steuerHand(h, 'kdv', m));
     const kdvDarlehenEin = h('kdv.darlehenEin', m, dl.kdv.ein[i]), kdvDarlehenAus = h('kdv.darlehenAus', m, dl.kdv.aus[i]);
     // 0-Punkt (05.10.): KD Ventures startet im Stichtag-Monat beim Anfangsbestand der Eröffnung (Handwert `kdv.konto:<m>` gewinnt weiter).
@@ -597,7 +643,8 @@ export function rechneSelbstAchse(d: FinanzDaten, x?: Zusatz, f?: Formeln, ug?: 
     const personal = zx(x?.kdcPersonal, i) * (1 + a.agAnteil) + malinBrutto * (1 + a.agAnteil);
     const sach = zeilen.reduce((s, z) => s + wert(z, m, p), 0) + zx(x?.kdcSach, i);
     const kosten = h('kdc.kosten', m, personal + sach);
-    const gewinn = h('kdc.gewinn', m, umsatz - kosten);
+    const zS = dl.kdc.zins[i];
+    const gewinn = h('kdc.gewinn', m, zS === 0 ? umsatz - kosten : umsatz - kosten + zS);
     const s0 = st(m, gewinn, steuerHand(h, 'kdc', m));
     const nach = h('kdc.ergebnisNach', m, gewinn - s0.summe);
     const entnahme = h('kdc.entnahme', m, zx(x?.kdcEntnahme, i) + zx(x?.kdcEntnahmeAnteil, i) * Math.max(0, nach));

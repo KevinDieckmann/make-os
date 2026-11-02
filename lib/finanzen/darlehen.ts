@@ -5,6 +5,7 @@
 // Keine Beträge oder Namen im Code — die Darlehen trägt der Haushalt ein.
 
 import type { Darlehen, DarlehenOrt } from './rechenkern';
+import { DARLEHEN_PLAN_GRENZEN, istZinsart } from './darlehen-plan';
 import { finanzOrtName } from '@/lib/einheiten';
 
 export const DARLEHEN_ORTE: DarlehenOrt[] = ['privat', 'kdc', 'ug', 'kdv', 'extern'];
@@ -34,13 +35,33 @@ export function pruefeEinDarlehen(roh: unknown, _N = 60): Darlehen | null {
   if (zurueck > 0 && zurueck <= aus) zurueck = 0;   // Rückzahlung vor der Auszahlung gibt es nicht → offen
   const d: Darlehen = { id: r.id, name: text(r.name, 120) ?? 'Darlehen', geber: r.geber, nehmer: r.nehmer, betrag, aus, zurueck };
   const notiz = text(r.notiz, 600); if (notiz) d.notiz = notiz;
+  // Ratenplan (02.11., optional): nur übernehmen, was gesetzt ist — ohne diese Felder bleibt das Darlehen genau wie vorher.
+  const ganz = (v: unknown) => { const n = fin(v); return n === undefined ? undefined : Math.round(n); };
+  const zinsProzent = fin(r.zinsProzent); if (zinsProzent !== undefined && zinsProzent > 0) d.zinsProzent = Math.round(zinsProzent * 10000) / 10000;
+  const ratenAb = ganz(r.ratenAb); if (ratenAb !== undefined && ratenAb !== 0) d.ratenAb = ratenAb;
+  const ratenAnzahl = ganz(r.ratenAnzahl); if (ratenAnzahl !== undefined && ratenAnzahl !== 0) d.ratenAnzahl = ratenAnzahl;
+  const rate = fin(r.rate); if (rate !== undefined && rate > 0) d.rate = Math.round(rate * 100) / 100;
+  if (istZinsart(r.zinsen)) d.zinsen = r.zinsen;
+  const wartezeit = ganz(r.wartezeit); if (wartezeit !== undefined && wartezeit > 0) d.wartezeit = wartezeit;
+  if (typeof r.vertragId === 'string' && /^vtr-[a-z0-9-]{4,60}$/.test(r.vertragId)) d.vertragId = r.vertragId;
   return d;
 }
 /** Monate eines Darlehens außerhalb des Plans (Monat 0 … N) → Meldung, sonst null. Schreibweg und Import antworten damit 400. */
-export function darlehenMonatFehler(l: Pick<Darlehen, 'name' | 'aus' | 'zurueck'>, N: number): string | null {
+export function darlehenMonatFehler(l: Pick<Darlehen, 'name' | 'aus' | 'zurueck'> & Partial<Pick<Darlehen, 'ratenAb' | 'ratenAnzahl' | 'rate' | 'zinsProzent'>>, N: number): string | null {
   const name = l.name ? `„${l.name}“` : 'Ein Darlehen';
   if (l.aus < 0 || l.aus > N) return `${name}: Auszahlung im Monat ${l.aus} liegt außerhalb des Plans (0 = vor Planbeginn, 1 … ${N}).`;
   if (l.zurueck < 0 || l.zurueck > N) return `${name}: Rückzahlung im Monat ${l.zurueck} liegt außerhalb des Plans (0 = offen, 1 … ${N}). Liegt sie später, „offen“ wählen.`;
+  // Ratenplan (02.11.): alle drei Angaben oder keine; erste und letzte Rate im Plan, nie vor der Auszahlung.
+  const teile = [l.ratenAb, l.ratenAnzahl, l.rate].filter(v => v !== undefined).length;
+  if (teile > 0 && teile < 3) return `${name}: Für Raten braucht es Beginn, Anzahl und Rate.`;
+  if (teile === 3) {
+    const ab = l.ratenAb!, n = l.ratenAnzahl!;
+    if (n < 1 || n > DARLEHEN_PLAN_GRENZEN.ratenAnzahl) return `${name}: Anzahl der Raten zwischen 1 und ${DARLEHEN_PLAN_GRENZEN.ratenAnzahl}.`;
+    if (ab < 1 || ab > N) return `${name}: Die erste Rate im Monat ${ab} liegt außerhalb des Plans (1 … ${N}).`;
+    if (ab + n - 1 > N) return `${name}: Die letzte Rate im Monat ${ab + n - 1} liegt nach dem Planende (Monat ${N}).`;
+    if (l.aus >= 1 && ab < l.aus) return `${name}: Die erste Rate liegt vor der Auszahlung.`;
+  }
+  if (l.zinsProzent !== undefined && (l.zinsProzent < 0 || l.zinsProzent > DARLEHEN_PLAN_GRENZEN.zinsProzent)) return `${name}: Zinssatz zwischen 0 und ${DARLEHEN_PLAN_GRENZEN.zinsProzent} % p.a.`;
   return null;
 }
 /** Die Liste säubern — doppelte Kennungen fallen weg, leer → undefined (der Schlüssel entfällt, ältere Stände sehen nichts Neues). */
@@ -52,7 +73,8 @@ export function pruefeDarlehen(roh: unknown, N = 60): Darlehen[] | undefined {
 }
 /** Neues Darlehen (Vorgabe: Privat → KD Ventures, schon vor Planbeginn ausgezahlt, Rückzahlung offen — Betrag trägt der Haushalt ein). */
 export function neuesDarlehen(id: string, teil: Partial<Darlehen> = {}): Darlehen {
-  return { id, name: teil.name ?? 'Darlehen', geber: teil.geber ?? 'privat', nehmer: teil.nehmer ?? 'kdv', betrag: teil.betrag ?? 0, aus: teil.aus ?? 0, zurueck: teil.zurueck ?? 0, ...(teil.notiz ? { notiz: teil.notiz } : {}) };
+  const { id: _i, name: _n, geber: _g, nehmer: _ne, betrag: _b, aus: _a, zurueck: _z, notiz: _no, ...plan } = teil;
+  return { id, name: teil.name ?? 'Darlehen', geber: teil.geber ?? 'privat', nehmer: teil.nehmer ?? 'kdv', betrag: teil.betrag ?? 0, aus: teil.aus ?? 0, zurueck: teil.zurueck ?? 0, ...(teil.notiz ? { notiz: teil.notiz } : {}), ...plan };
 }
 /**
  * Ein Darlehen, wie die Business-Sicht es sieht (05.10.): private Seiten (Privat, Selbstständigkeit) heißen „außerhalb des Plans“ — die

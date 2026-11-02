@@ -6,14 +6,15 @@
 // abhaken) und Kalender & Verträge (Zahlungskalender 8 Wochen, Verträge mit
 // Kündigungsfrist und Ø IST).
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { Home } from 'lucide-react';
 import { schuldAusHaushalt } from '@/lib/finanzen/plan/haushalt-bruecke';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Spalten, Spalte, Haken, LEUCHT } from '../ui';
 import type { Darlehen, DarlehenOrt, Einheit, Posten, Schuld } from '@/lib/finanzen/rechenkern';
-import { tilgungsplan, zahlungskalender, istSchnitt, sollBudget, darlehenListe, darlehenOffen, DARLEHEN_ALT } from '@/lib/finanzen/rechenkern';
+import { tilgungsplan, zahlungskalender, istSchnitt, sollBudget, darlehenListe, darlehenOffen, darlehenRatenplan, hatRatenplan, DARLEHEN_ALT } from '@/lib/finanzen/rechenkern';
+import { betragDeutsch } from '@/lib/finanzen/darlehen-plan';
 import { DARLEHEN_ORTE, DARLEHEN_BUSINESS, darlehenOrtName, darlehenBusinessAenderbar, darlehenFuerBusiness, neuesDarlehen } from '@/lib/finanzen/darlehen';
 import { nurBusinessTermine } from '@/lib/finanzen/plan/sicht';
 import { EINHEIT_LABEL, KAL, monatLabel, tagKurz, plusTage, letzterVoller, neueKennung, postenOffen, personKennung } from '@/lib/finanzen/plan/hilfen';
@@ -101,6 +102,37 @@ export function Schulden() {
   );
 }
 
+/** Raten und Zinsen eines Darlehens (02.11.): „+ Raten“ setzt Beginn, Anzahl und Rate zusammen (einzeln wären sie unvollständig → 400). */
+function RatenZeile({ l, fest }: { l: Darlehen; fest: boolean }) {
+  const { d, aendere } = usePlan();
+  const setze = (feld: keyof Darlehen, alt: unknown, neu: unknown, label: string) => void aendere([{ pfad: `/darlehen/id=${l.id}/${feld}`, alt, neu }], `Darlehen ${l.name} · ${label}`);
+  const plan = darlehenRatenplan(l);
+  if (!hatRatenplan(l)) {
+    if (fest) return null;
+    const ab = Math.min(d.monate.length, Math.max(1, l.aus + 1)), n = Math.max(1, Math.min(12, d.monate.length - ab + 1));
+    return <tr><td colSpan={8} style={TDleise}><KnopfKlein onClick={() => void aendere([
+      { pfad: `/darlehen/id=${l.id}/ratenAb`, neu: ab }, { pfad: `/darlehen/id=${l.id}/ratenAnzahl`, neu: n }, { pfad: `/darlehen/id=${l.id}/rate`, neu: Math.round((l.betrag / n) * 100) / 100 || 1 },
+    ], `Darlehen ${l.name} · Raten`)} titel="Rückzahlung in Raten, mit Zins">+ Raten und Zinsen</KnopfKlein></td></tr>;
+  }
+  const zinsart = l.zinsen ?? 'gestundet';
+  return (
+    <tr>
+      <td colSpan={8} style={{ ...TD, paddingTop: 0 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
+          <span>Raten ab</span>{fest ? <span>{monatLabel(d, l.ratenAb!)}</span> : <MonatWahl wert={l.ratenAb!} onWahl={m => setze('ratenAb', l.ratenAb, m, 'Raten ab')} monate={d.monate} />}
+          <span>Anzahl</span>{fest ? <span>{l.ratenAnzahl}</span> : <ZahlFeld wert={l.ratenAnzahl!} onFertig={v => setze('ratenAnzahl', l.ratenAnzahl, Math.max(1, Math.round(v ?? 1)), 'Anzahl der Raten')} breite={56} titel="Anzahl der Raten" />}
+          <span>Rate</span>{fest ? <Geld v={l.rate!} /> : <ZahlFeld wert={l.rate!} onFertig={v => setze('rate', l.rate, v ?? 0, 'Rate')} breite={84} titel="Rate" />}
+          <span>Zins % p.a.</span>{fest ? <span>{l.zinsProzent ?? 0}</span> : <ZahlFeld wert={l.zinsProzent ?? 0} onFertig={v => setze('zinsProzent', l.zinsProzent, v ? v : undefined, 'Zins')} breite={56} titel="Zins in Prozent pro Jahr" />}
+          {fest ? <span>{zinsart === 'laufend' ? 'monatlich mit der Rate' : 'gestundet bis zur letzten Rate'}</span>
+            : <Auswahl wert={zinsart} onWahl={v => setze('zinsen', l.zinsen, v, 'Zinsen')} optionen={[{ id: 'gestundet', label: 'gestundet bis zur letzten Rate' }, { id: 'laufend', label: 'monatlich mit der Rate' }]} titel="Zinsen" />}
+          {plan && <span>· Zinsen gesamt {betragDeutsch(plan.reduce((s, x) => s + x.zins, 0))} €</span>}
+          {!fest && <KnopfKlein farbe={C.inkDim} onClick={() => void aendere(['ratenAb', 'ratenAnzahl', 'rate', 'zinsProzent', 'zinsen', 'wartezeit'].filter(k => (l as unknown as Record<string, unknown>)[k] !== undefined).map(k => ({ pfad: `/darlehen/id=${l.id}/${k}` })), `Darlehen ${l.name} · ohne Raten`)} titel="Raten entfernen">ohne Raten</KnopfKlein>}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 // ── Darlehen zwischen den Einheiten (05.10.) ─────────────────────────────────
 /**
  * Kevin 05.10.: „Es gibt kein Gesellschafterdarlehen, außer ungefähr 1.500 € privat in der KD Ventures.“ Jedes Darlehen hat Geber und Nehmer;
@@ -127,7 +159,8 @@ function DarlehenKarte() {
             const fest = alt || (business && !darlehenBusinessAenderbar(l));
             const ort = (o: DarlehenOrt, feld: 'geber' | 'nehmer') => (fest ? darlehenOrtName(o) : <Auswahl wert={o} onWahl={v => setze(l, feld, o, v, feld === 'geber' ? 'Geber' : 'Nehmer')} optionen={orte.filter(x => x.id !== (feld === 'geber' ? l.nehmer : l.geber))} titel={feld === 'geber' ? 'Geber' : 'Nehmer'} />);
             return (
-              <tr key={l.id}>
+              <Fragment key={l.id}>
+              <tr>
                 <td style={TD}>{fest ? l.name : <TextFeld wert={l.name} onFertig={v => setze(l, 'name', l.name, v, 'Name')} breite={160} titel="Name" />}{alt && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3, maxWidth: 260 }}>aus den Annahmen (Gesellschafterdarlehen, Geber außerhalb des Plans) — nur eintragen, wenn es ein echtes Darlehen gibt, sonst dort auf 0 setzen</div>}</td>
                 <td style={TD}>{ort(l.geber, 'geber')}</td>
                 <td style={TD}>{ort(l.nehmer, 'nehmer')}</td>
@@ -137,12 +170,14 @@ function DarlehenKarte() {
                 <td style={TDr}><Geld v={darlehenOffen(l, aw.m0)} /></td>
                 <td style={TD}>{fest ? null : <KnopfKlein farbe={C.inkDim} onClick={() => void aendere([{ pfad: `/darlehen/id=${l.id}`, alt: l.name }], `Darlehen entfernt: ${l.name}`)} titel="Darlehen entfernen">−</KnopfKlein>}</td>
               </tr>
+              {!alt && <RatenZeile l={l} fest={fest} />}
+              </Fragment>
             );
           })}
           {!liste.length && <tr><td colSpan={8} style={TDleise}>Keine Darlehen.</td></tr>}
         </tbody>
       </Tabelle>
-      <Hinweis>Auszahlung „vor Planbeginn“ = das Geld ist schon geflossen und steckt in den Kontoständen; im Plan zählt dann nur die Rückzahlung (beim Nehmer hinaus, beim Geber zurück). Darlehen sind nur Kasse — kein Ergebnis, keine Steuer, kein Zins.{business ? ' Darlehen mit privater Seite ändern Sie in der Privat-Sicht.' : ''}</Hinweis>
+      <Hinweis>Auszahlung „vor Planbeginn“ = das Geld ist schon geflossen und steckt in den Kontoständen; im Plan zählt dann nur die Rückzahlung (beim Nehmer hinaus, beim Geber zurück). Ohne Raten sind Darlehen nur Kasse — kein Ergebnis, keine Steuer, kein Zins. Mit Raten zahlt der Nehmer Tilgung und Zins nach Plan; der Zins mindert das Ergebnis des Nehmers und erhöht das des Gebers (Privat: nur Kasse). Hinweis, keine Steuerberatung.{business ? ' Darlehen mit privater Seite ändern Sie in der Privat-Sicht.' : ''}</Hinweis>
     </Karte>
   );
 }
