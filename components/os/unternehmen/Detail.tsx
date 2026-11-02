@@ -23,6 +23,7 @@ import { StatusPille } from './UnternehmenView';
 import { GesellschafterReiter } from './Gesellschafter';
 import { BeteiligungenReiter, VertraegeReiter, UnterlagenReiter } from './Vertraege';
 import { FahrplanKarte } from './Fahrplan';
+import { DarlehenKarte } from './Darlehen';
 import { OrganeReiter } from './Organe';
 import { GueltigeFassungKarte } from './Satzung';
 
@@ -105,6 +106,8 @@ function Steckbrief({ g, daten, schreibe, neuLaden, oeffne }: { g: GAnzeige; dat
         </Karte>
       )}
       {!g.geloeschtAm && <FahrplanKarte g={g} daten={daten} />}
+      {/* Darlehen (02.11.): aus der Finanzplanung, serverseitig nach Rechten/Sicht gefiltert — nur feste Gesellschaften rechnen dort. */}
+      {fest && !g.geloeschtAm && <DarlehenKarte gesellschaft={g.id} />}
       {/* Beschluss-Buch (10.10.): der Steckbrief zeigt die gültige Fassung von Gegenstand und Satzung — Historie unter „Beschlüsse & Satzung“. */}
       {kap && !g.geloeschtAm && <GueltigeFassungKarte g={g} />}
       {/* 0-Punkt (05.10.): Eröffnung mit Stichtag und Anfangsbestand — gepflegt unter Finanzen › Business (eine Quelle). */}

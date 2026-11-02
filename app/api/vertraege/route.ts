@@ -1,5 +1,7 @@
 // ─── Vertrieb › Verträge (01.11.) ────────────────────────────────────────────────────────────────────────────────────
 // GET                       → { vertraege (mit stand), nurEntwuerfe? } · `?pdf=<id>` → PDF (Entwurf: Vorschau mit „ENTWURF“; fertig: festgeschriebene Fassung)
+//                             `?senden=<id>` → Adressen des Vertragspartners + Vorgabe-Text für den Dialog „Vertrag senden“ (sendet nichts)
+//                             `?darlehen=<gesellschaft>` → Karte „Darlehen“ im Steckbrief (Rechte/Sicht der Finanzplanung, lib/vertraege/finanzen.ts)
 // POST { aktion, … }:
 //   anlegen       { vorlageId, gesellschaft?, vorbelegung: { angebotId?, dealId?, mandatId?, kontaktId?, firmaId? } } → Entwurf aus der Vorlage
 //   speichern     { id, stand, felder }           → Entwurf ändern (Stand/409, Grenzen 413, unbekannte Platzhalter 400)
@@ -8,8 +10,11 @@
 //   version       { id }                          → neue Fassung als Entwurf (die alte bleibt festgeschrieben)
 //   status        { id, stand, status }           → versendet · aktiv · beendet · gekuendigt („unterschrieben“ nur über /api/vertraege/unterschrift)
 //   loeschen      { id, stand }                   → nur Entwürfe
+//   senden        { id, stand, postfach, an, betreff, text, uwgBestaetigt?, anfrageId } → per Mail aus einem EIGENEN Business-Postfach mit genau dem PDF
+//                                                    dieses Vertrags (lib/vertraege/versand.ts); danach „versendet“, Akte, Follow-up +7 Tage. Einmal je anfrageId.
+//   finanzen      { id, geber, nehmer, anfrageId? } → unterschriebenes Darlehen in die Finanzplanung übernehmen (lib/vertraege/finanzen.ts) — erst der Klick
 // Zugang: Haushalt des Inhabers (Bestand je Haushalt über `businessHaushaltVon`). Rolle „nur Business“: lesen + Entwürfe — fertigstellen, version,
-// status → 403. Der Dienstweg (ZOE, Takt, Skripte) stellt nie fertig und vermerkt nie „versendet“ (403). Nichts wird versendet.
+// status, senden, finanzen → 403. Der Dienstweg (ZOE, Takt, Skripte) stellt nie fertig, sendet nie und vermerkt nie „versendet“ (403). Gesendet wird nur per Klick.
 
 import { NextResponse } from 'next/server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
@@ -19,6 +24,7 @@ import { businessHaushaltVon } from '@/lib/zugang/konto-sicht-server';
 import { istDienst } from '@/lib/zugang/dienst';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { einmalig } from '@/lib/store/anfragen';
 import { VertragFehler, entwurfPdf, mitStand, vertraegeLaden, vertragAnlegen, vertragFertigstellen, vertragLoeschen, vertragSpeichern, vertragStatus, vertragVersion } from '@/lib/vertraege/server';
 
 export const runtime = 'nodejs';
@@ -41,7 +47,25 @@ export async function GET(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   try {
-    const pdf = new URL(req.url).searchParams.get('pdf');
+    const such = new URL(req.url).searchParams;
+    const darlehen = such.get('darlehen');
+    if (darlehen !== null) {
+      // Unternehmen › Steckbrief › „Darlehen“ (02.11.): Rechte und Sicht der FINANZPLANUNG (aus dem Konto) — serverseitig gefiltert.
+      const { darlehenFuerGesellschaft } = await import('@/lib/vertraege/finanzen');
+      const zeilen = await darlehenFuerGesellschaft({ haushalt: z.haushalt, gesellschaft: darlehen, req });
+      if (!zeilen) return NextResponse.json({ ok: false, fehler: 'Kein Zugang zur Finanzplanung.' }, { status: 403 });
+      leseZugriff(req, 'finanzplan', { anzahl: zeilen.length });
+      return NextResponse.json({ ok: true, darlehen: zeilen }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+    const ziele = such.get('senden');
+    if (ziele !== null) {
+      // Dialog „Vertrag senden“: Adressen des Vertragspartners + Vorgabe-Text (sendet nichts).
+      if (!/^vtr-[a-z0-9-]{4,60}$/.test(ziele)) return fehler('senden: Kennung vtr-….', 400);
+      const { sendeZiele } = await import('@/lib/vertraege/versand');
+      leseZugriff(req, 'vertraege', { ids: [ziele] });
+      return NextResponse.json({ ok: true, ...(await sendeZiele(z.haushalt, ziele)) }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+    const pdf = such.get('pdf');
     if (pdf) {
       if (!/^vtr-[a-z0-9-]{4,60}$/.test(pdf)) return fehler('pdf: Kennung vtr-….', 400);
       leseZugriff(req, 'vertraege', { ids: [pdf] });
@@ -57,17 +81,17 @@ export async function GET(req: Request) {
   } catch (e) { return ausFehler(e); }
 }
 
-const NUR_PERSON = new Set(['fertigstellen', 'status', 'version']);
+const NUR_PERSON = new Set(['fertigstellen', 'status', 'version', 'senden', 'finanzen']);
 
 export async function POST(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
-  let b: { aktion?: string; id?: unknown; stand?: unknown; felder?: unknown; vorlageId?: unknown; gesellschaft?: unknown; vorbelegung?: unknown; trotzdem?: unknown; status?: unknown };
+  let b: { aktion?: string; id?: unknown; stand?: unknown; felder?: unknown; vorlageId?: unknown; gesellschaft?: unknown; vorbelegung?: unknown; trotzdem?: unknown; status?: unknown; postfach?: unknown; an?: unknown; betreff?: unknown; text?: unknown; uwgBestaetigt?: unknown; anfrageId?: unknown; geber?: unknown; nehmer?: unknown };
   try { b = await jsonBegrenzt(req, 256 * 1024); } catch (e) { return jsonZuGross(e) ?? fehler('Kein JSON.', 400); }
   const aktion = String(b.aktion ?? '');
-  if (NUR_PERSON.has(aktion) && istDienst(req)) return fehler('Fertigstellen, Status und Version nur per Klick einer Person — nie der Dienstweg.', 403);
+  if (NUR_PERSON.has(aktion) && istDienst(req)) return fehler('Fertigstellen, Senden, Status, Version und die Übernahme in die Finanzen nur per Klick einer Person — nie der Dienstweg.', 403);
   if (NUR_PERSON.has(aktion) && z.nurBusiness) return fehler('Für dieses Konto nur Entwürfe.', 403, { grund: 'nur-entwurf' });
   const wer = werAus(req);
   const id = typeof b.id === 'string' ? b.id : '';
@@ -84,9 +108,30 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, vertrag: mitStand(r.vertrag), pdf: r.pdf, ...(r.mail ? { mail: r.mail } : {}) });
       }
       case 'version': return NextResponse.json({ ok: true, vertrag: mitStand(await vertragVersion({ ...basis, id })) });
-      case 'status': return NextResponse.json({ ok: true, vertrag: mitStand(await vertragStatus({ ...basis, id, stand: b.stand, status: b.status })) });
+      case 'status': {
+        const v = await vertragStatus({ ...basis, id, stand: b.stand, status: b.status });
+        // Übernommenes Darlehen: beendet/gekündigt → offene Raten verschwinden aus der Liquidität (bezahlte bleiben).
+        if (v.finanzen) { const { ratenAbgleichen } = await import('@/lib/vertraege/finanzen'); await ratenAbgleichen(v, wer).catch(e => console.error('[vertraege] Raten', (e as Error)?.message)); }
+        return NextResponse.json({ ok: true, vertrag: mitStand(v) });
+      }
       case 'loeschen': await vertragLoeschen({ haushalt: z.haushalt, id, stand: b.stand, wer }); return NextResponse.json({ ok: true });
-      default: return fehler('aktion: anlegen, speichern, fertigstellen, version, status oder loeschen.', 400);
+      case 'senden': {
+        const { vertragSenden } = await import('@/lib/vertraege/versand');
+        const r = await einmalig('vertrag-senden', b.anfrageId, async () => {
+          try { return await vertragSenden({ ...basis, id, stand: b.stand, postfach: b.postfach, an: b.an, betreff: b.betreff, text: b.text, uwgBestaetigt: b.uwgBestaetigt === true, wer }); }
+          catch (e) { if (e instanceof VertragFehler) return { status: e.status, body: { ok: false, fehler: e.message, ...e.extra } }; throw e; }
+        }, undefined, { wer: z.person });
+        return NextResponse.json(r.body, { status: r.status });
+      }
+      case 'finanzen': {
+        const { vertragInFinanzen } = await import('@/lib/vertraege/finanzen');
+        const r = await einmalig<Record<string, unknown>>('vertrag-finanzen', b.anfrageId, async () => {
+          try { return { status: 200, body: { ok: true, ...(await vertragInFinanzen({ ...basis, id, geber: b.geber, nehmer: b.nehmer, req, wer })) } }; }
+          catch (e) { if (e instanceof VertragFehler) return { status: e.status, body: { ok: false, fehler: e.message, ...e.extra } }; throw e; }
+        }, undefined, { wer: z.person });
+        return NextResponse.json(r.body, { status: r.status });
+      }
+      default: return fehler('aktion: anlegen, speichern, fertigstellen, version, status, loeschen, senden oder finanzen.', 400);
     }
   } catch (e) { return ausFehler(e); }
 }

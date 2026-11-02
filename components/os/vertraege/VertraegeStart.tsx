@@ -5,7 +5,7 @@
 // Adresse `?s=angebot&a=vertraege` (lib/crm/adresse.ts `vertragLink`): ohne `k` die Liste (mit Vorbelegung aus `angebot`/`deal`/`mandat`/
 // `kontakt`/`firma` der Dialog „Vertrag erstellen“), mit `k` der Entwurf (Maske) bzw. der fertige Vertrag (Ansicht).
 // Schritte der Maske: Vorlage → Gesellschaft (Absender, nur Business) → Vertragspartner (Firma/Kontakt aus dem CRM, neu anlegen möglich) → Felder →
-// Paragraphen an/ab und anpassen (Abweichung markiert) → PDF-Vorschau → Fertigstellen (Nummer, PDF als Beleg). Nichts wird versendet.
+// Paragraphen an/ab und anpassen (Abweichung markiert) → PDF-Vorschau → Fertigstellen (Nummer, PDF als Beleg). Versendet wird nur per Klick in „Vertrag senden“ (02.11.).
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,6 +23,7 @@ import {
   type VertragStatus, type VorlageFeld,
 } from '@/lib/vertraege/modell';
 import { senden, unterschriftHochladen, useVertraege, useVorlagen, type VertragMitStand } from './daten';
+import { DarlehenVorschau, FinanzenKarte, SendenKarte, TextMitTabelle } from './VertragExtras';
 
 export interface VertraegeStartProps {
   api: CrmApi;
@@ -214,6 +215,7 @@ function Maske({ v, api, daten, vorlagen, onListe }: { v: VertragMitStand; api: 
           })}
         </Liste>
       </Karte>
+      <DarlehenVorschau v={v} />
       <Karte>
         <Ueberschrift>Fertigstellen</Ueberschrift>
         {fehlt.length > 0 && <Hinweis art="achtung" titel="Noch nicht fertig">{fehlt.join(' ')}</Hinweis>}
@@ -242,6 +244,7 @@ function Ansicht({ v, daten, onOeffnen, onListe }: { v: VertragMitStand; daten: 
   const betreff = `${v.titel} ${v.nummer ?? ''}`.trim();
   const text = `${v.anrede === 'Du' ? 'Hallo' : 'Guten Tag'},\n\nanbei ${v.anrede === 'Du' ? 'dein' : 'Ihr'} Vertrag ${v.nummer ?? ''} zur Unterschrift.\n\nViele Grüße\n${v.absender?.firmierung ?? ''}`;
   return (
+    <>
     <Karte>
       <Ueberschrift rechts={<Knopf leise onClick={onListe}>Alle Verträge</Knopf>}>{`${v.titel} · ${v.nummer ?? ''}`}</Ueberschrift>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -252,7 +255,7 @@ function Ansicht({ v, daten, onOeffnen, onListe }: { v: VertragMitStand; daten: 
       {meldung && <Hinweis art={meldung.art} rolle="alert">{meldung.text}</Hinweis>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
         <Knopf leise onClick={() => pdfLaden(v.id)}>PDF</Knopf>
-        {v.status === 'fertig' && <Knopf leise href={mailtoLink(undefined, betreff, text)}>Mail-Entwurf öffnen</Knopf>}
+        {v.status === 'fertig' && <Knopf leise href={mailtoLink(undefined, betreff, text)}>Mail-Entwurf (eigenes Programm)</Knopf>}
         {(STATUS_WEITER[v.status] ?? []).map(s => <Knopf key={s} leise onClick={() => status(s)}>{s === 'versendet' ? 'Ist versendet' : s === 'aktiv' ? 'Aktiv setzen' : s === 'beendet' ? 'Beendet' : 'Gekündigt'}</Knopf>)}
         {!daten.nurEntwuerfe && <Knopf leise onClick={async () => {
           const a = await senden<{ vertrag: VertragMitStand }>('/api/vertraege', { aktion: 'version', id: v.id });
@@ -275,12 +278,15 @@ function Ansicht({ v, daten, onOeffnen, onListe }: { v: VertragMitStand; daten: 
           {v.fassung.map((p, i) => (
             <div key={i} style={{ marginBottom: 10 }}>
               <b style={{ fontSize: TYP.bedien, color: C.ink }}>{[p.nr, p.titel].filter(Boolean).join(' ')}</b>
-              <div style={{ ...klein, whiteSpace: 'pre-wrap' }}>{p.text}</div>
+              <TextMitTabelle text={p.text} stil={klein} />
             </div>
           ))}
         </div>
       )}
       {v.angebotId && <div style={{ ...klein, marginTop: 8 }}><Knopf leise href={angebotLink({ angebotId: v.angebotId })}>Zum Angebot</Knopf></div>}
     </Karte>
+    {!daten.nurEntwuerfe && <SendenKarte v={v} onVertrag={daten.uebernehmen} />}
+    {!daten.nurEntwuerfe && <FinanzenKarte v={v} onVertrag={daten.uebernehmen} />}
+    </>
   );
 }

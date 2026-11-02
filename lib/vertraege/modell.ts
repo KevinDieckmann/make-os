@@ -11,6 +11,7 @@
 // Hinweis, keine Rechtsberatung: jede Vorlage und jeder Vertrag trägt `VERTRAG_HINWEIS`.
 
 import type { Gesellschaftskennung } from '@/lib/einheiten';
+import { DARLEHEN_GERECHNET, darlehenAusWerten, darlehenPlatzhalter, istDarlehenVertrag } from './darlehen';
 
 export const VERTRAG_HINWEIS = 'Vorlage, keine Rechtsberatung — vor Verwendung prüfen (lassen).';
 
@@ -55,7 +56,7 @@ export interface VorlageFeld { schluessel: string; label: string; typ: FeldTyp; 
  * Feste Platzhalter — gefüllt aus dem Register (Absender), der CRM-Kartei (Vertragspartner), dem Katalog bzw. Angebot (Leistung) und den
  * Standardfeldern jedes Vertrags. Ein Platzhalter, der hier nicht steht und kein eigenes Feld der Vorlage ist, ist ein Fehler.
  */
-export const FESTE_PLATZHALTER: readonly { schluessel: string; label: string; quelle: 'absender' | 'partner' | 'leistung' | 'vertrag' }[] = [
+export const FESTE_PLATZHALTER: readonly { schluessel: string; label: string; quelle: 'absender' | 'partner' | 'leistung' | 'vertrag' | 'gerechnet' }[] = [
   { schluessel: 'absender.firmierung', label: 'Absender: Firmierung', quelle: 'absender' },
   { schluessel: 'absender.anschrift', label: 'Absender: Anschrift', quelle: 'absender' },
   { schluessel: 'absender.vertretung', label: 'Absender: vertreten durch', quelle: 'absender' },
@@ -66,7 +67,11 @@ export const FESTE_PLATZHALTER: readonly { schluessel: string; label: string; qu
   { schluessel: 'leistung.titel', label: 'Leistung: Titel', quelle: 'leistung' },
   { schluessel: 'leistung.beschreibung', label: 'Leistung: Beschreibung', quelle: 'leistung' },
   { schluessel: 'vertrag.nummer', label: 'Vertragsnummer', quelle: 'vertrag' },
+  // Gerechnet (02.11.): aus den Darlehens-Feldern (lib/vertraege/darlehen.ts) — nie ein Eingabefeld.
+  { schluessel: DARLEHEN_GERECHNET.zinsenGesamt, label: 'Darlehen: Zinsen gesamt (gerechnet)', quelle: 'gerechnet' },
+  { schluessel: DARLEHEN_GERECHNET.tilgungsplan, label: 'Darlehen: Zins- und Tilgungsplan (gerechnet)', quelle: 'gerechnet' },
 ];
+const GERECHNET = new Set<string>(Object.values(DARLEHEN_GERECHNET));
 /** Standardfelder jedes Vertrags (in der Maske immer da; Pflicht, sobald ein aktiver Paragraph sie nutzt). */
 export const STANDARD_FELDER: readonly VorlageFeld[] = [
   { schluessel: 'verguetung', label: 'Vergütung', typ: 'text', pflicht: false },
@@ -302,6 +307,10 @@ export interface Vertrag {
   ampelBeimFertig?: AmpelStand['stufe'];
   abweichendBeimFertig?: number;
   versendetAm?: string;
+  /** Über welches Postfach (maskiert) — nur, wenn MAKE OS ihn gesendet hat (lib/vertraege/versand.ts). */
+  versendetUeber?: string;
+  /** Darlehen in die Finanzplanung übernommen (Kennung des Darlehens, am, von) — nur der Server (lib/vertraege/finanzen.ts). */
+  finanzen?: { darlehenId: string; am: string; von: string; geber?: 'privat' | 'kdc' | 'ug' | 'kdv' | 'extern'; nehmer?: 'privat' | 'kdc' | 'ug' | 'kdv' | 'extern' };
   unterschriebenAm?: string;
   unterschriftDateiId?: string;
   registerVertragId?: string;
@@ -412,7 +421,9 @@ export function platzhalterWerte(v: Pick<Vertrag, 'werte' | 'felder'>, k: FuellK
     'leistung.titel': k.leistung?.titel ?? '', 'leistung.beschreibung': k.leistung?.beschreibung ?? '', 'vertrag.nummer': k.nummer ?? '',
   };
   const typen = new Map([...STANDARD_FELDER, ...v.felder].map(f => [f.schluessel, f.typ]));
-  for (const [s, t] of Object.entries(v.werte)) w[s] = typen.get(s) === 'datum' ? datumText(t) : t;
+  for (const [s, t] of Object.entries(v.werte)) if (!GERECHNET.has(s)) w[s] = typen.get(s) === 'datum' ? datumText(t) : t;
+  // Gerechnete Platzhalter (Darlehen) — aus den rohen Werten, nie aus einer Eingabe.
+  Object.assign(w, darlehenPlatzhalter(v.werte));
   return w;
 }
 /** Platzhalter füllen — was leer ist, bleibt als `{{…}}` stehen (wird von `fertigstellenFehlt` gemeldet, nie leer gedruckt). */
@@ -441,7 +452,18 @@ export function fertigstellenFehlt(v: Vertrag, k: FuellKontext): string[] {
     }
   }
   const label = (s: string) => FESTE_PLATZHALTER.find(x => x.schluessel === s)?.label ?? [...STANDARD_FELDER, ...v.felder].find(f => f.schluessel === s)?.label ?? s;
-  for (const s of leer) raus.push(`„${label(s)}“ ist leer, steht aber im Vertrag ({{${s}}}).`);
+  // Darlehensvertrag (02.11.): Raten × Anzahl = Betrag, Enddatum = Monat der letzten Rate — sonst ein Satz (→ 400). Gerechnete Platzhalter
+  // melden sich nur, wenn sie ohne Darlehens-Felder nicht rechenbar sind (fehlende Pflichtfelder stehen schon oben).
+  const dl = istDarlehenVertrag(v) ? darlehenAusWerten(v.werte) : null;
+  if (dl && 'fehler' in dl) raus.push(...dl.fehler);
+  for (const s of leer) {
+    if (GERECHNET.has(s)) {
+      if (!dl) raus.push(`„${label(s)}“ wird aus den Darlehens-Feldern gerechnet — die Vorlage hat sie nicht.`);
+      else if ('leer' in dl) raus.push(`„${label(s)}“ wird gerechnet, sobald Darlehensbetrag, Auszahlung, erste Rate, Anzahl der Raten und Rate eingetragen sind.`);
+      continue;
+    }
+    raus.push(`„${label(s)}“ ist leer, steht aber im Vertrag ({{${s}}}).`);
+  }
   return raus;
 }
 
@@ -472,7 +494,7 @@ export function naechsteVertragsnummer(liste: readonly Pick<Vertrag, 'gesellscha
 /** Neue Version (rein): Entwurf mit Bezug auf den Vorgänger, ohne festgeschriebene Felder. */
 export function neueVersion(alt: Vertrag, basis: { id: string; jetzt: string; person: string }): Vertrag {
   const { nummer: _n, lauf: _l, fertigAm: _f, fertigVon: _fv, absender: _a, partner: _p, fassung: _fa, pruefsumme: _s, pdfDateiId: _d, ampelBeimFertig: _am, abweichendBeimFertig: _ab,
-    versendetAm: _ve, unterschriebenAm: _u, unterschriftDateiId: _ud, registerVertragId: _r, beendetAm: _b, nachfolgerId: _nf, ...rest } = alt;
+    versendetAm: _ve, versendetUeber: _vu, finanzen: _fi, unterschriebenAm: _u, unterschriftDateiId: _ud, registerVertragId: _r, beendetAm: _b, nachfolgerId: _nf, ...rest } = alt;
   return { ...rest, id: basis.id, status: 'entwurf', version: alt.version + 1, vorgaengerId: alt.id, angelegt: basis.jetzt, angelegtVon: basis.person, geaendert: basis.jetzt, geaendertVon: basis.person };
 }
 

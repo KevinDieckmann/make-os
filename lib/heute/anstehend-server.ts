@@ -70,6 +70,21 @@ export function dankeAnstehend(crm: { events: Parameters<typeof dankeZeilen>[0][
   return Array.from(je.entries()).map(([id, l]) => ({ id: `danke-${id}`, n: dankeOffen(l), eventTitel: l[0].event.titel, href: WEG.netzwerken({ bericht: id }) })).filter(d => d.n > 0);
 }
 
+/**
+ * Darlehensverträge, die unterschrieben sind, aber noch nicht in der Finanzplanung stehen (02.11.) — ein Hinweis mit Weg zum Vertrag, wo der
+ * Klick „In Finanzen übernehmen“ wartet. Nur für volle Mitglieder des Haushalts des Inhabers (nur sie dürfen übernehmen); nie ein Betrag.
+ */
+async function darlehenHinweise(person: string, heute: string): Promise<Anstehend['fristen']> {
+  const { privatFinanzZugangFuer } = await import('@/lib/finanzen/haushalt/zugriff');
+  const z = await privatFinanzZugangFuer(person);
+  if (!z) return [];
+  const [{ darlehenOhneFinanzen }, { vertragLink }] = await Promise.all([import('@/lib/vertraege/finanzen'), import('@/lib/crm/adresse')]);
+  return (await darlehenOhneFinanzen(z.haushalt)).map(v => ({
+    id: `vertrag-finanzen-${v.id}`, art: 'vertrag' as const, tag: heute, titel: `Darlehen ${v.nummer ?? ''} in die Finanzen übernehmen`.replace(/\s+/g, ' '),
+    unter: 'Vorschlag — erst der Klick übernimmt', href: vertragLink({ vertragId: v.id }), inTagen: 0, business: true as const,
+  }));
+}
+
 /** Rückfall (4.8): ohne Liste der Eingeschränkten fallen alle echten Follow-ups weg, deren Person die verarbeitbare Kartei nicht kennt. */
 function ohneSichtbareKennung(crm: { followups?: { kontaktId?: string }[] }, kontakte: readonly { id: string }[]): Set<string> {
   const da = new Set(kontakte.map(k => k.id));
@@ -83,7 +98,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
   const vorlauf = einst?.kuendigungVorlaufTage ?? 14;
   // Unlesbarer Konten-Bestand → wie „nur Business“ (fail-closed, wie der Fluss).
   const nurBusiness = await sicher(privatAusgeblendetFuer(person), true);
-  const [gelesen, kontakte, crm, fristen, buchungen, vorschlaege, geburtstage, ausgeblendet] = await Promise.all([
+  const [gelesen, kontakte, crm, fristen, buchungen, vorschlaege, geburtstage, ausgeblendet, darlehen] = await Promise.all([
     einst ? sicher(termineLesen(einst, tagPlus(heute, -4), tagPlus(heute, 2)), null) : Promise.resolve(null),
     sicher(kontakteFuerVerarbeitung(), []),
     sicher(ladeCrm(), null),
@@ -95,6 +110,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     // 4.8 (08.10.): Follow-ups eingeschränkter Personen nie in Glocke/Heute — die verarbeitbare Kartei kennt sie nicht, also die Kennungen.
     // Scheitert das Lesen, zeigt die Liste lieber KEINE echten Follow-ups ohne bekannte Person (siehe unten), statt Namen zu verraten.
     sicher<Set<string> | null>(eingeschraenkteKennungen(), null),
+    nurBusiness ? Promise.resolve([]) : sicher(darlehenHinweise(person, heute), []),
   ]);
   const sicht = (gelesen?.termine ?? []).map(t => maskieren(t, person));
   const kalenderVon = new Map(sicht.map(t => [t.id, t.kalender]));
@@ -111,7 +127,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     nachbereiten: nachbereitenAnstehend(nachbereitung(kontakte, heute, person, zeiten, jetztWand, crm?.followups)),
     nachbereitZeiten: Object.fromEntries(Object.entries(zeiten).filter(([k]) => verwiesen.has(k))),
     // Dazu (N5): besuchte Events, bei denen wir „angemeldet“ sind, aber noch kein Termin im Kalender steht — sonst fährt niemand hin, der es im Kalender sieht.
-    fristen: [...fristenAnstehend(fristen, person, heute, vorlauf), ...(crm ? eventsOhneTermin(crm.events, heute, person).map(x => ({ id: `event-ohne-termin-${x.id}`, art: 'event' as const, tag: x.tag, titel: `Event „${x.titel}“: angemeldet, aber kein Termin im Kalender`, href: WEG.besuch(x.id), inTagen: x.inTagen, business: true as const })) : [])],
+    fristen: [...fristenAnstehend(fristen, person, heute, vorlauf), ...(crm ? eventsOhneTermin(crm.events, heute, person).map(x => ({ id: `event-ohne-termin-${x.id}`, art: 'event' as const, tag: x.tag, titel: `Event „${x.titel}“: angemeldet, aber kein Termin im Kalender`, href: WEG.besuch(x.id), inTagen: x.inTagen, business: true as const })) : []), ...darlehen],
     followups: crm ? followupsAnstehend(faellige(kontakte, crm, heute, { horizont: 0, wertelisten: crm.wertelisten, ausgeblendet: ausgeblendet ?? ohneSichtbareKennung(crm, kontakte) }), person, mitAufgabe, zeiten) : [],
     buchungen,
     vorschlaege,
@@ -131,6 +147,6 @@ export async function anstehendStand(jetzt: Date = new Date()): Promise<string> 
   // F2 N9: alle Quellen von `anstehendLesen` — Bauplan-Etappen (`backlog`), Steuer-Vorlage (`steuern`), Familie (Geburtstage,
   // Wichtige Tage mit Geschenk-Vorlauf) — sonst bliebe das ETag nach einer Änderung dort stehen.
   // 08.10.: Meilensteine an eigenen Zielen hängen an Konten (teilen) und Zielen — beide zählen mit.
-  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'finanzplan', 'meilensteine', 'ziele', 'konten', 'backlog', 'steuern', 'zoe-stapel', ...(h ? [`buchung--${h}`, familieName(h)] : [])];
+  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'finanzplan', 'meilensteine', 'ziele', 'konten', 'backlog', 'steuern', 'zoe-stapel', ...(h ? [`buchung--${h}`, familieName(h), `vertraege--${h}`] : [])];
   return `${wandzeit(jetzt).slice(0, 15)}:${await sicher(speicherStand(namen), '0')}`;
 }

@@ -61,7 +61,26 @@ export async function vertragPdf(d: VertragDokument, opt: { erstellt: Date; logo
     seite.drawText(s(t), { x, y: yy, size: groesse, font: o.fett ? fb : f, color: o.farbe ?? TINTE });
   const platz = (h: number) => { if (y - h < UNTEN) neueSeite(); };
   const absatz = (t: string, groesse: number, o: { fett?: boolean; farbe?: ReturnType<typeof rgb>; x?: number; breite?: number } = {}) => {
+    let vorherTabelle = false;
     for (const roh of String(t).split('\n')) {
+      // Zeilen mit Tabulator = Tabelle (z. B. der gerechnete Zins- und Tilgungsplan): erste Spalte links, übrige rechtsbündig;
+      // Kopfzeile und „Summe“ fett.
+      if (roh.includes('\t')) {
+        const zellen = roh.split('\t');
+        const fett = !vorherTabelle || /^summe$/i.test(zellen[0].trim());
+        const schrift = fett ? fb : f, gr = groesse - 0.5;
+        const ersteB = BREIT * 0.28, restB = (BREIT - ersteB) / Math.max(1, zellen.length - 1);
+        platz(gr * 1.4); y -= gr * 1.4;
+        zellen.forEach((z, i) => {
+          const t2 = s(z.trim());
+          if (!t2) return;
+          if (i === 0) text(t2, (o.x ?? RAND), y, gr, { fett, farbe: o.farbe });
+          else text(t2, (o.x ?? RAND) + ersteB + restB * i - schrift.widthOfTextAtSize(t2, gr), y, gr, { fett, farbe: o.farbe });
+        });
+        vorherTabelle = true;
+        continue;
+      }
+      vorherTabelle = false;
       if (!roh.trim()) { platz(groesse); y -= groesse * 0.7; continue; }
       for (const z of umbrechen(s(roh), o.fett ? fb : f, groesse, o.breite ?? BREIT)) { platz(groesse * 1.45); y -= groesse * 1.45; if (z) text(z, o.x ?? RAND, y, groesse, o); }
     }
