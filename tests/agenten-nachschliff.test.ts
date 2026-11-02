@@ -320,7 +320,7 @@ describe('(4) medien_suchen: Dateinamen, Album-Titel, Notizen sind fremder Text'
 describe('(5) `einmalig` überall mit Person', () => {
   it('Beleg übernehmen: dieselbe anfrageId aus einer anderen Sitzung → 409 ohne Inhalt, nichts doppelt', async () => {
     const route = (await import('@/app/api/beleg/uebernehmen/route')) as unknown as { POST: H };
-    const body = { ziel: 'buchung', partner: 'BELEG-PARTNER-MARKE', betrag: 12.5, datum: '2026-10-01', kategorie: 'Material', anfrageId: 'beleg-nachschliff-0001' };
+    const body = { ziel: 'buchung', firma: 'kdv', partner: 'BELEG-PARTNER-MARKE', betrag: 12.5, datum: '2026-10-01', kategorie: 'Material', anfrageId: 'beleg-nachschliff-0001' };
     const a = await rufe(route.POST, '/api/beleg/uebernehmen', sitzung('person-a'), body);
     expect(a.status, JSON.stringify(a.d)).toBe(200);
     const b = await rufe(route.POST, '/api/beleg/uebernehmen', sitzung('person-b'), body);

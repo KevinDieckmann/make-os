@@ -38,7 +38,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from './Rich';
-import { Chip, Knopf, Segmente, feld, LEUCHT } from './ui';
+import { Chip, Knopf, Segmente, Wahl, feld, LEUCHT } from './ui';
+import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
 import { KuerzelKugel, headFarbe } from './agenten/Avatar';
 import { useChatKontext } from './chat/useChatKontext';
 import { ansprechpartnerFuer, CHAT_WAHL_TEXT, type ChatHead, type ChatWahl, type PartnerSchluessel } from '@/lib/agenten/kontext-head';
@@ -184,6 +185,8 @@ export function ZoePanel() {
   const [beleg, setBeleg] = useState<Beleg | null>(null);
   const [belegFehler, setBelegFehler] = useState<string | null>(null);
   const [belegGebucht, setBelegGebucht] = useState<string | null>(null);
+  // 02.11. (Buchhaltung): die Gesellschaft des Belegs wählt die Person — Pflicht, nie still eine feste Gesellschaft.
+  const [belegFirma, setBelegFirma] = useState<Gesellschaftskennung | null>(null);
   const [ueberDatei, setUeberDatei] = useState(false);
   // Eröffnung ohne Lagebericht: neutral, ohne feste Anrede — den Namen kennt ZOE erst aus dem Konto (`anredeSatz` im Gespräch).
   const [briefing, setBriefing] = useState('**Ich bin da.** Frag mich, lass mich planen, oder schick mich los.');
@@ -320,7 +323,7 @@ export function ZoePanel() {
   /** Gespräch sofort auf die Platte — Regel: gleicher Stand beim nächsten Reingucken. */
   /** Datei einlesen und von ZOE auswerten lassen. Schreibt noch nichts. */
   async function belegLesen(f: File) {
-    setBelegFehler(null); setBeleg(null); setBelegGebucht(null);
+    setBelegFehler(null); setBeleg(null); setBelegGebucht(null); setBelegFirma(null);
     setBelegLaeuft(f.name);
     try {
       const base64: string = await new Promise((ok, fehl) => {
@@ -345,12 +348,13 @@ export function ZoePanel() {
   /** Erst jetzt schreiben — die Person hat die Zahlen gesehen. */
   async function belegUebernehmen(ziel: 'buchung' | 'rechnung') {
     if (!beleg) return;
+    if (!belegFirma) { setBelegFehler('Bitte zuerst die Gesellschaft wählen, zu der der Beleg gehört.'); return; }
     setBelegLaeuft('speichern');
     try {
       const r = await fetch('/api/beleg/uebernehmen', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ziel, partner: beleg.partner, datum: beleg.datum,
+          ziel, firma: belegFirma, partner: beleg.partner, datum: beleg.datum,
           // brutto/netto/Satz getrennt — die Route rechnet über lib/finanzen/ust.ts (netto ist nie brutto).
           betragBrutto: beleg.betragBrutto, betragNetto: beleg.betragNetto, ustSatz: beleg.ustSatz,
           kategorie: beleg.kategorie, zweck: beleg.zweck,
@@ -812,11 +816,15 @@ export function ZoePanel() {
                 Nicht sicher gelesen: {beleg.unsicher.join(' · ')} — bitte prüfen.
               </div>
             )}
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, marginBottom: 5 }}>Gehört zu</div>
+            <div className="ui-pillen" aria-label="Gesellschaft des Belegs">
+              {KERN_EINHEITEN.map(e => <Wahl key={e.id} klein an={belegFirma === e.id} onClick={() => setBelegFirma(e.id)}>{e.label}</Wahl>)}
+            </div>
             <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-              <Knopf onClick={() => belegUebernehmen('buchung')} aus={belegLaeuft === 'speichern'} leise={beleg.richtung === 'ausgang'}>
+              <Knopf onClick={() => belegUebernehmen('buchung')} aus={belegLaeuft === 'speichern' || !belegFirma} leise={beleg.richtung === 'ausgang'}>
                 Als Ausgabe buchen
               </Knopf>
-              <Knopf onClick={() => belegUebernehmen('rechnung')} aus={belegLaeuft === 'speichern'} leise={beleg.richtung !== 'ausgang'}>
+              <Knopf onClick={() => belegUebernehmen('rechnung')} aus={belegLaeuft === 'speichern' || !belegFirma} leise={beleg.richtung !== 'ausgang'}>
                 Als Rechnung führen
               </Knopf>
               <Knopf leise onClick={() => setBeleg(null)}>Verwerfen</Knopf>

@@ -39,10 +39,22 @@ export async function gegenbuchungAnlegen(r: Parameters<typeof stornoBuchungFuer
  * Die Buchung zur Rechnung anlegen, wenn es sie noch nicht gibt (Kennung `bu-re-<id>`). Steht derselbe Zahlungseingang schon aus einem
  * Kontoauszug da (noch ohne Bezug), wird er verknüpft statt verdoppelt (`verknuepft`). `nummer` = Rechnungsnummer (für den Verwendungszweck).
  */
-export async function buchungAnlegen(b: RechnungsBuchung, opt: { nummer?: string } = {}): Promise<'neu' | 'vorhanden' | 'verknuepft'> {
-  let ergebnis: 'neu' | 'vorhanden' | 'verknuepft' = 'vorhanden';
+export async function buchungAnlegen(b: RechnungsBuchung, opt: { nummer?: string; buchungId?: string } = {}): Promise<'neu' | 'vorhanden' | 'verknuepft' | 'ungueltig'> {
+  let ergebnis: 'neu' | 'vorhanden' | 'verknuepft' | 'ungueltig' = 'vorhanden';
   await updateJson<{ buchungen: Gespeichert[] }>('buchungen', cur => {
     const liste = Array.isArray(cur?.buchungen) ? cur!.buchungen : [];
+    // 02.11. (Buchhaltung, Abgleich Zahlung ↔ Rechnung): die Person hat den Eingang gewählt — genau DIESE Buchung wird verknüpft (gleiche
+    // Gesellschaft, Eingang, noch ohne Rechnung). Passt sie nicht → 'ungueltig', nichts geschrieben (der Aufrufer schreibt dann auch die Rechnung nicht).
+    if (opt.buchungId) {
+      const gewaehlt = liste.find(x => x.id === opt.buchungId);
+      if (gewaehlt && gewaehlt.rechnungId === b.rechnungId) return cur ?? { buchungen: liste };
+      if (!gewaehlt || gewaehlt.ort !== b.ort || !(Number(gewaehlt.betrag) > 0) || gewaehlt.rechnungId || eingangVon(liste, b.rechnungId)) {
+        ergebnis = 'ungueltig';
+        return cur ?? { buchungen: liste };
+      }
+      ergebnis = 'verknuepft';
+      return { ...(cur ?? {}), buchungen: liste.map(x => (x === gewaehlt ? { ...x, rechnungId: b.rechnungId } : x)) };
+    }
     if (liste.some(x => x.id === b.id) || eingangVon(liste, b.rechnungId)) return cur ?? { buchungen: liste };
     const bank = liste.filter((x): x is BusinessBuchung => ausAuszug(x) && x.ort === b.ort && !x.rechnungId && !(x as BusinessBuchung).beleg);
     const ziel = naechsterUmsatz(

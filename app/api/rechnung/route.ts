@@ -191,7 +191,7 @@ export async function POST(req: Request) {
       // Zahlungseingang (27.10.): Status + Buchung in EINER Sperre (lib/finanzen/rechnung/bezahlt-server.ts) — auch Konten „nur Business“ für ihre Gesellschaften.
       case 'bezahlt': {
         if (!id) return fehler('id fehlt.', 400);
-        const e = await rechnungBezahltVermerken({ id, am: b.am, stand: b.stand, sicht: z.sicht, wer });
+        const e = await rechnungBezahltVermerken({ id, am: b.am, stand: b.stand, sicht: z.sicht, wer, ...(b.buchungId !== undefined ? { buchungId: b.buchungId } : {}) });
         if (!e.ok) return fehler(e.fehler, e.status, e.aktuell ? { aktuell: e.aktuell } : {});
         return NextResponse.json({ ok: true, rechnung: mitFassung(e.rechnung), schonBezahlt: e.schonBezahlt, buchung: e.buchung });
       }

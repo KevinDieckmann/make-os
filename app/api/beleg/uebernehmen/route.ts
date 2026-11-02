@@ -16,7 +16,7 @@ import { belegBetrag, euroText } from '@/lib/finanzen/beleg-betrag';
 import { einmalig, type Antwort } from '@/lib/store/anfragen';
 import { neueKennung } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
-import { gehoertZuPrivat } from '@/lib/einheiten';
+import { gehoertZuPrivat, istGesellschaft } from '@/lib/einheiten';
 import { ausAuszug } from '@/lib/finanzen/kontoauszug/plan';
 import { centAus, naechsterUmsatz } from '@/lib/finanzen/zahlung-abgleich';
 
@@ -60,8 +60,10 @@ async function uebernehmen(b: {
   // Belege aus dem Chat sind Firmen-Belege. Private gehören in den Haushalt
   // (Finanzen › Privat), nicht in die Business-Buchungen.
   if (String(b.firma ?? '').toLowerCase() === 'privat') return antwort({ ok: false, error: 'Private Belege bitte unter Finanzen › Privat erfassen — hier landen nur Firmen-Belege.' }, 400);
-  // Die eine Einheitenliste (28.09.): kdc · kdv · ug; ohne Angabe wie bisher KD Ventures.
-  const firma = b.firma === 'kdc' || b.firma === 'ug' ? b.firma : 'kdv';
+  // Die eine Einheitenliste (28.09.): die Gesellschaft ist Pflicht (02.11., Buchhaltung) — vorher landete ein Beleg ohne Angabe still bei einer
+  // festen Gesellschaft. Jetzt: ohne bzw. mit unbekannter Gesellschaft 400, nichts geschrieben.
+  if (!istGesellschaft(b.firma)) return antwort({ ok: false, error: 'Bitte die Gesellschaft wählen, zu der der Beleg gehört — nichts gebucht.' }, 400);
+  const firma = b.firma;
   const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(b.datum ?? '')) ? String(b.datum) : localDay();
   const zweck = String(b.zweck ?? '').slice(0, 200) || partner;
 

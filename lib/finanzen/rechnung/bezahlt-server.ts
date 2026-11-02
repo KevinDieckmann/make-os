@@ -15,7 +15,7 @@ import { istBusinessGesellschaft } from '@/lib/einheiten';
 class KeinSchreiben extends Error {}
 
 export type BezahltAntwort =
-  | { ok: true; rechnung: Rechnung; schonBezahlt: boolean; buchung: { id: string; gebucht: 'neu' | 'vorhanden' | 'verknuepft' | null } | null }
+  | { ok: true; rechnung: Rechnung; schonBezahlt: boolean; buchung: { id: string; gebucht: 'neu' | 'vorhanden' | 'verknuepft' | 'ungueltig' | null } | null }
   | { ok: false; status: number; fehler: string; aktuell?: Rechnung & { fassung: string } };
 
 /**
@@ -23,12 +23,15 @@ export type BezahltAntwort =
  * sonst 404 wie eine unbekannte Rechnung (nichts verraten). `am` = Tag des Eingangs (JJJJ-MM-TT, Vorgabe heute; nicht in der Zukunft,
  * nicht vor dem Rechnungsdatum).
  */
-export async function rechnungBezahltVermerken(p: { id: string; am?: unknown; stand?: unknown; sicht?: 'privat' | 'business'; wer?: Wer; heute?: string }): Promise<BezahltAntwort> {
+export async function rechnungBezahltVermerken(p: { id: string; am?: unknown; stand?: unknown; sicht?: 'privat' | 'business'; wer?: Wer; heute?: string; buchungId?: unknown }): Promise<BezahltAntwort> {
   const heute = p.heute ?? localDay();
   const am = typeof p.am === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.am) ? p.am : heute;
   const stand = typeof p.stand === 'string' && p.stand ? p.stand : undefined;
   let erg: BezahltErgebnis | null = null;
-  let gebucht: 'neu' | 'vorhanden' | 'verknuepft' | null = null;
+  let gebucht: 'neu' | 'vorhanden' | 'verknuepft' | 'ungueltig' | null = null;
+  // 02.11. (Buchhaltung): optional der Bank-Eingang, den die Person in der Arbeitsliste gewählt hat — nur Kennungs-Form, geprüft in der Sperre.
+  const buchungId = typeof p.buchungId === 'string' && /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/.test(p.buchungId) ? p.buchungId : undefined;
+  if (p.buchungId !== undefined && !buchungId) return { ok: false, status: 400, fehler: 'Unzulässige Buchungs-Kennung — nichts gespeichert.' };
   let vorher: Rechnung | undefined;
   try {
     await updateJsonAsync<FinanzplanFile>('finanzplan', async current => {
@@ -40,7 +43,10 @@ export async function rechnungBezahltVermerken(p: { id: string; am?: unknown; st
       const e = bezahltAnwenden(f, p.id, am, stand, heute);
       erg = e;
       if (!e.ok) throw new KeinSchreiben();
-      if (e.buchung) gebucht = await buchungAnlegen(e.buchung, { ...(e.rechnung.nummer ? { nummer: e.rechnung.nummer } : {}) });
+      if (buchungId && e.schonBezahlt) { erg = { ok: false, status: 409, fehler: 'Die Rechnung ist schon bezahlt — nichts verknüpft.', aktuell: e.rechnung }; throw new KeinSchreiben(); }
+      if (buchungId && !e.buchung) { erg = { ok: false, status: 409, fehler: 'Diese Rechnung hat keinen Betrag — nichts verknüpft.' }; throw new KeinSchreiben(); }
+      if (e.buchung) gebucht = await buchungAnlegen(e.buchung, { ...(e.rechnung.nummer ? { nummer: e.rechnung.nummer } : {}), ...(buchungId ? { buchungId } : {}) });
+      if (gebucht === 'ungueltig') { erg = { ok: false, status: 409, fehler: 'Diese Buchung passt nicht (andere Gesellschaft, kein Eingang oder schon einer Rechnung zugeordnet) — nichts gespeichert.' }; throw new KeinSchreiben(); }
       return e.schonBezahlt ? current : e.datei;
     });
   } catch (err) {
@@ -58,7 +64,7 @@ export async function rechnungBezahltVermerken(p: { id: string; am?: unknown; st
   if (!e.schonBezahlt) await import('@/lib/ereignisse/quellen').then(q => q.rechnungBezahltEreignis(e.rechnung)).catch(() => 0);
   // Kreislauf Geld (29.10., B6): offene Mahnaufgaben dieser Rechnung sind erledigt — auch bei „schon bezahlt“ (räumt Reste auf; ohne offene schreibt es nichts).
   await import('./kreislauf').then(k => k.nachRechnungBezahlt(e.rechnung)).catch(() => undefined);
-  return { ok: true, rechnung: e.rechnung, schonBezahlt: e.schonBezahlt, buchung: e.buchung ? { id: e.buchung.id, gebucht } : null };
+  return { ok: true, rechnung: e.rechnung, schonBezahlt: e.schonBezahlt, buchung: e.buchung ? { id: buchungId ?? e.buchung.id, gebucht } : null };
 }
 
 /** Für Leser, die nach dem Vermerken den ganzen Stand brauchen. */
