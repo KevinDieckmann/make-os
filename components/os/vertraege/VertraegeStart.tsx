@@ -7,7 +7,7 @@
 // Schritte der Maske: Vorlage → Gesellschaft (Absender, nur Business) → Vertragspartner (Firma/Kontakt aus dem CRM, neu anlegen möglich) → Felder →
 // Paragraphen an/ab und anpassen (Abweichung markiert) → PDF-Vorschau → Fertigstellen (Nummer, PDF als Beleg). Versendet wird nur per Klick in „Vertrag senden“ (02.11.).
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileSignature } from 'lucide-react';
 import type { CrmApi } from '../crm/daten';
@@ -131,15 +131,22 @@ function Maske({ v, api, daten, vorlagen, onListe }: { v: VertragMitStand; api: 
   const firmen = useMemo(() => (api.crm?.stand.firmen ?? []).map(f => ({ id: f.id, label: f.name })), [api.crm]);
   const kontakte = useMemo(() => (api.kontakte ?? []).filter(k => !v.firmaId || k.firmaId === v.firmaId).map(k => ({ id: k.id, label: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() || k.email || k.id })), [api.kontakte, v.firmaId]);
   const ampel = vorlagen.find(x => x.id === v.vorlageId)?.ampel;
-  const aendern = async (felder: Record<string, unknown>) => {
-    const a = await senden<{ vertrag: VertragMitStand; aktuell?: VertragMitStand }>('/api/vertraege', { aktion: 'speichern', id: v.id, stand: v.stand, felder });
-    if (a.ok) { daten.uebernehmen(a.d.vertrag); setMeldung(null); return true; }
-    if (a.status === 409 && a.d.aktuell) daten.uebernehmen(a.d.aktuell as VertragMitStand);
+  // Schreiben nacheinander, Stand immer aus der letzten Server-Antwort (03.11.): zwei Felder kurz hintereinander verlassen schickte sonst beide mit
+  // demselben alten Stand — das zweite kam mit 409 „Nichts gespeichert“ zurück, obwohl der Text im Feld stehen blieb.
+  const standRef = useRef(v.stand);
+  const kette = useRef<Promise<unknown>>(Promise.resolve());
+  useEffect(() => { standRef.current = v.stand; }, [v.stand]);
+  const nacheinander = <T,>(fn: () => Promise<T>): Promise<T> => { const p = kette.current.then(fn, fn); kette.current = p.catch(() => undefined); return p; };
+  const aendern = (felder: Record<string, unknown>) => nacheinander(async () => {
+    const a = await senden<{ vertrag: VertragMitStand; aktuell?: VertragMitStand }>('/api/vertraege', { aktion: 'speichern', id: v.id, stand: standRef.current, felder });
+    if (a.ok) { standRef.current = a.d.vertrag.stand; daten.uebernehmen(a.d.vertrag); setMeldung(null); return true; }
+    if (a.status === 409 && a.d.aktuell) { standRef.current = (a.d.aktuell as VertragMitStand).stand; daten.uebernehmen(a.d.aktuell as VertragMitStand); }
     setMeldung({ art: 'kritisch', text: `${a.d.fehler ?? 'Nicht gespeichert.'} Nichts gespeichert.` });
     return false;
-  };
+  });
   const fertigstellen = async (trotzdem = false) => {
-    const a = await senden<{ vertrag: VertragMitStand }>('/api/vertraege', { aktion: 'fertigstellen', id: v.id, stand: v.stand, trotzdem });
+    await nacheinander(async () => undefined); // erst alles Offene speichern
+    const a = await senden<{ vertrag: VertragMitStand }>('/api/vertraege', { aktion: 'fertigstellen', id: v.id, stand: standRef.current, trotzdem });
     if (a.ok) { daten.uebernehmen(a.d.vertrag); return; }
     if (a.status === 409 && a.d.warnungen?.length) {
       if (await r.bestaetigen({ titel: 'Trotzdem fertigstellen?', text: `${a.d.warnungen.join('\n')}\n\n${VERTRAG_HINWEIS}`, ja: 'Trotzdem fertigstellen' })) await fertigstellen(true);
@@ -225,7 +232,8 @@ function Maske({ v, api, daten, vorlagen, onListe }: { v: VertragMitStand; api: 
           <Knopf leise onClick={() => pdfLaden(v.id)}>PDF-Vorschau</Knopf>
           <Knopf leise onClick={async () => {
             if (!(await r.bestaetigen({ titel: 'Entwurf löschen?', text: 'Der Entwurf wird entfernt. Fertige Verträge bleiben immer erhalten.', ja: 'Löschen', gefahr: true }))) return;
-            const a = await senden('/api/vertraege', { aktion: 'loeschen', id: v.id, stand: v.stand });
+            await nacheinander(async () => undefined);
+            const a = await senden('/api/vertraege', { aktion: 'loeschen', id: v.id, stand: standRef.current });
             if (a.ok) { daten.entfernen(v.id); onListe(); } else setMeldung({ art: 'kritisch', text: a.d.fehler ?? 'Nicht gelöscht.' });
           }}>Entwurf löschen</Knopf>
         </div>
