@@ -158,3 +158,18 @@ describe('Branche, Technik, neue Steckbrief-Felder', () => {
     expect(s?.presse).toHaveLength(5);
   });
 });
+
+describe('Steckbrief: EU-Projekte, Vertriebsweg, Zertifikate, Region', () => {
+  it('nimmt nur bekannte Werte, begrenzt Listen, prüft den Wikidata-Link', async () => {
+    const { steckbriefSaeubern } = await import('@/lib/crm/icp-firma');
+    const s = steckbriefSaeubern({
+      euProjekte: { anzahl: 3, foerderung: 1234567.8, laufend: 9, koordinator: 1, titel: ['A', 'B', 'C', 'D'] },
+      vertriebsweg: ['Demo/Termin', 'Erfunden'], zertifikate: ['ISO 27001', 'ISO 99999'], messen: Array.from({ length: 12 }, (_, i) => `Messe ${i}`),
+      sprachen: ['de', 'en', 'deutsch'], bundesland: 'Berlin', belege: true, international: false,
+      mutter: 'Beispiel Holding', wikidata: 'https://www.wikidata.org/wiki/Q42', gemessenAm: AM });
+    expect(s?.euProjekte).toEqual({ anzahl: 3, foerderung: 1234568, laufend: 3, koordinator: 1, titel: ['A', 'B', 'C'] });
+    expect(s).toMatchObject({ vertriebsweg: ['Demo/Termin'], zertifikate: ['ISO 27001'], sprachen: ['de', 'en'], bundesland: 'Berlin', belege: true, international: false, mutter: 'Beispiel Holding' });
+    expect(s?.messen).toHaveLength(10);
+    expect(steckbriefSaeubern({ bundesland: 'Atlantis', wikidata: 'https://evil.example.invalid/Q1', euProjekte: { anzahl: 0 }, gemessenAm: AM })).toBeUndefined();
+  });
+});
