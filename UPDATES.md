@@ -4,6 +4,41 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 02.11.2026 — Buchhaltung: Arbeitsliste, Regeln, Entnahmen, Export (nur lokal — Branch `buchhaltung`; „Was ist neu“ u-2026-11-02-24)
+Kevin 02.11.: „die komplette Buchhaltung in der App sauber machen“. Finanzen › Buchungen (Privat und Business, dieselbe `BuchungenView`) ist eine Arbeitsliste:
+Filter (Gesellschaft, Konto, Monat/Zeitraum, Kategorie, „nicht zugeordnet“, Suche), Sortierung, Seiten statt der 300er-Grenze, Mehrfachauswahl für die Kategorie;
+je Buchung Kategorie · Notiz · Gesellschaft · Rechnung/Mandat derselben Gesellschaft (`PATCH /api/state/buchungen?sicht=` mit `{op:'teil', id, stand, felder}`,
+veraltet → 409 mit aktueller Zeile, > 200 → 413). Reiter „Zu prüfen (n)“ (nach Gegenseite, Passt/Ändern, Fragen-Chips, Bewirtung mit Anlass + Teilnehmer,
+Beleg-Hinweis, „Alle ohne Frage bestätigen“) und „Monatssummen“ (nur Anzeige). Unten „Werkzeuge“: Umbuchung prüfen, Zahlung passt zu Rechnung, Regeln,
+Einlesen und Ausgeben (Paket + CSV).
+- **Regeln** `buchungs-regeln--<haushalt>` (EINE Schreibstelle `lib/finanzen/buchhaltung/server.ts`, Register mit Angaben): Gegenseite/Zweck → Kategorie je
+  Gesellschaft; beim Import angewandt, rückwirkend nur Vorschau → Klick (`rueckwirkend-vorschau`/`-anwenden` mit Stand je Zeile); **Hand gewinnt** (`kategorieHand`).
+- **Entnahme/Einlage statt Umbuchung** (`lib/finanzen/buchhaltung/gegenkonto.ts`, Bereich über die Rechtsart — nie kdc fest): Einzelunternehmen ↔ Privat =
+  Privatentnahme/-einlage, Kapitalgesellschaft ↔ Privat = `zuordnen: gesellschafter` („Gesellschafterdarlehen oder Ausschüttung — bitte zuordnen“), zwischen
+  Gesellschaften = Verrechnung. Automatisch nur bei NEUEN Importen; gespeicherte Umbuchungen nur als Vorschlag per Klick (die Haushalts-Seite bleibt unverändert).
+- **Zahlung ↔ Rechnung** (`lib/finanzen/buchhaltung/zahlung-rechnung.ts`, rein): Vorschlag nur bei Rechnungsnummer oder Kundenname im Zweck, gleiche
+  Gesellschaft, nicht vor dem Rechnungsdatum, Betrag genau / ±0,5 % / Teilbetrag; „Als bezahlt vermerken“ → `POST /api/rechnung {aktion:'bezahlt', id, am, buchungId}`
+  verknüpft GENAU diese Buchung (passt sie nicht → 409, nichts geändert). Teilbeträge nur „Nur verknüpfen“, nie bezahlt. Nie automatisch.
+- **Export** `GET /api/finanzen/buchhaltung/export?sicht=&orte=&von=&bis=` (Semikolon + BOM, Formel-Anfänge neutralisiert, IBAN maskiert, Lese-Protokoll,
+  Dienstweg 403, nur Gesellschaften der Sicht). Kein DATEV.
+- **Business-Konten** (`finanzRecht: 'business'`) sehen/bearbeiten nur Buchungen der Business-Gesellschaften — serverseitig (`?sicht=`, Wächter in
+  tests/buchhaltung-route.test.ts). **Beleg ohne Gesellschaft → 400** (`/api/beleg/uebernehmen`; ZOE-Fenster: Pillen „Gehört zu“, ohne Wahl gesperrt).
+- **Kontoauszug:** CSV-Statement-Export der Bank je Unterkonto; leere Unterkonten → Hinweis „nichts zu tun“.
+- **Paket `make-buchhaltung-paket` v1** (`lib/finanzen/buchhaltung/paket.ts`, `POST /api/finanzen/buchhaltung {aktion:'paket-vorschau'|'paket-uebernehmen'}`):
+  `{art, version:1, erstellt, regeln:[{gesellschaft, muster:{gegenseite|zweck}, kategorie, notiz?}], eintraege:[{gesellschaft, konto, datum, betragCent, gegenseite,
+  kategorie?, notiz?, frage?, beleg?, bewirtung?}]}` — ordnet vorhandene Buchungen zu (Gesellschaft + Konto + Tag + Betrag), Hand nie überschrieben, idempotent,
+  Vorschau zuerst, 409 bei fremdem Stand mit neuer Vorschau. Kategorien nur aus `lib/finanzen/buchhaltung/kategorien.ts`.
+- **Neue optionale Felder an `Buchung`** (alle additiv): `notiz`, `mandatId`, `kategorieHand`, `regel`, `zuordnen`, `pruefung {status, vorschlag?, frage?, antwort?,
+  geprueftAm?, geprueftVon?}`, `bewirtung {anlass, teilnehmer}`, `belegHinweis`. Neuer Bestand `buchungs-regeln--<haushalt>`. Neue Routen `finanzen/buchhaltung`,
+  `finanzen/buchhaltung/export` (Register). **Offen:** `pruefung.geprueftVon` ist ein Personenfeld im geteilten Bestand `buchungen` (Konto löschen tilgt es noch
+  nicht); Hinweis „n zu prüfen“ in Steht an/Glocke nicht gebaut.
+- **Rückweg:** der alte Stand kennt die neuen Felder nicht und verwirft sie beim nächsten Speichern einer Buchung (Kategorien bleiben — sie sind ein vorhandenes
+  Feld); `buchungs-regeln--*` bleibt liegen und stört nicht. Vor einem Rückweg Sicherung (wie immer).
+- **Nach dem Upload — drei Schritte:** (1) Je Bankkonto den CSV-Export in der Konten-Karte (Business › Liquidität bzw. Privat › Konten & Buchungen) am Konto über
+  „Kontoauszug einlesen“ hochladen (leere Unterkonten melden „nichts zu tun“). (2) Finanzen › Buchungen › Werkzeuge › „Einlesen und Ausgeben“ → Paket-Datei wählen → Vorschau
+  ansehen → „Übernehmen“. (3) Malin geht Finanzen › Buchungen › „Zu prüfen“ durch (Passt/Ändern, Fragen beantworten, Bewirtung ergänzen, zum Schluss
+  „Alle ohne Frage bestätigen“).
+
 ## 31.10.2026 — ICP-Kampagnen: Start-ups, innovative Unternehmer, Scale-ups (nur lokal — Branch `icp-startups`, Basis `welle-a-firmen`)
 Drei neue Profile im Funde-Modul mit je eigener Kampagne, Segment, Label und Ansprache; ICP-Raster und Lead-Score als Daten (lib/funde/icp.ts); ICP und
 Steckbrief strukturiert an der Firma (lib/crm/icp-firma.ts). Kein neuer Bestand, keine neue Route; neue optionale Felder `Firma.icp`, `Firma.steckbrief`,

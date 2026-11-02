@@ -33,6 +33,31 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-24',
+    datum: '2026-11-02',
+    titel: 'Buchhaltung: Arbeitsliste, Regeln, Prüfen und Export',
+    kurz: 'Die Buchungen sind jetzt eine echte Arbeitsliste: filtern, sortieren, je Buchung Kategorie, Notiz, Rechnung und Gesellschaft ändern. Regeln ordnen wiederkehrende Gegenseiten selbst ein, „Zu prüfen“ führt durch alles Offene, und jede Gesellschaft lässt sich als Liste ausgeben.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Finanzen › Buchungen: Filter nach Gesellschaft, Konto, Monat oder Zeitraum, Kategorie, „nicht zugeordnet“ und Suche; Seiten statt einer festen Höchstzahl; mehrere Buchungen auf einmal einer Kategorie zuordnen.', bereich: 'alle', weg: WEG.buchungen() },
+        { text: 'Buchung antippen: Kategorie, Notiz, Gesellschaft, passende Rechnung oder Mandat derselben Gesellschaft setzen. Hat jemand anderes die Buchung inzwischen geändert, erscheint ein Hinweis statt still zu überschreiben.', bereich: 'alle' },
+        { text: '„Regel lernen“: Gegenseite oder Verwendungszweck → Kategorie, je Gesellschaft. Neue Kontoauszüge werden damit eingeordnet; für schon gespeicherte Buchungen erst eine Vorschau, dann ein Klick. Von Hand gesetzte Kategorien bleiben immer stehen.', bereich: 'alle' },
+        { text: '„Zu prüfen“: offene Buchungen nach Gegenseite gruppiert — „Passt“, „Ändern“, Fragen per Antwort-Chip, Bewirtung mit Anlass und Teilnehmern, Hinweis auf fehlende Belege. „Alle ohne Frage bestätigen“ erledigt den Rest in einem Zug.', bereich: 'alle' },
+        { text: 'Geld zwischen Person und Gesellschaft heißt jetzt, was es ist: Privatentnahme/-einlage beim Einzelunternehmen; bei einer Kapitalgesellschaft „Gesellschafterdarlehen oder Ausschüttung — bitte zuordnen“, zwischen Gesellschaften „Verrechnung“. Automatisch bei neuen Importen, für Älteres als Vorschlag zum Übernehmen.', bereich: 'alle' },
+        { text: '„Zahlung passt zu Rechnung“: Eingänge, in deren Zweck Rechnungsnummer oder Kundenname steht, werden der offenen Rechnung vorgeschlagen. „Als bezahlt vermerken“ verknüpft genau diese Buchung — nichts geschieht ohne Klick.', bereich: 'alle' },
+        { text: 'Ausgabe als Tabelle je Gesellschaft und Zeitraum (CSV für Tabellenprogramme), Kontonummern gekürzt.', bereich: 'alle' },
+        { text: 'Monatssummen je Kategorie als eigene Ansicht.', bereich: 'alle' },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Kontoauszüge als CSV-Export der Bank werden gelesen; leere Unterkonten melden „nichts zu tun“ statt eines Fehlers.', bereich: 'alle' },
+        { text: 'Konten nur für Business sehen und bearbeiten die Buchungen der Business-Gesellschaften — Privates kommt bei ihnen gar nicht erst an.', bereich: 'business' },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Ein Beleg wird nur noch mit gewählter Gesellschaft gebucht — nie mehr still einer Vorgabe zugeordnet.', bereich: 'alle' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-21',
     datum: '2026-11-02',
     titel: 'Nächste Rechnungsnummer selbst festlegen',
