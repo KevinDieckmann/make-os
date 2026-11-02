@@ -75,6 +75,21 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-11-02-22',
+    datum: '2026-11-02',
+    titel: 'Rechnungen und Angebote im neuen Briefstil',
+    kurz: 'Rechnungen, Stornorechnungen und Angebote sehen jetzt ruhiger und aufgeräumter aus — mit einer schmalen Farbleiste oben, den Angaben rechts und den Positionen auf hellen Flächen. Die Farbe lässt sich je Gesellschaft wählen.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Neuer Briefstil für Rechnung, Stornorechnung und Angebot: Überschrift mit Nummer, die Angaben (Datum, Fälligkeit, Leistungszeitraum) in einer schmalen Spalte rechts, darunter Anschrift, Kontakt, Steuer und Bank. Der Endbetrag steht groß.', bereich: 'alle' },
+        { text: 'Die Vorschau im Angebots-Tool zeigt denselben Stil wie das PDF.', bereich: 'alle' },
+      ] },
+      { art: 'neu', punkte: [
+        { text: 'Unternehmen › Gesellschaft › Absender: Feld „Akzentfarbe“ — die Farbe der Leiste oben auf den Belegen. Ohne Auswahl bleibt sie dunkel.', bereich: 'alle', weg: WEG.unternehmen() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-21',
     datum: '2026-11-02',
     titel: 'Nächste Rechnungsnummer selbst festlegen',

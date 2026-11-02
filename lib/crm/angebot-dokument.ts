@@ -30,7 +30,16 @@ export function absenderAus(roh: Gesellschaft, opt: { ibanVoll?: boolean; /** An
     [g.bank?.bank ?? '', iban ? `IBAN ${iban}` : '', g.bank?.bic ? `BIC ${g.bank.bic}` : '', g.bank?.inhaber ? `Inhaber ${g.bank.inhaber}` : ''].filter(Boolean).join(' · '),
     g.fusstext ?? '',
   ].filter(Boolean);
-  return { firmierung: g.name, zeilen, kontakt, fuss, kleinunternehmer: !!g.kleinunternehmer, ...(opt.angebot && g.annahmeblock ? { annahme: true as const } : {}), ...(opt.angebot && g.agbUrl ? { agb: g.agbUrl } : {}) };
+  // Rechte Spalte des PDFs (02.11., Aufbau wie gängige Rechnungsprogramme): Anschrift · Kontakt · Steuer und Register · Bank · Fußtext.
+  const z = (label: string, wert?: string) => (wert ? [{ label, wert }] : []);
+  const leiste = [
+    [...z('', g.name), ...zeilen.map(w => ({ label: '', wert: w }))],
+    [...z('Tel.', g.telefon), ...z('E-Mail', g.email), ...z('Web', g.web)],
+    [...z('USt-IdNr.', g.ustId), ...z('Steuer-Nr.', g.steuernummer), ...z('Geschäftsführung', g.geschaeftsfuehrung), ...z('Register', g.register)],
+    [...z('Bank', g.bank?.bank), ...z('Inhaber', g.bank?.inhaber), ...z('IBAN', iban), ...z('BIC', g.bank?.bic)],
+    ...(g.fusstext ? [[{ label: '', wert: g.fusstext }]] : []),
+  ].filter(gr => gr.length);
+  return { firmierung: g.name, zeilen, kontakt, fuss, kleinunternehmer: !!g.kleinunternehmer, ...(opt.angebot && g.annahmeblock ? { annahme: true as const } : {}), ...(opt.angebot && g.agbUrl ? { agb: g.agbUrl } : {}), leiste, ...(g.akzentfarbe ? { akzent: g.akzentfarbe } : {}) };
 }
 
 /** Empfänger aus Kontakt und Firma (Anschrift: Rechnungsempfänger der Zahlungsdaten, sonst Ort der Firma). */
@@ -52,6 +61,8 @@ export interface AngebotDokument {
   art?: string;
   /** Überschrift über den Positionen — fehlt = „Angebot: <Titel>“. */
   ueberschrift?: string;
+  /** Zeile unter der Überschrift (02.11., optional): der Titel des Belegs, wenn die Überschrift die Nummer trägt. */
+  unterzeile?: string;
   absender: AngebotAbsender;
   /** Kleine Zeile über dem Empfänger (Rücksendeangabe). */
   absenderZeile: string;
@@ -99,6 +110,8 @@ export function angebotDokument(a: Angebot, absender: AngebotAbsender, empfaenge
   return {
     absender, absenderZeile: [absender.firmierung, ...absender.zeilen].join(' · '),
     empfaenger: empfaenger.zeilen.length ? empfaenger.zeilen : [empfaenger.name || '—'],
+    // 02.11.: Überschrift mit Nummer, der Titel als Zeile darunter (wie gängige Rechnungsprogramme).
+    ueberschrift: a.nummer ? `Angebot Nr. ${a.nummer}` : 'Angebot', ...(a.titel && a.titel !== 'Angebot' ? { unterzeile: a.titel } : {}),
     nummer: a.nummer ?? 'Entwurf', entwurf: !a.nummer,
     meta: [
       { label: 'Angebot', wert: a.nummer ?? 'Entwurf' },

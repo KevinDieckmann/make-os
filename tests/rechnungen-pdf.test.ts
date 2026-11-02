@@ -148,7 +148,10 @@ describe('Stellen: Nummer + PDF in einer Sperre', () => {
     expect(createHash('sha256').update(d.bytes).digest('hex')).toBe(gestellt.sha256);
     // … im PDF stehen die Pflichtangaben, die IBAN voll.
     const t = await pdfText(d.bytes);
-    for (const w of [nr(1), 'Rechnungsdatum', 'Leistungszeitraum', '01.10.2026', '31.10.2026', 'Beispiel Ventures UG', 'Muster GmbH', 'Hauptstraße 5', '54321 Beispielstadt', 'Steuernummer 12/345/67890', IBAN_LESBAR, '19 % USt', '2.856,00', 'Fällig am', 'Erika Beispiel', 'HRB 1']) expect(t, w).toContain(w);
+    for (const w of [nr(1), '01.10.2026', '31.10.2026', 'Beispiel Ventures UG', 'Muster GmbH', 'Hauptstraße 5', '54321 Beispielstadt', '12/345/67890', IBAN_LESBAR, '19 % USt', '2.856,00', 'Erika Beispiel', 'HRB 1']) expect(t, w).toContain(w);
+    // 02.11. neuer PDF-Stil: Beschriftungen stehen als gesperrte Großbuchstaben in der rechten Spalte (pdf.js liest sie mit Leerzeichen).
+    const ohne = t.replace(/\s+/g, '');
+    for (const l of ['Rechnungsdatum', 'Leistungszeitraum', 'Fällig am', 'Steuer-Nr.']) expect(ohne, l).toContain(l.toLocaleUpperCase('de-DE').replace(/\s+/g, ''));
     expect(await zaehler()).toEqual({ [`kdv-${JAHR}`]: 1 });
   });
   it('dieselbe Anfrage noch einmal → dieselbe Antwort, keine zweite Nummer', async () => {

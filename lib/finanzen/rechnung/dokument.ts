@@ -71,7 +71,9 @@ export function rechnungDokument(r: Rechnung, absender: AngebotAbsender, opt: Re
     ...(!storno && faellig ? [`Zahlbar ohne Abzug bis zum ${datumDe(faellig)}${opt.bank ? ` auf das Konto ${opt.bank}` : ' auf das unten genannte Konto'} unter Angabe der Rechnungsnummer.`] : []),
   ];
   return {
-    art, ueberschrift: storno ? `Stornorechnung zu Rechnung ${opt.original?.nummer ?? ''}`.trim() : (r.titel && r.titel !== 'Rechnung' ? `Rechnung: ${r.titel}` : 'Rechnung'),
+    // 02.11.: Überschrift mit Nummer, der Titel (bzw. der Bezug der Stornorechnung) als Zeile darunter.
+    art, ueberschrift: r.nummer ? `${art} Nr. ${r.nummer}` : art,
+    ...(storno ? (opt.original?.nummer ? { unterzeile: `zu Rechnung ${opt.original.nummer}` } : {}) : (r.titel && r.titel !== 'Rechnung' ? { unterzeile: r.titel } : {})),
     absender, absenderZeile: [absender.firmierung, ...absender.zeilen].join(' · '),
     empfaenger: empfaengerZeilen(r.empfaenger).length ? empfaengerZeilen(r.empfaenger) : [r.kunde || '—'],
     nummer, entwurf: !r.nummer,
