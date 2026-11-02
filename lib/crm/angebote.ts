@@ -258,8 +258,14 @@ export function positionSaeubern(o: Record<string, unknown>, i: number): Angebot
     ...(basis === 'monat' && (o.satz === 'tag' || o.satz === 'stunde') ? { satz: o.satz } : {}),
     // Artikelnummer (25.10., optional) — aus dem Preis-Teil bzw. von Hand; ohne diese Zeile fiele sie beim Speichern des Entwurfs weg.
     ...(artikelnummerSaeubern(o.artikelnummer) ? { artikelnummer: artikelnummerSaeubern(o.artikelnummer) } : {}),
+    // Festgeschrieben beim Erstellen (02.11., R2-3 Fund 5): Zahlplan und Deckel des Preis-Teils — ohne diese Zeile fiele es beim Speichern weg.
+    ...(o.vereinbart && typeof o.vereinbart === 'object' && !Array.isArray(o.vereinbart) ? { vereinbart: vereinbartSaeubern(o.vereinbart as Record<string, unknown>) } : {}),
   };
 }
+const vereinbartSaeubern = (v: Record<string, unknown>): NonNullable<AngebotPosition['vereinbart']> => {
+  const ap = Math.round(Number(v.anzahlungProzent)), dk = Math.round(Number(v.deckelStunden));
+  return { ...(ap >= 1 && ap <= 99 ? { anzahlungProzent: ap } : {}), ...(dk >= 1 && dk <= 744 ? { deckelStunden: dk } : {}) };
+};
 
 /** Die Felder, die ein Browser an einem ENTWURF setzen darf. Alles andere (Nummer, Status, Prüfsumme …) setzt der Server. */
 export const ENTWURF_FELDER = ['gesellschaft', 'kontaktId', 'firmaId', 'dealId', 'mandatId', 'titel', 'positionen', 'einleitung', 'schluss', 'gueltigBis', 'zahlungszielTage', 'titelVonHand', 'dealWahl', 'zahlweise'] as const;
@@ -803,7 +809,7 @@ const einzelNetto = (p: Pick<AngebotPosition, 'einzelpreisCent' | 'rabattProzent
 /** Das Zusatzmodul einer eigenen Position: vereinbarter Preis aus dem Angebot (Monat/Jahr/einmalig: die Position netto; Satz/je Einheit: je Einheit). */
 function zusatzAusPosition(l: Leistung, x: { position: AngebotPosition; teil: PreisTeil }): MandatZusatz | null {
   const nachMenge = istSatz(x.teil.art) || x.teil.art === 'je_einheit';
-  return zusatzAusTeil(l, x.teil, { honorarCent: nachMenge ? einzelNetto(x.position) : positionNettoCent(x.position), ...(istSatz(x.teil.art) ? { menge: x.position.menge } : {}) });
+  return zusatzAusTeil(l, x.teil, { honorarCent: nachMenge ? einzelNetto(x.position) : positionNettoCent(x.position), ...(istSatz(x.teil.art) ? { menge: x.position.menge } : {}), ...(x.position.vereinbart ? { vereinbart: x.position.vereinbart } : {}) });
 }
 /**
  * Die Einmalposten eines angenommenen Angebots, die eine eigene Rechnung werden („Einmalbetrag als Rechnung planen“, Woche 1 · 3.6 — die laufende Leistung
@@ -827,18 +833,20 @@ export function angebotEinmalRest(a: Pick<Angebot, 'positionen'>, leistungen?: r
  * Raten → `raten` (ohne Zahlplan), Anzahlung → `zahlplan` mit dem Prozentsatz des Angebots, eigener Text → ein offener Punkt (die Rechnungen folgen ihm von
  * Hand). Nur bei einmaligem Honorar; bei laufendem Honorar wird aus Raten/Anzahlung ebenfalls ein offener Punkt (nie still verloren). Ohne Zahlungsweise: {}.
  */
-export function zahlweiseFuerMandat(a: Pick<Angebot, 'zahlweise'>, honorarBasis: Mandat['honorar']['basis']): Pick<Partial<Mandat>, 'raten' | 'zahlplan' | 'offen'> {
+export function zahlweiseFuerMandat(a: Pick<Angebot, 'zahlweise'>, honorarBasis: Mandat['honorar']['basis'], opt: { einmalRest?: boolean } = {}): Pick<Partial<Mandat>, 'raten' | 'zahlplan' | 'offen'> {
   const z = a.zahlweise;
   if (!z) return {};
   if (z.art === 'frei') return { offen: [`Zahlung laut Angebot: „${z.text}“ — die Rechnungen entsprechend schreiben.`] };
-  if (honorarBasis !== 'einmalig') return { offen: [`Zahlung laut Angebot (${z.art === 'raten' ? `${z.anzahl} Raten` : `${z.prozent} % Anzahlung`}) gilt für die Einmalposten — der Morgenlauf legt je Zahlung einen Rechnungsentwurf an (Aufgabe „Rechnung prüfen & stellen“).`] };
+  // 02.11. (R2-3 Fund 1): der Satz nur, wenn es übrige Einmalposten gibt (`einmalRest`, der Morgenlauf legt für SIE die Entwürfe an) — die Einmal-Teile einer
+  // Kombination tragen die Zahlungsweise selbst (Zusatzmodul mit Raten/Zahlplan, `mitZahlweise`), dafür kommt kein Entwurf.
+  if (honorarBasis !== 'einmalig') return opt.einmalRest === false ? {} : { offen: [`Zahlung laut Angebot (${z.art === 'raten' ? `${z.anzahl} Raten` : `${z.prozent} % Anzahlung`}) gilt für die Einmalposten — der Morgenlauf legt je Zahlung einen Rechnungsentwurf an (Aufgabe „Rechnung prüfen & stellen“).`] };
   return z.art === 'raten' ? { raten: { anzahl: z.anzahl, abstandMonate: z.abstandMonate } } : { zahlplan: { anzahlungProzent: z.prozent } };
 }
 
 export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]): Partial<Mandat> {
   // 24.10.: eine Kombination (Hauptprodukt mit mehreren Preis-Teilen) trägt jeden Teil — Honorar = Hauptpreis, die übrigen Teile Zusatzmodule.
   const teile = angebotAufteilung(a, leistungen);
-  if (teile) return mitZahlweise(mandatVorbelegungKombi(a, teile, leistungen ?? []), a);
+  if (teile) return mitZahlweise(mandatVorbelegungKombi(a, teile, leistungen ?? []), a, leistungen);
   const s = angebotSummen(a, { kleinunternehmer: !!a.absender?.kleinunternehmer });
   const laufend = s.monat.netto + kaufmaennisch(s.jahr.netto / 12);
   const lz = Math.max(0, ...a.positionen.filter(p => p.basis !== 'einmalig').map(p => p.laufzeitMonate ?? 0));
@@ -847,9 +855,12 @@ export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]):
   const saetze = Array.from(new Set(a.positionen.map(p => p.ustSatz)));
   // Titel: der des Angebots — nannte er nur ein fremdes Produkt (Altbestand vor 21.10., A1), der aus den Produkten (`angebotTitelFuerFolge`).
   const titel = angebotTitelFuerFolge(a, leistungen);
+  // Nur Jahrespositionen (02.11., R2-3 Fund 3): EINE Rechnung je Vertragsjahr über den Jahresbetrag (`jahresHonorar`) — vorher wurde daraus die Monatsrechnung Jahr ÷ 12.
+  const nurJahr = s.jahr.netto > 0 && s.monat.netto === 0 && s.aufwand.netto === 0;
   const basis: Partial<Mandat> = {
     gesellschaft: a.gesellschaft, titel: titel || undefined,
     honorar: laufend > 0 ? { betrag: ausCent(laufend), basis: 'monat', netto: true } : { betrag: ausCent(s.einmalig.netto), basis: 'einmalig', netto: true },
+    ...(nurJahr ? { jahresHonorar: ausCent(s.jahr.netto) } : {}),
     ...(lz ? { mindestlaufzeitMonate: Math.min(120, lz) } : {}),
     ...(leistungId ? { leistungId } : {}),
     ustSatz: a.absender?.kleinunternehmer ? 0 : saetze.length === 1 && [0, 7, 19].includes(saetze[0]) ? saetze[0] : 19,
@@ -862,7 +873,11 @@ export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]):
   // P3 (19.10.): inklusive Module laut Regel des Hauptprodukts (0 € — nie doppelt mit dem Angebot; bezahlte Module stehen im Angebot selbst).
   const inklusive = produkt?.regeln?.inklusive?.length ? mandatVorlageAusProdukt(produkt).zusatz?.filter(z => z.inklusive) : undefined;
   // Zahlplan (21.10., Rundgang B2): ein einmaliges Angebot über ein Produkt mit Anzahlung (z. B. 50/50) wird zwei Zahlungen — wie das Zusatzmodul.
-  const zahlplan = produkt ? mandatZahlplanAusProdukt(produkt, basis.honorar!.basis) : undefined;
+  // Wie im Angebot festgeschrieben (02.11., R2-3 Fund 5): die Position des Hauptprodukts trägt `vereinbart` — sonst (Altbestand) der Zahlplan des heutigen Produkts.
+  const hpVereinbart = a.positionen.find(p => p.leistungId === leistungId && p.vereinbart)?.vereinbart;
+  const zahlplan = hpVereinbart
+    ? (basis.honorar!.basis === 'einmalig' && hpVereinbart.anzahlungProzent ? { anzahlungProzent: hpVereinbart.anzahlungProzent } : undefined)
+    : produkt ? mandatZahlplanAusProdukt(produkt, basis.honorar!.basis) : undefined;
   return mitZahlweise({
     ...basis,
     ...(zahlplan ? { zahlplan } : {}),
@@ -871,14 +886,29 @@ export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]):
     ...(v.verlaengerung ? { verlaengerung: v.verlaengerung } : {}),
     ...(v.rechnungsrhythmus === 'quartal' ? { rechnungsrhythmus: 'quartal' as const } : {}),
     ...(inklusive?.length ? { zusatz: inklusive } : {}),
-  }, a);
+  }, a, leistungen);
 }
-/** Die Zahlungsweise des Angebots auf die Vorbelegung legen: Raten ersetzen den Zahlplan des Produkts, die Anzahlung des Angebots gewinnt, offene Punkte kommen dazu. */
-function mitZahlweise(v: Partial<Mandat>, a: Pick<Angebot, 'zahlweise'>): Partial<Mandat> {
-  const z = zahlweiseFuerMandat(a, v.honorar?.basis ?? 'einmalig');
-  if (!z.raten && !z.zahlplan && !z.offen) return v;
-  const { zahlplan: _alt, ...ohne } = v;
-  return { ...(z.raten ? ohne : v), ...(z.raten ? { raten: z.raten } : {}), ...(z.zahlplan ? { zahlplan: z.zahlplan } : {}), ...(z.offen ? { offen: [...(v.offen ?? []), ...z.offen] } : {}) };
+/**
+ * Die Zahlungsweise des Angebots auf die Vorbelegung legen: Raten ersetzen den Zahlplan des Produkts, die Anzahlung des Angebots gewinnt, offene Punkte kommen dazu.
+ * Seit 02.11. (R2-3 Fund 1) gilt sie auch für die Einmal-Teile einer Kombination, die das Mandat als Zusatzmodul trägt (eigene Preis-Teile, einmalig, nicht
+ * inklusive): Raten bzw. Anzahlung am Modul — so stehen die Rechnungen wie im PDF zugesagt. Der Satz „der Morgenlauf legt je Zahlung einen Entwurf an“ kommt nur,
+ * wenn es übrige Einmalposten gibt (`angebotEinmalRest`).
+ */
+function mitZahlweise(v: Partial<Mandat>, a: Pick<Angebot, 'zahlweise' | 'positionen'>, leistungen?: readonly Leistung[]): Partial<Mandat> {
+  const zw = a.zahlweise;
+  const einmalModul = (x: MandatZusatz) => !!x.preisTeilId && !x.inklusive && x.honorar?.basis === 'einmalig';
+  const zusatz = zw && zw.art !== 'frei' && v.zusatz?.some(einmalModul)
+    ? v.zusatz.map(x => {
+      if (!einmalModul(x)) return x;
+      const { zahlplan: _zp, raten: _r, ...ohne } = x;
+      return zw.art === 'raten' ? { ...ohne, raten: { anzahl: zw.anzahl, abstandMonate: zw.abstandMonate } } : { ...ohne, zahlplan: { anzahlungProzent: zw.prozent } };
+    })
+    : undefined;
+  const z = zahlweiseFuerMandat(a, v.honorar?.basis ?? 'einmalig', { einmalRest: angebotEinmalRest(a, leistungen).length > 0 });
+  const v2 = zusatz ? { ...v, zusatz } : v;
+  if (!z.raten && !z.zahlplan && !z.offen) return v2;
+  const { zahlplan: _alt, ...ohne } = v2;
+  return { ...(z.raten ? ohne : v2), ...(z.raten ? { raten: z.raten } : {}), ...(z.zahlplan ? { zahlplan: z.zahlplan } : {}), ...(z.offen ? { offen: [...(v2.offen ?? []), ...z.offen] } : {}) };
 }
 
 /**
@@ -901,7 +931,9 @@ function mandatVorbelegungKombi(a: Angebot, t: AngebotAufteilung, leistungen: re
     // Festpreis (bzw. je Einheit) als Hauptpreis: einmalig — übrige Einmalposten wie bisher dazu, übrige laufende werden ein offener Punkt.
     const einmal = t.uebrig.filter(p => p.basis === 'einmalig').reduce((x, p) => x + positionNettoCent(p), 0);
     honorar = { betrag: ausCent(positionNettoCent(hp) + einmal), basis: 'einmalig', netto: true };
-    const zp = t.haupt.teil.art === 'fest' && t.haupt.teil.zahlplan?.anzahlungProzent ? { anzahlungProzent: t.haupt.teil.zahlplan.anzahlungProzent } : undefined;
+    // Zahlplan wie im Angebot festgeschrieben (02.11., R2-3 Fund 5: `vereinbart`), sonst — Altbestand — der des Produkts.
+    const ap = hp.vereinbart ? hp.vereinbart.anzahlungProzent : t.haupt.teil.zahlplan?.anzahlungProzent;
+    const zp = t.haupt.teil.art === 'fest' && ap ? { anzahlungProzent: ap } : undefined;
     if (zp) extra = { zahlplan: zp };
     for (const p of uebrigLaufend) offen.push(`Position „${p.titel}“ (laufend) steht nicht im Honorar — als Zusatzmodul ergänzen.`);
   } else if (t.haupt.teil.art === 'tagessatz') {
@@ -912,6 +944,12 @@ function mandatVorbelegungKombi(a: Angebot, t: AngebotAufteilung, leistungen: re
     // monatlich, jährlich (÷ 12 auf den Cent), Stundensatz (geplante Stunden × Satz wie `mandatVorlageAusProdukt`) — übrige laufende wie bisher dazu.
     const netto = hp.basis === 'jahr' ? kaufmaennisch(positionNettoCent(hp) / 12) : positionNettoCent(hp);
     honorar = { betrag: ausCent(netto + uebrigMonat), basis: 'monat', netto: true };
+    // Jahrespreis als Hauptpreis, übrige laufende nur jährlich (02.11., R2-3 Fund 3): EINE Rechnung je Vertragsjahr über die Jahressumme.
+    if (hp.basis === 'jahr' && uebrigLaufend.every(p => p.basis === 'jahr')) {
+      const jahr = positionNettoCent(hp) + uebrigLaufend.reduce((x, p) => x + positionNettoCent(p), 0);
+      honorar = { betrag: ausCent(kaufmaennisch(jahr / 12)), basis: 'monat', netto: true };
+      extra = { jahresHonorar: ausCent(jahr) };
+    }
     if (t.haupt.teil.art === 'stundensatz') offen.push(`Stundensatz ${euroCent(einzelNetto(hp))} netto, ${mengeText(hp.menge)} Std./Monat geplant — als Monatshonorar stehen die geplanten Stunden; nach Aufwand abrechnen.`);
   }
   const zusatz = t.zusatz.map(x => zusatzAusPosition(l, x)).filter((z): z is MandatZusatz => !!z);

@@ -50,6 +50,29 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-11-02-14',
+    datum: '2026-11-02',
+    titel: 'Produkte rechnen wie zugesagt',
+    kurz: 'Raten und Anzahlung aus dem Angebot gelten jetzt auch für Kombi-Produkte, Jahresprodukte werden einmal im Jahr abgerechnet, und Zusatzmodule zählen im Monatsumsatz mit.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Ein Kombi-Produkt mit Raten oder Anzahlung im Angebot: die Rechnungen kommen genau so, wie das Angebot es zusagt.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Ein Produkt mit Jahrespreis wird eine Rechnung je Vertragsjahr über den vollen Betrag — auch in der Liquidität. Der Monatsumsatz zeigt weiter ein Zwölftel.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Monatsumsatz, Kundenanteil, Produkt-Zahlen und Business-Index zählen Zusatzmodule und geplante Tages- und Stundensätze mit.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Beim Annehmen gelten Zahlplan, Stunden-Deckel und Preise der Optionen, wie sie im Angebot standen — spätere Änderungen am Produkt ändern das Mandat nicht.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Ein Mandat, das beim Annehmen von selbst entsteht, beginnt wie von Hand am Ersten des Folgemonats — mit gewünschtem Start aus „Angebot anfordern“ an diesem Tag.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Ein Vertrag aus einem Angebot nennt auch Tages- und Stundensätze und beschreibt die Leistung so, wie sie im Angebot steht.', bereich: 'business' },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Ein Produkt, das nur noch als Zusatzmodul, auf einer Rechnung oder in einer Regel eines anderen Produkts steckt, wird nicht mehr endgültig gelöscht.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Vertriebler-Links warnen, wenn ein freigegebenes Produkt archiviert ist; ist keins mehr aktiv, meldet sich die Glocke.', bereich: 'business', weg: WEG.formulare() },
+        { text: 'Die Website-Pflege zeigt „Produkt nicht aktiv“ mit einem Knopf zum Verbergen; „Website-Preis in den Katalog“ klappt auch bei Produkten mit mehreren Preis-Teilen.', bereich: 'business', weg: WEG.website() },
+        { text: 'Raten werden wie im Angebot auf die Summe gerundet; Raten mit größerem Abstand stehen in der Planung.', bereich: 'business' },
+        { text: 'Ein Konto, das nur Business sieht, bekommt in der Markttraktion keine Produkte, Mandate, Deals oder Angebote aus dem Privat-Bereich mehr.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-13',
     datum: '2026-11-02',
     titel: 'Kundengewinnung meldet sich',

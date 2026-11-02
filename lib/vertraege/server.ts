@@ -213,9 +213,12 @@ async function vorbelegung(q: { angebotId?: unknown; dealId?: unknown; mandatId?
     const a = (crm.angebote ?? []).find(x => x.id === q.angebotId);
     if (!a) throw new VertragFehler('Angebot nicht gefunden.', 404);
     if (a.status === 'entwurf') throw new VertragFehler('Aus einem Angebots-Entwurf entsteht kein Vertrag — erst stellen.', 409);
-    const { angebotSummen, angebotHauptprodukt } = await import('@/lib/crm/angebote');
+    const { angebotSummen, angebotHauptprodukt, positionNettoCent } = await import('@/lib/crm/angebote');
     const s = angebotSummen(a);
-    const teile = [s.einmalig.netto ? `${euro(s.einmalig.netto / 100)} netto einmalig` : '', s.monat.netto ? `${euro(s.monat.netto / 100)} netto monatlich` : '', s.jahr.netto ? `${euro(s.jahr.netto / 100)} netto jährlich` : ''].filter(Boolean);
+    // Tages-/Stundensätze (02.11., R2-3 Fund 11): je Satz „1.200,00 € netto je Tag (geplant 2 je Monat)“ — vorher fehlten sie in der Vergütung ganz.
+    const saetze = a.positionen.filter(p => p.basis === 'monat' && (p.satz === 'tag' || p.satz === 'stunde'))
+      .map(p => `${euro(positionNettoCent({ menge: 1, einzelpreisCent: p.einzelpreisCent, rabattProzent: p.rabattProzent }) / 100)} netto je ${p.satz === 'tag' ? 'Tag' : 'Stunde'} (geplant ${p.menge.toLocaleString('de-DE')} je Monat)`);
+    const teile = [s.einmalig.netto ? `${euro(s.einmalig.netto / 100)} netto einmalig` : '', s.monat.netto ? `${euro(s.monat.netto / 100)} netto monatlich` : '', s.jahr.netto ? `${euro(s.jahr.netto / 100)} netto jährlich` : '', ...saetze].filter(Boolean);
     Object.assign(raus, { angebotId: a.id, ...(a.kontaktId ? { kontaktId: a.kontaktId } : {}), ...(a.firmaId ? { firmaId: a.firmaId } : {}), ...(a.dealId ? { dealId: a.dealId } : {}), gesellschaft: a.gesellschaft });
     const hp = angebotHauptprodukt(a, crm.leistungen);
     if (hp) raus.leistungId = hp;
@@ -288,7 +291,7 @@ export async function vertragLoeschen(p: { haushalt: string; id: string; stand: 
 }
 
 /** Absender, Vertragspartner und Leistung für das Füllen (Kontext aus Register, Kartei, Katalog). */
-export async function kontextFuer(haushalt: string, v: Pick<Vertrag, 'gesellschaft' | 'kontaktId' | 'firmaId' | 'leistungId'>): Promise<FuellKontext & { email?: string; logoDateiId?: string }> {
+export async function kontextFuer(haushalt: string, v: Pick<Vertrag, 'gesellschaft' | 'kontaktId' | 'firmaId' | 'leistungId'> & Partial<Pick<Vertrag, 'angebotId'>>): Promise<FuellKontext & { email?: string; logoDateiId?: string }> {
   const [{ gesellschaftenLaden }, { mitVorgaben }, { ladeCrm }, { empfaengerAus }] = await Promise.all([
     import('@/lib/crm/angebot-server'), import('@/lib/crm/gesellschaften'), import('@/lib/crm/speicher'), import('@/lib/crm/angebot-dokument'),
   ]);
@@ -311,9 +314,12 @@ export async function kontextFuer(haushalt: string, v: Pick<Vertrag, 'gesellscha
     partner = f ? { name: f.name, zeilen: e.zeilen.slice(1).filter(z => !z.startsWith('z. Hd.')), ...(e.name ? { ansprechpartner: e.name } : {}) } : { name: e.name, zeilen: e.zeilen.slice(1) };
   }
   const l = v.leistungId ? crm.leistungen.find(x => x.id === v.leistungId) : undefined;
+  // Aus einem Angebot (02.11., R2-3 Fund 11): die Leistung, wie sie im Angebot steht (Titel + Positionen mit ihrem Text) — nicht der heutige Text des Produkts.
+  const ang = v.angebotId ? (crm.angebote ?? []).find(x => x.id === v.angebotId && x.status !== 'entwurf') : undefined;
+  const ausAngebot = ang ? { titel: ang.titel, beschreibung: ang.positionen.map(p => [p.titel, p.text?.trim()].filter(Boolean).join('\n')).join('\n\n').slice(0, 20000) } : null;
   return {
     ...(absender ? { absender } : {}), ...(partner ? { partner } : {}),
-    ...(l ? { leistung: { titel: l.angebot?.titel || l.name, beschreibung: l.angebot?.leistungstext ?? l.beschreibung ?? '' } } : {}),
+    ...(ausAngebot ? { leistung: ausAngebot } : l ? { leistung: { titel: l.angebot?.titel || l.name, beschreibung: l.angebot?.leistungstext ?? l.beschreibung ?? '' } } : {}),
     ...(k?.email ? { email: k.email } : {}), ...(mv?.logoDateiId ? { logoDateiId: mv.logoDateiId } : {}),
   };
 }

@@ -18,6 +18,12 @@ export function startVorschlag(heute: string): string {
   return m === 12 ? `${j + 1}-01-01` : `${j}-${String(m + 1).padStart(2, '0')}-01`;
 }
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
+/** Start eines automatisch angelegten Mandats (02.11., R2-3 Fund 6): gewünschter Start am Deal (aus „Angebot anfordern“), frühestens heute —
+ *  ohne (gültigen) Wunsch dieselbe Vorgabe wie „Mandat anlegen“ von Hand (`startVorschlag`, der Erste des Folgemonats). */
+export function automatikStart(wunsch: string | undefined, heute: string): string {
+  if (wunsch && TAG.test(wunsch)) return wunsch >= heute ? wunsch : heute;
+  return startVorschlag(heute);
+}
 /** Ein Start aus dem Netz: Tag JJJJ-MM-TT (Kalendertag), höchstens zwei Jahre vor bzw. nach heute — sonst null (die Route antwortet 400). */
 export function startAus(v: unknown, heute: string): string | null {
   if (typeof v !== 'string' || !TAG.test(v)) return null;
@@ -72,7 +78,11 @@ export function mandatAusDeal(c: Chance, ctx: MandatAusDealKontext): MandatAusDe
     // Kombination (24.10.): die übrigen Preis-Teile werden Zusatzmodule — passt die Basis des Deal-Werts nicht zum Hauptpreis (z. B. nur der Festpreis als
     // Wert), gilt der Hauptpreis des Produkts als Honorar; sonst stünde ein Teil zweimal im Mandat.
     const basisPasst = !istKombi(produkt) || m.honorar.basis === v.honorar.basis;
-    if ((!(m.honorar.betrag > 0) || !basisPasst) && v.honorar.betrag > 0) Object.assign(m, { honorar: v.honorar, rechnungsrhythmus: v.rechnungsrhythmus }, mandatVertragAusProdukt(produkt, v.honorar.basis));
+    if ((!(m.honorar.betrag > 0) || !basisPasst) && v.honorar.betrag > 0) {
+      Object.assign(m, { honorar: v.honorar, rechnungsrhythmus: v.rechnungsrhythmus }, mandatVertragAusProdukt(produkt, v.honorar.basis));
+      // Jahrespreis (02.11., R2-3 Fund 3): das Jahr reist mit dem Honorar — ein anderes Honorar hat keins.
+      if (v.jahresHonorar) m.jahresHonorar = v.jahresHonorar; else delete m.jahresHonorar;
+    }
     if (!m.leistungen.length && v.leistungen.length) m.leistungen = v.leistungen;
     if (v.hinweise.length) m.offen = [...m.offen, ...v.hinweise];
     if (m.gesellschaft === 'offen' && v.gesellschaft) m.gesellschaft = v.gesellschaft;
@@ -86,6 +96,8 @@ export function mandatAusDeal(c: Chance, ctx: MandatAusDealKontext): MandatAusDe
   if (angebot) {
     const { offen: vOffen, ...v } = mandatVorbelegung(angebot, ctx.leistungen);
     Object.assign(m, v, { quelle: `aus Angebot ${angebot.nummer ?? ''} (Deal „${c.titel}“)`.replace('  ', ' ') });
+    // Das Honorar kommt aus dem Angebot — ein Jahr aus dem Deal-Wert gilt nur, wenn auch das Angebot ein Jahr vereinbart (02.11., R2-3 Fund 3).
+    if (!v.jahresHonorar) delete m.jahresHonorar;
     // Raten aus dem Angebot (26.10.) ersetzen den Zahlplan des Produkts — und gelten nur bei einmaligem Honorar.
     if (m.raten) delete m.zahlplan;
     if (m.raten && m.honorar.basis !== 'einmalig') delete m.raten;

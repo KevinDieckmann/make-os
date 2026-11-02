@@ -12,6 +12,8 @@ import type { Baustein, BausteinEinheit, Rhythmus } from './szenarien';
 import { neuerBaustein, RHYTHMUS_LABEL } from './szenarien';
 import { planMonat } from './rechenkern';
 import { zusatzName } from '@/lib/crm/mandat-zusatz';
+import { ratenCent } from '@/lib/crm/angebote';
+import { jahresHonorarVon, plusMonateGekappt } from '@/lib/crm/mandat-laufzeit';
 import { festerMonatswert, geplanterMonatswert } from '@/lib/crm/pipeline';
 import { preisBasisVon as kartenBasis, basisAusAltpreis, planBausteinAusProdukt, RHYTHMUS_AUS_BASIS as KARTE_RHYTHMUS, type PreisBasis as KartenPreisBasis } from '@/lib/crm/produkt-karte';
 
@@ -162,13 +164,22 @@ export function istBasisVorschlaege(crm: Pick<CrmBestand, 'mandate' | 'chancen' 
     const l = produkt(m.leistungId);
     const laufzeit = m.ende && m.start ? monateZwischen(m.start, m.ende) : m.mindestlaufzeitMonate ?? l?.laufzeitMonate ?? null;
     // 29.10. (Kreislauf Geld B9): ein Tagessatz OHNE geplante Tage ist kein Betrag für die Planung (vorher „einmalig ein Tagessatz“) — wie die Liquidität: kein Eintrag.
+    // Raten mit Abstand > 1 Monat (02.11., R2-3 Fund 13): je Rate ein einmaliger Eintrag im Monat ihrer Fälligkeit (`teil` = `rate:<n>`) — vorher fehlten sie ganz.
+    const ratenEinzeln = (betragCent: number, r: { anzahl: number; abstandMonate: number }, ab: string | undefined, basis: Omit<IstBasisVorschlag, 'betrag' | 'rhythmus' | 'laufzeit' | 'start' | 'teil'>, teil: string) =>
+      ratenCent(betragCent, r.anzahl).map((cent, i) => ({ ...basis, teil: `${teil}rate:${i + 1}`, name: `${basis.name ?? basis.produkt ?? basis.titel} · Rate ${i + 1} von ${r.anzahl}`, betrag: cent / 100, rhythmus: 'einmalig' as const, laufzeit: null, start: startAus(ab ? plusMonateGekappt(ab, i * r.abstandMonate) : undefined) }));
     if (m.honorar.betrag > 0 && !(m.honorar.basis === 'tag' && !(m.tageJeMonat && m.tageJeMonat > 0))) {
       // Tagessatz mit geplanten Tagen (21.10., B4): Satz × Tage je Monat — sonst wie bisher.
       const tage = m.honorar.basis === 'tag' && m.tageJeMonat ? m.tageJeMonat : 0;
       // Raten (29.10., B9): monatliche Raten eines einmaligen Honorars als Monatsbetrag über die Zahl der Raten (auf den Cent; ein Rundungsrest bleibt außen vor).
       const raten = m.honorar.basis === 'einmalig' && m.raten && m.raten.abstandMonate === 1 && m.raten.anzahl > 1 ? m.raten : null;
-      const betrag = tage ? Math.round(m.honorar.betrag * tage * 100) / 100 : raten ? Math.round((m.honorar.betrag / raten.anzahl) * 100) / 100 : m.honorar.betrag;
-      out.push({ quelle: 'mandat', quelleId: m.id, kunde: m.kunde, titel: m.titel, produktId: l?.id, produkt: l?.name, betrag, rhythmus: m.honorar.basis === 'monat' || tage || raten ? 'monatlich' : 'einmalig', laufzeit: raten ? raten.anzahl : laufzeit, start: startAus(m.start), gesellschaft: m.gesellschaft });
+      // Jahreshonorar (02.11., R2-3 Fund 3): ein jährlicher Eintrag über den Jahresbetrag.
+      const jahr = jahresHonorarVon(m);
+      const kopf = { quelle: 'mandat' as const, quelleId: m.id, kunde: m.kunde, titel: m.titel, produktId: l?.id, produkt: l?.name, gesellschaft: m.gesellschaft };
+      if (m.honorar.basis === 'einmalig' && m.raten && m.raten.abstandMonate > 1) out.push(...ratenEinzeln(Math.round(m.honorar.betrag * 100), m.raten, m.start, kopf, ''));
+      else {
+        const betrag = jahr !== null ? jahr : tage ? Math.round(m.honorar.betrag * tage * 100) / 100 : raten ? Math.round((m.honorar.betrag / raten.anzahl) * 100) / 100 : m.honorar.betrag;
+        out.push({ ...kopf, betrag, rhythmus: jahr !== null ? 'jaehrlich' : m.honorar.basis === 'monat' || tage || raten ? 'monatlich' : 'einmalig', laufzeit: raten ? raten.anzahl : laufzeit, start: startAus(m.start) });
+      }
     }
     for (const z of m.zusatz ?? []) {
       const p = zusatzImPlan(z);
@@ -176,6 +187,13 @@ export function istBasisVorschlaege(crm: Pick<CrmBestand, 'mandate' | 'chancen' 
       const zl = z.preisTeilId ? undefined : produkt(z.leistungId);
       const ab = z.ab ?? m.start;
       const zLaufzeit = z.bis && ab ? monateZwischen(ab, z.bis) : laufzeit;
+      // Raten eines einmaligen Moduls (02.11., R2-3 Fund 1/13): monatlich als Monatsbetrag über die Zahl der Raten, sonst je Rate ein Eintrag.
+      if (z.raten && p.rhythmus === 'einmalig') {
+        const kopf = { quelle: 'mandat' as const, quelleId: m.id, name: zusatzName(z, crm.leistungen), kunde: m.kunde, titel: m.titel, ...(zl ? { produktId: zl.id, produkt: zl.name } : {}), gesellschaft: m.gesellschaft };
+        if (z.raten.abstandMonate === 1) out.push({ ...kopf, teil: `zusatz:${z.id}`, betrag: Math.round((z.honorar!.betragCent / z.raten.anzahl)) / 100, rhythmus: 'monatlich', laufzeit: z.raten.anzahl, start: startAus(ab) });
+        else out.push(...ratenEinzeln(z.honorar!.betragCent, z.raten, ab, kopf, `zusatz:${z.id}:`));
+        continue;
+      }
       out.push({
         quelle: 'mandat', quelleId: m.id, teil: `zusatz:${z.id}`, name: zusatzName(z, crm.leistungen), kunde: m.kunde, titel: m.titel, ...(zl ? { produktId: zl.id, produkt: zl.name } : {}),
         betrag: p.betrag, rhythmus: p.rhythmus, laufzeit: p.rhythmus === 'einmalig' ? null : zLaufzeit, start: startAus(ab), gesellschaft: m.gesellschaft,

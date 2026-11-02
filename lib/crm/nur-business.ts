@@ -73,3 +73,44 @@ export function logoFuerNurBusiness(dateiId: string, gesellschaften: readonly { 
 export function gesellschaftenFuerNurBusiness<T extends { id: string }>(l: readonly T[]): T[] {
   return l.filter(g => imBusiness({ gesellschaft: g.id }));
 }
+
+// ── CRM-Bestand für die Rolle „nur Business“ (02.11., Prüfung R2-3 Fund 4) ──────────────────────────────────────────────────────
+// GET /api/crm/bestand lieferte einem Konto „nur Business“ auch Produkte, Mandate, Deals und Angebote der Selbstständigkeit (Privat-Einheit), und PATCH
+// änderte sie. EINE Filterstelle (Server) — dieselbe Regel wie oben (`imBusiness`): was einer Privat-Einheit gehört, kommt nicht an; Follow-ups an einem
+// solchen Deal bzw. Mandat ebenso. Schreiben darauf → 403 (`crmOpsNurBusiness`). Wächter: tests/kg-produkte.test.ts.
+
+type CrmListenStand = Pick<import('./typen').CrmBestand, 'chancen' | 'mandate' | 'angebote' | 'leistungen' | 'followups'>;
+/** Der CRM-Bestand ohne Privates: Deals, Mandate, Angebote und Produkte einer Privat-Einheit fehlen, ebenso Follow-ups an einem solchen Deal/Mandat. */
+export function crmFuerNurBusiness<T extends CrmListenStand>(b: T): T {
+  const chancen = b.chancen.filter(imBusiness), mandate = b.mandate.filter(imBusiness);
+  const weg = new Set([...b.chancen.filter(c => !imBusiness(c)).map(c => `chance:${c.id}`), ...b.mandate.filter(m => !imBusiness(m)).map(m => `mandat:${m.id}`)]);
+  return {
+    ...b, chancen, mandate,
+    angebote: (b.angebote ?? []).filter(imBusiness),
+    leistungen: (b.leistungen ?? []).filter(l => imBusiness({ gesellschaft: l.gesellschaft ?? 'offen' })),
+    followups: (b.followups ?? []).filter(f => !weg.has(`${f.bezug?.art}:${f.bezug?.id}`)),
+  };
+}
+/**
+ * Darf die Rolle „nur Business“ diese Änderungen am CRM-Bestand schreiben? `null` = ja, sonst der Satz für die 403. Nein, wenn ein Deal, Mandat, Angebot oder Produkt
+ * einer Privat-Einheit gehört (gespeichert ODER nach der Änderung) bzw. ein Follow-up an einem solchen hängt.
+ */
+export function crmOpsNurBusiness(b: CrmListenStand, ops: readonly { liste?: unknown; op?: unknown; id?: unknown; eintrag?: Record<string, unknown> | null; felder?: Record<string, unknown> | null }[]): string | null {
+  const LISTEN: Record<string, readonly { id: string; gesellschaft?: string | null }[]> = { chancen: b.chancen, mandate: b.mandate, angebote: b.angebote ?? [], leistungen: b.leistungen ?? [] };
+  const privat = (g: unknown) => typeof g === 'string' && !!g && !imBusiness({ gesellschaft: g });
+  const privatZiel = (art: unknown, id: unknown) => (art === 'chance' ? b.chancen : art === 'mandat' ? b.mandate : []).some(x => x.id === id && !imBusiness(x));
+  for (const o of ops) {
+    const liste = typeof o.liste === 'string' ? o.liste : '';
+    const neu = (o.op === 'teil' ? o.felder : o.eintrag) ?? {};
+    const id = o.op === 'upsert' ? neu.id : o.id;
+    if (liste in LISTEN) {
+      const alt = LISTEN[liste].find(x => x.id === id);
+      if ((alt && !imBusiness({ gesellschaft: alt.gesellschaft ?? 'offen' })) || privat(neu.gesellschaft)) return NUR_BUSINESS_SICHT;
+    } else if (liste === 'followups') {
+      const alt = (b.followups ?? []).find(f => f.id === id);
+      const bezug = neu.bezug as { art?: unknown; id?: unknown } | undefined;
+      if ((alt && privatZiel(alt.bezug?.art, alt.bezug?.id)) || (bezug && privatZiel(bezug.art, bezug.id))) return NUR_BUSINESS_SICHT;
+    }
+  }
+  return null;
+}

@@ -355,6 +355,18 @@ export function routinenAbleiten(liste: readonly RoutineFuerGlocke[], o: { heute
   });
 }
 
+/**
+ * Vertriebler-Links ohne aktives Produkt (02.11., Prüfung R2-3 Fund 7): je aktivem Link, auf dem kein freigegebenes Produkt mehr erscheint, EINE Meldung an die
+ * Steuernden (Inhaber, volle Mitglieder — der Aufrufer liest nur für sie), nie gespeichert, immer Business. Kennung je Tag und Link.
+ */
+export function formularLinksAbleiten(liste: readonly { id: string; name: string; href: string }[], o: { heute: string; am: string; gelesen?: { tag: string; ids: string[] } }): Meldung[] {
+  const merker = o.gelesen?.tag === o.heute ? new Set(o.gelesen.ids) : new Set<string>();
+  return liste.filter(l => istLink(l.href)).map(l => {
+    const id = `angebot:${o.heute}:link-${kennung(l.id)}`;
+    return { id, art: 'angebot' as const, titel: `Link „${l.name}“ zeigt kein aktives Produkt mehr — Produkte am Link neu wählen`.slice(0, TITEL_MAX), link: l.href, am: o.am, virtuell: true as const, gelesen: merker.has(id), business: true as const };
+  });
+}
+
 /** Kurzer, stabiler Schlüssel aus einer langen Kennung (Termin `kalender|uid::RID`) — FNV-1a. */
 function kurzSchluessel(s: string): string {
   let h = 0x811c9dc5;

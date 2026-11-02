@@ -31,6 +31,7 @@ import { mutterPruefen } from './konzern';
 import { firmaIcpSaeubern, steckbriefSaeubern } from './icp-firma';
 import { adresseSaeubern, quellenSaeubern, bewertungSaeubern, analyseSaeubern, anreicherungSaeubern, osmIdSaeubern, instagramSaeubern, inhaberSaeubern, betriebRechtSaeubern, betriebRechtStempeln, BETRIEB_QUELLEN, ERREICHBARKEITEN } from './betrieb';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
+import { jahresHonorarVon } from './mandat-laufzeit';
 import { kartenFelderSaeubern, mandatRatenSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktProzessKennung, produktSpiegeln, produktPruefen, spiegelKonflikt, zahlplanSaeubern, PRODUKT_GRENZEN } from './produkt-karte';
 import { mailTexteSaeubern } from './vorlage-platzhalter';
 import { kundennummerOk, kundennummernNachziehen } from './kundennummer';
@@ -470,7 +471,9 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       const rollen = o.personenRollen && typeof o.personenRollen === 'object'
         ? Object.fromEntries(Object.entries(o.personenRollen as Record<string, unknown>).filter(([k, v]) => idOk(k) && (DEAL_ROLLEN as readonly string[]).includes(String(v))).slice(0, grenzeVon('chancen', 'personenRollen')))
         : undefined;
-      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(rollen && Object.keys(rollen).length ? { personenRollen: rollen } : {}) };
+      // Gewünschter Start (02.11., R2-3 Fund 6) — ohne diese Zeile fiele er beim Speichern weg.
+      const wunsch = tag(o.startWunsch);
+      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(rollen && Object.keys(rollen).length ? { personenRollen: rollen } : {}), ...(wunsch ? { startWunsch: wunsch } : {}) };
     }
     case 'mandate': {
       // Zusatzmodule (19.10., lib/crm/produkt-karte.ts — Form; Rechnung/Liquidität/Fall in P3): ohne diese Zeile fielen sie beim Speichern weg.
@@ -481,7 +484,9 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       const raten = mandatRatenSaeubern(o.raten);
       // Geplante Tage je Monat beim Tagessatz (21.10., B4) — 0,25 … 744, sonst weg.
       const tage = typeof o.tageJeMonat === 'number' && Number.isFinite(o.tageJeMonat) && o.tageJeMonat >= 0.25 && o.tageJeMonat <= 744 ? Math.round(o.tageJeMonat * 100) / 100 : undefined;
-      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(zusatzModule ? { zusatz: zusatzModule } : {}), ...(raten ? { raten } : zahlplan ? { zahlplan } : {}), ...(tage !== undefined ? { tageJeMonat: tage } : {}) };
+      // Jahreshonorar (02.11., R2-3 Fund 3): nur, solange es zum Monatshonorar passt (`jahresHonorarVon`) — sonst weg (dann gilt das Monatshonorar).
+      const jahr = jahresHonorarVon({ honorar: (o.honorar ?? null) as Partial<Mandat['honorar']> | null, jahresHonorar: o.jahresHonorar });
+      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(zusatzModule ? { zusatz: zusatzModule } : {}), ...(raten ? { raten } : zahlplan ? { zahlplan } : {}), ...(tage !== undefined ? { tageJeMonat: tage } : {}), ...(jahr !== null ? { jahresHonorar: jahr } : {}) };
     }
     case 'leistungen': {
       // Produkt-Karte (19.10., PRODUKTE_KONZEPT.md): die neuen Felder — geprüft vorher (`produktOpsPruefen`, 400/413), hier nur gesäubert.

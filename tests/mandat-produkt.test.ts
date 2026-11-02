@@ -85,10 +85,11 @@ describe('Vorlage aus dem Produkt — jede Preis-Form', () => {
     expect(e.ok && e.e.vertrag).toEqual({ honorar: { betrag: 100, basis: 'tag' }, zahlungszielTage: 7 });
   });
   it('Zusatzmodul übernimmt Zahlplan (50/50) bzw. den Deckel als geplante Stunden', () => {
-    expect(zusatzExtras(EVENT)).toEqual({ zahlplan: { anzahlungProzent: 50 } });
-    expect(zusatzExtras(STD)).toEqual({ stundenJeMonat: 20 });
+    // 02.11. (R2-3 Fund 5): dazu festgeschrieben Deckel und Preise der Optionen (`deckelStunden`, `optionPreise`) — daher toMatchObject.
+    expect(zusatzExtras(EVENT)).toMatchObject({ zahlplan: { anzahlungProzent: 50 } });
+    expect(zusatzExtras(STD)).toMatchObject({ stundenJeMonat: 20 });
     const v = mandatVorlageAusProdukt(HAUPT, [{ leistung: STD }, { leistung: EVENT, inklusive: false }]);
-    expect(v.zusatz).toEqual([
+    expect(v.zusatz).toMatchObject([
       { id: 'mz-1', leistungId: 'l-std', honorar: { betragCent: 18_000, basis: 'stunde' }, stundenJeMonat: 20 },
       { id: 'mz-2', leistungId: 'l-event', honorar: { betragCent: 500_000, basis: 'einmalig' }, zahlplan: { anzahlungProzent: 50 } },
     ]);

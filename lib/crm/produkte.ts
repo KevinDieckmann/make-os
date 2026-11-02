@@ -9,6 +9,7 @@
 import type { CrmBestand, Leistung, Mandat, ChancenStufe } from './typen';
 import { imPapierkorb, papierkorbAbgelaufen, papierkorbBis } from '@/lib/eintraege/sicher';
 import { istKostenlos as karteKostenlos } from './produkt-karte';
+import { honorarMonatswert, monatswertVon, zusatzMonatswert } from './monatswert';
 
 /**
  * Ein kostenloses Produkt (16.10., Abnahme 2 · C7: der Kennzahlen-Check der Treppe steht als Produkt im Katalog): Betrag 0 und Einheit
@@ -44,6 +45,8 @@ export function linienGruppen(leistungen: Leistung[]): { linie: string; produkte
 
 export interface ProduktZahlen {
   mandateAktiv: number; mandateGesamt: number;
+  /** Aktive Mandate, an denen das Produkt als Zusatzmodul hängt (02.11., R2-3 Fund 9 — sein Monatswert zählt in `mrr`, sein Einmalbetrag in `einmalig`). */
+  alsZusatz?: number;
   /** Monatliche Honorare der aktiven Mandate (netto). */
   mrr: number;
   /** Einmalige Honorare aller nicht verworfenen Mandate. */
@@ -57,6 +60,11 @@ export interface ProduktZahlen {
 /** Monatswert eines Deals (einmalig zählt einmal, Jahr ÷ 12). */
 const dealMonat = (w: { betrag: number; basis: 'monat' | 'jahr' | 'einmalig' }) => (w.basis === 'jahr' ? w.betrag / 12 : w.betrag);
 
+/**
+ * Zahlen je Produkt. Seit 02.11. (R2-3 Fund 9) mit der EINEN Monatswert-Regel (lib/crm/monatswert.ts): das Hauptprodukt eines Mandats zählt Honorar + seine
+ * eigenen Preis-Teile (Zusatzmodule mit `preisTeilId`), ein Produkt als Zusatzmodul eines anderen Mandats zählt dessen Modul (laufend, jährlich ÷ 12,
+ * geplante Sätze; einmalig unter `einmalig`).
+ */
 export function produktZahlen(l: Pick<Leistung, 'id'>, crm: Pick<CrmBestand, 'mandate' | 'chancen'>): ProduktZahlen {
   const m = crm.mandate.filter(x => x.leistungId === l.id);
   const aktiv = m.filter(x => x.status === 'aktiv');
@@ -64,10 +72,21 @@ export function produktZahlen(l: Pick<Leistung, 'id'>, crm: Pick<CrmBestand, 'ma
   const offen = c.filter(x => OFFEN.includes(x.stufe));
   const gewonnen = c.filter(x => x.stufe === 'gewonnen').length;
   const verloren = c.filter(x => x.stufe === 'verloren').length;
+  // Module dieses Produkts an Mandaten eines ANDEREN Hauptprodukts (die eigenen Teile des Hauptprodukts zählen beim Mandat selbst).
+  const fremdeModule = crm.mandate.filter(x => x.leistungId !== l.id).flatMap(x => (x.zusatz ?? []).filter(z => z.leistungId === l.id).map(z => ({ m: x, z })));
+  const eigeneTeile = (x: Mandat) => (x.zusatz ?? []).filter(z => z.leistungId === l.id && z.leistungId === x.leistungId);
+  const rund = (n: number) => Math.round(n * 100) / 100;
+  const mrr = aktiv.reduce((s, x) => s + honorarMonatswert(x) + eigeneTeile(x).reduce((a, z) => a + zusatzMonatswert(z), 0), 0)
+    + fremdeModule.filter(x => x.m.status === 'aktiv').reduce((s, x) => s + zusatzMonatswert(x.z), 0);
+  const einmalModul = (z: NonNullable<Mandat['zusatz']>[number]) => (!z.inklusive && z.honorar?.basis === 'einmalig' ? z.honorar.betragCent / 100 : 0);
+  const einmalig = m.filter(x => x.honorar.basis === 'einmalig').reduce((s, x) => s + x.honorar.betrag, 0)
+    + m.filter(x => x.status !== 'beendet').reduce((s, x) => s + eigeneTeile(x).reduce((a, z) => a + einmalModul(z), 0), 0)
+    + fremdeModule.filter(x => x.m.status !== 'beendet').reduce((s, x) => s + einmalModul(x.z), 0);
+  const alsZusatz = new Set(fremdeModule.filter(x => x.m.status === 'aktiv').map(x => x.m.id)).size;
   return {
-    mandateAktiv: aktiv.length, mandateGesamt: m.length,
-    mrr: aktiv.filter(x => x.honorar.basis === 'monat').reduce((s, x) => s + x.honorar.betrag, 0),
-    einmalig: m.filter(x => x.status !== 'beendet' || x.honorar.basis === 'einmalig').filter(x => x.honorar.basis === 'einmalig').reduce((s, x) => s + x.honorar.betrag, 0),
+    mandateAktiv: aktiv.length, mandateGesamt: m.length, ...(alsZusatz ? { alsZusatz } : {}),
+    mrr: rund(mrr),
+    einmalig: rund(einmalig),
     dealsOffen: offen.length, pipelineWert: Math.round(offen.reduce((s, x) => s + dealMonat(x.wert), 0)),
     gewonnen, verloren, quote: gewonnen + verloren ? gewonnen / (gewonnen + verloren) : null,
   };
@@ -76,9 +95,10 @@ export function produktZahlen(l: Pick<Leistung, 'id'>, crm: Pick<CrmBestand, 'ma
 /** Kennzahlen des ganzen Bestands für den Kopf der Seite. */
 export function portfolio(crm: Pick<CrmBestand, 'mandate' | 'leistungen'>): { aktiv: number; mrr: number; ohneProdukt: number; produkteAktiv: number; groessterKunde: { kunde: string; anteil: number } | null } {
   const aktiv = crm.mandate.filter(m => m.status === 'aktiv');
-  const mrr = aktiv.filter(m => m.honorar.basis === 'monat').reduce((s, m) => s + m.honorar.betrag, 0);
+  // Monatswert je Mandat (02.11., R2-3 Fund 9) — dieselbe Regel wie der MRR im CRM (`monatswertVon`, inkl. Zusatzmodule).
+  const mrr = Math.round(aktiv.reduce((s, m) => s + monatswertVon(m), 0) * 100) / 100;
   const jeKunde = new Map<string, number>();
-  for (const m of aktiv) if (m.honorar.basis === 'monat') jeKunde.set(m.kunde, (jeKunde.get(m.kunde) ?? 0) + m.honorar.betrag);
+  for (const m of aktiv) if (monatswertVon(m) > 0) jeKunde.set(m.kunde, (jeKunde.get(m.kunde) ?? 0) + monatswertVon(m));
   const top = Array.from(jeKunde.entries()).sort((a, b) => b[1] - a[1])[0];
   return {
     aktiv: aktiv.length, mrr,
@@ -122,32 +142,57 @@ export const produktArchivieren = (l: Pick<Leistung, 'status'>): Partial<Leistun
 export const produktZurueck = (l: Pick<Leistung, 'statusVorArchiv'>, aktivErlaubt: boolean): Partial<Leistung> =>
   ({ status: (l.statusVorArchiv ?? 'aktiv') === 'aktiv' && aktivErlaubt ? 'aktiv' : 'entwurf' });
 
-export interface ProduktVerweise { mandateLaufend: number; mandate: number; dealsOffen: number; deals: number }
-/** Was auf ein Produkt zeigt — „laufend“ = Mandat nicht beendet, „offen“ = Deal noch nicht gewonnen/verloren. */
-export function produktVerweise(id: string, crm: Pick<CrmBestand, 'mandate' | 'chancen'>): ProduktVerweise {
+export interface ProduktVerweise {
+  mandateLaufend: number; mandate: number; dealsOffen: number; deals: number;
+  /**
+   * Weitere Verweise (02.11., Prüfung R2-3 Fund 2 — optional, damit alte Aufrufer gleich bleiben): Mandate, an denen das Produkt als Zusatzmodul hängt,
+   * Angebote mit einer Position des Produkts, andere Produkte, deren Regel (Anrechnung, inklusive) darauf zeigt, und Rechnungspositionen mit dem
+   * Produkt (nur mit `rechnungen`). Solange etwas davon zählt, wird das Produkt nie endgültig gelöscht.
+   */
+  zusatz?: number; angebote?: number; regeln?: number; rechnungen?: number;
+}
+type VerweisBestand = Pick<CrmBestand, 'mandate' | 'chancen'> & { angebote?: CrmBestand['angebote']; leistungen?: readonly Pick<Leistung, 'id' | 'regeln'>[] };
+/** Rechnungen (nur die Positionen mit Produkt) — für die Zählung, ob eine Rechnung ein Produkt trägt. */
+export type VerweisRechnung = { positionen?: readonly { leistungId?: string }[] };
+/**
+ * Was auf ein Produkt zeigt — „laufend“ = Mandat nicht beendet, „offen“ = Deal noch nicht gewonnen/verloren. EINE Zählung für die Löschsperre
+ * (lib/crm/crm-stand.ts), den Papierkorb und den Morgenlauf (`produkteAbgelaufen`): Haupt-Produkt UND Zusatzmodul der Mandate, Deals, Angebots-Positionen,
+ * Regeln anderer Produkte (`anrechnung.auf`, `inklusive`) und — mit `rechnungen` — Rechnungspositionen.
+ */
+export function produktVerweise(id: string, crm: VerweisBestand, rechnungen?: readonly VerweisRechnung[]): ProduktVerweise {
   const m = crm.mandate.filter(x => x.leistungId === id);
   const c = crm.chancen.filter(x => x.leistungId === id);
-  return { mandateLaufend: m.filter(x => x.status !== 'beendet').length, mandate: m.length, dealsOffen: c.filter(x => OFFEN.includes(x.stufe)).length, deals: c.length };
+  const zusatz = crm.mandate.filter(x => (x.zusatz ?? []).some(z => z.leistungId === id && x.leistungId !== id)).length;
+  const angebote = (crm.angebote ?? []).filter(a => (a.positionen ?? []).some(p => p.leistungId === id)).length;
+  const regeln = (crm.leistungen ?? []).filter(l => l.id !== id && ((l.regeln?.anrechnung?.auf ?? []).includes(id) || (l.regeln?.inklusive ?? []).some(x => x.leistungId === id))).length;
+  const rech = rechnungen ? rechnungen.filter(r => (r.positionen ?? []).some(p => p.leistungId === id)).length : 0;
+  return {
+    mandateLaufend: m.filter(x => x.status !== 'beendet').length, mandate: m.length, dealsOffen: c.filter(x => OFFEN.includes(x.stufe)).length, deals: c.length,
+    ...(zusatz ? { zusatz } : {}), ...(angebote ? { angebote } : {}), ...(regeln ? { regeln } : {}), ...(rech ? { rechnungen: rech } : {}),
+  };
 }
+/** Hängt überhaupt etwas am Produkt (dann nie endgültig löschen)? */
+export const produktHaengt = (v: ProduktVerweise): boolean => v.mandate + v.deals + (v.zusatz ?? 0) + (v.angebote ?? 0) + (v.regeln ?? 0) + (v.rechnungen ?? 0) > 0;
 /** „2 laufende Mandate und 1 offener Deal“ — leer, wenn nichts Laufendes daran hängt. */
 export function verweisSatz(v: ProduktVerweise): string {
-  const teile = [v.mandateLaufend ? `${v.mandateLaufend} ${v.mandateLaufend === 1 ? 'laufendes Mandat' : 'laufende Mandate'}` : '', v.dealsOffen ? `${v.dealsOffen} ${v.dealsOffen === 1 ? 'offener Deal' : 'offene Deals'}` : ''].filter(Boolean);
+  const teile = [v.mandateLaufend ? `${v.mandateLaufend} ${v.mandateLaufend === 1 ? 'laufendes Mandat' : 'laufende Mandate'}` : '', v.dealsOffen ? `${v.dealsOffen} ${v.dealsOffen === 1 ? 'offener Deal' : 'offene Deals'}` : '',
+    v.zusatz ? `${v.zusatz} ${v.zusatz === 1 ? 'Mandat mit diesem Zusatzmodul' : 'Mandate mit diesem Zusatzmodul'}` : ''].filter(Boolean);
   return teile.join(' und ');
 }
 
 export interface ProduktImPapierkorb { id: string; name: string; geloeschtAm: string; bisTag: string; verweise: ProduktVerweise; /** Bleibt über die Frist hinaus, solange etwas daran hängt. */ haengt: boolean }
 /** Der Papierkorb der Produkte, neueste zuerst. */
-export function produktePapierkorb(crm: Pick<CrmBestand, 'leistungen' | 'mandate' | 'chancen'>): ProduktImPapierkorb[] {
+export function produktePapierkorb(crm: Pick<CrmBestand, 'leistungen' | 'mandate' | 'chancen'> & { angebote?: CrmBestand['angebote'] }): ProduktImPapierkorb[] {
   return crm.leistungen.filter(imPapierkorb).map(l => {
     const verweise = produktVerweise(l.id, crm);
-    return { id: l.id, name: l.name, geloeschtAm: l.geloeschtAm!, bisTag: papierkorbBis(l.geloeschtAm!), verweise, haengt: verweise.mandate + verweise.deals > 0 };
+    return { id: l.id, name: l.name, geloeschtAm: l.geloeschtAm!, bisTag: papierkorbBis(l.geloeschtAm!), verweise, haengt: produktHaengt(verweise) };
   }).sort((a, b) => b.geloeschtAm.localeCompare(a.geloeschtAm));
 }
 /**
- * Morgenlauf: Produkte, die länger als 30 Tage im Papierkorb liegen UND an denen nichts mehr hängt (Mandat, Deal,
- * Angebots-Position) — nur die gehen endgültig. Alles andere bleibt im Papierkorb (sonst zeigten Verweise ins Leere).
+ * Morgenlauf: Produkte, die länger als 30 Tage im Papierkorb liegen UND an denen nichts mehr hängt (Mandat — auch als Zusatzmodul —, Deal, Angebots-Position,
+ * Regel eines anderen Produkts, Rechnungsposition — `produktVerweise`) — nur die gehen endgültig. Alles andere bleibt im Papierkorb (sonst zeigten Verweise ins
+ * Leere: ein Zusatzmodul verlöre Name, Deckel und Optionen). `rechnungen` = die Rechnungen des Finanzplans (ohne: keine Zählung der Rechnungen).
  */
-export function produkteAbgelaufen(crm: Pick<CrmBestand, 'leistungen' | 'mandate' | 'chancen'> & { angebote?: CrmBestand['angebote'] }, jetzt: string): string[] {
-  const inAngebot = new Set((crm.angebote ?? []).flatMap(a => (a.positionen ?? []).map(p => p.leistungId).filter((x): x is string => !!x)));
-  return crm.leistungen.filter(l => papierkorbAbgelaufen(l, jetzt) && !inAngebot.has(l.id)).filter(l => { const v = produktVerweise(l.id, crm); return !v.mandate && !v.deals; }).map(l => l.id);
+export function produkteAbgelaufen(crm: Pick<CrmBestand, 'leistungen' | 'mandate' | 'chancen'> & { angebote?: CrmBestand['angebote'] }, jetzt: string, rechnungen?: readonly VerweisRechnung[]): string[] {
+  return crm.leistungen.filter(l => papierkorbAbgelaufen(l, jetzt)).filter(l => !produktHaengt(produktVerweise(l.id, crm, rechnungen))).map(l => l.id);
 }

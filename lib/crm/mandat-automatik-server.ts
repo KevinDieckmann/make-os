@@ -24,7 +24,7 @@ import { absichtAbschliessen, absichtBeginnen, laeuftGerade, mitVorgang, type Ab
 import { ladeCrm, aendereCrm } from './speicher';
 import { karteiHaushalt } from './sperrliste';
 import { dealZuFirma } from './firmen-bezug';
-import { mandatAusDeal } from './mandat-aus-deal';
+import { automatikStart, mandatAusDeal } from './mandat-aus-deal';
 import { hauptPostenId, keinPostenGrund, mandatPosten, postenAngleichen, postenVomMandat } from './kunden';
 import type { CrmBestand, Mandat } from './typen';
 
@@ -129,7 +129,10 @@ export async function mandatAusAngebotAutomatisch(p: { angebotId: string; person
     if (!gesellschaftAusEinheit(a.gesellschaft) && !istRegisterKennung(a.gesellschaft)) return { angelegt: false, grund: 'Am Angebot steht keine Gesellschaft — das Mandat bitte von Hand anlegen.' };
     const ids = Array.from(new Set([...c.kontaktIds, ...(a.kontaktId ? [a.kontaktId] : [])]));
     if (await personGesperrt(ids)) return { angelegt: false, grund: 'Eine beteiligte Person ist eingeschränkt (Art. 18) — das Mandat bitte von Hand anlegen.' };
-    const m = mandatAusDeal(c, { leistungen: crm.leistungen, angebote: crm.angebote, firmen: crm.firmen, id: neueKennung('m'), jetzt, heute, person: p.person }).mandat;
+    // Start (02.11., R2-3 Fund 6): dieselbe Vorgabe wie „Mandat anlegen“ von Hand (`startVorschlag`, der Erste des Folgemonats) — mit gewünschtem Start am Deal
+    // (aus „Angebot anfordern“) dieser, frühestens heute. Vorher begann das Mandat am Annahmetag (Teilmonat, erste Rechnung sofort).
+    const start = automatikStart(c.startWunsch, heute);
+    const m = mandatAusDeal(c, { leistungen: crm.leistungen, angebote: crm.angebote, firmen: crm.firmen, id: neueKennung('m'), jetzt, heute, person: p.person, start }).mandat;
     // VOR dem ersten Schreiben: die Absicht (mit dem fertig gebauten Mandat). Liegt zum Angebot schon eine offene, wird DIESE fortgesetzt.
     const h = await karteiHaushalt();
     const daten: AnlegenDaten = { aktion: 'anlegen', angebotId: a.id, dealId: c.id, mandatId: m.id, mandat: m, kontaktIds: [...c.kontaktIds], jetzt, heute, person: p.person, ...(p.wer ? { wer: p.wer } : {}) };

@@ -6,6 +6,7 @@
 
 import type { Leistung, Mandat } from '@/lib/crm/typen';
 import { linieVon } from '@/lib/crm/produkte';
+import { monatswertVon } from '@/lib/crm/monatswert';
 import { WEG } from '@/lib/wege';
 import type { Scope } from './register';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
@@ -30,7 +31,8 @@ const laufend = (m: Mandat) => m.status === 'aktiv' || m.status === 'pausiert';
 export function geschaeftsmodell(mandate: Mandat[], leistungen: Leistung[], scope: Scope, fixkosten: number | null): Geschaeftsmodell {
   // Gesamt = Business-Bereich (05.10.): Mandate einer Privat-Einheit (Selbstständigkeit) zählen hier nicht.
   const inSicht = mandate.filter(m => (scope === 'gesamt' ? bereichVonGesellschaft(m.gesellschaft) === 'business' : m.gesellschaft === scope) && laufend(m) && m.honorar.betrag > 0);
-  const mrrVon = (m: Mandat) => (m.status === 'aktiv' && m.honorar.basis === 'monat' ? m.honorar.betrag : 0);
+  // Monatswert (02.11., R2-3 Fund 9): Honorar + Zusatzmodule, geplante Sätze — EINE Regel mit dem MRR im CRM.
+  const mrrVon = (m: Mandat) => (m.status === 'aktiv' ? monatswertVon(m) : 0);
   const einmaligVon = (m: Mandat) => (m.honorar.basis === 'einmalig' ? m.honorar.betrag : 0);
   const mrr = inSicht.reduce((s, m) => s + mrrVon(m), 0);
   const einmalig = inSicht.reduce((s, m) => s + einmaligVon(m), 0);

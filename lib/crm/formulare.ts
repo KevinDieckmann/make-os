@@ -126,6 +126,24 @@ export function linkLage(l: Pick<ExternerLink, 'bis' | 'widerrufenAm'>, heute: s
   return l.bis && l.bis < heute ? 'abgelaufen' : 'aktiv';
 }
 
+// ── Links und Produkt-Stand (02.11., Prüfung R2-3 Fund 7) ──────────────────────────────────────────────────────────────────────────
+// Ein Link zeigt nur aktive Produkte (`linkKatalog`) — ein archiviertes bzw. gelöschtes Produkt verschwand dort STILL. Jetzt: Hinweis beim Archivieren
+// („steckt in n Links“), Warnung je Link in der Linkliste und eine abgeleitete Glocke „Link ohne aktives Produkt“ an alle, die steuern.
+
+type ProduktStand = Pick<Leistung, 'id' | 'status' | 'geloeschtAm'>;
+const produktAktiv = (p: ProduktStand | undefined) => !!p && !p.geloeschtAm && p.status !== 'eingestellt';
+/** Die freigegebenen Produkte eines Links, die NICHT mehr erscheinen (eingestellt, im Papierkorb, nicht mehr im Katalog). */
+export const linkProdukteInaktiv = (l: Pick<ExternerLink, 'produkte'>, leistungen: readonly ProduktStand[]): string[] =>
+  l.produkte.filter(id => !produktAktiv(leistungen.find(x => x.id === id)));
+/** Ein aktiver Link, auf dem KEIN Produkt mehr erscheint (die Seite wäre leer). */
+export const linkOhneAktivesProdukt = (l: Pick<ExternerLink, 'produkte' | 'bis' | 'widerrufenAm'>, leistungen: readonly ProduktStand[], heute: string): boolean =>
+  linkLage(l, heute) === 'aktiv' && linkProdukteInaktiv(l, leistungen).length === l.produkte.length;
+/** In wie vielen aktiven Links steckt dieses Produkt? */
+export const linksMitProdukt = (links: readonly Pick<ExternerLink, 'produkte' | 'bis' | 'widerrufenAm'>[], produktId: string, heute: string): number =>
+  links.filter(l => linkLage(l, heute) === 'aktiv' && l.produkte.includes(produktId)).length;
+/** Der Hinweis beim Archivieren/Löschen eines Produkts — leer, wenn es in keinem aktiven Link steckt. */
+export const linkHinweisBeimArchivieren = (n: number): string => (n ? `Das Produkt steckt in ${n} ${n === 1 ? 'Vertriebler-Link' : 'Vertriebler-Links'} — dort erscheint es nicht mehr. Produkte am Link unter Markttraktion › Formulare neu wählen.` : '');
+
 // ── Eingabe ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface ProduktWahl {

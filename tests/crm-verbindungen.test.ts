@@ -106,6 +106,7 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['mandat-firma-tot', b => { b.crm.mandate[0].firmaId = 'f-weg'; }, 1, 'm-1'],
   ['mandat-kontakt-tot', b => { b.crm.mandate[0].kontaktIds.push('c-weg1'); }, 1, 'm-1'],
   ['mandat-produkt-tot', b => { b.crm.mandate[0].leistungId = 'l-weg'; }, 1, 'm-1'],
+  ['zusatz-produkt-tot', b => { b.crm.mandate[0].zusatz = [{ id: 'mz-1', leistungId: 'l-weg', honorar: { betragCent: 100, basis: 'monat' } }]; }, 1, 'm-1'],
   ['mandat-ohne-rechnung', b => { b.finanzplan!.rechnungen[0].datum = '2026-06-01'; }, 1, 'm-1'],
   ['rechnung-mandat-tot', b => { b.finanzplan!.rechnungen.push({ id: 'r-2', firmaId: 'kdc', mandatId: 'm-weg', status: 'geplant', betrag: 100 }); }, 1, 'r-2'],
   ['rechnung-gesellschaft-tot', b => { b.finanzplan!.rechnungen[0].firmaId = 'weg'; }, 1, 'r-1'],

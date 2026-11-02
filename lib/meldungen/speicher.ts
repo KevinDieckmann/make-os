@@ -17,7 +17,7 @@ import { WEG } from '@/lib/wege';
 import type { MeldungEingabe } from './melden';
 import {
   MELDUNGEN_MAX, PERSON_OK, bestandSaeubern, buchungenErledigen, eintragAus, einfuegen, faelligAbleiten, geburtstagAbleiten, anstehendAbleiten, gelesenSetzen, pruefeEingabe, sichtBauen,
-  routinenAbleiten, type BuchungenLage, type GelesenAuswahl, type Meldung, type MeldungenBestand, type MeldungenSicht, type AnstehendFuerGlocke, type RoutineFuerGlocke,
+  routinenAbleiten, formularLinksAbleiten, type BuchungenLage, type GelesenAuswahl, type Meldung, type MeldungenBestand, type MeldungenSicht, type AnstehendFuerGlocke, type RoutineFuerGlocke,
 } from './regeln';
 import { lebendAus, verweisLebt } from '@/lib/kalender/bezug';
 import { anstehendLesen, anstehendStand } from '@/lib/heute/anstehend-server';
@@ -210,18 +210,32 @@ async function routinenFuerGlocke(person: string, heute: string, jetztUhr: strin
   } catch { return []; }
 }
 
+/** Vertriebler-Links ohne aktives Produkt (02.11., R2-3 Fund 7) — nur für Personen, die steuern dürfen; wirft nie. */
+async function formularLinksFuerGlocke(person: string): Promise<{ id: string; name: string; href: string }[]> {
+  try {
+    const { darfSteuern } = await import('@/lib/zugang/steuern');
+    if (!(await darfSteuern(person))) return [];
+    const [{ ladeFormular }, { linkOhneAktivesProdukt }, { ladeCrm }] = await Promise.all([import('@/lib/crm/formulare-speicher'), import('@/lib/crm/formulare'), import('@/lib/crm/speicher')]);
+    const [b, crm] = await Promise.all([ladeFormular(), ladeCrm()]);
+    if (!b.links.length) return [];
+    const heute = tagVon(new Date().toISOString());
+    return b.links.filter(l => linkOhneAktivesProdukt(l, crm.leistungen, heute)).map(l => ({ id: l.id, name: l.name, href: WEG.formulare() }));
+  } catch { return []; }
+}
+
 async function aufgabenLesen(person: string): Promise<unknown[]> {
   const s = await ladeAufgabenSicht(person); // Sichtfilter „nur ich“ (29.09.)
   return Array.isArray(s?.tasks) ? s.tasks : [];
 }
 
-function abgeleitet(bestand: MeldungenBestand, aufgaben: unknown[], person: string, heute: string, geburtstage: readonly Geburtstag[] = [], anstehend: AnstehendFuerGlocke = LEER_ANSTEHEND, jetztWand = `${heute}T00:00:00`, routinen: readonly RoutineFuerGlocke[] = []): Meldung[] {
+function abgeleitet(bestand: MeldungenBestand, aufgaben: unknown[], person: string, heute: string, geburtstage: readonly Geburtstag[] = [], anstehend: AnstehendFuerGlocke = LEER_ANSTEHEND, jetztWand = `${heute}T00:00:00`, routinen: readonly RoutineFuerGlocke[] = [], links: readonly { id: string; name: string; href: string }[] = []): Meldung[] {
   const am = ausWandzeit(`${heute}T00:00:00`).toISOString();
   return [
     ...faelligAbleiten(aufgaben, { person, heute, am, link: WEG.aufgabe, tagVonIso, gelesen: bestand.faelligGelesen }),
     ...geburtstagAbleiten(geburtstage, { person, heute, morgen: tagPlus(heute, 1), am, gelesen: bestand.faelligGelesen }),
     ...anstehendAbleiten(anstehend, { heute, jetztWand, am, gelesen: bestand.faelligGelesen }),
     ...routinenAbleiten(routinen, { heute, am, gelesen: bestand.faelligGelesen }),
+    ...formularLinksAbleiten(links, { heute, am, gelesen: bestand.faelligGelesen }),
   ];
 }
 
@@ -234,8 +248,8 @@ function abgeleitet(bestand: MeldungenBestand, aufgaben: unknown[], person: stri
 async function quellenLesen(person: string, heute: string, jetzt: Date) {
   const uhr = wandzeit(jetzt);
   const q = await merken(`glocke-quellen:${person}:${uhr.slice(0, 15)}`, 60_000, async () => {
-    const [aufgaben, geburtstage, anstehend, routinen] = await Promise.all([aufgabenLesen(person), geburtstageLesen(person, heute), anstehendFuerGlocke(person, jetzt), routinenFuerGlocke(person, heute, uhr.slice(11, 16))]);
-    return { aufgaben, geburtstage, anstehend, routinen };
+    const [aufgaben, geburtstage, anstehend, routinen, links] = await Promise.all([aufgabenLesen(person), geburtstageLesen(person, heute), anstehendFuerGlocke(person, jetzt), routinenFuerGlocke(person, heute, uhr.slice(11, 16)), formularLinksFuerGlocke(person)]);
+    return { aufgaben, geburtstage, anstehend, routinen, links };
   });
   return { ...q, jetztWand: uhr };
 }
@@ -269,6 +283,8 @@ function quellenFuerSicht(q: Quellen, sicht: GlockenSicht): Quellen {
     // Die leere Ersatz-Lage (Lesefehler) trägt keine Geburtstage/Vorschläge — dann gibt es nichts zu filtern.
     anstehend: 'geburtstage' in a ? anstehendFuerSpace(a as Anstehend, sicht) : a,
     routinen: q.routinen.filter(r => (r.business ? 'business' : 'privat') === sicht),
+    // Vertriebler-Links (02.11.) sind Business.
+    links: sicht === 'business' ? q.links : [],
   };
 }
 function bestandFuerSicht(b: MeldungenBestand, sicht: GlockenSicht, aufgaben: unknown[]): MeldungenBestand {
@@ -288,7 +304,7 @@ export async function meldungenSicht(person: string, jetzt: Date = new Date(), s
   const gespeichert = (await akteFilterFuer(person))(bestandSaeubern(roh));
   // Nachtrag F1: entschiedene Terminanfragen zählen nicht mehr an der Glocke; Restpunkte 29.09.: gelöste Termine auch nicht.
   const bestand = bestandFuerSicht(buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt)), sicht, q0.aufgaben);
-  return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen), heute, await businessFreiLage(person, q0.aufgaben, jetzt));
+  return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen, q.links), heute, await businessFreiLage(person, q0.aufgaben, jetzt));
 }
 
 /** „Gelesen“ setzen — nur im eigenen Bestand der Person. Eine Sammelmeldung „aus der freien Zeit“ setzt alle ihre Meldungen. */
@@ -301,7 +317,7 @@ export async function meldungenGelesen(person: string, auswahl0: GelesenAuswahl,
   const lage = await businessFreiLage(person, q.aufgaben, jetzt);
   const next = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => {
     const b = bestandSaeubern(cur);
-    const abg = abgeleitet(b, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen);
+    const abg = abgeleitet(b, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen, q.links);
     const s = businessFreiSammeln([...abg, ...b.eintraege.map(e => ({ ...e, gelesen: !!e.gelesen }))], lage);
     const ids = auswahl.ids ? businessFreiIdsAufloesen(auswahl.ids, s.gruppen) : undefined;
     return gelesenSetzen(b, { ...auswahl, ...(ids ? { ids } : {}) }, heute, abg.map(m => m.id), s.ruhen);
@@ -309,7 +325,7 @@ export async function meldungenGelesen(person: string, auswahl0: GelesenAuswahl,
   if (sicht) return meldungenSicht(person, jetzt, sicht);
   const akte = await akteFilterFuer(person);
   const stand = akte(buchungenErledigen(next, await buchungenLage(next, jetzt)));
-  return sichtBauen(stand, abgeleitet(stand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen), heute, lage);
+  return sichtBauen(stand, abgeleitet(stand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen, q.links), heute, lage);
 }
 
 /** Kanal-Einstellung der Person (Telegram vorgesehen, versendet noch nichts). */
@@ -318,7 +334,7 @@ export async function meldungenEinstellen(person: string, e: { telegram: boolean
   const q = await quellenLesen(person, heute, jetzt);
   const gespeichert = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => ({ ...bestandSaeubern(cur), einstellungen: { telegram: e.telegram === true } }));
   const next = (await akteFilterFuer(person))(buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt)));
-  return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen), heute, await businessFreiLage(person, q.aufgaben, jetzt));
+  return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen, q.links), heute, await businessFreiLage(person, q.aufgaben, jetzt));
 }
 
 /**

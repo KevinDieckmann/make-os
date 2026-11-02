@@ -28,6 +28,7 @@ import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { rechnungPasst, type RechnungKurz } from './kunden';
 import { personenDerFirma } from './stationen';
 import { toechter } from './konzern';
+import { produktVerweise, type VerweisRechnung } from './produkte';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 
@@ -81,7 +82,7 @@ export function crmKonflikte(b: CrmBestand, ops: ListenOp[]): CrmKonflikt[] {
  */
 export interface VerweisKontext {
   kontakte?: Pick<Kontakt, 'id' | 'firmaId' | 'position' | 'stationen'>[];
-  rechnungen?: (RechnungKurz & { mandatId?: string })[];
+  rechnungen?: (RechnungKurz & { mandatId?: string; positionen?: { leistungId?: string }[] })[];
   dateien?: Pick<DateiEintrag, 'firmaId' | 'mandatId'>[];
 }
 /**
@@ -92,6 +93,8 @@ export interface VerweisKontext {
 export interface VerweisAnzahl {
   personen: number; deals: number; mandate: number; rechnungen: number; toechter?: number;
   dateien?: number; followups?: number; teilnahmen?: number; events?: number; kampagnen?: number; newsletter?: number;
+  /** Produkte (02.11., R2-3 Fund 2): Mandate mit dem Produkt als Zusatzmodul, Angebote mit einer Position, andere Produkte, deren Regel darauf zeigt. */
+  zusatz?: number; angebote?: number; regeln?: number;
 }
 export type LoeschListe = 'firmen' | 'mandate' | 'leistungen' | 'events' | 'segmente' | 'beitraege';
 export interface LoeschSperre { liste: LoeschListe; id: string; anzahl: VerweisAnzahl; text: string }
@@ -104,6 +107,8 @@ const teileVon = (a: VerweisAnzahl) => [
   a.followups && wort(a.followups, 'offenes Follow-up', 'offene Follow-ups'), a.teilnahmen && wort(a.teilnahmen, 'Teilnahme', 'Teilnahmen'),
   a.events && wort(a.events, 'Event', 'Events'), a.kampagnen && wort(a.kampagnen, 'Kampagne', 'Kampagnen'),
   a.newsletter && wort(a.newsletter, 'Newsletter-Ausgabe', 'Newsletter-Ausgaben'),
+  a.zusatz && wort(a.zusatz, 'Mandat mit diesem Zusatzmodul', 'Mandate mit diesem Zusatzmodul'), a.angebote && wort(a.angebote, 'Angebot', 'Angebote'),
+  a.regeln && wort(a.regeln, 'Regel eines anderen Produkts', 'Regeln anderer Produkte'),
 ].filter(Boolean);
 /** „noch 3 Personen · 1 Deal · 2 Rechnungen“ — nur Anzahlen, nie Namen oder Beträge. */
 export function verweisText(name: string, a: VerweisAnzahl, rat = 'erst umhängen oder beenden, dann löschen'): string {
@@ -164,7 +169,10 @@ export function loeschSperren(b: CrmBestand, ops: ListenOp[], kontext: VerweisKo
       // Produkte (W6): Deals/Mandate zeigen per `leistungId` darauf — nicht löschen, sondern „eingestellt“ setzen.
       const l = (b.leistungen ?? []).find(x => x.id === id);
       if (!l) continue;
-      const anzahl: VerweisAnzahl = { ...leer(), deals: b.chancen.filter(c => c.leistungId === id && !satz.geloescht.has(`chancen:${c.id}`)).length, mandate: b.mandate.filter(m => m.leistungId === id && !satz.geloescht.has(`mandate:${m.id}`)).length };
+      // 02.11. (R2-3 Fund 2): dieselbe Zählung wie Papierkorb und Morgenlauf (`produktVerweise`) — auch Zusatzmodule, Angebote, Regeln anderer Produkte und
+      // Rechnungspositionen; was derselbe Satz löscht, zählt nicht.
+      const v = produktVerweise(id, { mandate: b.mandate.filter(m => !satz.geloescht.has(`mandate:${m.id}`)), chancen: b.chancen.filter(c => !satz.geloescht.has(`chancen:${c.id}`)), angebote: (b.angebote ?? []).filter(a => !satz.geloescht.has(`angebote:${a.id}`)), leistungen: (b.leistungen ?? []).filter(x => !satz.geloescht.has(`leistungen:${x.id}`)) }, rechnungen as readonly VerweisRechnung[]);
+      const anzahl: VerweisAnzahl = nur({ ...leer(), deals: v.deals, mandate: v.mandate, rechnungen: v.rechnungen ?? 0, zusatz: v.zusatz ?? 0, angebote: v.angebote ?? 0, regeln: v.regeln ?? 0 });
       if (summe(anzahl)) sperren.push({ liste: 'leistungen', id, anzahl, text: verweisText(l.name, anzahl, 'das Produkt stattdessen auf „eingestellt“ setzen (bleibt an Deals und Mandaten lesbar)') });
     } else if (o.liste === 'events') {
       // Events (W6): Teilnahmen und offene Follow-ups des Events gehen nur MIT (Kaskade im selben Satz, `loeschKaskade`).

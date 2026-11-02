@@ -240,10 +240,10 @@ describe('Fund 9 · Laufzeit: volles Mitglied darf, Konto „nur Business“ / f
 });
 
 describe('Neuigkeit', () => {
-  it('steht oben, neutral', () => {
-    // Neuere Einträge desselben Tages stehen darüber (absteigend, tests/kg-nach.test.ts) — dieser ist der neueste aus Prüfung D.
-    const n = NEUIGKEITEN.find(x => x.id === 'u-2026-11-02-13')!;
-    expect(NEUIGKEITEN.filter(x => x.datum > '2026-11-02')).toHaveLength(0);
+  it('steht drin, neutral', () => {
+    // Per Kennung, nicht per Platz: spätere Einträge (z. B. u-2026-11-02-14) stehen davor.
+    const n = NEUIGKEITEN.find(x => x.id === 'u-2026-11-02-13');
+    expect(n).toBeTruthy();
     expect(JSON.stringify(n)).not.toMatch(/Malin|Kevin/);
   });
 });
