@@ -245,7 +245,7 @@ describe('Fund 9/15 · Rückweg dokumentiert, Neuigkeiten absteigend', () => {
   it('u-2026-11-02-… stehen absteigend', () => {
     const nr = NEUIGKEITEN.map(n => n.id).filter(id => id.startsWith('u-2026-11-02-')).map(id => Number(id.split('-').pop()));
     expect(nr).toEqual([...nr].sort((a, b) => b - a));
-    expect(NEUIGKEITEN[0].id).toBe('u-2026-11-02-15');
+    expect(NEUIGKEITEN.filter(n => n.datum === '2026-11-02')[0].id).toBe(`u-2026-11-02-${Math.max(...nr)}`);
   });
 });
 
