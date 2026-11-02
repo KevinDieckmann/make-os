@@ -34,14 +34,19 @@ export interface VorbereitenFaellig {
   monat: string;
   art: VorbereitenArt;
 }
-type MandatTeil = Pick<Mandat, 'status' | 'honorar' | 'start' | 'ende' | 'rechnungsrhythmus'> & Partial<Pick<Mandat, 'zahlplan' | 'raten' | 'mindestlaufzeitMonate' | 'geloeschtAm' | 'jahresHonorar'>>;
+type MandatTeil = Pick<Mandat, 'status' | 'honorar' | 'start' | 'ende' | 'rechnungsrhythmus'> & Partial<Pick<Mandat, 'zahlplan' | 'raten' | 'mindestlaufzeitMonate' | 'geloeschtAm' | 'jahresHonorar' | 'pausen'>>;
+const tagOk = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(`${v}T12:00:00Z`));
 /** Die drei Monate eines Quartals ab seinem ersten Monat (JJJJ-MM). */
 export const quartalMonate = (q: string): string[] => [q, naechsterMonat(q), naechsterMonat(naechsterMonat(q))];
 
 /**
  * Was der Morgenlauf für ein Mandat vorbereiten DARF — in Reihenfolge, das Früheste zuerst (rein). Der Lauf nimmt davon höchstens eines
  * (je Mandat und Lauf ein Entwurf); was schon gestellt ist (`abgerechnet`), fällt weg.
- *   · nur aktive Mandate mit Honorar, nie im Papierkorb;
+ *   · aktive und beendete Mandate mit Honorar (pausierte nie), nie im Papierkorb — „beendet“ (02.11., Kreislauf Runde 3: „Mandat beenden“ setzt den Status
+ *     sofort, auch mit Ende in der Zukunft) heißt: die Leistung läuft bis zum Ende weiter, Monat/Quartal/Tagessatz bis einschließlich des Monats des Endes
+ *     (der letzte anteilig — `leistungsmonat`), nie danach; ohne Ende keine neuen Monate. Raten bzw. Zahlplan laufen auch nach dem Beenden weiter — dieselbe
+ *     Regel wie der Liquiplan (`mandatPosten`, lib/crm/kunden.ts: beendet mit Zahlplan behält seine Posten);
+ *   · Pausen (02.11.): pausierte Tage zählen nicht (`mandatLaeuftIm`/`leistungsmonat` lesen `pausen`) — ganz pausierte Monate fallen weg;
  *   · Raten bzw. Zahlplan: die Zahlungsmonate (`zahlplanMonate`, dieselbe Regel wie „Rate 2 von 6 schreiben“ in der Mandatsakte) bis zum laufenden Monat;
  *   · Tagessatz (31.10.): je Leistungsmonat EIN Entwurf, sobald der Monat vorbei ist (am Monatsersten des Folgemonats) — die Tage kommen aus der
  *     erfassten Zeit (der Lauf; ohne Zeit nur eine Aufgabe mit Hinweis);
@@ -52,11 +57,12 @@ export const quartalMonate = (q: string): string[] => [q, naechsterMonat(q), nae
  * NIE ein Monat vor `abMonat` (`vorbereitenAbMonat`: der Monat NACH dem ersten Lauf) — der Altbestand bekommt keine Entwürfe für Vergangenes.
  */
 export function vorbereitenFaellig(m: MandatTeil, heute: string, abgerechnet: ReadonlySet<string>, abMonat: string): VorbereitenFaellig[] {
-  if (m.status !== 'aktiv' || m.geloeschtAm || !(m.honorar?.betrag > 0) || !MONAT.test(abMonat)) return [];
+  const beendet = m.status === 'beendet';
+  if ((m.status !== 'aktiv' && !beendet) || m.geloeschtAm || !(m.honorar?.betrag > 0) || !MONAT.test(abMonat)) return [];
   const jetzt = heute.slice(0, 7);
   const zp = zahlplanMonate(m);
   if (zp) return zp.filter(mo => mo >= abMonat && mo <= jetzt && !abgerechnet.has(mo)).map(monat => ({ monat, art: 'rate' as const }));
-  if (!m.start) return [];
+  if (!m.start || (beendet && !tagOk(m.ende))) return [];
   const s = m.start.slice(0, 7);
   const ab = s > abMonat ? s : abMonat;
   const raus: VorbereitenFaellig[] = [];
@@ -66,7 +72,7 @@ export function vorbereitenFaellig(m: MandatTeil, heute: string, abgerechnet: Re
     return raus;
   }
   if (m.honorar.basis === 'einmalig' || m.rechnungsrhythmus === 'einmalig') {
-    return s >= abMonat && s <= jetzt && !abgerechnet.has(s) ? [{ monat: s, art: 'einmalig' }] : [];
+    return s >= abMonat && s <= jetzt && (!beendet || s <= m.ende!.slice(0, 7)) && !abgerechnet.has(s) ? [{ monat: s, art: 'einmalig' }] : [];
   }
   if (m.honorar.basis !== 'monat') return [];
   // Jahreshonorar (02.11., R2-3 Fund 3): EIN Entwurf je Vertragsjahr — im Monat, in dem es beginnt (Beginn + 12·k, Mandat läuft).
@@ -86,6 +92,28 @@ export function vorbereitenFaellig(m: MandatTeil, heute: string, abgerechnet: Re
   if (m.rechnungsrhythmus !== 'monatlich') return [];
   for (let mo = ab, n = 0; mo <= jetzt && n < 240; n++, mo = naechsterMonat(mo)) if (mandatLaeuftIm(m, mo) && !abgerechnet.has(mo)) raus.push({ monat: mo, art: 'monat' });
   return raus;
+}
+
+/**
+ * Altbestand-Pause (02.11., Kreislauf Runde 3): ein Mandat, das pausiert ist, OHNE dass der Server die Pause festgehalten hat (pausiert, bevor es
+ * `pausen` gab — kein offener Eintrag), bekommt im Morgenlauf je Lauf den Monat (bzw. das Quartal) als „übersprungen“ gemerkt (Merker `p:<tag>`).
+ * Nach dem Zurück auf aktiv legt der Lauf diese Monate NIE nach — die sicherste einfache Regel: lieber keinen Entwurf als einen für eine Pause (von Hand
+ * bleibt die Rechnung in der Mandatsakte möglich). Nur Monats-, Quartals- und Tagessatz-Mandate; Raten/Zahlplan, Jahres- und einmaliges Honorar sind
+ * Zahlungen, keine Leistungsmonate — die bleiben unberührt. Mit festgehaltener Pause gilt `leistungsmonat` (anteilig), hier nichts. Rein.
+ */
+export function pauseUeberspringen(m: MandatTeil, heute: string): string[] {
+  if (m.status !== 'pausiert' || m.geloeschtAm || !(m.honorar?.betrag > 0) || (m.pausen ?? []).some(p => !p.bis)) return [];
+  if (zahlplanMonate(m) || !tagOk(m.start) || jahresHonorarVon(m) !== null) return [];
+  const jetzt = heute.slice(0, 7);
+  const s = m.start.slice(0, 7);
+  if (s > jetzt) return [];
+  if (m.honorar.basis === 'tag' || (m.honorar.basis === 'monat' && m.rechnungsrhythmus === 'monatlich')) return [jetzt];
+  if (m.honorar.basis === 'monat' && m.rechnungsrhythmus === 'quartal') {
+    let q = s;
+    for (let n = 0; n < 80 && !quartalMonate(q).includes(jetzt); n++) q = naechsterMonat(quartalMonate(q)[2]);
+    return quartalMonate(q).includes(jetzt) ? [q] : [];
+  }
+  return [];
 }
 
 /** Nur die Monate von `vorbereitenFaellig` (die Form bis 31.10.). Rein. */

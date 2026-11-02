@@ -32,6 +32,7 @@ import { firmaIcpSaeubern, steckbriefSaeubern } from './icp-firma';
 import { adresseSaeubern, quellenSaeubern, bewertungSaeubern, analyseSaeubern, anreicherungSaeubern, osmIdSaeubern, instagramSaeubern, inhaberSaeubern, betriebRechtSaeubern, betriebRechtStempeln, BETRIEB_QUELLEN, ERREICHBARKEITEN } from './betrieb';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
 import { jahresHonorarVon } from './mandat-laufzeit';
+import { pausenSaeubern, pausenStempeln, PAUSEN_MAX } from './mandat-pausen';
 import { kartenFelderSaeubern, mandatRatenSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktProzessKennung, produktSpiegeln, produktPruefen, spiegelKonflikt, zahlplanSaeubern, PRODUKT_GRENZEN } from './produkt-karte';
 import { mailTexteSaeubern } from './vorlage-platzhalter';
 import { kundennummerOk, kundennummernNachziehen } from './kundennummer';
@@ -121,7 +122,7 @@ export const HISTORIE_MAX = 5000;
 const GRENZE_IDS = 500;
 export const LISTEN_GRENZEN: Partial<Record<CrmListe, Record<string, number>>> = {
   chancen: { kontaktIds: GRENZE_IDS, personenRollen: GRENZE_IDS },
-  mandate: { kontaktIds: GRENZE_IDS, ziele: 500, leistungen: 1000, offen: 1000, zusatz: PRODUKT_GRENZEN.zusatz },
+  mandate: { kontaktIds: GRENZE_IDS, ziele: 500, leistungen: 1000, offen: 1000, zusatz: PRODUKT_GRENZEN.zusatz, pausen: PAUSEN_MAX },
   leistungen: { lieferumfang: 500, phasen: 500, unterlagen: 500, preise: PRODUKT_GRENZEN.preise },
   firmen: { branchen: 100 },
   events: { ablauf: 1000, checkliste: 2000, budget: 1000, zielpersonen: ZIELPERSONEN_MAX, uebergaben: UEBERGABEN_MAX, wer: WER_MAX },
@@ -486,7 +487,9 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       const tage = typeof o.tageJeMonat === 'number' && Number.isFinite(o.tageJeMonat) && o.tageJeMonat >= 0.25 && o.tageJeMonat <= 744 ? Math.round(o.tageJeMonat * 100) / 100 : undefined;
       // Jahreshonorar (02.11., R2-3 Fund 3): nur, solange es zum Monatshonorar passt (`jahresHonorarVon`) — sonst weg (dann gilt das Monatshonorar).
       const jahr = jahresHonorarVon({ honorar: (o.honorar ?? null) as Partial<Mandat['honorar']> | null, jahresHonorar: o.jahresHonorar });
-      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(zusatzModule ? { zusatz: zusatzModule } : {}), ...(raten ? { raten } : zahlplan ? { zahlplan } : {}), ...(tage !== undefined ? { tageJeMonat: tage } : {}), ...(jahr !== null ? { jahresHonorar: jahr } : {}) };
+      // Pausen (02.11., Kreislauf Runde 3): nur Form — setzen tut sie allein der Server (`pausenStempeln` in `wendeCrmAn`); ohne diese Zeile fielen sie weg.
+      const pausen = pausenSaeubern(o.pausen, grenzeVon('mandate', 'pausen'));
+      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(zusatzModule ? { zusatz: zusatzModule } : {}), ...(raten ? { raten } : zahlplan ? { zahlplan } : {}), ...(tage !== undefined ? { tageJeMonat: tage } : {}), ...(jahr !== null ? { jahresHonorar: jahr } : {}), ...(pausen ? { pausen } : {}) };
     }
     case 'leistungen': {
       // Produkt-Karte (19.10., PRODUKTE_KONZEPT.md): die neuen Felder — geprüft vorher (`produktOpsPruefen`, 400/413), hier nur gesäubert.
@@ -816,6 +819,7 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
   const zurueck: string[] = [];
   const ops = firmenZusammenfuehren(b, ibanSchuetzen(b, regelOps), jetzt, zurueck);
   const neu = { ...b };
+  const pausenGrenze: string[] = [];
   for (const l of CRM_LISTEN) {
     const eigene = ops.filter(o => o.liste === l);
     if (!eigene.length) continue;
@@ -828,6 +832,8 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
       // Anlass eines Follow-ups (02.11., R2-4 Fund 1: Antwort/Anfrage/Vertrag … = nie Werbung): setzt NUR der Server — über den Bestand-Weg kann ihn
       // niemand setzen (eine Werbesperre umgehen) oder entfernen.
       : l === 'followups' ? anlassVomAltstand(b.followups ?? [], r.liste as unknown as FollowUp[])
+      // Pausen eines Mandats (02.11., Kreislauf Runde 3): schreibt NUR der Server aus dem Statuswechsel — der Browser kann sie weder setzen noch löschen.
+      : l === 'mandate' ? pausenVomAltstand(b.mandate, r.liste as unknown as Mandat[], tagVon(jetzt), pausenGrenze)
       // Papierkorb-Marke der Produkte (04.10.): neu = Server-Zeit, bestehend bleibt — der Browser verschiebt die Frist nie.
       : l === 'leistungen' ? (r.liste as unknown as Leistung[]).map(x => markeVomServer(b.leistungen.find(a => a.id === x.id), x, jetzt))
       : r.liste;
@@ -837,6 +843,7 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
       : liste;
     angewandt += r.angewandt;
   }
+  if (pausenGrenze.length) return { bestand: b, angewandt: 0, fehler, konflikte: [], sperren: [], grenze: pausenGrenze };
   // Recht am Betrieb (01.11., Welle A): Herkunft/Art.-14-Uhr/Werbesperre/„geprüft“ stempelt nur der Server — was der Browser schickt, zählt nur als Absicht.
   if (neu.firmen !== b.firmen) {
     const alt = new Map(b.firmen.map(f => [f.id, f]));
@@ -861,6 +868,22 @@ function anlassVomAltstand(alt: readonly FollowUp[], neu: FollowUp[]): FollowUp[
     const { anlass: _vomBrowser, ...ohne } = f;
     const gespeichert = vorher.get(f.id);
     return gespeichert ? { ...ohne, anlass: gespeichert } : ohne;
+  });
+}
+
+/**
+ * Die Pausen der Mandate kommen immer aus dem gespeicherten Stand, fortgeschrieben aus dem Statuswechsel (`pausenStempeln`, lib/crm/mandat-pausen.ts) —
+ * was der Browser schickt, zählt nie. Unveränderte Einträge bleiben dasselbe Objekt (kein Schreiben ohne Änderung). Über der Grenze → `grenze` (413).
+ */
+function pausenVomAltstand(alt: readonly Mandat[], neu: Mandat[], heute: string, grenze: string[]): Mandat[] {
+  const vorher = new Map(alt.map(m => [m.id, m]));
+  return neu.map(m => {
+    const a = vorher.get(m.id);
+    if (a === m) return m;
+    const st = pausenStempeln(a, m.status, heute);
+    if (st.grenze) grenze.push(`mandate „${m.id}“: ${st.grenze} — abgelehnt, nichts gekürzt.`);
+    const { pausen: _vomBrowser, ...ohne } = m;
+    return st.pausen ? { ...ohne, pausen: st.pausen } : (ohne as Mandat);
   });
 }
 

@@ -504,7 +504,9 @@ export function naechsterOffenerMonat(m: Partial<Pick<Mandat, 'start' | 'ende'>>
 }
 
 /** Der Satz, wenn das Mandat im gewählten Monat nicht läuft (409) — mit dem Monat, für den es eine Rechnung gibt. */
-export function ausserhalbLaufzeit(m: Partial<Pick<Mandat, 'start' | 'ende'>>, monat: string): string {
+export function ausserhalbLaufzeit(m: Partial<Pick<Mandat, 'start' | 'ende' | 'pausen'>>, monat: string): string {
+  // Pausen (02.11., Runde 3): läuft der Monat ohne die Pausen, war er ganz pausiert.
+  if (m.pausen?.length && mandatLaeuftImMonat({ start: m.start, ende: m.ende }, monat) && !mandatLaeuftImMonat(m, monat)) return `Das Mandat war in ${monatsName(monat)} pausiert — keine Monatsrechnung.`;
   if (tagOk(m.start) && m.start.slice(0, 7) > monat) return `Das Mandat beginnt am ${datumDe(m.start)} — für ${monatsName(monat)} gibt es keine Monatsrechnung. Die erste ist für ${monatsName(m.start.slice(0, 7))}.`;
   if (tagOk(m.ende) && m.ende.slice(0, 7) < monat) return `Das Mandat endete am ${datumDe(m.ende)} — für ${monatsName(monat)} gibt es keine Monatsrechnung. Die letzte ist für ${monatsName(m.ende.slice(0, 7))}.`;
   return `Das Mandat läuft in ${monatsName(monat)} nicht (Beginn und Ende am Mandat prüfen) — keine Monatsrechnung.`;
@@ -516,8 +518,10 @@ export function anteilText(l: Leistungsmonat): string {
   const g = monatsGrenzen(l.monat);
   const ab = !!g && l.von > g.von;
   const bis = !!g && l.bis < g.bis;
-  const wann = ab && bis ? `${kurz(l.von)}–${kurz(l.bis)}` : ab ? `ab ${kurz(l.von)}` : `bis ${kurz(l.bis)}`;
-  return `anteilig ${wann}, ${l.tage} von ${l.monatsTage} Tagen`;
+  // Pause mitten im Zeitraum (02.11., Runde 3): weniger Tage als von–bis → „ohne Pause“.
+  const luecke = Math.round((Date.parse(`${l.bis}T12:00:00Z`) - Date.parse(`${l.von}T12:00:00Z`)) / 864e5) + 1 > l.tage;
+  const wann = (ab && bis) || (luecke && !ab && !bis) ? `${kurz(l.von)}–${kurz(l.bis)}` : ab ? `ab ${kurz(l.von)}` : `bis ${kurz(l.bis)}`;
+  return `anteilig ${wann}${luecke ? ' ohne Pause' : ''}, ${l.tage} von ${l.monatsTage} Tagen`;
 }
 
 /**

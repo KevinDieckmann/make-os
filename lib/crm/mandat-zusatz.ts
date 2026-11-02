@@ -252,8 +252,9 @@ export function jahresPosition(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' |
  * und danach die Zusatzmodule (`zusatzPositionen`). Ohne `zusatz`: genau die eine Position wie bis 19.10. (bit-gleich). Ein einmaliges Honorar mit
  * Zahlplan (21.10.) steht nur im Monat der Anzahlung bzw. des Rests (`zahlplanPosition`).
  */
-export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende' | 'zusatz'> & Partial<Pick<Mandat, 'zahlplan' | 'raten' | 'mindestlaufzeitMonate' | 'leistungId' | 'jahresHonorar'>>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
-  const lm = leistungsmonat({ start: m.start, ...(ende ? { ende } : {}) }, monat);
+export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende' | 'zusatz'> & Partial<Pick<Mandat, 'zahlplan' | 'raten' | 'mindestlaufzeitMonate' | 'leistungId' | 'jahresHonorar' | 'pausen'>>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
+  // Pausen (02.11., Runde 3): pausierte Tage zählen nicht — ganz pausiert keine Honorar-Position, angebrochen anteilig.
+  const lm = leistungsmonat({ start: m.start, ...(ende ? { ende } : {}), ...(m.pausen?.length ? { pausen: m.pausen } : {}) }, monat);
   // Nur in Monaten, in denen das Mandat läuft (der Server prüft das vorher ohnehin — 409 „außerhalb der Laufzeit“). Ein Ratenmonat (26.10.) zählt auch nach
   // dem Ende — die Raten laufen weiter, wenn die Leistung schon geliefert ist.
   const laeuft = m.honorar.betrag > 0 && ((lm?.tage ?? 0) > 0 || !!(m.raten && zahlplanMonate(m)?.includes(monat)));

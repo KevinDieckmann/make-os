@@ -24,7 +24,7 @@ import { sauberFile, type FinanzplanFile, type Rechnung } from '@/lib/finanzen/f
 import { abgerechneteMonate, monatsName } from './regeln';
 import {
   einmalAufgabeId, einmalSchluessel, einmalZahlungen, einmalZahlungText, istMahnAufgabeVon, quartalMonate, rateNummer, rechnungFuerMandat, rechnungFuerMonat, STUNDEN_JE_TAG_VORGABE,
-  tageAusZeit, ueberfaelligFrisch, vorbereitenAbMonat, vorbereitenAufgabeId, vorbereitenFaellig, vorbereitenSchluessel, type EinmalZahlung, type VorbereitenFaellig,
+  pauseUeberspringen, tageAusZeit, ueberfaelligFrisch, vorbereitenAbMonat, vorbereitenAufgabeId, vorbereitenFaellig, vorbereitenSchluessel, type EinmalZahlung, type VorbereitenFaellig,
 } from './kreislauf-regeln';
 
 /** Der Teil des Bestands `rechnungswesen`, den der Kreislauf führt (additiv — alte Stände kennen ihn nicht). */
@@ -211,7 +211,8 @@ export async function rechnungenVorbereiten(haushalt: string, heute = localDay()
     // Rechnungsfähig wie der Knopf in der Mandatsakte: Gesellschaft gewählt und im Finanzplan geführt (Register-Gesellschaften: nur Grunddaten).
     // 02.11. (Prüfung C): ein AKTIVES Mandat, das daran scheitert, zählt als übersprungen (mit Grund) und bekommt EINE feste Aufgabe — vorher fiel es still heraus.
     if (mandatGesellschaftOffen(g) || !finanzFirmaFuer(g)) {
-      if (m.status === 'aktiv' && !m.geloeschtAm) {
+      // Beendet (02.11., Runde 3): nur, solange bis zum Ende noch etwas fällig ist.
+      if (!m.geloeschtAm && (m.status === 'aktiv' || (m.status === 'beendet' && vorbereitenFaellig(m, heute, abgerechneteMonate(m.id, plan.rechnungen), abMonat).length))) {
         const offen = mandatGesellschaftOffen(g);
         ueberspringen(m.id, offen ? GESELLSCHAFT_OFFEN_GRUND : NUR_GRUNDDATEN);
         erg.hinweisAufgaben! += await aufgabeAnlegen(m, gesellschaftAufgabeId(m.id), offen ? 'Gesellschaft am Mandat wählen' : 'Rechnungen zum Mandat von Hand schreiben',
@@ -221,6 +222,12 @@ export async function rechnungenVorbereiten(haushalt: string, heute = localDay()
       }
       continue;
     }
+    // ── Altbestand-Pause (02.11., Runde 3): pausiert ohne festgehaltene Pause → diesen Monat (bzw. dieses Quartal) als übersprungen merken ──
+    const pause = pauseUeberspringen(m, heute);
+    if (pause.length) {
+      const erledigt = (await kreislaufLaden()).vorbereiten?.erledigt ?? {};
+      for (const mo of pause) if (mo >= abMonat && !erledigt[vorbereitenSchluessel(m.id, mo)]) await merken(vorbereitenSchluessel(m.id, mo), `p:${heute}`);
+    }
     // ── A: das Honorar (Monat, Rate/Zahlplan, Quartal, einmalig, Tagessatz) ──
     const faellig = vorbereitenFaellig(m, heute, abgerechneteMonate(m.id, plan.rechnungen), abMonat);
     if (faellig.length) {
@@ -229,7 +236,8 @@ export async function rechnungenVorbereiten(haushalt: string, heute = localDay()
         const monat = f.monat;
         const schl = vorbereitenSchluessel(m.id, monat);
         const stand = erledigt[schl];
-        if (stand?.startsWith('f:')) continue;
+        // f: fertig · p: in einer Pause übersprungen (Altbestand, `pauseUeberspringen`) — beides nie nachholen.
+        if (stand?.startsWith('f:') || stand?.startsWith('p:')) continue;
         // Von Hand schon angelegt (Entwurf oder Rechnung) — nichts vorbereiten, nur merken. Quartal: irgendein Monat des Quartals; einmalig: irgendeine Rechnung.
         const schon = f.art === 'quartal' ? quartalMonate(monat).some(mo => rechnungFuerMonat(plan.rechnungen, m.id, mo))
           : f.art === 'einmalig' ? rechnungFuerMandat(plan.rechnungen, m.id) : rechnungFuerMonat(plan.rechnungen, m.id, monat);
@@ -274,7 +282,8 @@ export async function rechnungenVorbereiten(haushalt: string, heute = localDay()
     }
     // ── B: die Einmalposten eines gemischten Angebots (31.10.) — je Zahlung (Rate, Anzahlung/Rest bzw. ganz) EIN Entwurf im fälligen Monat ──
     // Nur, wenn das Mandat den Einmalbetrag NICHT selbst abrechnet (einmaliges Honorar bzw. Raten/Zahlplan am Mandat — dann wie bisher dort).
-    if (m.status !== 'aktiv' || m.geloeschtAm || m.honorar?.basis === 'einmalig' || zahlplanMonate(m)) continue;
+    // Beendet (02.11., Runde 3): die Zahlungen der Einmalposten laufen nach dem Beenden weiter (wie Raten am Mandat); pausiert nie.
+    if ((m.status !== 'aktiv' && m.status !== 'beendet') || m.geloeschtAm || m.honorar?.basis === 'einmalig' || zahlplanMonate(m)) continue;
     const angebote = (crm.angebote ?? []).filter(a => a.status === 'angenommen' && !a.geloeschtAm && mandatZumAngebot(crm.mandate, a)?.id === m.id && angebotEinmalRest(a, crm.leistungen).length);
     einmal: for (const a of angebote) {
       const zahlungen = einmalZahlungen(a, m).filter(z => z.monat >= abMonat && z.monat <= heute.slice(0, 7));
