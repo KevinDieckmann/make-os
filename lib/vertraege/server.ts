@@ -203,6 +203,9 @@ async function vertragAendern(haushalt: string, id: string, mut: (v: Vertrag, al
   return ergebnis!;
 }
 
+/** Für die Nachbar-Module dieses Ordners (versand.ts, finanzen.ts) — derselbe Schreibweg in der Sperre, mit Protokoll. */
+export const vertragAendernIntern = vertragAendern;
+
 /** Vorbelegung aus angenommenem Angebot, Deal oder Mandat (rein über den CRM-Bestand). */
 async function vorbelegung(q: { angebotId?: unknown; dealId?: unknown; mandatId?: unknown; kontaktId?: unknown; firmaId?: unknown }) {
   const { ladeCrm } = await import('@/lib/crm/speicher');
