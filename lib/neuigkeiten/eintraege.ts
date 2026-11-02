@@ -269,7 +269,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
     id: 'u-2026-11-02-11',
     datum: '2026-11-02',
-    titel: 'Keine Anfrage geht mehr verloren',
+    titel: 'Website-Anfragen werden sicher gespeichert',
     kurz: 'Was über die Website kommt, wird zuerst sicher gespeichert und notfalls am Morgen nachgeholt. Liegt eine Terminanfrage zu lange, erinnert die Glocke.',
     abschnitte: [
       { art: 'besser', punkte: [
@@ -392,7 +392,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
       ] },
     ],
   },
-  {  {
+  {
     id: 'u-2026-11-02-5',
     datum: '2026-11-02',
     titel: 'Kalender: Firmen bündeln, Belegt bei Google',
