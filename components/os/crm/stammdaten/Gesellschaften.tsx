@@ -9,17 +9,21 @@
 // 29.09. (Sichtprüfung F5): alle Schreibvorgänge einer Karte laufen nacheinander über `gesellschaftKette`
 // (lib/crm/gesellschaft-kette.ts) — Stand aus der letzten Antwort, Meldung bleibt bis zum nächsten Schreiben,
 // was nicht gespeichert wurde, steht als „nicht gespeichert“ da (erneut speichern / verwerfen).
+// 02.11.: „Nächste Rechnungsnummer“ je Gesellschaft (nur nach oben, Kreis des laufenden Jahres) — gelesen und gesetzt über /api/rechnung
+// (Sicht aus dem Konto: ohne Finanzzugang bzw. für Gesellschaften außerhalb der Sicht erscheint das Feld nicht).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KERN_EINHEITEN, UG_NAME } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Leer, Knopf, Chip, useRueckfrage } from '../../ui';
+import { Karte, Ueberschrift, Leer, Knopf, Chip, useRueckfrage, feld as feldStil } from '../../ui';
 import { Feldzeile, Feld } from '../teile';
 import { mitVorgaben, firmierungNochUG, firmierungVorschlag, type Gesellschaft } from '@/lib/crm/gesellschaften';
 import { nummerAusFormat, NUMMER_VORGABE, RECHNUNG_NUMMER_VORGABE } from '@/lib/crm/angebote';
 import { gesellschaftKette, type GesellschaftAntwort } from '@/lib/crm/gesellschaft-kette';
 
 type G = Gesellschaft & { stand: string; luecken: string[] };
+/** Die wirklich nächste Nummer des Kreises (GET /api/rechnung?nummern=1). */
+interface Naechste { id: string; jahr: number; nr: number; rechnung: string; storno: string }
 const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
 
 /**
@@ -37,6 +41,16 @@ export function Gesellschaften({ i = 0, nur, onGeaendert }: { i?: number; nur?: 
     } catch { setFehler('Keine Verbindung.'); }
   }, []);
   useEffect(() => { void laden(); }, [laden]);
+  // Nächste Rechnungsnummern (02.11.) — ohne Finanzzugang (403) einfach keine; die Karte zeigt dann die Vorschau „etwa“ wie bisher.
+  const [nummern, setNummern] = useState<Naechste[] | null>(null);
+  const nummernLaden = useCallback(async () => {
+    try {
+      const r = await fetch('/api/rechnung?nummern=1', { cache: 'no-store' });
+      const d = await r.json().catch(() => null) as { ok?: boolean; nummern?: Naechste[] } | null;
+      setNummern(d?.ok ? d.nummern ?? [] : []);
+    } catch { setNummern([]); }
+  }, []);
+  useEffect(() => { void nummernLaden(); }, [nummernLaden]);
   if (!liste) return <Karte i={i}><Leer>{fehler ?? 'lädt …'}</Leer></Karte>;
   return (
     <>
@@ -45,7 +59,7 @@ export function Gesellschaften({ i = 0, nur, onGeaendert }: { i?: number; nur?: 
         <div style={klein}>Absender der Angebote (und später der Rechnungen). Pflichtangaben einmal mit dem Steuerberater abstimmen — Hinweis, keine Steuerberatung. Die IBAN steht hier nur maskiert; im PDF steht sie voll.</div>
         {fehler && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, marginTop: 8 }}>{fehler}</div>}
       </Karte>
-      {liste.filter(g => !nur || g.id === nur).map((g, n) => <GesellschaftKarte key={g.id} i={i + n + 1} g={g} onNeu={x => { setListe(l => (l ?? []).map(y => (y.id === x.id ? x : y))); onGeaendert?.(); }} />)}
+      {liste.filter(g => !nur || g.id === nur).map((g, n) => <GesellschaftKarte key={g.id} i={i + n + 1} g={g} naechste={nummern?.find(x => x.id === g.id) ?? null} onNummer={x => setNummern(l => (l ?? []).map(y => (y.id === x.id ? x : y)))} onNeu={x => { setListe(l => (l ?? []).map(y => (y.id === x.id ? x : y))); onGeaendert?.(); void nummernLaden(); }} />)}
     </>
   );
 }
@@ -54,7 +68,7 @@ export function Gesellschaften({ i = 0, nur, onGeaendert }: { i?: number; nur?: 
 interface Offen { schluessel: string; label: string; felder: Record<string, unknown>; anzeige: string }
 const antwortVon = (r: Response) => r.json().catch(() => ({ ok: false, fehler: `Antwort ${r.status}.` })) as Promise<GesellschaftAntwort<G>>;
 
-function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => void }) {
+function GesellschaftKarte({ g, i, onNeu, naechste, onNummer }: { g: G; i: number; onNeu: (g: G) => void; naechste: Naechste | null; onNummer: (n: Naechste) => void }) {
   const [meldung, setMeldung] = useState<string | null>(null);
   const [unterwegs, setUnterwegs] = useState(0);
   const [ungespeichert, setUngespeichert] = useState<Offen[]>([]);
@@ -186,9 +200,12 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
             <Feld wert={g.rechnungsformat ?? ''} platzhalter={RECHNUNG_NUMMER_VORGABE} onFertig={t => void setze({ rechnungsformat: t.trim() }, 'Rechnungsnummern')} />
             <Feld wert={g.stornoformat ?? ''} platzhalter={`Storno: wie Rechnung`} onFertig={t => void setze({ stornoformat: t.trim() }, 'Stornonummern')} />
           </span>
-          <span style={klein}>Nächste Rechnung etwa: {nummerAusFormat(v.rechnungsformat, v.kurz, jahr, 1)} · Stornorechnung etwa: {nummerAusFormat(v.stornoformat, v.kurz, jahr, 2)} — ein Kreis für beide, fortlaufend und lückenlos je Gesellschaft und Jahr ({'{JAHR}'} oder {'{JJ}'} gehört hinein).</span>
+          <span style={klein}>{naechste
+            ? <>Nächste Rechnung: {naechste.rechnung} · eine Stornorechnung bekäme: {naechste.storno}</>
+            : <>Nächste Rechnung etwa: {nummerAusFormat(v.rechnungsformat, v.kurz, jahr, 1)} · Stornorechnung etwa: {nummerAusFormat(v.stornoformat, v.kurz, jahr, 2)}</>} — ein Kreis für beide, fortlaufend und lückenlos je Gesellschaft und Jahr ({'{JAHR}'} oder {'{JJ}'} gehört hinein).</span>
         </div>
       </Feldzeile>
+      {naechste && <NaechsteNummerFeld g={g} naechste={naechste} onNummer={onNummer} bestaetigen={bestaetigen} />}
       {/* 25.10. (kleine Bauten): Annahmeblock (Ort, Datum, Unterschrift des Kunden) im Angebots-PDF — Vorgabe aus; AGB-Link im Fuß (nur https). */}
       <Feldzeile label="Angebot annehmen">
         <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, cursor: 'pointer' }}>
@@ -214,3 +231,47 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
   );
 }
 
+
+/**
+ * „Nächste Rechnungsnummer“ (02.11.): vorbelegt mit der wirklich nächsten Nummer des Kreises; setzen nur nach oben, nach Rückfrage.
+ * Gilt nur für das laufende Jahr — ein neues Jahr beginnt wie bisher bei 1. Der Server prüft alles noch einmal (409, wenn schon vergeben).
+ */
+function NaechsteNummerFeld({ g, naechste, onNummer, bestaetigen }: { g: G; naechste: Naechste; onNummer: (n: Naechste) => void; bestaetigen: (b: { titel: string; text?: string; ja: string }) => Promise<boolean> }) {
+  const v = mitVorgaben(g);
+  const [text, setText] = useState(String(naechste.nr));
+  const [meldung, setMeldung] = useState<{ text: string; gut: boolean } | null>(null);
+  useEffect(() => { setText(String(naechste.nr)); }, [naechste.nr]);
+  const n = /^\d{1,6}$/.test(text.trim()) ? Number(text.trim()) : NaN;
+  const gueltig = Number.isInteger(n) && n >= 1;
+  const kleiner = gueltig && n < naechste.nr;
+  async function setzen() {
+    if (!gueltig || kleiner || n === naechste.nr) return;
+    const ok = await bestaetigen({
+      titel: `Nächste Rechnung wird Nr. ${n}`,
+      text: `Danach fortlaufend: ${nummerAusFormat(v.rechnungsformat, v.kurz, naechste.jahr, n)}, dann Nr. ${n + 1} … Nummern davor bleiben frei. Nur für ${naechste.jahr} — das neue Jahr beginnt wieder bei 1. Zurück nach unten geht es danach nicht.`,
+      ja: `Nr. ${n} setzen`,
+    });
+    if (!ok) return;
+    try {
+      const r = await fetch('/api/rechnung', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'startnummer', firmaId: g.id, nr: n, jahr: naechste.jahr }) });
+      const d = await r.json().catch(() => null) as { ok?: boolean; naechste?: Naechste; fehler?: string } | null;
+      if (d?.ok && d.naechste) { onNummer(d.naechste); setMeldung({ text: `Gesetzt — nächste Rechnung: ${d.naechste.rechnung}.`, gut: true }); }
+      else setMeldung({ text: d?.fehler ?? `Nicht gesetzt (Antwort ${r.status}).`, gut: false });
+    } catch { setMeldung({ text: 'Keine Verbindung — nicht gesetzt.', gut: false }); }
+  }
+  return (
+    <Feldzeile label="Nächste Rechnungsnummer">
+      <form onSubmit={e => { e.preventDefault(); void setzen(); }} style={{ display: 'grid', gap: 6 }}>
+        <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input value={text} onChange={e => { setText(e.target.value); setMeldung(null); }} inputMode="numeric" aria-label="Nächste Rechnungsnummer" autoComplete="off"
+            style={{ ...feldStil, width: 110 }} />
+          <span style={{ fontSize: TYP.bedien, fontFamily: 'ui-monospace, Menlo, monospace', color: C.inkDim }}>{gueltig ? nummerAusFormat(v.rechnungsformat, v.kurz, naechste.jahr, n) : '—'}</span>
+          {gueltig && !kleiner && n !== naechste.nr && <Knopf onClick={async () => { await setzen(); }}>Setzen</Knopf>}
+        </span>
+        {kleiner && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Nur nach oben — die nächste ist schon Nr. {naechste.nr}.</span>}
+        {meldung && <span role="status" style={{ fontSize: TYP.bedien, color: meldung.gut ? LEUCHT.gut : LEUCHT.kritisch }}>{meldung.text}</span>}
+        <span style={klein}>Nur nach oben, danach fortlaufend. Gilt für {naechste.jahr}; ein neues Jahr beginnt wieder bei 1.</span>
+      </form>
+    </Feldzeile>
+  );
+}

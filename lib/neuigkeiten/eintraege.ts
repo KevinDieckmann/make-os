@@ -33,6 +33,19 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-21',
+    datum: '2026-11-02',
+    titel: 'Nächste Rechnungsnummer selbst festlegen',
+    kurz: 'Je Gesellschaft lässt sich jetzt einstellen, mit welcher Nummer die nächste Rechnung beginnt — zum Beispiel, wenn ältere Rechnungen außerhalb geschrieben wurden. Danach geht es fortlaufend weiter.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Unternehmen › Gesellschaft › Absender: Feld „Nächste Rechnungsnummer“ mit Vorschau der echten Nummer. Es geht nur nach oben, nie unter eine schon vergebene Nummer; Stornorechnungen zählen im selben Kreis mit.', bereich: 'alle', weg: WEG.unternehmen() },
+        { text: 'Die Einstellung gilt für das laufende Jahr. Ein neues Jahr beginnt wie bisher bei 1.', bereich: 'alle' },
+        { text: 'Die Vorschau „Nächste Rechnung“ zeigt jetzt die wirklich nächste Nummer statt immer der ersten.', bereich: 'alle' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-4',
     datum: '2026-11-02',
     titel: 'Checks in eigenen Worten, neue Zielgruppen',

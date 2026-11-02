@@ -34,7 +34,7 @@ import {
   mahnTageSaeubern, mahnVorschlaege, mahnstufeVon, mahnAufgabeId, monatsGrenzen, naechsteNummer, neuerEntwurf, pflichtFehlt,
   positionenAusAngebot, rechnungMail, rechnungSummen, stornoEntwurf, betragFelder, kreisSchluessel, monatsName, angebotIdOk, firmaIdOk, kontaktIdOk,
   vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, abgerechneteMonate, rechnungsMonate, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen, faelligAm,
-  istZugeordnet, ZUORDNUNG_FEHLT, ZUORDNUNG_NACHTRAGEN, empfaengerSaeubern,
+  istZugeordnet, ZUORDNUNG_FEHLT, ZUORDNUNG_NACHTRAGEN, empfaengerSaeubern, startnummerPruefen,
   type MahnVorschlag, type Pflicht, type Zuordnung,
 } from './regeln';
 import { angenommenZuDeal, angebotEinmalRest, angebotTitelFuerFolge } from '@/lib/crm/angebote';
@@ -1099,6 +1099,58 @@ export async function mahnTageSetzen(roh: unknown): Promise<[number, number, num
   if (!t) throw new RechnungFehler('Mahnstufen: drei steigende Tageszahlen zwischen 1 und 365 (z. B. 7 · 14 · 21).', 400);
   await updateJson<Rechnungswesen>(RECHNUNGSWESEN, cur => ({ ...(cur ?? {}), mahnTage: t }));
   return t;
+}
+
+// ── Nächste Rechnungsnummer je Gesellschaft (02.11.) ─────────────────────────
+
+/** Die wirklich nächste Nummer eines Kreises (Rechnung und Storno teilen ihn) — für Stammdaten › Gesellschaften. */
+export interface NaechsteNummer { id: Gesellschaftskennung; jahr: number; nr: number; rechnung: string; storno: string }
+
+/** Je Gesellschaft der Sicht die nächste Nummer im Kreis des laufenden Jahres — dieselbe Rechnung wie „Stellen“ (`naechsteNummer`), nichts geschrieben. */
+export async function naechsteNummern(z: { haushalt: string; sicht: Sicht }, jetzt = new Date()): Promise<{ jahr: number; nummern: NaechsteNummer[] }> {
+  const jahr = Number(localDay(jetzt).slice(0, 4));
+  const [plan, wesen, gs] = await Promise.all([planLaden(), loadJson<Rechnungswesen>(RECHNUNGSWESEN), gesellschaften(z.haushalt)]);
+  const nummern = gs.filter(g => istGesellschaft(g.id) && gesellschaftInSicht(g.id, z.sicht)).map(g => {
+    const id = g.id as Gesellschaftskennung;
+    const v = mitVorgaben(g);
+    const zaehler = wesen?.zaehler?.[kreisSchluessel(id, jahr)];
+    const r = naechsteNummer(plan.rechnungen, zaehler, id, jahr, kurzVon(g), v.rechnungsformat);
+    const s = naechsteNummer(plan.rechnungen, zaehler, id, jahr, kurzVon(g), v.stornoformat);
+    return { id, jahr, nr: r.lauf.nr, rechnung: r.nummer, storno: s.nummer };
+  });
+  return { jahr, nummern };
+}
+
+/**
+ * „Nächste Rechnungsnummer“ setzen (02.11.): der Zähler des Kreises (Gesellschaft + laufendes Jahr) wird `nr − 1` — NUR nach oben, in der
+ * Sperre des Nummernkreises (dieselbe Stelle wie Stellen/Storno). `jahr` (optional) = das Jahr, das die Oberfläche zeigte — hat es inzwischen
+ * gewechselt, 409 statt still im neuen Kreis. Protokoll nur Kennung + Feldname. Rechte prüft die Route (Sicht, Dienstweg); hier die Sicht noch einmal.
+ */
+export async function startnummerSetzen(p: { firmaId: unknown; nr: unknown; jahr?: unknown; haushalt: string; sicht: Sicht; wer?: Wer; jetzt?: Date }): Promise<NaechsteNummer> {
+  const jahr = Number(localDay(p.jetzt ?? new Date()).slice(0, 4));
+  if (!istGesellschaft(p.firmaId)) throw new RechnungFehler('Unbekannte Gesellschaft — eine nächste Rechnungsnummer gibt es für die festen Gesellschaften.', 400);
+  const id = p.firmaId;
+  if (!gesellschaftInSicht(id, p.sicht)) throw new RechnungFehler('Diese Gesellschaft stellt ein volles Haushaltsmitglied ein.', 403);
+  if (p.jahr !== undefined && p.jahr !== jahr) throw new RechnungFehler(`Das Jahr hat gewechselt — die Einstellung gilt nur für den Kreis ${jahr}. Bitte neu laden und noch einmal.`, 409, { jahr });
+  const schluessel = kreisSchluessel(id, jahr);
+  // Nichts zu tun (gleicher Zähler bzw. „nächste = 1“ ohne Zähler) → gar nicht schreiben, auch keine neue Datei (bitgleich).
+  const NICHTS = Symbol('nichts');
+  let geaendert = false;
+  try {
+    await updateJsonAsync<Rechnungswesen>(RECHNUNGSWESEN, async cur => {
+      const plan = await planLaden();
+      const alt = cur?.zaehler?.[schluessel];
+      const e = startnummerPruefen(plan.rechnungen, alt, id, jahr, p.nr);
+      if (!e.ok) throw new RechnungFehler(e.text, e.status, e.hoechste !== undefined ? { hoechste: e.hoechste, grund: 'vergeben' } : {});
+      if ((alt ?? 0) === e.zaehler) throw NICHTS;
+      geaendert = true;
+      return { ...(cur ?? {}), zaehler: { ...(cur?.zaehler ?? {}), [schluessel]: e.zaehler } };
+    });
+  } catch (e) { if (e !== NICHTS) throw e; }
+  if (geaendert) await protokolliere(RECHNUNGSWESEN, [{ liste: 'zaehler', op: 'geaendert', id: schluessel, felder: ['zaehler'] }], p.wer);
+  const n = (await naechsteNummern({ haushalt: p.haushalt, sicht: p.sicht }, p.jetzt)).nummern.find(x => x.id === id);
+  if (!n) throw new RechnungFehler('Nicht gesetzt.', 500);
+  return n;
 }
 
 /** Ein fälliger Mahnvorschlag mit seiner Aufgabe (Kennungs-Brücke `mahnAufgabeId`) und seinem Bereich — für den Schatten-Vergleich der Überführung (Paket Ü). */

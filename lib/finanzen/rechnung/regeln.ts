@@ -231,6 +231,22 @@ export function naechsteNummer(rechnungen: readonly Pick<Rechnung, 'firmaId' | '
   return { lauf: { jahr, nr }, nummer };
 }
 
+/** Höchste einstellbare „nächste Rechnungsnummer“ (02.11.). */
+export const STARTNUMMER_MAX = 999999;
+
+/**
+ * „Nächste Rechnungsnummer“ eines Kreises einstellen (02.11.) — NUR nach oben: die nächste vergebene Nummer wird `n`, der Zähler also
+ * `n − 1`. Abgelehnt, wenn `n` keine ganze Zahl 1 … STARTNUMMER_MAX ist (400) oder schon eine Nummer ≥ n vergeben ist (409) — so wird
+ * nie rückwärts, doppelt oder in eine Lücke hinein vergeben. Gilt nur für den Kreis dieses Jahres; ein neues Jahr beginnt wie bisher bei 1.
+ */
+export function startnummerPruefen(rechnungen: readonly Pick<Rechnung, 'firmaId' | 'lauf'>[], zaehler: number | undefined, g: Gesellschaftskennung, jahr: number, n: unknown):
+  { ok: true; zaehler: number } | { ok: false; status: 400 | 409; text: string; hoechste?: number } {
+  if (typeof n !== 'number' || !Number.isInteger(n) || n < 1 || n > STARTNUMMER_MAX) return { ok: false, status: 400, text: `Nächste Rechnungsnummer: eine ganze Zahl von 1 bis ${STARTNUMMER_MAX}.` };
+  const hoechste = Math.max(zaehler ?? 0, hoechsteVergeben(rechnungen, g, jahr));
+  if (n - 1 < hoechste) return { ok: false, status: 409, hoechste, text: `Nummer ${hoechste} ist schon vergeben — die nächste kann nicht kleiner sein als ${hoechste + 1}. Nichts geändert.` };
+  return { ok: true, zaehler: n - 1 };
+}
+
 /** Kürzel der Gesellschaft (Register, sonst Vorgabe). */
 export const kurzVon = (g: Pick<Gesellschaft, 'id' | 'kurz'>) => g.kurz || KURZ_VORGABE[g.id];
 
