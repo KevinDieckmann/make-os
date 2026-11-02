@@ -87,8 +87,10 @@ export async function buchungenVerfallenMelden(jetzt = new Date()): Promise<numb
   if (!faellig.length) return 0;
   const [{ melde }, { haushaltsSpeicher }] = await Promise.all([import('@/lib/meldungen/melden'), import('@/lib/aufgaben/sicht')]);
   const haushalt = await haushaltsSpeicher().catch(() => [] as string[]);
+  // R2-1 Fund 5 (02.11.): auch alle, die die Arbeit steuern dürfen (`alleSteuerer`) — sonst erfuhr nur die Person der Seite davon. Neutral (nur die Zahl).
+  const steuerer = await import('@/lib/zugang/steuern').then(m => m.alleSteuerer()).catch(() => [] as string[]);
   const je = new Map<string, number>();
-  for (const f of faellig) for (const an of f.person && haushalt.includes(f.person) ? [f.person] : haushalt) je.set(an, (je.get(an) ?? 0) + 1);
+  for (const f of faellig) for (const an of new Set([...(f.person && haushalt.includes(f.person) ? [f.person] : haushalt), ...steuerer.filter(x => haushalt.includes(x))])) je.set(an, (je.get(an) ?? 0) + 1);
   for (const [an, n] of je) {
     await melde({ an, art: 'buchung', titel: n === 1 ? 'Eine Terminanfrage ist verfallen, ohne Reaktion — bitte nachfassen' : `${n} Terminanfragen sind verfallen, ohne Reaktion — bitte nachfassen`, link: '/os/kalender?buchungen=1' });
   }

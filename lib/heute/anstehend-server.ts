@@ -35,13 +35,20 @@ import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 
 const sicher = async <T>(p: Promise<T>, sonst: T): Promise<T> => { try { return await p; } catch { return sonst; } };
 
-/** Offene Buchungsanfragen der eigenen Seiten (Status „angefragt“ — „vorläufig“ wartet noch auf den Gast). */
+/**
+ * Offene Buchungsanfragen der eigenen Seiten (Status „angefragt“ — „vorläufig“ wartet noch auf den Gast). Dazu (R2-1 Fund 5, 02.11.): wer die Arbeit
+ * steuern darf (`darfSteuern`), sieht ab der 24-h-Erinnerung (`lange`) auch die Anfragen der Seiten ANDERER — gekennzeichnet `fremd` (die Glocke
+ * spricht dann neutral von „einer Entscheidung“). Nur Titel der Seite und Zeit, nie der Gast. Nur Business (Privat leert `buchungen`).
+ */
 async function buchungenLesen(person: string, jetzt = new Date()): Promise<ABuchung[]> {
-  const [{ ladeBuchungBestand }, { anfrageWartet }] = await Promise.all([import('@/lib/kalender/buchung-speicher'), import('@/lib/kalender/buchung')]);
+  const [{ ladeBuchungBestand }, { anfrageWartet }, { darfSteuern }] = await Promise.all([import('@/lib/kalender/buchung-speicher'), import('@/lib/kalender/buchung'), import('@/lib/zugang/steuern')]);
   const b = await ladeBuchungBestand(jetzt);
-  const seiten = new Map(b.seiten.filter(s => s.person === person).map(s => [s.id, s]));
-  return b.buchungen.filter(x => x.status === 'angefragt' && seiten.has(x.seiteId))
-    .map(x => { const w = anfrageWartet(x.angefragtAm ?? x.statusAm, x.start, jetzt); return { id: x.id, titel: seiten.get(x.seiteId)!.titel, start: x.start, href: '/os/kalender?buchungen=1', ...(w.lange ? { lange: true as const } : {}), ...(w.bald ? { bald: true as const } : {}) }; })
+  const alle = new Map(b.seiten.map(s => [s.id, s]));
+  const steuert = await darfSteuern(person).catch(() => false);
+  return b.buchungen.filter(x => x.status === 'angefragt' && alle.has(x.seiteId))
+    .map(x => { const s = alle.get(x.seiteId)!, w = anfrageWartet(x.angefragtAm ?? x.statusAm, x.start, jetzt); return { x, s, w, fremd: s.person !== person }; })
+    .filter(({ fremd, w }) => !fremd || (steuert && w.lange))
+    .map(({ x, s, w, fremd }) => ({ id: x.id, titel: s.titel, start: x.start, href: '/os/kalender?buchungen=1', ...(w.lange ? { lange: true as const } : {}), ...(w.bald ? { bald: true as const } : {}), ...(fremd ? { fremd: true as const } : {}) }))
     .sort((a, c) => a.start.localeCompare(c.start));
 }
 
@@ -68,6 +75,16 @@ export function dankeAnstehend(crm: { events: Parameters<typeof dankeZeilen>[0][
   const je = new Map<string, typeof zeilen>();
   for (const z of zeilen) je.set(z.event.id, [...(je.get(z.event.id) ?? []), z]);
   return Array.from(je.entries()).map(([id, l]) => ({ id: `danke-${id}`, n: dankeOffen(l), eventTitel: l[0].event.titel, href: WEG.netzwerken({ bericht: id }) })).filter(d => d.n > 0);
+}
+
+/**
+ * Leads aus verlorenen Deals, deren Wiedervorlage erreicht ist (R2-1 Fund 6, 02.11.) — eine Zeile „Kundengewinnung“ mit der Zahl, an die Zuständige
+ * des Leads (wie „Für dich“: besitzer = Person oder „beide“). Neutral, ohne Namen; die Kennung trägt die Zahl (neue → Glocke meldet sich neu).
+ */
+async function wiederDranLesen(kontakte: Parameters<typeof import('@/lib/crm/leads').leads>[0], crm: Parameters<typeof import('@/lib/crm/leads').leads>[1], heute: string, person: string): Promise<import('./anstehend').AMotor[]> {
+  const { leads, ausVerlorenWiederDran, wiederDranSatz } = await import('@/lib/crm/leads');
+  const n = leads(kontakte, crm, heute).filter(z => (z.besitzer === person || z.besitzer === BEIDE) && ausVerlorenWiederDran(z, heute)).length;
+  return n ? [{ id: 'wieder', n, titel: `${wiederDranSatz(n)} — neu qualifizieren`, href: WEG.qualifizierung() }] : [];
 }
 
 /** Rückfall (4.8): ohne Liste der Eingeschränkten fallen alle echten Follow-ups weg, deren Person die verarbeitbare Kartei nicht kennt. */
@@ -120,7 +137,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     geburtstage: geburtstageVorlauf(geburtstage, person, heute),
     danke: dankeAnstehend(crm, kontakte, heute, person),
     // Kundengewinnung (02.11., Prüfung D): Mail-Stapel, Druckliste, Homepage-Funde — an die Zuständige (lib/crm/motor-dran.ts), nur Business.
-    motor: await sicher((await import('@/lib/crm/motor-dran-server')).motorDranLesen(person, crm), []),
+    motor: [...await sicher((await import('@/lib/crm/motor-dran-server')).motorDranLesen(person, crm), []), ...(crm ? await sicher(wiederDranLesen(kontakte, crm, heute, person), []) : [])],
   };
   return nurBusiness ? anstehendFuerSpace(a, 'business') : a;
 }

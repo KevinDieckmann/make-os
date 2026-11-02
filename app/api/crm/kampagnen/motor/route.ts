@@ -14,7 +14,7 @@
 // GET  ?teil=willkommen → Willkommensstrecke: Schalter, Texte, und wer welche Stufe bekam (nur Namen + Stufen, nie Adressen) — Karte unter Website › Formulare
 // M1 (01.11.): „vorbereiten“ liefert Zähler UND Gründe (übersprungen, nicht gestartet) und sagt, wenn die Kampagne nicht aktiv ist; „sequenz“ übersetzt
 // laufende Stände vorher auf die Schritt-Kennung (`standMitKennung`) und nennt, wie viele Ziele gerade laufen.
-//      { aktion: 'einstellungen', tagesgrenze?, fusszeile?, art14Text?, willkommen?: boolean, willkommenStufen? } → nur Inhaber
+//      { aktion: 'einstellungen', tagesgrenze?, fusszeile?, art14Text?, willkommen?: boolean, willkommenStufen? } → wer steuern darf (darfSteuern)
 // Zugang: Haushalt des Inhabers (Modul Markttraktion). Schreiben nur per Sitzung (Dienstweg/ZOE 403) mit Bau-Kennung — die Freigabe ist der Klick
 // nach Eiserner Regel 3; senden tut der Takt im Namen der freigebenden Person und ihres Postfachs.
 

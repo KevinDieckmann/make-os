@@ -6,7 +6,7 @@
 //   · fremder Haushalt, Testkunde ohne Haushalt, Dienstweg mit fremder Person → 403 (`nurHaushalt`)
 //   · `?space=privat` → 403: Fulfillment ist Business (die Middleware sperrt es über ROUTEN_BEREICH schon vorher; hier nochmals)
 //   · `schreiben`: nur eine angemeldete Person (Dienstweg → 403), Bau-Kennung (`bauPruefen`, fremde → 409 „neu laden“)
-//   · `inhaber`: nur ein Inhaber (z. B. Kunden-Link-Schalter) → sonst 403
+//   · `inhaber`: wer steuern darf (`darfSteuern`: Inhaber oder volles Mitglied; z. B. Kunden-Link-Schalter) → sonst 403
 //   · `privat` (25.10., Fulfillment für die Selbstständigkeit): darf die Anfrage Fälle/Mandate einer Privat-Arbeits-Einheit sehen? Nur ein Konto mit Privat-Recht
 //     (Konto-Sicht `privat` — nie `finanzRecht: 'business'`) und nicht die ausdrückliche Business-Sicht `?space=business`. Jede Antwort filtert damit
 //     (`mandatInSicht`, lib/fulfillment/regeln.ts); Lesen/Schreiben EINES solchen Mandats ohne Recht → `mandatAusserSicht` (404 bzw. 403).

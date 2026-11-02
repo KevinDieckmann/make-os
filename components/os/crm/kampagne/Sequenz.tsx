@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { MOTOR_GEAENDERT } from './Ziele';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Knopf, Hinweis, Raster, Zahl, Chip, Leer, LEUCHT } from '../../ui';
+import { Ueberschrift, Knopf, Hinweis, Raster, Zahl, Chip, Leer, LEUCHT, useRueckfrage } from '../../ui';
 import { KiMarke } from '../../KiMarke';
 import { SEQUENZ_KANAELE } from '@/lib/crm/sequenz';
 import { PLATZHALTER } from '@/lib/crm/vorlage-platzhalter';
@@ -40,6 +40,7 @@ export function KampagneSequenz({ kampagneId }: { kampagneId: string }) {
   const [postfach, setPostfach] = useState('');
   const [offen, setOffen] = useState<string | null>(null);
   const [bearbeiten, setBearbeiten] = useState<{ id: string; betreff: string; text: string } | null>(null);
+  const { bestaetigen, dialog: rueckfrage } = useRueckfrage();
   const [seq, setSeq] = useState<SequenzSchritt[] | null>(null);
   const [neuJeTag, setNeuJeTag] = useState('');
   const laden = useCallback(async () => {
@@ -76,6 +77,7 @@ export function KampagneSequenz({ kampagneId }: { kampagneId: string }) {
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
+      {rueckfrage}
       {meldung && <Hinweis art={meldung.art} rolle="status" aktion={<Knopf leise onClick={() => setMeldung(null)}>ok</Knopf>}>{meldung.text}</Hinweis>}
 
       {/* Sequenz je Ziel */}
@@ -199,7 +201,7 @@ export function KampagneSequenz({ kampagneId }: { kampagneId: string }) {
               {x.fehler && <span style={{ color: LEUCHT.achtung }}>{x.fehler}</span>}
               {x.hinweis && <span style={{ color: LEUCHT.achtung }}>{x.hinweis}</span>}
               {/* „Unklar“ (B-Prüfung, 02.11.): womöglich schon raus — erst nach Rückfrage zurück in den Entwurf. */}
-              {(x.status === 'unklar' || (x.status === 'fehler' && x.freigabe)) && <Knopf leise onClick={() => { if (x.status === 'unklar' && !window.confirm('Ist die Mail wirklich nicht raus? Bitte vorher im Postfach unter „Gesendet“ nachsehen — sonst bekommt das Ziel sie zweimal.')) return; void tun({ aktion: 'erneut', ids: [x.id], ...(x.status === 'unklar' ? { bestaetigt: true } : {}) }, 'Zurück im Entwurf.'); }}>Erneut vorbereiten</Knopf>}
+              {(x.status === 'unklar' || (x.status === 'fehler' && x.freigabe)) && <Knopf leise onClick={async () => { if (x.status === 'unklar' && !(await bestaetigen({ titel: 'Ist die Mail wirklich nicht raus?', text: 'Bitte vorher im Postfach unter „Gesendet“ nachsehen — sonst bekommt das Ziel sie zweimal.', ja: 'Erneut vorbereiten' }))) return; await tun({ aktion: 'erneut', ids: [x.id], ...(x.status === 'unklar' ? { bestaetigt: true } : {}) }, 'Zurück im Entwurf.'); }}>Erneut vorbereiten</Knopf>}
             </div>
           ))}
         </div>

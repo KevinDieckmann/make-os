@@ -241,7 +241,9 @@ describe('Fund 9 · Laufzeit: volles Mitglied darf, Konto „nur Business“ / f
 
 describe('Neuigkeit', () => {
   it('steht oben, neutral', () => {
-    expect(NEUIGKEITEN[0].id).toBe('u-2026-11-02-13');
-    expect(JSON.stringify(NEUIGKEITEN[0])).not.toMatch(/Malin|Kevin/);
+    // Spätere Updates (u-2026-11-02-17 …) stehen darüber — der Eintrag bleibt, neutral.
+    const n = NEUIGKEITEN.find(x => x.id === 'u-2026-11-02-13');
+    expect(n).toBeTruthy();
+    expect(JSON.stringify(n)).not.toMatch(/Malin|Kevin/);
   });
 });

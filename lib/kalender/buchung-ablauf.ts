@@ -43,7 +43,7 @@ import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { absichtBeginnen, absichtAbschliessen, absichtenLaden, istOffen, laeuftGerade, mitVorgang, type Absicht } from '@/lib/store/absichten';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
-import { anfrageBauen } from '@/lib/crm/anfragen';
+import { anfrageBauen, anfrageLeadNotiz, leadNachAnfrage } from '@/lib/crm/anfragen';
 import { alleAdressen } from '@/lib/crm/emails';
 import { sperrlisteLaden, neuanlageSperre, sperren } from '@/lib/crm/sperrliste';
 import { datenschutzStempeln } from '@/lib/crm/datenschutz-stempel';
@@ -331,6 +331,19 @@ async function freigabeSchritte(h: string, a: Absicht): Promise<void> {
       if (!b.kontaktId) return;
       const k = (await kontakteFuerVerarbeitung()).find(x => x.id === b.kontaktId);
       if (!k || k.eingeschraenkt) return;
+      // R2-1 Fund 7 (02.11.): der Lead der FIRMA geht auf „kontaktiert“ — `anfrageBauen` lieferte ihn (`firmaLead`), der Schritt „kontakt“ ließ ihn
+      // fallen. Hier frisch auf dem CRM-Stand über dieselbe Regel (`leadNachAnfrage` → `leadZiel`): idempotent (steht er schon, „bleibt“), nur für
+      // Freigaben mit Schritt „kontakt“ (dort entsteht die Anfrage), nie über Kein Fit/Ruht/SQL/Kunde oder Firmen ohne Vertrieb.
+      if (hatSchritt(a, 'kontakt') && k.firmaId) {
+        const notiz = anfrageLeadNotiz('website', localDay(new Date(b.angefragtAm ?? b.angelegt)));
+        await aendereCrm(c => {
+          const f = c.firmen.find(x => x.id === k.firmaId);
+          const l = f ? leadNachAnfrage(f.lead, notiz, jetzt, von, f.rolle) : undefined;
+          if (!f || !l) return c;
+          const { gekuerzt: _g, ...lead } = l;
+          return { ...c, firmen: c.firmen.map(x => (x.id === f.id ? { ...x, lead, geaendert: jetzt, geaendertVon: von } : x)) };
+        }, { art: 'person', person: von });
+      }
       await aendereCrm(c => {
         if ((c.followups ?? []).some(f => f.id === vorbereitenId)) return c;
         // F2 M3: am Termin verknüpft (`terminUid` = Schlüssel Kalender|UID wie R-K1) — verschiebt er sich, zieht die

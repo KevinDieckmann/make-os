@@ -171,6 +171,9 @@ export function leadNachAnfrage(alt: Lead | undefined, notiz: string, jetzt: str
   return n.gekuerzt ? Object.assign(z.lead, { gekuerzt: true }) : z.lead;
 }
 
+/** Die Zeile, die eine Anfrage an die Lead-Notiz hängt (eine Stelle — auch die Buchungsfreigabe, lib/kalender/buchung-ablauf.ts Schritt „crm“). */
+export const anfrageLeadNotiz = (kanal: AnfrageKanal, datum: string, bezugText = '') => `Anfrage über ${kanalInfo(kanal)?.label ?? kanal} (${datum})${bezugText}`;
+
 /** Aus einer Eingabe alles bauen, was zu einer Anfrage gehört — ohne zu schreiben. */
 export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErgebnis {
   const info = kanalInfo(e.kanal);
@@ -248,7 +251,7 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
   }
 
   // Lead: Firma, sonst die Person selbst.
-  const leadNotiz = `Anfrage über ${info.label} (${datum})${bezugText}`;
+  const leadNotiz = anfrageLeadNotiz(e.kanal, datum, bezugText);
   let firmaLead: AnfrageBau['firmaLead'];
   if (kontakt.firmaId) {
     const f = ctx.crm.firmen.find(x => x.id === kontakt.firmaId);

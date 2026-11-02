@@ -53,6 +53,7 @@ const sitzung = (wer = 'kevin') => ({ 'content-type': 'application/json', 'x-mak
 const json = async (r: Response): Promise<Antwort> => ({ status: r.status, d: await r.json() });
 const ctx = (slug: string): Ctx => ({ params: Promise.resolve({ slug }) });
 const kontakte = async () => (await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+const ladeKontaktformular = async () => (await import('@/lib/kontaktformular/server')).ladeKontaktformularEinstellungen();
 const T0 = new Date('2026-11-02T07:00:00Z'); // Mo 08:00 Berlin
 let uhr = T0.getTime();
 const weiter = (sek: number) => { uhr += sek * 1000; vi.setSystemTime(new Date(uhr)); };
@@ -86,12 +87,29 @@ afterAll(() => { vi.useRealTimers(); rmSync(ordner, { recursive: true, force: tr
 let kontaktId = '';
 
 describe('Website-Anfrage: Kontaktformular → Lead → Prozess → Termin → Deal → Traktions-Index', () => {
-  it('Kontaktformular kommt AUS; einschalten nur der Inhaber', async () => {
+  it('Kontaktformular kommt AUS; einschalten darf, wer steuern darf (Inhaber, volles Mitglied) — nicht „nur Business“, fremder Haushalt, Testkunde, Dienstweg', async () => {
+    // Regel `darfSteuern` (lib/zugang/steuern.ts, seit 02.11.): ein volles Mitglied des Inhaber-Haushalts hat vollen Zugriff (Kevins Wort).
     const { kontaktformularStempel } = await import('@/lib/kontaktformular/server');
     const aus = await anfrage.POST!(new Request('http://test/api/anfrage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ vorname: 'X', email: `x@${D}`, nachricht: 'Hallo dort', stempel: kontaktformularStempel(uhr - 5000) }) }));
     expect(aus.status).toBe(404);
-    expect((await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung('malin'), body: JSON.stringify({ aktiv: true }) })))).status).toBe(403);
-    const an = await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung(), body: JSON.stringify({ aktiv: true }) })));
+    const schalten = async (kopf: Record<string, string>, aktiv: boolean) => (await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: kopf, body: JSON.stringify({ aktiv }) }))));
+    // Gesperrte Konten nur für diesen Fall dazu (danach wieder weg — die übrigen Fälle rechnen mit zwei Konten).
+    const konten0 = (await db.loadJson<{ konten: Record<string, unknown>[]; einladungen: unknown[] }>('konten'))!;
+    const konto = (id: string, speicher: string, extra: Record<string, unknown>) => ({ id, speicher, email: `${speicher}@${D}`, name: `Probe ${speicher}`, rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, ...extra });
+    await db.saveJson('konten', { ...konten0, konten: [...konten0.konten, konto('k3', 'partner', { haushalt: HAUS, finanzRecht: 'business' }), konto('k4', 'gast', { haushalt: 'anders' }), konto('k5', 'kunde', {})] });
+    try {
+      expect((await schalten(sitzung('partner'), true)).status, 'Konto „nur Business“').toBe(403);
+      expect((await schalten(sitzung('gast'), true)).status, 'fremder Haushalt').toBe(403);
+      expect((await schalten(sitzung('kunde'), true)).status, 'Testkunde ohne Haushalt').toBe(403);
+      expect((await schalten({ 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'malin' }, true)).status, 'Dienstweg').toBe(403);
+      expect((await ladeKontaktformular()).aktiv).toBe(false);
+    } finally {
+      await db.saveJson('konten', konten0);
+    }
+    // Volles Mitglied: darf ein- und ausschalten; danach schaltet der Inhaber ein (der Rest des Ablaufs läuft mit „an“).
+    expect(await schalten(sitzung('malin'), true)).toMatchObject({ status: 200, d: { aktiv: true } });
+    expect(await schalten(sitzung('malin'), false)).toMatchObject({ status: 200, d: { aktiv: false } });
+    const an = await schalten(sitzung(), true);
     expect(an).toMatchObject({ status: 200, d: { aktiv: true } });
   });
 

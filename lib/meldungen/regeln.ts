@@ -296,7 +296,7 @@ export interface AnstehendFuerGlocke {
   /** Danke-Mails, die bereitliegen (Netzwerken, 02.10.) — je Event eine Zeile mit der Zahl. */
   danke?: readonly { id: string; n: number; eventTitel: string; href: string }[];
   /** Offene Terminanfragen der eigenen Seiten (02.11., Prüfung A Fund 1) — erinnert wird nur bei `lange` (> 24 h) bzw. `bald` (Termin < 24 h). */
-  buchungen?: readonly { id: string; titel: string; start: string; href: string; lange?: true; bald?: true }[];
+  buchungen?: readonly { id: string; titel: string; start: string; href: string; lange?: true; bald?: true; fremd?: true }[];
   /** Kundengewinnung (02.11.): Mail-Stapel, Druckliste, Funde — je Art eine Zeile mit der Zahl. */
   motor?: readonly { id: string; n: number; titel: string; href: string }[];
 }
@@ -335,7 +335,7 @@ export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; je
   for (const b of a.buchungen ?? []) {
     const wann = `${b.start.slice(8, 10)}.${b.start.slice(5, 7)}. ${b.start.slice(11, 16)}`;
     if (b.bald) dazu('frist', `buchung-${b.id}-bald`, `Terminanfrage „${b.titel}“ am ${wann} noch nicht beantwortet — der Termin ist in unter 24 Stunden`, b.href, true);
-    else if (b.lange) dazu('frist', `buchung-${b.id}-lange`, `Terminanfrage „${b.titel}“ (${wann}) wartet seit über 24 Stunden auf deine Entscheidung`, b.href, true);
+    else if (b.lange) dazu('frist', `buchung-${b.id}-lange`, `Terminanfrage „${b.titel}“ (${wann}) wartet seit über 24 Stunden auf ${b.fremd ? 'eine' : 'deine'} Entscheidung`, b.href, true);
   }
   // Die Zahl steckt in der Kennung: kommt eine Mail/ein Fund dazu oder wird freigegeben, meldet sich die Glocke neu. Immer Business (ruht in einer Business-freien Zeit).
   for (const m of a.motor ?? []) if (m.n > 0) dazu('kampagne', `${m.id}-${m.n}`, m.titel, m.href, true);

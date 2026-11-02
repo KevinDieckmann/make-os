@@ -17,6 +17,8 @@
 //                                                       { token, pfad, bis } — die Oberfläche baut daraus den Mail-ENTWURF
 //                                                       (mailto); verschickt wird nur per Klick in der Mail-App. Ein neuer
 //                                                       Link ersetzt den alten.
+//      { aktion: 'anfrage-uebernehmen', id }          (02.11., Prüfung R2-1 Fund 1) eine VERFALLENE Terminanfrage über den EINEN Anfrage-Weg
+//                                                       ins CRM (lib/kalender/buchung-uebernehmen.ts, `oeffentlich`); idempotent. Nur von Hand.
 //      { aktion: 'buchung-auskunft', email }            (S1 #6) Art. 15 für Gäste OHNE CRM-Kontakt: Kopie ihrer Buchungen
 //                                                       (ohne Token-/Link-Hashes) + welche Termine in Apple sie nennen.
 //      { aktion: 'buchung-loeschen', email, bestaetigt?, notizBereinigen? }
@@ -63,7 +65,7 @@ const sicht = ({ tokenHash: _t, mailLink, ...b }: Buchung) => ({ ...b, ...(mailL
 /** Größter Körper (Byte) — darüber 413 statt still zu kürzen (S1 #15). */
 const MAX_BYTES = 64_000;
 /** Aktionen, die nie über den Dienstweg laufen (ZOE, Skripte) — nur von Hand (S1 #14). */
-const NUR_VON_HAND = new Set(['seite', 'seite-loeschen', 'freigeben', 'mail-link', 'buchung-auskunft', 'buchung-loeschen']);
+const NUR_VON_HAND = new Set(['seite', 'seite-loeschen', 'freigeben', 'mail-link', 'anfrage-uebernehmen', 'buchung-auskunft', 'buchung-loeschen']);
 
 export async function GET(req: Request) {
   if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
@@ -220,6 +222,15 @@ export async function POST(req: Request) {
     if (fehler) return nein(fehler, status);
     await buchungProtokoll([{ liste: 'buchungen', op: 'geaendert', id, felder: ['mailLink'] }], wer);
     return NextResponse.json({ ok: true, token, pfad: mailLinkPfad(slug, token), bis }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  if (b.aktion === 'anfrage-uebernehmen') {
+    const id = typeof b.id === 'string' && ID.test(b.id) ? b.id : '';
+    if (!id) return nein('Buchung fehlt.');
+    const { anfrageUebernehmen } = await import('@/lib/kalender/buchung-uebernehmen');
+    const r = await anfrageUebernehmen(id, person, wer);
+    if (!r.ok) return nein(r.fehler, r.status);
+    return NextResponse.json(r);
   }
 
   if (b.aktion === 'buchung-auskunft' || b.aktion === 'buchung-loeschen') return gastRechte(b, wer, jetztIso);
