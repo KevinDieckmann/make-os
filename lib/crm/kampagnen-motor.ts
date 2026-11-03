@@ -595,6 +595,10 @@ export function sendeSperre(x: PostEintrag, k: Kampagne | undefined, lage: ZielL
 export async function versenden(jetzt = new Date()): Promise<{ gesendet: number; fehler: number; gesperrt: number; spaeter: number }> {
   const z = { gesendet: 0, fehler: 0, gesperrt: 0, spaeter: 0 };
   const am = jetzt.toISOString();
+  // „Gesendet am“ läuft von `jetzt` aus weiter (03.11.): im Betrieb die echte Sendezeit, mit übergebenem Zeitpunkt (Tests, Nachholen) dieselbe Uhr wie Tag/Kontingent —
+  // vorher die Wanduhr, dann rechnete der nächste Schritt „Tag n nach der Mail“ vom falschen Tag.
+  const beginn = Date.now();
+  const sendezeit = () => new Date(jetzt.getTime() + (Date.now() - beginn)).toISOString();
   // Hängende Versuche zuerst (auch außerhalb des Fensters).
   await aenderePost(b => ({ ...b, eintraege: b.eintraege.map(x => (x.status === 'sendet' && x.sendetSeit && jetzt.getTime() - Date.parse(x.sendetSeit) > SENDET_HAENGT_MS
     ? { ...x, status: 'unklar' as const, fehler: UNKLAR_TEXT, geaendert: am } : x)) }));
@@ -696,7 +700,7 @@ export async function versenden(jetzt = new Date()): Promise<{ gesendet: number;
       await ergebnis({ status: 'fehler', fehler: `Nicht gesendet: ${grund}`, sendetSeit: undefined }); z.fehler++;
       continue;
     }
-    const gesendet = { am: new Date().toISOString(), ...(typeof r.body.id === 'string' ? { id: r.body.id } : {}), ...(typeof r.body.threadId === 'string' ? { threadId: r.body.threadId } : {}), ...(typeof r.body.messageId === 'string' ? { messageId: r.body.messageId } : {}) };
+    const gesendet = { am: sendezeit(), ...(typeof r.body.id === 'string' ? { id: r.body.id } : {}), ...(typeof r.body.threadId === 'string' ? { threadId: r.body.threadId } : {}), ...(typeof r.body.messageId === 'string' ? { messageId: r.body.messageId } : {}) };
     await ergebnis({ status: 'gesendet', gesendet, sendetSeit: undefined, fehler: undefined, hinweis: undefined, naechsterVersuch: undefined }, false);
     z.gesendet++;
     await nachDemSenden(x, k!, person, gesendet.am, typeof r.body.von === 'string' ? r.body.von : '').catch(e => console.error('[kampagnen] nach dem Senden:', e instanceof Error ? e.message.slice(0, 160) : e));
