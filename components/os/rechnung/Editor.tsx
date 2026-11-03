@@ -448,6 +448,9 @@ function RechnungAnsicht({ r, daten, onZu, onOeffnen }: { r: RechnungMitFassung;
   const dok = rechnungDokument(r, r.absender ?? absenderAus(g ?? { id: (r.firmaId || 'kdc') as Gesellschaftskennung }), { datum: r.datum ?? heute, bank: bankZeile(g?.bank), ...(original ? { original } : {}) });
   const [meldung, setMeldung] = useState<string | null>(null);
   const [grund, setGrund] = useState<string | null>(null);
+  // 03.11. (Kevin: „Rechnung löschen, neu ab 0006“): eine gestellte Rechnung, die nie beim Kunden war, zurückziehen — Grund + Nummer als Bestätigung.
+  const [zurueck, setZurueck] = useState<{ grund: string; nr: string } | null>(null);
+  const zurueckMoeglich = r.status === 'gestellt' && r.art !== 'storno' && !r.stornoRechnungId && !r.versendet?.length && !r.mahnungen?.length && !r.bezahltAm;
   const tage = daten.stand?.mahnTage;
   const vorschlag = mahnVorschlag(r, heute, tage);
   const stufe = mahnstufeVon(r);
@@ -467,6 +470,14 @@ function RechnungAnsicht({ r, daten, onZu, onOeffnen }: { r: RechnungMitFassung;
       : `Storniert${a.gegenbuchung === 'neu' ? ' — zum Zahlungseingang ist die Gegenbuchung angelegt' : ''}.`);
     if (a.storno) pdfLaden(a.storno.id, a.pdf?.name);
     void daten.laden();
+  }
+  async function zurueckziehen() {
+    if (!zurueck || zurueck.grund.trim().length < 3 || zurueck.nr.trim() !== (r.nummer ?? '')) return;
+    const a = await rechnungPost({ aktion: 'zurueckziehen', id: r.id, grund: zurueck.grund.trim(), bestaetigung: zurueck.nr.trim(), stand: r.fassung });
+    if (!a.ok) { setMeldung(a.fehler ?? 'Nicht zurückgezogen.'); return; }
+    setZurueck(null);
+    await daten.laden();
+    onZu();
   }
   async function mahnen(s: 1 | 2 | 3) {
     const a = await rechnungPost({ aktion: 'mahnung', id: r.id, stufe: s, anfrageId: neueAnfrage() });
@@ -551,6 +562,19 @@ function RechnungAnsicht({ r, daten, onZu, onOeffnen }: { r: RechnungMitFassung;
               <input value={grund} onChange={e => setGrund(e.target.value)} placeholder="Grund des Stornos" aria-label="Grund des Stornos" style={{ ...feld, flex: '1 1 220px' }} />
               <Knopf farbe={LEUCHT.kritisch} aus={grund.trim().length < 3} onClick={stornieren}>Stornieren</Knopf>
               <Knopf leise onClick={() => setGrund(null)}>Abbrechen</Knopf>
+            </div>}
+        </Karte>
+      )}
+      {zurueckMoeglich && (
+        <Karte flach>
+          <Ueberschrift>Zurückziehen</Ueberschrift>
+          {zurueck === null
+            ? <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span style={klein}>Nur wenn die Rechnung nie beim Kunden war (z. B. falsche Nummer): sie wird gelöscht, eine Kopie mit PDF bleibt im Archiv. Die Nummer gilt als verbraucht — die nächste stellst du unter Gesellschaften › „Nächste Rechnungsnummer“ ein. Sonst: stornieren.</span><Knopf leise onClick={() => setZurueck({ grund: '', nr: '' })}>Rechnung zurückziehen</Knopf></div>
+            : <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input value={zurueck.grund} onChange={e => setZurueck({ ...zurueck, grund: e.target.value })} placeholder="Grund (z. B. falsche Nummer, nie versendet)" aria-label="Grund des Zurückziehens" style={{ ...feld, flex: '1 1 220px' }} />
+              <input value={zurueck.nr} onChange={e => setZurueck({ ...zurueck, nr: e.target.value })} placeholder={`Zur Bestätigung: ${r.nummer ?? ''}`} aria-label="Rechnungsnummer zur Bestätigung" style={{ ...feld, flex: '1 1 180px' }} />
+              <Knopf farbe={LEUCHT.kritisch} aus={zurueck.grund.trim().length < 3 || zurueck.nr.trim() !== (r.nummer ?? '')} onClick={zurueckziehen}>Zurückziehen</Knopf>
+              <Knopf leise onClick={() => setZurueck(null)}>Abbrechen</Knopf>
             </div>}
         </Karte>
       )}

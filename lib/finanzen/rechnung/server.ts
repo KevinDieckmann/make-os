@@ -950,6 +950,70 @@ export async function rechnungStellen(p: { id: string; stand: unknown; person: s
   return { rechnung: mitFassung(e.r), pdf: e.pdf, mail: { ...(e.r.empfaenger?.email ? { an: e.r.empfaenger.email } : {}), ...rechnungMail(e.r, v.name) } };
 }
 
+// ── Zurückziehen (03.11., Kevin: „Rechnung löschen, neu ab 0006“) ─────────────
+
+/** Was eine gestellte Rechnung erfüllen muss, damit sie zurückgezogen (gelöscht) werden darf — leer = darf. Rein. */
+export function zurueckziehenGruende(r: Rechnung, eingang: boolean): string[] {
+  const g: string[] = [];
+  if (r.status !== 'gestellt') g.push(r.status === 'geplant' ? 'Ein Entwurf wird gelöscht, nicht zurückgezogen.' : `Die Rechnung ist ${r.status} — zurückziehen geht nur bei „gestellt“.`);
+  if (r.art === 'storno' || r.stornoRechnungId) g.push('Stornos und stornierte Rechnungen bleiben, wie sie sind.');
+  if (r.versendet?.length) g.push('Die Rechnung wurde aus MAKE OS versendet — sie wird storniert, nicht zurückgezogen.');
+  if (r.mahnungen?.length) g.push('Zur Rechnung gibt es schon eine Mahnung — sie wird storniert, nicht zurückgezogen.');
+  if (r.bezahltAm || eingang) g.push('Zur Rechnung gibt es einen Zahlungseingang — sie wird storniert, nicht zurückgezogen.');
+  return g;
+}
+
+/**
+ * Eine GESTELLTE, noch nicht versendete Rechnung zurückziehen (03.11.): Kevin hat ausdrücklich gewählt, eine versehentlich mit falscher Nummer
+ * gestellte Rechnung zu löschen statt zu stornieren („Rechnung löschen, neu ab 0006“). Nur per Klick eines vollen Haushaltsmitglieds, mit Grund
+ * und der eingetippten Rechnungsnummer als Bestätigung. Vorher eine verschlüsselte Archivkopie (Eintrag + PDF als Base64,
+ * `archiv/rechnung-zurueckgezogen-<id>-<zeit>.json`, bleibt — keine Löschfrist), dann in EINER Finanzplan-Sperre: Rechnung raus, ihr PDF
+ * aus der Ablage. Der Nummernkreis bleibt, wie er ist (die Nummer gilt als verbraucht); die nächste Nummer stellt „Nächste Rechnungsnummer“ ein.
+ * Hinweis, keine Steuerberatung: nur für Rechnungen, die den Kunden nie erreicht haben — sonst stornieren.
+ */
+export async function rechnungZurueckziehen(p: { id: string; grund: unknown; bestaetigung: unknown; stand: unknown; haushalt: string; sicht: Sicht; wer?: Wer; jetzt?: Date }): Promise<{ id: string; nummer: string; archiv: string }> {
+  const grund = typeof p.grund === 'string' ? p.grund.trim() : '';
+  if (grund.length < 3) throw new RechnungFehler('Bitte einen Grund angeben (warum die Rechnung zurückgezogen wird).', 400);
+  if (grund.length > 300) throw new RechnungFehler('Der Grund ist zu lang (höchstens 300 Zeichen).', 413);
+  const eingangDa = async (id: string) => {
+    const { eingangVon } = await import('@/lib/finanzen/finanzplan-buchung');
+    const b = await loadJson<{ buchungen?: { id: string; betrag: number; rechnungId?: string }[] }>('buchungen');
+    return !!eingangVon(Array.isArray(b?.buchungen) ? b!.buchungen : [], id);
+  };
+  const pruefen = async (r: Rechnung | undefined) => {
+    if (!r || !inSicht(r, p.sicht)) throw new RechnungFehler('Rechnung nicht gefunden.', 404);
+    const g = zurueckziehenGruende(r, await eingangDa(r.id));
+    if (g.length) throw new RechnungFehler(g.join(' '), 409, { aktuell: mitFassung(r), grund: 'nicht-zurueckziehbar' });
+    standPruefen(r, p.stand);
+    if (typeof p.bestaetigung !== 'string' || p.bestaetigung.trim() !== (r.nummer ?? '')) throw new RechnungFehler(`Zur Bestätigung bitte die Rechnungsnummer ${r.nummer ?? ''} eintippen.`.trim(), 400, { grund: 'bestaetigung' });
+    return r;
+  };
+  const r0 = await pruefen((await planLaden()).rechnungen.find(r => r.id === p.id));
+  const { inhaltLaden, inhaltEntfernen, ablageName } = await import('@/lib/dateien/ablage');
+  const pdf = r0.pdfDateiId ? await inhaltLaden(p.haushalt, r0.pdfDateiId).catch(() => null) : null;
+  const { archivSchreiben, archivZeit } = await import('@/lib/store/archiv');
+  const jetztIso = (p.jetzt ?? new Date()).toISOString();
+  const archiv = await archivSchreiben(`rechnung-zurueckgezogen-${r0.id}-${archivZeit(jetztIso)}.json`, {
+    art: 'rechnung-zurueckgezogen', am: jetztIso, grund, rechnung: r0, ...(pdf ? { pdf: { id: r0.pdfDateiId, base64: pdf.toString('base64') } } : {}),
+  });
+  const stand = fassung(r0);
+  let weg: string[] = [];
+  await updateJsonAsync<FinanzplanFile>('finanzplan', async cur => {
+    const f = planBasis(cur);
+    const a = f.rechnungen.find(r => r.id === p.id);
+    if (!a || fassung(a) !== stand) throw new RechnungFehler('Wurde inzwischen geändert — der aktuelle Stand ist geladen, bitte noch einmal.', 409, { ...(a ? { aktuell: mitFassung(a) } : {}), grund: 'inzwischen geändert' });
+    if ((await loadJson(ablageName(p.haushalt))) !== null) await updateJson<{ eintraege: { id: string; rechnungsPdf?: string }[] }>(ablageName(p.haushalt), c => {
+      const l = c?.eintraege ?? [];
+      weg = l.filter(x => x.rechnungsPdf === p.id).map(x => x.id);
+      return weg.length ? { ...(c ?? {}), eintraege: l.filter(x => !weg.includes(x.id)) } : (c ?? { eintraege: [] });
+    });
+    return ugFirmaNachziehen({ ...f, rechnungen: f.rechnungen.filter(r => r.id !== p.id) });
+  });
+  for (const d of weg) await inhaltEntfernen(p.haushalt, d).catch(() => undefined);
+  await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geloescht', id: r0.id, felder: ['zurueckgezogen'] }], p.wer);
+  return { id: r0.id, nummer: r0.nummer ?? '', archiv };
+}
+
 // ── Storno = Stornorechnung ──────────────────────────────────────────────────
 
 export interface StornoErgebnis { original: Rechnung & { fassung: string }; storno: Rechnung & { fassung: string }; pdf: { id: string; name: string } | null; gegenbuchung: 'neu' | 'vorhanden' | 'keine'; schonStorniert: boolean }

@@ -33,6 +33,18 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-03',
+    datum: '2026-11-03',
+    titel: 'Rechnungen: versehentlich gestellte Rechnung zurückziehen',
+    kurz: 'Eine gestellte Rechnung, die noch nicht verschickt, gemahnt oder bezahlt ist, lässt sich jetzt zurückziehen — zum Beispiel, wenn sie mit der falschen Nummer gestellt wurde. Danach die nächste Rechnungsnummer einstellen und neu stellen.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Rechnung öffnen › „Zurückziehen“: mit Grund und der eingetippten Rechnungsnummer als Bestätigung. Rechnung und PDF verschwinden aus der Liste; eine verschlüsselte Kopie bleibt im Archiv. Die Nummer gilt als verbraucht.', bereich: 'alle' },
+        { text: 'Wurde die Rechnung schon verschickt, gemahnt oder bezahlt, bleibt nur das Storno — so wie bisher.', bereich: 'alle' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-24',
     datum: '2026-11-02',
     titel: 'Buchhaltung: Arbeitsliste, Regeln, Prüfen und Export',

@@ -15,6 +15,8 @@
 //   storno    { id, grund, stand?, anfrageId? } → Stornorechnung (eigene Nummer, eigenes PDF) — nie der Dienstweg
 //   mahnung   { id, stufe, anfrageId? }      → Stufe vermerken + Mail-Entwurf (der Browser öffnet das Mail-Programm) — nie der Dienstweg
 //   mahntage  { tage: [n, n, n] }            → Mahnstufen-Tage (nur volle Haushaltsmitglieder)
+//   zurueckziehen { id, stand, grund, bestaetigung } → GESTELLTE, nicht versendete/gemahnte/bezahlte Rechnung löschen (03.11., Kevins Wahl
+//             „Rechnung löschen, neu ab 0006“): Archivkopie zuerst, Bestätigung = die Rechnungsnummer — nur ein volles Haushaltsmitglied, nie der Dienstweg
 //   startnummer { firmaId, nr, jahr? }       → „Nächste Rechnungsnummer“ im Kreis des laufenden Jahres (02.11.): nur nach oben (409, wenn schon
 //             eine Nummer ≥ nr vergeben ist), Sicht wie überall (Business-Konto nur Business-Gesellschaften) — nie der Dienstweg
 //   bezahlt   { id, am?, stand? }            → Zahlungseingang: Status + Buchung bu-re-<id> in einer Sperre (27.10.)
@@ -44,7 +46,7 @@ import { einmalig } from '@/lib/store/anfragen';
 import { dateinameAscii } from '@/lib/dateien/regeln';
 import {
   RechnungFehler, entwurfKopie, entwurfKunde, entwurfLoeschen, entwurfNeu, entwurfSpeichern, mahnTageSetzen, mahnungVermerken, mitFassung, rechnungKatalog,
-  rechnungPdf, rechnungXRechnung, rechnungStellen, rechnungStornieren, rechnungsStand, rechnungZuordnen, rechnungenFuerUmsatz, naechsteNummern, startnummerSetzen, type Sicht,
+  rechnungPdf, rechnungXRechnung, rechnungStellen, rechnungStornieren, rechnungsStand, rechnungZuordnen, rechnungenFuerUmsatz, naechsteNummern, startnummerSetzen, rechnungZurueckziehen, type Sicht,
 } from '@/lib/finanzen/rechnung/server';
 import { rechnungBezahltVermerken, stornoOhnePdf } from '@/lib/finanzen/rechnung/bezahlt-server';
 
@@ -212,6 +214,12 @@ export async function POST(req: Request) {
         if (z.sicht !== 'privat') return fehler('Die Mahnstufen stellt ein volles Haushaltsmitglied ein.', 403);
         return NextResponse.json({ ok: true, mahnTage: await mahnTageSetzen(b.tage) });
       }
+      case 'zurueckziehen': {
+        const nein = vonHand(); if (nein) return nein;
+        if (z.sicht !== 'privat') return fehler('Eine gestellte Rechnung zieht ein volles Haushaltsmitglied zurück.', 403);
+        if (!id) return fehler('id fehlt.', 400);
+        return NextResponse.json({ ok: true, ...(await rechnungZurueckziehen({ id, grund: b.grund, bestaetigung: b.bestaetigung, stand: b.stand, haushalt: z.haushalt, sicht: z.sicht, wer })) });
+      }
       // 02.11.: „Nächste Rechnungsnummer“ — nur nach oben, in der Sperre des Nummernkreises (lib/finanzen/rechnung/server.ts).
       case 'startnummer': {
         const nein = vonHand(); if (nein) return nein;
@@ -225,7 +233,7 @@ export async function POST(req: Request) {
         const { vorbereitenSetzen } = await import('@/lib/finanzen/rechnung/kreislauf');
         return NextResponse.json({ ok: true, vorbereiten: await vorbereitenSetzen(b.an) });
       }
-      default: return fehler('aktion: neu, speichern, kunde, zuordnen, kopie, loeschen, stellen, bezahlt, storno, mahnung, mahntage, startnummer oder vorbereiten.', 400);
+      default: return fehler('aktion: neu, speichern, kunde, zuordnen, kopie, loeschen, stellen, bezahlt, storno, mahnung, mahntage, startnummer, zurueckziehen oder vorbereiten.', 400);
     }
   } catch (e) { return ausFehler(e); }
 }
