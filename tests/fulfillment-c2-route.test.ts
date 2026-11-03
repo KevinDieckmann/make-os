@@ -197,7 +197,9 @@ describe('Öffentlicher Weg: dieselbe 404, Positivliste, Link A ↛ Mandat B', (
     expect(Object.keys(r.d.sicht).every(k => (SICHT_SCHLUESSEL as readonly string[]).includes(k))).toBe(true);
     // Die Ansprechperson (Konto „olaf“, Anzeigename) steht seit 12.10. bewusst in der Sicht (Entscheidung 12.10.: „keine Personennamen außer Ansprechpartnern“) — nur dort.
     expect(r.d.sicht.ansprechperson).toBe('olaf Probe');
-    const text = JSON.stringify({ ...r.d, sicht: { ...r.d.sicht, ansprechperson: undefined } });
+    // Der Formular-Stempel ist eine zufällige Signatur (Zeit + base64url) — er kann zufällig „pia“, „m-b“ … enthalten; geprüft wird nur seine Form.
+    expect(r.d.stempel).toMatch(/^\d+\.[A-Za-z0-9_-]{43}$/);
+    const text = JSON.stringify({ ...r.d, stempel: undefined, sicht: { ...r.d.sicht, ansprechperson: undefined } });
     for (const geheim of ['GEHEIM-NOTIZ', 'INTERN-ENTSCHEIDUNG', 'INTERNER-SCHRITT', 'INTERN-MITSCHRIFT', 'INTERN-AGENDA', 'INTERN-OFFEN', 'INTERN-MANDAT-NOTIZ', '98765', '"stimmung"', 'skeptiker', 'kritisch', 'uid-geheim', 'fb-playbook', 'fb-intern', 'Internes Workbook', 'tokenHash', 'pia', 'olaf', 'c-erika', 'm-b']) {
       expect(text, geheim).not.toContain(geheim);
     }
