@@ -240,7 +240,7 @@ describe('Fund 4 — Route /api/crm/bestand: Sicht Business bekommt nichts aus P
     });
     route = (await import('@/app/api/crm/bestand/route')) as unknown as typeof route;
   }, 60_000);
-  afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
+  afterAll(() => { rmSync(ordner, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
   it('GET: das Konto „nur Business“ sieht nichts der Privat-Einheit, der Inhaber alles', async () => {
     const p = await rufe('partner');
     expect(p.status).toBe(200);
