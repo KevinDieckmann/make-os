@@ -99,6 +99,11 @@ function Erstellen({ api, vorlagen, vorbelegung, onAbbrechen, onAngelegt }: {
   const [fehler, setFehler] = useState<string | null>(null);
   const arten = vorlagen.stand?.arten ?? [];
   const herkunft = vorbelegung.angebotId ? 'aus dem Angebot' : vorbelegung.mandatId ? 'aus dem Mandat' : vorbelegung.dealId ? 'aus dem Deal' : vorbelegung.firmaId || vorbelegung.kontaktId ? 'für den Vertragspartner' : '';
+  // Absender gleich hier (03.11.): ohne Angebot/Deal/Mandat kennt der Server die Gesellschaft nur, wenn es genau eine operative gibt —
+  // sonst lehnte „Entwurf anlegen“ ab, ohne dass der Dialog eine Wahl bot. Aus Angebot/Deal/Mandat bleibt deren Gesellschaft die Vorgabe.
+  const gesellschaften = (['kdc', 'kdv', 'ug'] as const).filter(istBusinessGesellschaft);
+  const [gesellschaft, setGesellschaft] = useState<string | null>(gesellschaften.length === 1 ? gesellschaften[0] : null);
+  const absenderFehlt = !gesellschaft && !vorbelegung.angebotId && !vorbelegung.mandatId && !vorbelegung.dealId;
   void api;
   return (
     <Karte>
@@ -109,11 +114,16 @@ function Erstellen({ api, vorlagen, vorbelegung, onAbbrechen, onAngelegt }: {
           <Wahl label="Vorlage" wert={vorlageId} onWahl={setVorlageId} liste={liste.map(v => ({ id: v.id, label: v.titel, hinweis: `${artLabel(v.art, arten as never)} · ${v.ampel.ampel === 'gruen' ? 'geprüft' : 'ungeprüft'}` }))} />
         </Feldzeile>
       )}
+      {gesellschaften.length > 1 && (
+        <Feldzeile label="Absender (Gesellschaft)">
+          <Pillen liste={gesellschaften.map(g => ({ id: g, label: gesellschaftLabel(g) }))} aktiv={gesellschaft as typeof gesellschaften[number] | null} onWahl={g => setGesellschaft(g)} />
+        </Feldzeile>
+      )}
       {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-        <Knopf haupt aus={!vorlageId} onClick={async () => {
+        <Knopf haupt aus={!vorlageId || absenderFehlt} onClick={async () => {
           const vb = Object.fromEntries(Object.entries(vorbelegung).filter(([, x]) => !!x));
-          const r = await senden<{ vertrag: VertragMitStand }>('/api/vertraege', { aktion: 'anlegen', vorlageId, vorbelegung: vb });
+          const r = await senden<{ vertrag: VertragMitStand }>('/api/vertraege', { aktion: 'anlegen', vorlageId, ...(gesellschaft ? { gesellschaft } : {}), vorbelegung: vb });
           if (r.ok) onAngelegt(r.d.vertrag); else setFehler(r.d.fehler ?? 'Nicht angelegt.');
         }}>Entwurf anlegen</Knopf>
         <Knopf leise onClick={onAbbrechen}>Abbrechen</Knopf>
