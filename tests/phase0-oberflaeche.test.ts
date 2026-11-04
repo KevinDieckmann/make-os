@@ -165,7 +165,7 @@ describe('Update-Hinweis — deploy/ausrollen.sh', () => {
     // Die Action bleibt, wie sie war (ziehen, dann bild).
     const action = lies('.github/workflows/pruefen-und-ausrollen.yml');
     expect(action).toContain('$SSH ziehen </dev/null');
-    expect(action).toContain('| $SSH bild');
+    expect(action).toContain('$SSH bild < /tmp/bild.tar.gz');
   });
 
   it('die Marke entsteht als lesbares JSON, verschwindet wieder — und ein Schreibfehler bricht set -euo pipefail nicht ab', () => {
