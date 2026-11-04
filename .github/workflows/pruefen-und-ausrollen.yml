@@ -60,7 +60,8 @@ jobs:
 
   ausrollen:
     needs: pruefen
-    runs-on: ubuntu-latest
+    # 04.11.: fest auf 24.04 — seit dem Umzug von ubuntu-latest (Ubuntu 26) kam am Server nur ein abgeschnittenes Bild an.
+    runs-on: ubuntu-24.04
     if: ${{ vars.AUSROLLEN != 'aus' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -77,7 +78,8 @@ jobs:
         run: |
           EINHEITEN_VORGABE='{"kdc":{"bereich":"business"}}'
           [ -n "$EINHEITEN" ] || EINHEITEN="$EINHEITEN_VORGABE"
-          docker build --pull \
+          # --provenance/--sbom aus: Anhänge ohne Inhalt lassen `docker save` mit dem containerd-Speicher scheitern.
+          docker build --pull --provenance=false --sbom=false \
             --build-arg NEXT_PUBLIC_MAKE_OS_EINHEITEN="$EINHEITEN" \
             --build-arg NEXT_PUBLIC_MAKE_OS_CRM_TEAM="$CRM_TEAM" \
             --build-arg NEXT_PUBLIC_MAKE_OS_EVENT_MARKE="$EVENT_MARKE" \
@@ -94,8 +96,15 @@ jobs:
           SSH="ssh -i ~/.ssh/id -o StrictHostKeyChecking=yes -o BatchMode=yes make@$HOST"
           AUSGABE="$($SSH ziehen </dev/null)"; echo "$AUSGABE"
           if echo "$AUSGABE" | grep -q "ausrollen-v2"; then
-            echo "▸ Bild zum Server schicken"
-            docker save make-os:aktuell | gzip -1 | $SSH bild
+            # Erst in eine Datei und prüfen, dann schicken — ein Fehler steht so als Meldung im Lauf (nicht nur „exit 1“).
+            if ! docker save make-os:aktuell 2>/tmp/save.err | gzip -1 > /tmp/bild.tar.gz || ! gzip -t /tmp/bild.tar.gz; then
+              echo "::error::docker save gescheitert: $(tr '\n' ' ' < /tmp/save.err | cut -c1-400)"; exit 1
+            fi
+            echo "▸ Bild zum Server schicken ($(du -h /tmp/bild.tar.gz | cut -f1))"
+            if ! $SSH bild < /tmp/bild.tar.gz > /tmp/server.txt 2>&1; then
+              cat /tmp/server.txt; echo "::error::Server: $(tail -3 /tmp/server.txt | tr '\n' ' ' | cut -c1-400)"; exit 1
+            fi
+            cat /tmp/server.txt
           else
             echo "▸ Server hat noch das alte Skript — dort wurde gezogen und gebaut."
           fi
