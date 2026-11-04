@@ -97,8 +97,11 @@ jobs:
           AUSGABE="$($SSH ziehen </dev/null)"; echo "$AUSGABE"
           if echo "$AUSGABE" | grep -q "ausrollen-v2"; then
             # Erst in eine Datei und prüfen, dann schicken — ein Fehler steht so als Meldung im Lauf (nicht nur „exit 1“).
-            if ! docker save make-os:aktuell 2>/tmp/save.err | gzip -1 > /tmp/bild.tar.gz || ! gzip -t /tmp/bild.tar.gz; then
-              echo "::error::docker save gescheitert: $(tr '\n' ' ' < /tmp/save.err | cut -c1-400)"; exit 1
+            set -o pipefail
+            if ! docker save make-os:aktuell 2>/tmp/save.err | gzip -1 > /tmp/bild.tar.gz || ! gzip -t /tmp/bild.tar.gz \
+               || [ "$(stat -c %s /tmp/bild.tar.gz)" -lt 50000000 ]; then
+              echo "::error::docker save gescheitert ($(du -h /tmp/bild.tar.gz | cut -f1), frei $(df -h / | awk 'NR==2{print $4}')): $(tr '\n' ' ' < /tmp/save.err | cut -c1-500)"
+              docker images make-os; exit 1
             fi
             echo "▸ Bild zum Server schicken ($(du -h /tmp/bild.tar.gz | cut -f1))"
             if ! $SSH bild < /tmp/bild.tar.gz > /tmp/server.txt 2>&1; then
