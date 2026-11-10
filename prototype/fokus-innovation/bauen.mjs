@@ -660,7 +660,8 @@ ${block('fokus', fl.fokus)}
 ${block('luecke', fl.luecke)}
 ${block('momentum', fl.momentum)}
 ${block('durchbruch', fl.durchbruch)}
-<div class="block" data-block="ende"><div class="ende-marke"><svg class="ende-wort" viewBox="-65.3 81.8 130.6 31.4" aria-hidden="true"><path d="${MARKE_PFAD.stapelWort}"/></svg><svg class="ende-unter" viewBox="-65.3 123.4 130.6 9" aria-hidden="true"><path d="${MARKE_PFAD.stapelUnter}"/></svg><span class="ende-claim" aria-hidden="true">${e(F.marke.claim)}</span><div class="ende-knoepfe dunkel">${erstKnopf()}${passenderKnopf(undefined, 'film_ende')}</div></div></div>
+<div class="block" data-block="ende"><div class="ende-anker" aria-hidden="true"></div><div class="ende-logo" aria-hidden="true"><svg class="ende-wort" viewBox="-65.3 81.8 130.6 31.4"><path d="${MARKE_PFAD.stapelWort}"/></svg><svg class="ende-unter" viewBox="-65.3 123.4 130.6 9"><path d="${MARKE_PFAD.stapelUnter}"/></svg></div><div class="ende-text"><p class="ende-claim" aria-hidden="true">${e(F.marke.claim).replace(/(\S+)$/, '<em>$1</em>')}</p><div class="ende-knoepfe dunkel">${erstKnopf()}${passenderKnopf(undefined, 'film_ende')}</div></div></div>
+<div class="faden" aria-hidden="true"><span class="faden-licht"></span>${'<i class="faden-punkt"></i>'.repeat(6)}</div>
 <a class="ueberspringen" href="#einstieg">Film überspringen</a>
 </div>
 </section>

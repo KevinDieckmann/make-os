@@ -13,14 +13,21 @@
 .kopf.ueber-film .menue summary { border-color: rgba(242, 243, 243, .34); }
 
 /* ── Der Film: eine Bühne, die beim Scrollen steht ── */
-.film { position: relative; height: 220vh; background: var(--nacht); color: var(--hell); }
-.buehne { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; --r: min(15vh, 24vw); --r: min(15dvh, 24vw); }
+.film { position: relative; height: 280vh; background: var(--nacht); color: var(--hell); }
+.buehne { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; --r: min(15vh, 24vw); --r: min(15dvh, 24vw);
+  /* Lage des Zeichens im Endbild (Handy: oben in der Mitte · Rechner: rechts, Text links). Die Szene liest sie über .ende-anker. */
+  --ende-x: 50%; --ende-y: 27%; --re: min(10vh, 21vw); --wb: clamp(7rem, calc(var(--re) * 1.45), 10rem); }
+@supports (height: 1dvh) { .buehne { --re: min(10dvh, 21vw); } }
+@media (min-width: 640px) and (min-aspect-ratio: 11/10) {
+  .buehne { --ende-x: 72%; --ende-y: 46%; --re: min(16vh, 12.5vw); --wb: calc(var(--re) * 1.3); }
+  @supports (height: 1dvh) { .buehne { --re: min(16dvh, 12.5vw); } }
+}
 .szene, .ersatz { position: absolute; inset: 0; width: 100%; height: 100%; }
 .szene { display: block; opacity: 0; transition: opacity 1.4s ease; }
 .szene.da { opacity: 1; }
 .ersatz { display: none; }
 .keingl .ersatz { display: block; }
-.ersatz .gross { position: absolute; left: 50%; top: 44%; width: calc(var(--r) * 2.375); height: auto; translate: -50% -50%; color: var(--hell); }
+.ersatz .gross { position: absolute; left: var(--ende-x); top: var(--ende-y); width: calc(var(--re) * 2.375); height: auto; translate: -50% -50%; color: var(--hell); }
 .ersatz .gross .kern { fill: var(--kern-nacht); }
 @media (prefers-reduced-motion: no-preference) { .keingl .ersatz .gross .kern { transform-box: fill-box; transform-origin: center; animation: kernSchlag 2.8s ease-out 2; } }
 
@@ -58,28 +65,48 @@
 }
 @keyframes schweben { 0%, 100% { translate: 0 0; } 50% { translate: 6px -8px; } }
 
-/* Das Ende: die Wortmarke unter dem Zeichen, wie im gestapelten Logo */
-.ende-marke { position: absolute; left: 50%; top: calc(44% + var(--r) * 1.125 + 4.5vh); translate: -50% 0; display: flex; flex-direction: column; align-items: center; text-align: center; width: min(40rem, calc(100% - 2 * var(--rand))); }
-.ende-marke { --wb: clamp(8.5rem, min(14vw, 21vh), 11rem); }
+/* Das Endbild (10.11.): das Zeichen steht am Anker, darunter die Wortmarke; der Claim groß daneben (Rechner) bzw. darunter (Handy),
+   das letzte Wort in Kern-Violett mit langsamem Glanz; darunter die zwei Knöpfe. */
+.ende-anker { position: absolute; left: var(--ende-x); top: var(--ende-y); width: calc(var(--re) * 2); aspect-ratio: 1; translate: -50% -50%; pointer-events: none; }
+.ende-logo { position: absolute; left: var(--ende-x); top: calc(var(--ende-y) + var(--re) * 1.19 + max(2.2vh, 14px)); translate: -50% 0; display: flex; flex-direction: column; align-items: center; }
 .ende-wort { display: block; width: var(--wb); height: auto; aspect-ratio: 130.6 / 31.4; fill: var(--hell); }
 .ende-unter { display: block; width: var(--wb); height: auto; aspect-ratio: 130.6 / 9; margin-top: calc(var(--wb) * .078); fill: var(--grau); }
-.ende-claim { margin-top: max(3vh, 20px); color: var(--leise-dunkel); font-size: clamp(1.05rem, 1.35vw, 1.25rem); letter-spacing: .01em; }
-/* Der Claim mit Glanz (Kevin 30.10.): ein Lichtschein zieht langsam von links nach rechts durch die Worte, mit einem Hauch Kern-Lila */
+.ende-text { position: absolute; left: 50%; top: calc(var(--ende-y) + var(--re) * 1.19 + max(2.2vh, 14px) + var(--wb) * .4 + max(4.5vh, 26px)); translate: -50% 0; width: min(30rem, calc(100% - 2 * var(--rand))); display: flex; flex-direction: column; align-items: center; text-align: center; }
+.ende-claim { margin: 0; color: var(--hell); font-size: clamp(2rem, 9vw, 2.6rem); font-weight: 600; letter-spacing: -.035em; line-height: 1.02; text-wrap: balance; }
+.ende-claim em { font-style: normal; color: var(--akzent); }
 @media (prefers-reduced-motion: no-preference) {
-  .block.an .ende-claim { color: transparent; -webkit-background-clip: text; background-clip: text;
-    background-image: linear-gradient(100deg, rgba(242, 243, 243, .68) 0%, rgba(242, 243, 243, .68) 38%, #FFFFFF 46%, #C4B5FD 52%, rgba(242, 243, 243, .68) 62%, rgba(242, 243, 243, .68) 100%);
-    background-size: 260% 100%; background-position: 100% 0; animation: claimGlanz 5.5s cubic-bezier(.45, .05, .35, 1) 1.4s 1 both; }
+  .ende-claim em { color: transparent; -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 28px rgba(139, 92, 246, .45));
+    background-image: linear-gradient(100deg, #E4DCFF 0%, var(--akzent) 35%, var(--kern-nacht) 60%, var(--akzent) 100%); background-size: 220% 100%; background-position: 0% 0;
+    animation: emGlanz 7s ease-in-out infinite alternate; }
 }
-@keyframes claimGlanz { 0% { background-position: 100% 0; } 55% { background-position: 0% 0; } 100% { background-position: 0% 0; } }
-.ende-marke > * { opacity: 0; translate: 0 .5em; transition: opacity .9s var(--ease), translate 1s var(--ease); }
-.ende-marke > :nth-child(2) { transition-delay: .15s; }
-.ende-marke > :nth-child(3) { transition-delay: .5s; }
-.ende-marke > :nth-child(4) { transition-delay: .9s; }
+@keyframes emGlanz { from { background-position: 0% 0; } to { background-position: 100% 0; } }
 /* Knöpfe im Endbild (31.10.): der erste Bildschirm endet mit einer Handlung, auch im Standbild. */
-.ende-knoepfe { margin-top: max(3.5vh, 24px); display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; background: transparent; }
+.ende-knoepfe { margin-top: max(3.2vh, 22px); display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: min(100%, 22rem); background: transparent; }
 .block.an .ende-knoepfe, .ruhig .ende-knoepfe { pointer-events: auto; }
-@media (max-width: 760px) { .ende-knoepfe { flex-direction: column; align-items: stretch; width: min(100%, 22rem); } }
-.block.an .ende-marke > * { opacity: 1; translate: 0 0; }
+@media (min-width: 640px) and (min-aspect-ratio: 11/10) {
+  .ende-text { --links: max(var(--rand), calc((100% - var(--breite)) / 2)); left: var(--links); top: var(--ende-y); translate: 0 -50%;
+    width: min(40rem, calc(var(--ende-x) - var(--re) * 1.45 - var(--links))); align-items: flex-start; text-align: left; }
+  .ende-claim { font-size: clamp(2.1rem, min(4.4vw, 8vh), 4.6rem); }
+  .ende-knoepfe { margin-top: max(4.5vh, 28px); flex-direction: row; flex-wrap: wrap; align-items: center; width: auto; }
+}
+/* Erscheinen: erst die Wortmarke, dann der Claim, zuletzt die Knöpfe */
+.ende-logo, .ende-text > * { opacity: 0; translate: 0 .5em; transition: opacity .9s var(--ease), translate 1s var(--ease); }
+.ende-logo { translate: -50% .5em; }
+.ende-text > :nth-child(1) { transition-delay: .25s; }
+.ende-text > :nth-child(2) { transition-delay: .7s; }
+.block.an .ende-text > * { opacity: 1; translate: 0 0; }
+.block.an .ende-logo { opacity: 1; translate: -50% 0; }
+
+/* Der Faden: rechts am Rand ein Punkt je Bild, das Licht wächst mit dem Film (nur Rechner) */
+.faden { position: absolute; z-index: 2; right: calc(var(--rand) * .55); top: 50%; translate: 0 -50%; width: 9px; height: min(38vh, 300px); pointer-events: none; opacity: 0; }
+.faden::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: rgba(242, 243, 243, .14); }
+.faden-licht { position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; transform-origin: top; transform: scaleY(var(--fp, 0));
+  background: linear-gradient(var(--akzent), var(--kern-nacht)); box-shadow: 0 0 10px rgba(167, 139, 250, .7); }
+.faden-punkt { position: absolute; left: 1px; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--nacht); border: 1px solid rgba(242, 243, 243, .32); transition: background-color .5s ease, border-color .5s ease, box-shadow .5s ease; }
+.faden-punkt:nth-of-type(1) { top: 0; } .faden-punkt:nth-of-type(2) { top: 20%; } .faden-punkt:nth-of-type(3) { top: 40%; }
+.faden-punkt:nth-of-type(4) { top: 60%; } .faden-punkt:nth-of-type(5) { top: 80%; } .faden-punkt:nth-of-type(6) { top: 100%; }
+.faden-punkt.an { background: var(--akzent); border-color: var(--akzent); box-shadow: 0 0 10px rgba(167, 139, 250, .8); }
+@media (max-width: 899px), (pointer: coarse) { .faden { display: none; } }
 
 /* Übergang vom Film ins Papier: Titel über die ganze Breite, darunter Einleitung und Index */
 .start-held { padding-top: clamp(96px, 10vw, 144px); }
@@ -94,10 +121,12 @@
 .ruhig .szene { opacity: 1; transition: none; }
 .ruhig .block, .ruhig .aufgaben { display: none; }
 .ruhig .block[data-block="ende"] { display: block; opacity: 1; visibility: visible; }
-.ruhig .ende-marke > * { opacity: 1; translate: none; transition: none; }
+.ruhig .ende-text > * { opacity: 1; translate: none; transition: none; }
+.ruhig .ende-logo { opacity: 1; translate: -50% 0; transition: none; }
+.ruhig .faden { display: none; }
 
 @media (max-width: 760px) {
-  .film { height: 210vh; }
+  .film { height: 250vh; }
   .aufgabe:nth-child(n+8) { display: none; }
   .aufgabe:nth-child(1) { left: 6%; top: 15%; } .aufgabe:nth-child(2) { left: 52%; top: 12%; } .aufgabe:nth-child(3) { left: 14%; top: 27%; }
   .aufgabe:nth-child(4) { left: 58%; top: 24%; } .aufgabe:nth-child(5) { left: 4%; top: 40%; } .aufgabe:nth-child(6) { left: 48%; top: 37%; }
