@@ -1,6 +1,6 @@
-# Fokus Innovation
+# MAKE Innovation
 
-> Fokus Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um. Claim: „Fortschritt braucht Fokus.“
+> MAKE Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um. Claim: „Innovation braucht Umsetzung.“
 
 Wir machen Ihr Angebot mit Positionierung, Website, Videos und PR bekannt und bauen den Vertrieb, der aus Anfragen Kunden macht. Wo KI Arbeit spart, führen wir sie ein. Jedes Angebot hat einen offenen Preis und einen festen Ablauf, und wir setzen selbst mit um. Alle Preise sind fest, netto und auf der Website veröffentlicht.
 
@@ -51,7 +51,7 @@ Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und ne
 ## Wissen
 
 - [Vertrieb aufbauen: vom Gründer zum System](https://fokusinnovation.de/wissen/vertrieb-aufbauen/): So bauen Sie Vertrieb auf, der ohne den Gründer läuft: Zielgruppe, Ansprache, Prozess im CRM, Kennzahlen und ein trainiertes Team, in dieser Reihenfolge.
-- [Head of Sales auf Zeit: was er macht und wann er sich lohnt](https://fokusinnovation.de/wissen/head-of-sales-auf-zeit/): Was ein Head of Sales auf Zeit in sechs Monaten aufbaut, wann er sich gegenüber einer festen Einstellung lohnt und was das Mandat bei Fokus Innovation kostet.
+- [Head of Sales auf Zeit: was er macht und wann er sich lohnt](https://fokusinnovation.de/wissen/head-of-sales-auf-zeit/): Was ein Head of Sales auf Zeit in sechs Monaten aufbaut, wann er sich gegenüber einer festen Einstellung lohnt und was das Mandat bei MAKE Innovation kostet.
 - [Positionierung: in fünf Sätzen sagen, was Sie machen](https://fokusinnovation.de/wissen/positionierung-in-fuenf-saetzen/): Fünf Fragen, die eine klare Positionierung beantwortet, ein einfacher Test für Ihre Startseite und die häufigsten Fehler. Für Gründer und Unternehmer.
 - [Homepage: was Besucher in fünf Sekunden verstehen müssen](https://fokusinnovation.de/wissen/homepage-fuenf-sekunden/): Was auf die erste Ansicht einer Unternehmens-Homepage gehört, wie Belege Vertrauen schaffen und warum Handy, Ladezeit und Suche von Anfang an mitgedacht werden.
 - [Erklärvideo für Unternehmen: Aufbau, Länge und Ablauf](https://fokusinnovation.de/wissen/erklaervideo-fuer-unternehmen/): Wann sich ein Erklärvideo lohnt, wie ein gutes in 60 bis 90 Sekunden aufgebaut ist und wie es ohne Dreh vor Ort in zehn Werktagen entsteht.
@@ -69,7 +69,7 @@ Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und ne
 - [Alle Preise](https://fokusinnovation.de/preise/): jedes Angebot mit Preis und Konditionen
 - [Häufige Fragen](https://fokusinnovation.de/fragen/): Check, Vertrieb, Homepages, Videos, Verträge
 - [Begriffe von A bis Z](https://fokusinnovation.de/begriffe/): 25 Begriffe aus Vertrieb, Sichtbarkeit und KI
-- [Fokus Innovation · Events](https://fokusinnovation.de/events/): Kuratiert und auf Einladung: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir planen verschiedene Formate, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.
+- [MAKE Innovation · Events](https://fokusinnovation.de/events/): Kuratiert und auf Einladung: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir planen verschiedene Formate, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.
 - [Über uns](https://fokusinnovation.de/ueber-uns/): Leitidee, Team, Werte
 - [Kontakt](https://fokusinnovation.de/kontakt/): kevin@makeinnovation.de
 

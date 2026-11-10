@@ -1,4 +1,4 @@
-// Fokus Innovation · Seite: Abschnitte erscheinen einmal beim Scrollen, das Menü schließt nach einem Klick und mit Esc,
+// MAKE Innovation · Seite: Abschnitte erscheinen einmal beim Scrollen, das Menü schließt nach einem Klick und mit Esc,
 // Liest nichts, speichert nichts, sendet nichts.
 (() => {
   const ruhig = matchMedia('(prefers-reduced-motion: reduce)').matches;

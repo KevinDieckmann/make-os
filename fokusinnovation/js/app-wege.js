@@ -1,4 +1,4 @@
-// Fokus Innovation · Wege der App nur zeigen, wenn sie eingeschaltet sind (31.10.). Kontaktformular (/anfrage) und Newsletter (/newsletter)
+// MAKE Innovation · Wege der App nur zeigen, wenn sie eingeschaltet sind (31.10.). Kontaktformular (/anfrage) und Newsletter (/newsletter)
 // laufen in der App und kommen ausgeschaltet; ohne diesen Blick endete ein Link auf „Diese Seite gibt es gerade nicht“.
 //   a[data-anfrage-mail]     → führt auf /anfrage?anlass=… (01.11.). Ist das Formular aus oder die App nicht erreichbar, wird der Link zur Mail
 //                              aus dem Attribut — nie ein Weg ins Leere. Bei 429 (zu viele Abfragen) bleibt der Link beim Formular.

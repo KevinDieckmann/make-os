@@ -1,4 +1,4 @@
-// Fokus Innovation · Vertriebsrechner: Rückwärtsrechnung vom Umsatzziel bis zu den Erstkontakten, dazu offene Angebote, Vertriebszeit
+// MAKE Innovation · Vertriebsrechner: Rückwärtsrechnung vom Umsatzziel bis zu den Erstkontakten, dazu offene Angebote, Vertriebszeit
 // und der größte Hebel (31.10.). Dieselbe Rechnung steht in bauen.mjs (rueckwaerts) für die Seite ohne JavaScript — beide gleich halten.
 // Rechnet nur im Browser, speichert und sendet nichts.
 (() => {

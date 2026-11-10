@@ -1,4 +1,4 @@
-// Fokus Innovation · Inhalte aus MAKE OS (31.10., Bereich „Website“ unter Markttraktion › Marketing). Liest GET /api/website/inhalt
+// MAKE Innovation · Inhalte aus unserer Anwendung (31.10.). Liest GET /api/website/inhalt
 // (öffentlich, nur sichtbare Einträge) und ersetzt markierte Stellen — nur Text, nie HTML:
 //   data-mk="preis:<angebot>"    → angebote[].preisText
 //   data-mk="baustein:<id>"      → bausteine[].preisNetto (Cent) als „1.234 €“
