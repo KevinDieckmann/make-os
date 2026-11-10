@@ -4,6 +4,15 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.11.2026 — Ausrollen räumt vor dem Laden auf (Branch `website-upload`, nur `deploy/ausrollen.sh`)
+Das Ausrollen von 1e770ecd scheiterte beim Entpacken des neuen Bilds („no space left on device“, 2 GB frei); gezogen war der Stand schon, die
+App lief mit dem alten Bild weiter. Kevin hat von Hand aufgeräumt (`aktuell` zurück auf das laufende Bild, verwaiste Bilder weg → 17 GB frei).
+Ursache: ein Bild belegt gepackt + entpackt rund 11 GB, aufgeräumt wurde erst NACH dem Tausch — kurz lagen drei Bilder auf der 38-GB-Platte,
+jedes zweite Update lief voll. Jetzt im Modus `bild` (und im Altweg): Rückweg `make-os:vorher` = das Bild, das der App-Container gerade
+ausführt (`docker compose ps -q app` → `docker inspect`, sonst wie bisher `aktuell`), dann sofort `aufraeumen`, erst dann laden; unter 14 GB
+frei steht ein Hinweis im Lauf. Wirkt ab dem nächsten Upload von selbst (das Skript kommt mit `ziehen` vor `bild`). Wächter:
+`tests/phase0-oberflaeche.test.ts` (Reihenfolge Rückweg → Aufräumen → Laden). Rückweg: der alte Stand des Skripts räumt wieder erst danach auf.
+
 ## 02.11.2026 — Buchhaltung: Arbeitsliste, Regeln, Entnahmen, Export (nur lokal — Branch `buchhaltung`; „Was ist neu“ u-2026-11-02-24)
 Kevin 02.11.: „die komplette Buchhaltung in der App sauber machen“. Finanzen › Buchungen (Privat und Business, dieselbe `BuchungenView`) ist eine Arbeitsliste:
 Filter (Gesellschaft, Konto, Monat/Zeitraum, Kategorie, „nicht zugeordnet“, Suche), Sortierung, Seiten statt der 300er-Grenze, Mehrfachauswahl für die Kategorie;
@@ -897,7 +906,7 @@ Alles nur auf Kevins Wort. Befehle auf dem Server als `make` im Ordner `/srv/mak
    `git worktree add <scratch>/probe-alt a063e73a` · `ln -s <repo>/node_modules <scratch>/probe-alt/node_modules` ·
    `node scripts/update-probe.mjs --alt <scratch>/probe-alt --neu <Worktree der neuen Version> --ordner <scratch>/probe-daten --bericht <scratch>/update-probe-bericht.md`
    (Ausgang 0 = verlustfrei). **Steht im Bericht „VERLUSTFREI: nein“, wird nicht hochgeladen.**
-2. **Wie jedes Mal:** `git status --short` leer · Platz `df -h /` ≥ 5 GB frei (sonst `docker builder prune -af`) · `grep '^MAKE_OS_FORMAT=' .env` → **leer** (Kompatibilitätsmodus
+2. **Wie jedes Mal:** `git status --short` leer · Platz `df -h /` ≥ 14 GB frei (ein Bild braucht beim Laden kurz rund 13 GB; das Ausrollen räumt seit 10.11. selbst vorher auf — reicht es nicht: `docker image prune -f && docker builder prune -af`) · `grep '^MAKE_OS_FORMAT=' .env` → **leer** (Kompatibilitätsmodus
    bleibt, Rückweg offen) · Kevin und Malin schließen alle MAKE-OS-Tabs bis nach „Direkt nach dem Upload“.
 3. **Server-Sicherung (Pflicht):** `docker compose stop app arbeiter` → `sudo tar -C /srv/make-os --exclude='daten/brain-index.sqlite*' -czf /srv/make-os/sicherungen/vor-upload-$(date +%F-%H%M).tar.gz daten grabsteine`
    → `docker tag make-os:aktuell make-os:a063e73a` → `docker compose start app arbeiter` → Probe `docker run --rm --entrypoint sh make-os:a063e73a -c 'test -e lib/postfach/register.ts && test ! -e lib/fulfillment/prozesse/bausteine.ts && echo ALTES-BILD-OK'`

@@ -256,6 +256,9 @@ describe('Update-Hinweis — deploy/ausrollen.sh wirklich ausgeführt (git/docke
       'case "$1 $2" in',
       '  "load "*) cat >/dev/null; [ -n "$STUB_LOAD_FEHLER" ] && exit 1; exit 0;;',
       '  "compose up") [ -e "$PRUEF_MARKE" ] && echo "MARKE_BEIM_TAUSCH" >> "$PRUEF_LOG"; [ -n "$STUB_UP_FEHLER" ] && exit 1; exit 0;;',
+      // Laufender App-Container (10.11.): `compose ps -q app` nennt ihn, `inspect` sein Bild — nur mit STUB_LAUFEND.
+      '  "compose ps") [ -n "$STUB_LAUFEND" ] && echo "cid1"; exit 0;;',
+      '  "inspect --format") echo "sha256:$STUB_LAUFEND"; exit 0;;',
       'esac',
       'exit 0',
     ].join('\n'));
@@ -307,6 +310,39 @@ describe('Update-Hinweis — deploy/ausrollen.sh wirklich ausgeführt (git/docke
     expect(r.log).toContain('MARKE_BEIM_TAUSCH');
     expect(existsSync(marke())).toBe(false);
     expect(bildReste()).toEqual([]);
+  });
+
+  // 10.11.: die Platte lief beim Entpacken voll — bis dahin wurde erst NACH dem Tausch aufgeräumt (kurz drei Bilder à ~11 GB).
+  const reihe = (log: string) => { const z = log.split('\n'); return (zeile: string) => z.indexOf(zeile); };
+
+  it('bild: Rückweg = das Bild, das die App gerade ausführt; aufgeräumt wird VOR dem Laden', () => {
+    const id = 'c0e5'.padEnd(64, 'a');
+    const r = lauf('bild', { STUB_LAUFEND: id }, bild());
+    expect(r.status, r.aus).toBe(0);
+    const stelle = reihe(r.log);
+    expect(stelle(`docker tag ${id} make-os:vorher`), r.log).toBeGreaterThanOrEqual(0);
+    expect(stelle('docker image prune -f')).toBeGreaterThan(stelle(`docker tag ${id} make-os:vorher`));
+    expect(stelle('docker load')).toBeGreaterThan(stelle('docker image prune -f'));
+    expect(r.log).not.toContain('docker tag make-os:aktuell make-os:vorher');
+    expect(bildReste()).toEqual([]);
+  });
+
+  it('bild ohne laufenden App-Container: Rückweg wie bisher aus `aktuell`, ebenfalls vor dem Aufräumen und Laden', () => {
+    const r = lauf('bild', {}, bild());
+    expect(r.status, r.aus).toBe(0);
+    const stelle = reihe(r.log);
+    expect(stelle('docker tag make-os:aktuell make-os:vorher'), r.log).toBeGreaterThanOrEqual(0);
+    expect(stelle('docker image prune -f')).toBeGreaterThan(stelle('docker tag make-os:aktuell make-os:vorher'));
+    expect(stelle('docker load')).toBeGreaterThan(stelle('docker image prune -f'));
+  });
+
+  it('Altweg: Rückweg merken und aufräumen, bevor auf dem Server gebaut wird', () => {
+    const r = lauf('', { STUB_LAUFEND: 'b'.repeat(64) });
+    expect(r.status, r.aus).toBe(0);
+    const stelle = reihe(r.log);
+    expect(stelle(`docker tag ${'b'.repeat(64)} make-os:vorher`)).toBeGreaterThanOrEqual(0);
+    expect(stelle('docker image prune -f')).toBeGreaterThan(stelle(`docker tag ${'b'.repeat(64)} make-os:vorher`));
+    expect(stelle('docker compose up -d --build --remove-orphans')).toBeGreaterThan(stelle('docker image prune -f'));
   });
 
   it('Altweg (ohne Modus): Marke beim Bauen, danach weg — auch wenn das Bauen scheitert', () => {

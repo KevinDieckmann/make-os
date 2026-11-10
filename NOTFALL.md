@@ -63,7 +63,9 @@ Zeigt der Head of IT „Abgebrochene Vorgänge“ **rot** (nach 3 Versuchen nich
 ### Rückweg zum alten Stand nach einem Upload (Kompatibilitätsmodus, seit 29.09. abends)
 
 **Seit 26.10.:** Das Ausrollen merkt das laufende Bild vor jedem Tausch als `make-os:vorher` und räumt danach alle übrigen
-`make-os:<stand>`-Bilder weg (die Platte lief am 25.10. voll). Zurück zum letzten Stand also:
+`make-os:<stand>`-Bilder weg (die Platte lief am 25.10. voll). **Seit 10.11.** (die Platte lief wieder voll) ist `vorher` das Bild, das
+der App-Container gerade ausführt (nicht blind `aktuell`), und aufgeräumt wird gleich danach, noch VOR dem Laden des neuen Bilds — ein Bild
+belegt gepackt + entpackt rund 11 GB, vorher lagen kurz drei auf der Platte. Zurück zum letzten Stand also:
 `cd /srv/make-os/app && docker tag make-os:vorher make-os:aktuell && docker compose up -d --no-build` — danach `main` per Revert
 auf diesen Stand bringen (sonst rollt die nächste Action wieder aus). Ein eigenes Bild von Hand (`docker tag make-os:aktuell
 make-os:<stand>`) überlebt nur bis zum nächsten Ausrollen. Die Schritte unten gelten weiter für Datenformat und Caddy.
