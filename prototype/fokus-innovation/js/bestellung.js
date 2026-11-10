@@ -1,4 +1,4 @@
-// Fokus Innovation · Baustein auf Rechnung bestellen (31.10.). Spricht mit der App über die Website-Adresse:
+// MAKE Innovation · Baustein auf Rechnung bestellen (31.10.). Spricht mit der App über die Website-Adresse:
 // GET /api/bestellung?id= (an/aus, Formular-Stempel, Bestellbedingungen der Instanz, Bruttopreis), POST /api/bestellung (legt die Bestellung an;
 // Rechnung und Download-Link kommen erst nach Freigabe). Speichert nichts im Browser. Ohne Antwort der App bleibt der Weg per E-Mail.
 (() => {

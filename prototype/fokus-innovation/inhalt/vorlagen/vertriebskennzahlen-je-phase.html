@@ -62,7 +62,7 @@
 <body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="35.33" cy="7.81" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+  <symbol id="marke" viewBox="2.7 5 38 38"><path d="M6,18.5H14.5M4,24H14.5M8,29.5H14.5" fill="none" stroke="#A78BFA" stroke-width="2.6" stroke-linecap="round"/><path d="M18.8,6H24.2A0.8,0.8 0 0 1 25,6.8V12.44A12.8,12.8 0 0 0 18,21.25V6.8A0.8,0.8 0 0 1 18.8,6ZM18,26.75A12.8,12.8 0 0 0 25,35.56V41.2A0.8,0.8 0 0 1 24.2,42H18.8A0.8,0.8 0 0 1 18,41.2Z" fill="#111316"/><circle cx="30.5" cy="24" r="10.2" fill="#7C3AED"/></symbol>
 </svg>
 
 <!-- 1 · Anleitung -->
@@ -116,7 +116,7 @@
     </tbody>
   </table>
 
-  <div class="hinweis unten">Am Rechner geht es schneller: Die Tabelle <b>vertriebskennzahlen-je-phase.xlsx</b> rechnet Quoten und Monatssummen selbst. Erklärungen zu jeder Kennzahl im Ratgeber unter <b><a href="https://fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/" style="color:inherit;text-decoration:none">fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/</a></b></div>
+  <div class="hinweis unten">Am Rechner geht es schneller: Die Tabelle <b>vertriebskennzahlen-je-phase.xlsx</b> rechnet Quoten und Monatssummen selbst. Erklärungen zu jeder Kennzahl im Ratgeber unter <b><a href="https://makeinnovation.de/wissen/vertriebskennzahlen-je-phase/" style="color:inherit;text-decoration:none">makeinnovation.de/wissen/vertriebskennzahlen-je-phase/</a></b></div>
 </section>
 
 <!-- 2 · Start Kennzahlen -->
@@ -277,14 +277,14 @@
   </table>
   <p class="abschnitt-titel">Was wir daraus ablesen <small>im Beispiel</small></p>
   <p class="text" style="margin-top:1.6mm">Die schwächsten Stufen sind Erreichen und Termin, beide bei 25 %. Das Erreichen hängt an Kontaktliste und Uhrzeit, der Termin am Gespräch selbst. Die Person setzt beim Termin an: Steigt die Terminquote durch einen besseren Gesprächseinstieg auf 30 %, werden bei sonst gleichen Quoten aus 100 Gesprächen 30 Termine, 24 finden statt und 12 statt 10 Angebote entstehen. <b class="stark">Maßnahme:</b> zwei Wochen einen neuen Einstieg testen, danach vergleichen.</p>
-  <div class="hinweis unten">Mehr dazu: Ratgeber <b><a href="https://fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/" style="color:inherit;text-decoration:none">fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/</a></b> · Vertriebs-Check <b><a href="https://fokusinnovation.de/check?thema=vertrieb" style="color:inherit;text-decoration:none">fokusinnovation.de/check?thema=vertrieb</a></b> · Erstgespräch <b><a href="https://fokusinnovation.de/kontakt/" style="color:inherit;text-decoration:none">fokusinnovation.de/kontakt/</a></b></div>
+  <div class="hinweis unten">Mehr dazu: Ratgeber <b><a href="https://makeinnovation.de/wissen/vertriebskennzahlen-je-phase/" style="color:inherit;text-decoration:none">makeinnovation.de/wissen/vertriebskennzahlen-je-phase/</a></b> · Vertriebs-Check <b><a href="https://makeinnovation.de/check?thema=vertrieb" style="color:inherit;text-decoration:none">makeinnovation.de/check?thema=vertrieb</a></b> · Erstgespräch <b><a href="https://makeinnovation.de/kontakt/" style="color:inherit;text-decoration:none">makeinnovation.de/kontakt/</a></b></div>
 </section>
 
 <script>
   const seiten = [...document.querySelectorAll('.seite')];
   seiten.forEach((s, i) => {
-    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span><span class="leitsatz">Fortschritt braucht Fokus.</span></header>');
-    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
+    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>MAKE INNOVATION</span><span class="leitsatz">Innovation braucht Umsetzung.</span></header>');
+    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>makeinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
   });
   const $ = (id) => document.getElementById(id);
   document.querySelectorAll('[data-linien]').forEach((d) => { d.innerHTML = '<div class="zeile-frei"></div>'.repeat(Number(d.dataset.linien)); });

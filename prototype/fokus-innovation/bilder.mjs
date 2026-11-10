@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ─── Fokus Innovation · Vorschaubilder und Icons (27.10.2026) ────────────────────────────────────────────────────────
+// ─── MAKE Innovation · Vorschaubilder und Icons (27.10.2026) ────────────────────────────────────────────────────────
 // Ein Bild je Seite (1200 × 630, für Google, LinkedIn, WhatsApp und Co.), dazu Logo, Icons und favicon.ico.
 // Gezeichnet mit einem unsichtbaren Chrome, ohne Pakete; Titel und Vorzeile kommen aus bauen.mjs (seitenBauen).
 //   node prototype/fokus-innovation/bilder.mjs     → schreibt assets/bild/og/*.png, assets/bild/*.png und favicon.ico
@@ -15,8 +15,11 @@ const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/M
 const schrift = readFileSync(join(ORDNER, 'assets/schriften/schibsted-grotesk-latin.woff2')).toString('base64');
 const e = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 // Farben wie in css/fokus.css (:root) — dort ist die eine Stelle; hier nur abgeschrieben, weil das Bild ohne die Seite entsteht.
-const FARBE = { papier: '#F6F4F0', tinte: '#111316', text: '#3C3F44', leise: '#62666B', grau: '#5F6468', akzent: '#7C3AED', nacht: '#0B0C0F', hell: '#F2F3F3', akzentNacht: '#A78BFA', grauNacht: '#A3ABAE' };
-const zeichen = (linie, kern) => `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="${linie}" stroke-width="2.6" stroke-linecap="round"/><circle cx="35.33" cy="7.81" r="2.8" fill="${linie}"/><circle cx="24" cy="24" r="7" fill="${kern}"/></svg>`;
+const FARBE = { papier: '#F6F4F0', tinte: '#111316', text: '#3C3F44', leise: '#62666B', grau: '#5F6468', akzent: '#7C3AED', nacht: '#0B0C0F', hell: '#F2F3F3', akzentNacht: '#A78BFA', grauNacht: '#A3ABAE', kernNacht: '#8B5CF6', spur: '#A78BFA' };
+// Zeichen „Durchbruch“ (Spur · Wand · Kern) wie im Markenpaket; klein = Favicon-Fassung (ohne Spur, breitere Lücke) für 48 px.
+const zeichen = (wand, kern) => `<svg viewBox="2.7 5 38 38" xmlns="http://www.w3.org/2000/svg"><path d="M6,18.5H14.5M4,24H14.5M8,29.5H14.5" fill="none" stroke="${FARBE.spur}" stroke-width="2.6" stroke-linecap="round"/><path d="M18.8,6H24.2A0.8,0.8 0 0 1 25,6.8V12.44A12.8,12.8 0 0 0 18,21.25V6.8A0.8,0.8 0 0 1 18.8,6ZM18,26.75A12.8,12.8 0 0 0 25,35.56V41.2A0.8,0.8 0 0 1 24.2,42H18.8A0.8,0.8 0 0 1 18,41.2Z" fill="${wand}"/><circle cx="30.5" cy="24" r="10.2" fill="${kern}"/></svg>`;
+const zeichenKlein = (wand, kern) => `<svg viewBox="10.35 5 38 38" xmlns="http://www.w3.org/2000/svg"><path d="M18.8,6H24.2A0.8,0.8 0 0 1 25,6.8V11.78A13.4,13.4 0 0 0 18,19.17V6.8A0.8,0.8 0 0 1 18.8,6ZM18,28.83A13.4,13.4 0 0 0 25,36.22V41.2A0.8,0.8 0 0 1 24.2,42H18.8A0.8,0.8 0 0 1 18,41.2Z" fill="${wand}"/><circle cx="30.5" cy="24" r="10.2" fill="${kern}"/></svg>`;
+const wortbild = (wort, unter) => `<svg class="wortbild" viewBox="55.6 17.4 212.6 13.4" xmlns="http://www.w3.org/2000/svg"><path d="M58.57 30.30L56 30.30L56.68 18.00L60.97 18.00L63.46 28.52L63.15 28.52L65.66 18.00L69.95 18.00L70.63 30.30L68.06 30.30L67.51 19.88L67.54 19.88L64.93 30.30L61.70 30.30L59.09 19.88L59.12 19.88L58.57 30.30ZM77.39 30.30L74.55 30.30L79.27 18.00L82.63 18.00L87.33 30.30L84.49 30.30L80.94 19.91L77.39 30.30ZM84.22 26.93L77.64 26.93L77.64 24.82L84.22 24.82L84.22 26.93ZM94.22 30.30L91.58 30.30L91.58 18.00L94.22 18.00L94.22 23.03L99.28 18.00L102.54 18.00L97.98 22.52L102.86 30.30L99.82 30.30L96.16 24.32L94.22 26.25L94.22 30.30ZM116.07 30.30L107.27 30.30L107.27 18.00L115.95 18.00L115.95 20.23L109.91 20.23L109.91 22.76L115.03 22.76L115.03 24.90L109.91 24.90L109.91 28.07L116.07 28.07L116.07 30.30Z" fill="${wort}"/><path d="M131.55 30.30L125.99 30.30L125.99 28.50L127.66 28.50L127.66 19.80L125.99 19.80L125.99 18.00L131.55 18.00L131.55 19.80L129.88 19.80L129.88 28.50L131.55 28.50L131.55 30.30ZM138.65 30.30L136.53 30.30L136.53 18.00L139.67 18.00L145.60 28.99L145.00 29.04L145.00 18.00L147.11 18.00L147.11 30.30L144.09 30.30L138.01 19.24L138.65 19.18L138.65 30.30ZM154.79 30.30L152.67 30.30L152.67 18.00L155.81 18.00L161.74 28.99L161.14 29.04L161.14 18.00L163.26 18.00L163.26 30.30L160.23 30.30L154.16 19.24L154.79 19.18L154.79 30.30ZM174.25 30.51L174.25 30.51Q172.38 30.51 171.01 29.74Q169.65 28.97 168.91 27.54Q168.18 26.11 168.18 24.15L168.18 24.15Q168.18 22.18 168.91 20.76Q169.65 19.33 171.01 18.56Q172.38 17.78 174.25 17.78L174.25 17.78Q176.12 17.78 177.48 18.56Q178.84 19.33 179.58 20.76Q180.31 22.18 180.31 24.15L180.31 24.15Q180.31 26.11 179.58 27.54Q178.84 28.97 177.48 29.74Q176.12 30.51 174.25 30.51ZM174.25 28.66L174.25 28.66Q175.41 28.66 176.24 28.12Q177.08 27.57 177.52 26.56Q177.96 25.55 177.96 24.15L177.96 24.15Q177.96 22.74 177.52 21.73Q177.08 20.72 176.24 20.18Q175.41 19.64 174.25 19.64L174.25 19.64Q173.09 19.64 172.26 20.18Q171.43 20.72 170.98 21.73Q170.53 22.74 170.53 24.15L170.53 24.15Q170.53 25.55 170.98 26.56Q171.43 27.57 172.26 28.12Q173.09 28.66 174.25 28.66ZM191.45 30.30L188.71 30.30L184.26 18.00L186.64 18.00L190.23 28.87L189.95 28.87L193.51 18.00L195.88 18.00L191.45 30.30ZM201.66 30.30L199.29 30.30L204.19 18.00L206.84 18.00L211.73 30.30L209.35 30.30L205.51 19.79L201.66 30.30ZM208.79 26.68L202.21 26.68L202.21 24.89L208.79 24.89L208.79 26.68ZM221.79 30.30L219.57 30.30L219.57 19.85L215.21 19.85L215.21 18.00L226.17 18.00L226.17 19.85L221.79 19.85L221.79 30.30ZM235.80 30.30L230.24 30.30L230.24 28.50L231.91 28.50L231.91 19.80L230.24 19.80L230.24 18.00L235.80 18.00L235.80 19.80L234.13 19.80L234.13 28.50L235.80 28.50L235.80 30.30ZM246.21 30.51L246.21 30.51Q244.34 30.51 242.98 29.74Q241.61 28.97 240.88 27.54Q240.14 26.11 240.14 24.15L240.14 24.15Q240.14 22.18 240.88 20.76Q241.61 19.33 242.98 18.56Q244.34 17.78 246.21 17.78L246.21 17.78Q248.08 17.78 249.44 18.56Q250.81 19.33 251.54 20.76Q252.28 22.18 252.28 24.15L252.28 24.15Q252.28 26.11 251.54 27.54Q250.81 28.97 249.44 29.74Q248.08 30.51 246.21 30.51ZM246.21 28.66L246.21 28.66Q247.37 28.66 248.21 28.12Q249.04 27.57 249.48 26.56Q249.93 25.55 249.93 24.15L249.93 24.15Q249.93 22.74 249.48 21.73Q249.04 20.72 248.21 20.18Q247.37 19.64 246.21 19.64L246.21 19.64Q245.06 19.64 244.22 20.18Q243.39 20.72 242.94 21.73Q242.49 22.74 242.49 24.15L242.49 24.15Q242.49 25.55 242.94 26.56Q243.39 27.57 244.22 28.12Q245.06 28.66 246.21 28.66ZM259.32 30.30L257.20 30.30L257.20 18.00L260.35 18.00L266.28 28.99L265.67 29.04L265.67 18.00L267.79 18.00L267.79 30.30L264.76 30.30L258.69 19.24L259.32 19.18L259.32 30.30Z" fill="${unter}"/></svg>`;
 const kopf = (breite, hoehe, extra = '') => `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face { font-family: S; src: url(data:font/woff2;base64,${schrift}) format("woff2"); font-weight: 400 800; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -26,25 +29,25 @@ ${extra}</style></head><body>`;
 
 /** Vorschaubild einer Seite: Marke oben, Vorzeile und Titel unten, Adresse und Claim als Fußzeile, das Zeichen groß und leise rechts. */
 const vorschau = ({ titel, vorzeile }, dunkel) => {
-  const f = dunkel ? { grund: FARBE.nacht, tinte: FARBE.hell, text: FARBE.grauNacht, leise: FARBE.grauNacht, kern: FARBE.akzentNacht, haar: 'rgba(242,243,243,.16)' } : { grund: FARBE.papier, tinte: FARBE.tinte, text: FARBE.text, leise: FARBE.leise, kern: FARBE.akzent, haar: 'rgba(17,19,22,.16)' };
+  const f = dunkel ? { grund: FARBE.nacht, tinte: FARBE.hell, text: FARBE.grauNacht, leise: FARBE.grauNacht, kern: FARBE.kernNacht, punkt: FARBE.akzentNacht, unter: FARBE.grauNacht, haar: 'rgba(242,243,243,.16)' } : { grund: FARBE.papier, tinte: FARBE.tinte, text: FARBE.text, leise: FARBE.leise, kern: FARBE.akzent, punkt: FARBE.akzent, unter: FARBE.grau, haar: 'rgba(17,19,22,.16)' };
   const groesse = titel.length <= 28 ? 80 : titel.length <= 46 ? 68 : 58;
   return `${kopf(1200, 630, `
 body { background: ${f.grund}; color: ${f.tinte}; position: relative; }
 .ring { position: absolute; right: -170px; top: 50%; width: 640px; height: 640px; transform: translateY(-50%); opacity: ${dunkel ? '.16' : '.07'}; }
 .innen { position: absolute; inset: 0; padding: 62px 80px 54px; display: flex; flex-direction: column; }
-.marke { display: flex; align-items: center; gap: 16px; }
+.marke { display: flex; align-items: center; gap: 19px; }
 .marke svg { width: 50px; height: 50px; }
-.wort b { display: block; font-weight: 650; font-size: 23px; letter-spacing: .12em; line-height: 1; }
-.wort small { display: block; margin-top: 6px; font-weight: 500; font-size: 15px; letter-spacing: .08em; color: ${f.text}; }
+.marke svg.wortbild { width: 280px; height: 17.6px; }
 .vorzeile { margin-top: auto; display: flex; align-items: center; gap: 14px; font-size: 19px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: ${f.leise}; }
-.vorzeile::before { content: ""; width: 11px; height: 11px; border-radius: 50%; background: ${f.kern}; flex: none; }
+.vorzeile::before { content: ""; width: 11px; height: 11px; border-radius: 50%; background: ${f.punkt}; flex: none; }
 h1 { margin-top: 20px; max-width: 930px; font-size: ${groesse}px; font-weight: 600; letter-spacing: -.03em; line-height: 1.06; text-wrap: balance; }
 .fuss { margin-top: 42px; padding-top: 22px; border-top: 1px solid ${f.haar}; display: flex; justify-content: space-between; font-size: 20px; color: ${f.text}; }
-`)}<div class="ring">${zeichen(f.tinte, f.kern)}</div><div class="innen"><div class="marke">${zeichen(f.tinte, f.kern)}<span class="wort"><b>FOKUS</b><small>Innovation</small></span></div>
-<p class="vorzeile">${e(vorzeile)}</p><h1>${e(titel)}</h1><div class="fuss"><span>fokusinnovation.de</span><span>Fortschritt braucht Fokus.</span></div></div></body></html>`;
+`)}<div class="ring">${zeichen(f.tinte, f.kern)}</div><div class="innen"><div class="marke">${zeichen(f.tinte, f.kern)}${wortbild(f.tinte, f.unter)}</div>
+<p class="vorzeile">${e(vorzeile)}</p><h1>${e(titel)}</h1><div class="fuss"><span>makeinnovation.de</span><span>Innovation braucht Umsetzung.</span></div></div></body></html>`;
 };
 /** Icon: das Zeichen auf Papier (randlos, Systeme runden selbst) oder frei auf durchsichtigem Grund (Logo für Google). */
-const icon = (seite, frei) => `${kopf(seite, seite, `body { background: ${frei ? 'transparent' : FARBE.papier}; display: grid; place-items: center; } svg { width: ${frei ? 92 : 66}%; height: ${frei ? 92 : 66}%; }`)}${zeichen(FARBE.tinte, FARBE.akzent)}</body></html>`;
+// Kachel wie im Markenpaket: das ganze Zeichen auf 64 Einheiten Papier (≈ 60 %); favicon.ico in der kleinen Fassung.
+const icon = (seite, frei, klein = false) => `${kopf(seite, seite, `body { background: ${frei ? 'transparent' : FARBE.papier}; display: grid; place-items: center; } svg { width: ${frei ? 92 : klein ? 95 : 60}%; height: ${frei ? 92 : klein ? 95 : 60}%; }`)}${(klein ? zeichenKlein : zeichen)(FARBE.tinte, FARBE.akzent)}</body></html>`;
 
 // ── Chrome steuern (Chrome DevTools Protocol über WebSocket) ──
 const profil = mkdtempSync(join(tmpdir(), 'fokus-bilder-'));
@@ -88,7 +91,7 @@ schreibe('assets/bild/logo.png', await zeichne(icon(512, true), 512, 512, true))
 schreibe('assets/bild/apple-touch-icon.png', await zeichne(icon(180), 180, 180));
 schreibe('assets/bild/icon-192.png', await zeichne(icon(192), 192, 192));
 schreibe('assets/bild/icon-512.png', await zeichne(icon(512), 512, 512));
-const png48 = await zeichne(icon(48), 48, 48);
+const png48 = await zeichne(icon(48, false, true), 48, 48);
 const ico = Buffer.alloc(22);
 ico.writeUInt16LE(0, 0); ico.writeUInt16LE(1, 2); ico.writeUInt16LE(1, 4);
 ico.writeUInt8(48, 6); ico.writeUInt8(48, 7); ico.writeUInt8(0, 8); ico.writeUInt8(0, 9);

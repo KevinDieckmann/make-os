@@ -154,10 +154,10 @@
       "bereich": "vertrieb",
       "titel": "Head of Sales auf Zeit: was er macht und wann er sich lohnt",
       "seo_titel": "Head of Sales auf Zeit: Aufgaben, Ablauf und Kosten",
-      "beschreibung": "Was ein Head of Sales auf Zeit in sechs Monaten aufbaut, wann er sich gegenüber einer festen Einstellung lohnt und was das Mandat bei Fokus Innovation kostet.",
+      "beschreibung": "Was ein Head of Sales auf Zeit in sechs Monaten aufbaut, wann er sich gegenüber einer festen Einstellung lohnt und was das Mandat bei MAKE Innovation kostet.",
       "veroeffentlicht": "2026-10-27",
       "aktualisiert": "2026-10-27",
-      "kurz": "Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Er baut das System, setzt es mit Ihrem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Bei Fokus Innovation kostet das Mandat {preis:head-of-sales} netto im Monat, bei 6 oder 12 Monaten Laufzeit.",
+      "kurz": "Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Er baut das System, setzt es mit Ihrem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Bei MAKE Innovation kostet das Mandat {preis:head-of-sales} netto im Monat, bei 6 oder 12 Monaten Laufzeit.",
       "abschnitte": [
         {
           "h": "Was ein Head of Sales auf Zeit macht",
@@ -330,7 +330,7 @@
           "h": "Aus fünf Sätzen wird einer",
           "absaetze": [
             "Wenn die fünf Sätze stehen, verdichten Sie sie: zu einem Satz für die Startseite und zu wenigen Worten für die Unterzeile. Unser eigener Satz lautet „Wir bringen Neues aus Deutschland und Europa nach vorne.“ Die Kurzform: „Sichtbar, verkauft, verbunden.“",
-            "Der Claim ist noch kürzer und trägt die Haltung. Unserer heißt „Fortschritt braucht Fokus.“"
+            "Der Claim ist noch kürzer und trägt die Haltung. Unserer heißt „Innovation braucht Umsetzung.“"
           ]
         },
         {
@@ -2518,7 +2518,7 @@
     {
       "id": "claim",
       "name": "Claim",
-      "text": "Ein kurzer Satz, der die Haltung einer Marke trägt. Unserer lautet „Fortschritt braucht Fokus.“"
+      "text": "Ein kurzer Satz, der die Haltung einer Marke trägt. Unserer lautet „Innovation braucht Umsetzung.“"
     },
     {
       "id": "crm",
@@ -2537,8 +2537,8 @@
       "link": "/sichtbarkeit/erklaervideo/"
     },
     {
-      "id": "fokus-innovation-events",
-      "name": "Fokus Innovation · Events",
+      "id": "make-innovation-events",
+      "name": "MAKE Innovation · Events",
       "text": "Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Impulsabende, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.",
       "link": "/events/"
     },

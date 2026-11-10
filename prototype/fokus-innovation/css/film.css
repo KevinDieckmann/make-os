@@ -1,12 +1,12 @@
-/* Fokus Innovation · der Film der Startseite (nur auf /). Farben und Schrift aus fokus.css.
+/* MAKE Innovation · der Film der Startseite (nur auf /). Farben und Schrift aus fokus.css.
    Ruhig heißt: ein Motiv (das Logo), ein flacher dunkler Grund, Worte in der Mitte unten, keine Effekte um ihrer selbst willen. */
 
 /* ── Der Kopf liegt über dem Film und ist dort hell auf dunkel ── */
 .start .kopf { position: fixed; left: 0; right: 0; }
 .kopf.ueber-film { color: var(--hell); border-color: transparent; }
 .kopf.ueber-film::before { opacity: 0; }
-.kopf.ueber-film .wortbild small { color: var(--grau); }
-.kopf.ueber-film .zeichen .kern { fill: var(--akzent); }
+.kopf.ueber-film .wortbild .wb-zusatz { fill: var(--grau); }
+.kopf.ueber-film .zeichen .kern { fill: var(--kern-nacht); }
 .kopf.ueber-film .haupt-nav > a, .kopf.ueber-film .nav-punkt > a, .kopf.ueber-film .kopf-kontakt { color: rgba(242, 243, 243, .78); }
 .kopf.ueber-film .haupt-nav > a:hover, .kopf.ueber-film .nav-punkt > a:hover, .kopf.ueber-film .kopf-kontakt:hover { color: var(--hell); background: rgba(242, 243, 243, .08); }
 .kopf.ueber-film .knopf { background: var(--hell); color: var(--nacht); border-color: var(--hell); }
@@ -20,8 +20,8 @@
 .szene.da { opacity: 1; }
 .ersatz { display: none; }
 .keingl .ersatz { display: block; }
-.ersatz .gross { position: absolute; left: 50%; top: 44%; width: calc(var(--r) * 3); height: auto; translate: -50% -50%; color: var(--hell); }
-.ersatz .gross .kern { fill: var(--akzent); }
+.ersatz .gross { position: absolute; left: 50%; top: 44%; width: calc(var(--r) * 2.375); height: auto; translate: -50% -50%; color: var(--hell); }
+.ersatz .gross .kern { fill: var(--kern-nacht); }
 @media (prefers-reduced-motion: no-preference) { .keingl .ersatz .gross .kern { transform-box: fill-box; transform-origin: center; animation: kernSchlag 2.8s ease-out 2; } }
 
 .block { position: absolute; inset: 0; pointer-events: none; opacity: 0; visibility: hidden; }
@@ -59,9 +59,10 @@
 @keyframes schweben { 0%, 100% { translate: 0 0; } 50% { translate: 6px -8px; } }
 
 /* Das Ende: die Wortmarke unter dem Zeichen, wie im gestapelten Logo */
-.ende-marke { position: absolute; left: 50%; top: calc(44% + var(--r) + 4.5vh); translate: -50% 0; display: flex; flex-direction: column; align-items: center; text-align: center; width: min(40rem, calc(100% - 2 * var(--rand))); }
-.ende-wort { font-size: clamp(1.7rem, min(3vw, 4.6vh), 2.6rem); font-weight: 650; letter-spacing: .16em; padding-left: .16em; line-height: 1; color: var(--hell); }
-.ende-unter { margin-top: .55em; font-size: clamp(.86rem, min(1.2vw, 1.8vh), 1.05rem); font-weight: 500; letter-spacing: .1em; color: var(--grau); }
+.ende-marke { position: absolute; left: 50%; top: calc(44% + var(--r) * 1.125 + 4.5vh); translate: -50% 0; display: flex; flex-direction: column; align-items: center; text-align: center; width: min(40rem, calc(100% - 2 * var(--rand))); }
+.ende-marke { --wb: clamp(8.5rem, min(14vw, 21vh), 11rem); }
+.ende-wort { display: block; width: var(--wb); height: auto; aspect-ratio: 130.6 / 31.4; fill: var(--hell); }
+.ende-unter { display: block; width: var(--wb); height: auto; aspect-ratio: 130.6 / 9; margin-top: calc(var(--wb) * .078); fill: var(--grau); }
 .ende-claim { margin-top: max(3vh, 20px); color: var(--leise-dunkel); font-size: clamp(1.05rem, 1.35vw, 1.25rem); letter-spacing: .01em; }
 /* Der Claim mit Glanz (Kevin 30.10.): ein Lichtschein zieht langsam von links nach rechts durch die Worte, mit einem Hauch Kern-Lila */
 @media (prefers-reduced-motion: no-preference) {

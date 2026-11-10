@@ -1,4 +1,4 @@
-/* Fokus Innovation · Gestaltung der Website (Prototyp 25.10.2026, dritte Fassung)
+/* MAKE Innovation · Gestaltung der Website (Prototyp 25.10.2026, dritte Fassung)
    Seriös heißt hier: Papier und Tinte, viel Weißraum, eine Schrift, Haarlinien statt Kartenwände, Farbe nur aus dem Logo.
    Bewegung nur, wo sie etwas zeigt (der Weg zeichnet sich einmal), und still bei „Bewegung reduzieren“.
    Keine fremden Quellen, keine Inline-Skripte oder -Stile (CSP 'self'). */
@@ -10,7 +10,8 @@
 :root {
   --akzent: #A78BFA;          /* Kern im Logo, auf Dunkel */
   --akzent-papier: #7C3AED;   /* Kern im hellen Logo, auf Papier */
-  --akzent-zart: #EFEAFB;     /* getönte Fläche auf Papier */
+  --akzent-zart: #EFEAFB;
+  --kern-nacht: #8B5CF6;     /* getönte Fläche auf Papier */
   --hell: #F2F3F3;            /* Ring und Punkt auf Dunkel */
   --grau: #A3ABAE;            /* „Innovation“ auf Dunkel */
   --grau-papier: #5F6468;     /* „Innovation“ auf Papier */
@@ -78,10 +79,10 @@ table { border-collapse: collapse; }
 .etikett { display: block; }
 
 /* ── Das Zeichen: Farben über CSS, damit sie mit der Palette wechseln ── */
-.zeichen .bahn { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
-.zeichen .punkt { fill: currentColor; }
+.zeichen .spur { fill: none; stroke: var(--akzent); stroke-width: 2.6; stroke-linecap: round; }
+.zeichen .wand { fill: currentColor; }
 .zeichen .kern { fill: var(--akzent-papier); }
-.dunkel .zeichen .kern, .fuss .zeichen .kern, .check-knopf .zeichen .kern { fill: var(--akzent); }
+.dunkel .zeichen .kern, .fuss .zeichen .kern, .check-knopf .zeichen .kern { fill: var(--kern-nacht); }
 
 /* ── Knöpfe und Links ── */
 .knopf { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 52px; padding: 0 24px; border-radius: 6px; border: 1px solid var(--tinte);
@@ -131,9 +132,10 @@ table { border-collapse: collapse; }
 .kopf-innen { position: relative; display: flex; align-items: center; gap: 20px; height: var(--kopf); }
 .marke { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; margin-right: auto; color: inherit; }
 .marke .zeichen { width: 34px; height: 34px; flex: none; }
-.wortbild { display: flex; flex-direction: column; line-height: 1; }
-.wortbild b { font-weight: 650; font-size: 1.04rem; letter-spacing: .12em; }
-.wortbild small { margin-top: 4px; font-weight: 500; font-size: .7rem; letter-spacing: .08em; color: var(--grau-papier); }
+.wortbild { display: block; width: 182px; height: 11.5px; flex: none; overflow: visible; }
+.wortbild .wort { fill: currentColor; }
+.wortbild .wb-zusatz { fill: var(--grau-papier); }
+@media (max-width: 420px) { .marke { gap: 10px; } .marke .zeichen { width: 30px; height: 30px; } .wortbild { width: 150px; height: 9.5px; } }
 .haupt-nav { display: flex; align-items: center; gap: 2px; }
 .haupt-nav > a, .nav-punkt > a, .kopf-kontakt { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; font-size: .95rem; font-weight: 500; color: var(--tinte-text); transition: color .2s ease, background-color .2s ease; }
 .haupt-nav > a:hover, .nav-punkt > a:hover, .kopf-kontakt:hover { color: var(--tinte); background: rgba(17, 19, 22, .05); }
@@ -479,7 +481,7 @@ html.menue-offen { overflow: hidden; }
 .fuss { background: var(--nacht); color: var(--leise-dunkel); padding: 64px 0 28px; border-top: 1px solid var(--haar-dunkel); font-size: .95rem; }
 .fuss-raster { display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)); gap: 40px var(--rinne); }
 .fuss .marke { color: var(--hell); margin-right: 0; }
-.fuss .wortbild small { color: var(--grau); }
+.fuss .wortbild .wb-zusatz { fill: var(--grau); }
 .fuss .claim { margin: 18px 0 14px; color: var(--hell); font-weight: 500; }
 .fuss-marke a:not(.marke) { text-decoration: underline; text-decoration-color: var(--haar-dunkel); text-underline-offset: .25em; }
 .fuss-marke a:not(.marke):hover { color: var(--hell); }
@@ -967,11 +969,10 @@ html.menue-offen { overflow: hidden; }
 
 /* ── Monogramm im Logo-Stil + Ansprechpartner im Schluss (31.10.) ── */
 .monogramm { display: block; width: 100%; height: 100%; overflow: visible; }
-.monogramm .bahn { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
-.monogramm .punkt { fill: var(--akzent-papier); }
+.monogramm .ring { fill: none; stroke: currentColor; stroke-width: 2.2; }
+.monogramm .spur { fill: none; stroke: var(--akzent); stroke-width: 2.4; stroke-linecap: round; }
 .monogramm text { fill: currentColor; font: 600 12.5px var(--schrift); letter-spacing: .04em; }
 .kuerzel.mono { background: transparent; color: var(--tinte); padding: 4px; }
-.dunkel .monogramm .punkt, .person-netzwerk .monogramm .punkt { fill: var(--akzent); }
 .ansprechpartner { margin-top: 32px; display: flex; align-items: center; gap: 16px; color: var(--leise-dunkel); font-size: .95rem; line-height: 1.35; }
 .ansprechpartner .monogramm { width: 52px; height: 52px; flex: none; color: var(--hell); }
 .ansprechpartner > span { display: flex; flex-direction: column; gap: 2px; }

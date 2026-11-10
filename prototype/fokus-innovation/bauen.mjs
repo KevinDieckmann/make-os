@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ─── Fokus Innovation · Website (Prototyp 25.10.2026, dritte Fassung) ─────────────────────────────────────────────────
+// ─── MAKE Innovation · Website (Prototyp 25.10.2026, dritte Fassung) ─────────────────────────────────────────────────
 // Alle Seiten aus EINER Quelle: inhalt/fokus.json (Marke, Leitidee, Bereiche, Abend, Über uns — aus dem Positionierungs-Doc)
 // und den Angeboten der bisherigen Website (makeinnovation/inhalt/*.json: Preise, Produktblätter, Fragen). Nie eine Seite von
 // Hand ändern — Text in den JSON-Dateien, Aussehen in css/, dann:
@@ -31,7 +31,7 @@ const ERSTGESPRAECH = '/erstgespraech';
 const e = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 /** Texte der bisherigen Website: Altnamen der Marke ersetzen (der Prüfer meldet jeden Rest). */
 const BEGRIFFE = [
-  [/aus dem MAKE-Netzwerk/g, 'aus unserem Netzwerk'], [/MAKE-Netzwerk/g, 'Netzwerk'], [/MAKE Innovation/g, 'Fokus Innovation'],
+  [/aus dem MAKE-Netzwerk/g, 'aus unserem Netzwerk'], [/MAKE-Netzwerk/g, 'Netzwerk'],
   // Interne Begriffe der Produktblätter in Worte, die Kunden verstehen
   [/Bestandsreaktivierung nach BEAN/g, 'Reaktivierung Ihrer Bestandskunden'], [/Skriptset mit BANT/g, 'Gesprächsleitfäden mit Bedarfsfragen'],
   [/33 gute Gründe/g, '33 Kaufargumente'], [/Security-Call gegen No-Shows/g, 'Erinnerungsanruf gegen ausgefallene Termine'],
@@ -67,10 +67,19 @@ const istPlatzhalter = (s) => /\[\[KEVIN:/.test(String(s ?? ''));
 const wort = (s) => e(platz(s)).replace(/\[\[KEVIN: ([^\]]*)\]\]/g, (_, x) => `<span class="ph">[[KEVIN: ${x}]]</span>`);
 const stempel = (datei) => createHash('sha256').update(readFileSync(join(ORDNER, datei))).digest('hex').slice(0, 10);
 const PFEIL = '<svg class="pfeil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
-const ZEICHEN = (klasse = 'zeichen') => `<svg class="${klasse}" viewBox="0 0 48 48" aria-hidden="true"><path class="bahn" d="M37.86,16 A16,16 0 1 1 26.78,8.24"/><circle class="punkt" cx="35.33" cy="7.81" r="2.8"/><circle class="kern" cx="24" cy="24" r="7"/></svg>`;
+// Marke MAKE Innovation, Zeichen „Durchbruch“ (Spur · Wand · Kern, 09.11.2026). Pfade aus dem Markenpaket (01-logo/svg) — nie von Hand ändern.
+const MARKE_PFAD = {
+  spur: 'M6,18.5H14.5M4,24H14.5M8,29.5H14.5',
+  wand: 'M18.8,6H24.2A0.8,0.8 0 0 1 25,6.8V12.44A12.8,12.8 0 0 0 18,21.25V6.8A0.8,0.8 0 0 1 18.8,6ZM18,26.75A12.8,12.8 0 0 0 25,35.56V41.2A0.8,0.8 0 0 1 24.2,42H18.8A0.8,0.8 0 0 1 18,41.2Z',
+  kopfWort: 'M58.57 30.30L56 30.30L56.68 18.00L60.97 18.00L63.46 28.52L63.15 28.52L65.66 18.00L69.95 18.00L70.63 30.30L68.06 30.30L67.51 19.88L67.54 19.88L64.93 30.30L61.70 30.30L59.09 19.88L59.12 19.88L58.57 30.30ZM77.39 30.30L74.55 30.30L79.27 18.00L82.63 18.00L87.33 30.30L84.49 30.30L80.94 19.91L77.39 30.30ZM84.22 26.93L77.64 26.93L77.64 24.82L84.22 24.82L84.22 26.93ZM94.22 30.30L91.58 30.30L91.58 18.00L94.22 18.00L94.22 23.03L99.28 18.00L102.54 18.00L97.98 22.52L102.86 30.30L99.82 30.30L96.16 24.32L94.22 26.25L94.22 30.30ZM116.07 30.30L107.27 30.30L107.27 18.00L115.95 18.00L115.95 20.23L109.91 20.23L109.91 22.76L115.03 22.76L115.03 24.90L109.91 24.90L109.91 28.07L116.07 28.07L116.07 30.30Z',
+  kopfUnter: 'M131.55 30.30L125.99 30.30L125.99 28.50L127.66 28.50L127.66 19.80L125.99 19.80L125.99 18.00L131.55 18.00L131.55 19.80L129.88 19.80L129.88 28.50L131.55 28.50L131.55 30.30ZM138.65 30.30L136.53 30.30L136.53 18.00L139.67 18.00L145.60 28.99L145.00 29.04L145.00 18.00L147.11 18.00L147.11 30.30L144.09 30.30L138.01 19.24L138.65 19.18L138.65 30.30ZM154.79 30.30L152.67 30.30L152.67 18.00L155.81 18.00L161.74 28.99L161.14 29.04L161.14 18.00L163.26 18.00L163.26 30.30L160.23 30.30L154.16 19.24L154.79 19.18L154.79 30.30ZM174.25 30.51L174.25 30.51Q172.38 30.51 171.01 29.74Q169.65 28.97 168.91 27.54Q168.18 26.11 168.18 24.15L168.18 24.15Q168.18 22.18 168.91 20.76Q169.65 19.33 171.01 18.56Q172.38 17.78 174.25 17.78L174.25 17.78Q176.12 17.78 177.48 18.56Q178.84 19.33 179.58 20.76Q180.31 22.18 180.31 24.15L180.31 24.15Q180.31 26.11 179.58 27.54Q178.84 28.97 177.48 29.74Q176.12 30.51 174.25 30.51ZM174.25 28.66L174.25 28.66Q175.41 28.66 176.24 28.12Q177.08 27.57 177.52 26.56Q177.96 25.55 177.96 24.15L177.96 24.15Q177.96 22.74 177.52 21.73Q177.08 20.72 176.24 20.18Q175.41 19.64 174.25 19.64L174.25 19.64Q173.09 19.64 172.26 20.18Q171.43 20.72 170.98 21.73Q170.53 22.74 170.53 24.15L170.53 24.15Q170.53 25.55 170.98 26.56Q171.43 27.57 172.26 28.12Q173.09 28.66 174.25 28.66ZM191.45 30.30L188.71 30.30L184.26 18.00L186.64 18.00L190.23 28.87L189.95 28.87L193.51 18.00L195.88 18.00L191.45 30.30ZM201.66 30.30L199.29 30.30L204.19 18.00L206.84 18.00L211.73 30.30L209.35 30.30L205.51 19.79L201.66 30.30ZM208.79 26.68L202.21 26.68L202.21 24.89L208.79 24.89L208.79 26.68ZM221.79 30.30L219.57 30.30L219.57 19.85L215.21 19.85L215.21 18.00L226.17 18.00L226.17 19.85L221.79 19.85L221.79 30.30ZM235.80 30.30L230.24 30.30L230.24 28.50L231.91 28.50L231.91 19.80L230.24 19.80L230.24 18.00L235.80 18.00L235.80 19.80L234.13 19.80L234.13 28.50L235.80 28.50L235.80 30.30ZM246.21 30.51L246.21 30.51Q244.34 30.51 242.98 29.74Q241.61 28.97 240.88 27.54Q240.14 26.11 240.14 24.15L240.14 24.15Q240.14 22.18 240.88 20.76Q241.61 19.33 242.98 18.56Q244.34 17.78 246.21 17.78L246.21 17.78Q248.08 17.78 249.44 18.56Q250.81 19.33 251.54 20.76Q252.28 22.18 252.28 24.15L252.28 24.15Q252.28 26.11 251.54 27.54Q250.81 28.97 249.44 29.74Q248.08 30.51 246.21 30.51ZM246.21 28.66L246.21 28.66Q247.37 28.66 248.21 28.12Q249.04 27.57 249.48 26.56Q249.93 25.55 249.93 24.15L249.93 24.15Q249.93 22.74 249.48 21.73Q249.04 20.72 248.21 20.18Q247.37 19.64 246.21 19.64L246.21 19.64Q245.06 19.64 244.22 20.18Q243.39 20.72 242.94 21.73Q242.49 22.74 242.49 24.15L242.49 24.15Q242.49 25.55 242.94 26.56Q243.39 27.57 244.22 28.12Q245.06 28.66 246.21 28.66ZM259.32 30.30L257.20 30.30L257.20 18.00L260.35 18.00L266.28 28.99L265.67 29.04L265.67 18.00L267.79 18.00L267.79 30.30L264.76 30.30L258.69 19.24L259.32 19.18L259.32 30.30Z',
+  stapelWort: 'M-58.58 113L-65.04 113L-63.32 82.06L-52.54 82.06L-46.29 108.53L-47.06 108.53L-40.76 82.06L-29.98 82.06L-28.26 113L-34.73 113L-36.10 86.79L-36.04 86.79L-42.59 113L-50.71 113L-57.26 86.79L-57.20 86.79L-58.58 113ZM-18.24 113L-25.38 113L-13.52 82.06L-5.07 82.06L6.74 113L-0.39 113L-9.33 86.88L-18.24 113ZM-1.08 104.54L-17.62 104.54L-17.62 99.23L-1.08 99.23L-1.08 104.54ZM17.10 113L10.47 113L10.47 82.06L17.10 82.06L17.10 94.72L29.82 82.06L38.01 82.06L26.56 93.43L38.83 113L31.18 113L21.98 97.96L17.10 102.82L17.10 113ZM65.04 113L42.91 113L42.91 82.06L64.74 82.06L64.74 87.67L49.55 87.67L49.55 94.05L62.44 94.05L62.44 99.42L49.55 99.42L49.55 107.39L65.04 107.39L65.04 113Z',
+  stapelUnter: 'M-61.32 132L-65.04 132L-65.04 130.79L-63.92 130.79L-63.92 124.98L-65.04 124.98L-65.04 123.77L-61.32 123.77L-61.32 124.98L-62.44 124.98L-62.44 130.79L-61.32 130.79L-61.32 132ZM-52.66 132L-54.08 132L-54.08 123.77L-51.97 123.77L-48.01 131.13L-48.42 131.16L-48.42 123.77L-47.00 123.77L-47.00 132L-49.02 132L-53.08 124.61L-52.66 124.57L-52.66 132ZM-37.95 132L-39.36 132L-39.36 123.77L-37.26 123.77L-33.30 131.13L-33.70 131.16L-33.70 123.77L-32.29 123.77L-32.29 132L-34.31 132L-38.37 124.61L-37.95 124.57L-37.95 132ZM-21.02 132.14L-21.02 132.14Q-22.27 132.14-23.18 131.63Q-24.09 131.11-24.58 130.15Q-25.07 129.20-25.07 127.89L-25.07 127.89Q-25.07 126.57-24.58 125.62Q-24.09 124.66-23.18 124.15Q-22.27 123.63-21.02 123.63L-21.02 123.63Q-19.77 123.63-18.86 124.15Q-17.94 124.66-17.45 125.62Q-16.96 126.57-16.96 127.89L-16.96 127.89Q-16.96 129.20-17.45 130.15Q-17.94 131.11-18.86 131.63Q-19.77 132.14-21.02 132.14ZM-21.02 130.90L-21.02 130.90Q-20.24 130.90-19.68 130.54Q-19.13 130.18-18.83 129.50Q-18.53 128.82-18.53 127.89L-18.53 127.89Q-18.53 126.94-18.83 126.27Q-19.13 125.60-19.68 125.23Q-20.24 124.87-21.02 124.87L-21.02 124.87Q-21.79 124.87-22.35 125.23Q-22.90 125.60-23.20 126.27Q-23.50 126.94-23.50 127.89L-23.50 127.89Q-23.50 128.82-23.20 129.50Q-22.90 130.18-22.35 130.54Q-21.79 130.90-21.02 130.90ZM-5.60 132L-7.42 132L-10.40 123.77L-8.81 123.77L-6.41 131.05L-6.60 131.05L-4.22 123.77L-2.63 123.77L-5.60 132ZM5.15 132L3.56 132L6.84 123.77L8.61 123.77L11.88 132L10.29 132L7.72 124.97L5.15 132ZM9.92 129.58L5.52 129.58L5.52 128.38L9.92 128.38L9.92 129.58ZM22.53 132L21.05 132L21.05 125.01L18.13 125.01L18.13 123.77L25.46 123.77L25.46 125.01L22.53 125.01L22.53 132ZM35.82 132L32.10 132L32.10 130.79L33.22 130.79L33.22 124.98L32.10 124.98L32.10 123.77L35.82 123.77L35.82 124.98L34.70 124.98L34.70 130.79L35.82 130.79L35.82 132ZM46.70 132.14L46.70 132.14Q45.44 132.14 44.53 131.63Q43.62 131.11 43.13 130.15Q42.64 129.20 42.64 127.89L42.64 127.89Q42.64 126.57 43.13 125.62Q43.62 124.66 44.53 124.15Q45.44 123.63 46.70 123.63L46.70 123.63Q47.95 123.63 48.86 124.15Q49.77 124.66 50.26 125.62Q50.75 126.57 50.75 127.89L50.75 127.89Q50.75 129.20 50.26 130.15Q49.77 131.11 48.86 131.63Q47.95 132.14 46.70 132.14ZM46.70 130.90L46.70 130.90Q47.47 130.90 48.03 130.54Q48.59 130.18 48.88 129.50Q49.18 128.82 49.18 127.89L49.18 127.89Q49.18 126.94 48.88 126.27Q48.59 125.60 48.03 125.23Q47.47 124.87 46.70 124.87L46.70 124.87Q45.92 124.87 45.37 125.23Q44.81 125.60 44.51 126.27Q44.21 126.94 44.21 127.89L44.21 127.89Q44.21 128.82 44.51 129.50Q44.81 130.18 45.37 130.54Q45.92 130.90 46.70 130.90ZM59.38 132L57.96 132L57.96 123.77L60.07 123.77L64.03 131.13L63.63 131.16L63.63 123.77L65.04 123.77L65.04 132L63.02 132L58.96 124.61L59.38 124.57L59.38 132Z',
+};
+const ZEICHEN = (klasse = 'zeichen') => `<svg class="${klasse}" viewBox="2.7 5 38 38" aria-hidden="true"><path class="spur" d="${MARKE_PFAD.spur}"/><path class="wand" d="${MARKE_PFAD.wand}"/><circle class="kern" cx="30.5" cy="24" r="10.2"/></svg>`;
 /** Monogramm im Stil des Logos (31.10.: Personen ohne Foto): Ring mit Lücke und Punkt, die Initialen in der Mitte. */
-const MONOGRAMM = (kuerzel, klasse = '') => `<svg class="monogramm${klasse ? ` ${klasse}` : ''}" viewBox="0 0 48 48" aria-hidden="true"><path class="bahn" d="M37.86,16 A16,16 0 1 1 26.78,8.24"/><circle class="punkt" cx="35.33" cy="7.81" r="2.8"/><text x="24" y="28.3" text-anchor="middle">${String(kuerzel).replace(/[<&>"]/g, '')}</text></svg>`;
-const WORTBILD = '<span class="wortbild" aria-hidden="true"><b>FOKUS</b><small>Innovation</small></span>';
+const MONOGRAMM = (kuerzel, klasse = '') => `<svg class="monogramm${klasse ? ` ${klasse}` : ''}" viewBox="0 0 48 48" aria-hidden="true"><path class="spur" d="M2.5,18.5H9M1,24H9M4,29.5H9"/><circle class="ring" cx="29" cy="24" r="16"/><text x="29" y="28.3" text-anchor="middle">${String(kuerzel).replace(/[<&>"]/g, '')}</text></svg>`;
+const WORTBILD = `<svg class="wortbild" viewBox="55.6 17.4 212.6 13.4" aria-hidden="true"><path class="wort" d="${MARKE_PFAD.kopfWort}"/><path class="wb-zusatz" d="${MARKE_PFAD.kopfUnter}"/></svg>`;
 
 /** Reihenfolge der Bereiche (Positionierung 25.10.: gesehen → verkauft → im Alltag angekommen). */
 export const BEREICHE = ['sichtbarkeit', 'vertrieb', 'innovation'];
@@ -350,7 +359,7 @@ export function seitenBauen(q = quellen()) {
   ];
   const kopf = (aktiv) => `<a class="sprung" href="#inhalt">Zum Inhalt</a>
 <header class="kopf"><div class="w kopf-innen">
-<a class="marke" href="/" aria-label="Fokus Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a>
+<a class="marke" href="/" aria-label="MAKE Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a>
 <nav class="haupt-nav" aria-label="Hauptmenü">${NAV.map((n) => {
     const cur = n.key === aktiv ? ' aria-current="page"' : '';
     if (n.bereiche) {
@@ -364,7 +373,7 @@ export function seitenBauen(q = quellen()) {
 <a class="knopf klein kopf-check" href="${erstLink()}">${e(F.erstgespraech.name)}</a>
 <details class="menue"><summary><span class="striche" aria-hidden="true"></span>Menü</summary><nav class="menue-blatt" aria-label="Menü">
 ${BEREICHE.map((b) => `<p class="menue-gruppe">${e(F.bereiche[b].name)}</p><a href="/${b}/">Überblick ${e(F.bereiche[b].name)}</a>${navUnter(b).map(([h, name]) => `<a href="${h}">${e(name)}</a>`).join('')}${bausteineVon(b) ? `<a href="${bausteineVon(b)}">Bausteine zum Selbermachen</a>` : ''}`).join('\n')}
-<p class="menue-gruppe">Fokus Innovation</p><a href="/events/">Events</a><a href="/kostenlos/">Kostenlos</a><a href="/preise/">Preise</a><a href="/ueber-uns/">Über uns</a><a href="/kontakt/">Kontakt</a>
+<p class="menue-gruppe">MAKE Innovation</p><a href="/events/">Events</a><a href="/kostenlos/">Kostenlos</a><a href="/preise/">Preise</a><a href="/ueber-uns/">Über uns</a><a href="/kontakt/">Kontakt</a>
 ${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Oder: Innovations-Check, 10 Minuten</span> ${PFEIL}</a>
 </nav></details>
 </div></header>`;
@@ -372,11 +381,11 @@ ${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Ode
   const fussSpalte = (titelText, links) => `<div><p class="fuss-titel">${e(titelText)}</p><ul>${links.map(([h, n]) => `<li><a href="${h}">${e(n)}</a></li>`).join('')}</ul></div>`;
   const fuss = () => `<footer class="fuss"><div class="w">
 <div class="fuss-raster">
-<div class="fuss-marke"><a class="marke" href="/" aria-label="Fokus Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a><p class="claim glanz erscheint">${e(F.marke.claim)}</p>
+<div class="fuss-marke"><a class="marke" href="/" aria-label="MAKE Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a><p class="claim glanz erscheint">${e(F.marke.claim)}</p>
 <p><a ${anfrageAttr('kontakt', 'Anfrage')}>Nachricht schreiben</a><br><a href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a><br>${seite.kontakt.adresse.map(t).join('<br>')}</p></div>
 ${fussSpalte('Leistungen', [...BEREICHE.map((b) => [`/${b}/`, F.bereiche[b].name]), ['/innovations-check/', 'Innovations-Check'], ['/preise/', 'Preise'], ...(BS_LISTE.length ? [['/bausteine/', 'Bausteine']] : [])])}
 ${fussSpalte('Kostenlos', [['/kostenlos/#checks', 'Checks'], ['/kostenlos/#ratgeber', 'Ratgeber'], ...(Z ? [['/kostenlos/zahlen/', 'Zahlen']] : []), ...(VL ? [['/kostenlos/#vorlagen', 'Vorlagen']] : []), ['/fragen/', 'Häufige Fragen'], ['/begriffe/', 'Begriffe']])}
-${fussSpalte('Fokus Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über uns'], ['/kontakt/', 'Kontakt'], ['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
+${fussSpalte('MAKE Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über uns'], ['/kontakt/', 'Kontakt'], ['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
 </div>
 <div class="fuss-unten"><span>© 2026 ${e(anbieter.name)} · ${e(F.marke.name)} ist eine Marke der ${e(anbieter.name)}</span><span>Keine Cookies, kein Tracking. Alle Preise netto zuzüglich Umsatzsteuer, für Unternehmen.</span></div>
 </div></footer>`;
@@ -506,7 +515,7 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
     seiten.push({
       pfad, html, titel: titelText, beschreibung,
       geaendert: geaendertAm,
-      bild: pfad === '404.html' ? null : { datei: `assets/bild/og/${bildName(pfad)}.png`, titel: s.bildTitel ?? titelText.replace(/ · Fokus Innovation$/, ''), vorzeile: s.bildVorzeile ?? F.marke.name },
+      bild: pfad === '404.html' ? null : { datei: `assets/bild/og/${bildName(pfad)}.png`, titel: s.bildTitel ?? titelText.replace(/ · MAKE Innovation$/, ''), vorzeile: s.bildVorzeile ?? F.marke.name },
     });
   };
   const B = F.bereiche;
@@ -537,12 +546,12 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
   /** Arbeitsprobe (31.10., Prüfung „Gestaltung“: zeigen statt beschreiben): diese Website auf Rechner und Handy, daneben was sie ausmacht. */
   const arbeitsprobe = () => `<section class="abschnitt" aria-labelledby="probe-titel"><div class="w"><div class="probe">
 <div class="probe-text erscheint">${vorzeile('Arbeitsprobe')}<h2 id="probe-titel">${e(F.arbeitsprobe.titel)}</h2><p class="lead">${t(F.arbeitsprobe.text)}</p>${punkte(F.arbeitsprobe.punkte)}<div class="knoepfe">${textlink('/', 'Zur Startseite mit dem Film')}</div></div>
-<figure class="probe-buehne erscheint"><div class="geraet laptop"><img src="/assets/bild/arbeitsprobe/rechner.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="Die Startseite von Fokus Innovation am Rechner: das Logo, der Satz „Fortschritt braucht Fokus.“ und zwei Knöpfe"></div><div class="geraet handy"><img src="/assets/bild/arbeitsprobe/handy.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Seite „In den Markt“ auf dem Handy mit Überschrift und Grafik zum Problem"></div><figcaption class="leise klein-text">Diese Website, gebaut wie Ihre: am Rechner und auf dem Handy.</figcaption></figure>
+<figure class="probe-buehne erscheint"><div class="geraet laptop"><img src="/assets/bild/arbeitsprobe/rechner.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="Die Startseite von MAKE Innovation am Rechner: das Logo, der Satz „Innovation braucht Umsetzung.“ und zwei Knöpfe"></div><div class="geraet handy"><img src="/assets/bild/arbeitsprobe/handy.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Seite „In den Markt“ auf dem Handy mit Überschrift und Grafik zum Problem"></div><figcaption class="leise klein-text">Diese Website, gebaut wie Ihre: am Rechner und auf dem Handy.</figcaption></figure>
 </div></div></section>`;
   const musterPositionierung = () => {
     const M = F.muster_positionierung;
     return `<section class="abschnitt" aria-labelledby="muster-titel"><div class="w">${abKopf({ marke: 'Muster', h2: M.titel, lead: M.lead, id: 'muster-titel' })}
-<figure class="muster-blatt erscheint"><figcaption><span class="etikett">Positionierung S · Fokus Innovation</span><span class="leise">eigenes Beispiel</span></figcaption>
+<figure class="muster-blatt erscheint"><figcaption><span class="etikett">Positionierung S · MAKE Innovation</span><span class="leise">eigenes Beispiel</span></figcaption>
 <dl class="daten">${M.saetze.map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl>
 <div class="muster-kurz"><div><span class="etikett">In einem Satz</span><p>${e(M.ein_satz)}</p></div><div><span class="etikett">In sieben Wörtern</span><p>${e(M.sieben_woerter)}</p></div><div><span class="etikett">Claim</span><p>${e(M.claim)}</p></div></div></figure></div></section>`;
   };
@@ -651,7 +660,7 @@ ${block('fokus', fl.fokus)}
 ${block('luecke', fl.luecke)}
 ${block('momentum', fl.momentum)}
 ${block('durchbruch', fl.durchbruch)}
-<div class="block" data-block="ende"><div class="ende-marke"><span class="ende-wort" aria-hidden="true">FOKUS</span><span class="ende-unter" aria-hidden="true">Innovation</span><span class="ende-claim" aria-hidden="true">${e(F.marke.claim)}</span><div class="ende-knoepfe dunkel">${erstKnopf()}${passenderKnopf(undefined, 'film_ende')}</div></div></div>
+<div class="block" data-block="ende"><div class="ende-marke"><svg class="ende-wort" viewBox="-65.3 81.8 130.6 31.4" aria-hidden="true"><path d="${MARKE_PFAD.stapelWort}"/></svg><svg class="ende-unter" viewBox="-65.3 123.4 130.6 9" aria-hidden="true"><path d="${MARKE_PFAD.stapelUnter}"/></svg><span class="ende-claim" aria-hidden="true">${e(F.marke.claim)}</span><div class="ende-knoepfe dunkel">${erstKnopf()}${passenderKnopf(undefined, 'film_ende')}</div></div></div>
 <a class="ueberspringen" href="#einstieg">Film überspringen</a>
 </div>
 </section>
@@ -963,7 +972,7 @@ ${schlussakt({ quelle: 'events_ende' })}`,
 ${buehne('netzwerk', VIDEOS['ueber-uns'])}
 </div></section>
 
-${blick([...F.fakten, ['Betreiber', anbieter.name], ['Kontakt', seite.kontakt.mail]], 'Fokus Innovation auf einen Blick')}
+${blick([...F.fakten, ['Betreiber', anbieter.name], ['Kontakt', seite.kontakt.mail]], 'MAKE Innovation auf einen Blick')}
 
 <section class="abschnitt" aria-labelledby="ursprung-titel"><div class="w">${abKopf({ marke: 'Warum es uns gibt', h2: 'Vier Erfahrungen,', ruhig: 'die uns hierher gebracht haben.', lead: F.leitidee.absaetze.join(' '), id: 'ursprung-titel' })}
 ${raster(F.leitidee.ursprung, 4)}
@@ -1050,7 +1059,7 @@ ${BS_LISTE.length ? `<h2 id="bausteine">Bausteine bestellen</h2><p>Bestellen Sie
 <h2>Ihre Rechte</h2><p>Sie haben das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18) und Datenübertragbarkeit (Art. 20). Verarbeiten wir Daten auf Grundlage berechtigter Interessen, können Sie jederzeit widersprechen (Art. 21). Eine Mail an ${e(seite.kontakt.mail)} genügt. Sie können sich außerdem bei einer Datenschutz-Aufsichtsbehörde beschweren (Art. 77 DSGVO).</p>`),
   });
   neu('404.html', {
-    titel: 'Seite nicht gefunden · Fokus Innovation',
+    titel: 'Seite nicht gefunden · MAKE Innovation',
     beschreibung: 'Diese Seite gibt es nicht.',
     main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig"><div>${vorzeile('404')}<h1 id="held-titel" class="glanz">Diese Seite gibt es nicht.</h1><p class="lead">Vielleicht hilft der Weg zurück zur Startseite. Oder Sie schauen, was wir kostenlos anbieten.</p><div class="knoepfe">${knopf('/', 'Zur Startseite')}${textlink('/kostenlos/', 'Zu Kostenlos')}</div></div></div></section>`,
   });
@@ -1135,7 +1144,7 @@ ${BS_LISTE.length ? `<h2 id="bausteine">Bausteine bestellen</h2><p>Bestellen Sie
     bildTitel: 'Checks, Ratgeber, Zahlen und Vorlagen.',
     aktiv: 'kostenlos',
     seitenTyp: 'CollectionPage',
-    schema: [{ ...itemListe('Kostenlos bei Fokus Innovation', [...K.checks.map((c) => [c.thema ? `/check?thema=${c.thema}` : c.pfad, c.name]), ...W.artikel.map((a) => [artikelPfad(a), a.titel])]), '@id': `${absolut('/kostenlos/')}#kostenlos` }],
+    schema: [{ ...itemListe('Kostenlos bei MAKE Innovation', [...K.checks.map((c) => [c.thema ? `/check?thema=${c.thema}` : c.pfad, c.name]), ...W.artikel.map((a) => [artikelPfad(a), a.titel])]), '@id': `${absolut('/kostenlos/')}#kostenlos` }],
     main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, 'Kostenlos']])}${vorzeile('Kostenlos')}<h1 id="held-titel" class="glanz">${titel(K.titel, K.ruhig)}</h1><p class="lead">${t(K.lead)}</p>
 <p class="regal-zahlen"><span><b>${K.checks.length}</b> Checks</span>${VORL.length ? `<span><b>${VORL.length}</b> Vorlagen</span>` : ''}<span><b>${W.artikel.length}</b> Ratgeber</span>${Z ? `<span><b>${Z.zahlen.length}</b> Zahlen</span>` : ''}</p>
@@ -1179,7 +1188,7 @@ ${schlussakt({ quelle: 'kostenlos_ende' })}`,
     const weitere = VORL.filter((x) => x.id !== v.id && x.bereich === v.bereich).slice(0, 3);
     const ersatz = `Schreiben Sie uns kurz ${anfrageInline(`vorlage-${v.id}`, `Vorlage: ${v.titel}`, 'über das Formular')}, wir schicken Ihnen die Vorlage zu.`;
     neu(pfad, {
-      titel: [`${v.titel}: Vorlage kostenlos · Fokus Innovation`, `${v.titel} · Fokus Innovation`, `${v.titel}: Vorlage kostenlos`, v.titel].find((x) => x.length <= 65),
+      titel: [`${v.titel}: Vorlage kostenlos · MAKE Innovation`, `${v.titel} · MAKE Innovation`, `${v.titel}: Vorlage kostenlos`, v.titel].find((x) => x.length <= 65),
       beschreibung: vorlageBeschreibung(v),
       bildVorzeile: `Vorlage · ${B[v.bereich].name}`,
       bildTitel: v.titel,
@@ -1225,14 +1234,14 @@ ${schlussakt({ quelle: `vorlage_${v.id}`, bereich: v.bereich })}`,
     const bereiche = (q.bausteine.bereiche ?? []).filter((bb) => BS.some((b) => b.bereich === bb.id));
     const abAb = euro(Math.min(...BS.map((b) => b.preis)));
     neu('bausteine/index.html', {
-      titel: 'Bausteine zum Selbermachen · Fokus Innovation',
+      titel: 'Bausteine zum Selbermachen · MAKE Innovation',
       beschreibung: `Fertige Arbeitspakete aus unserer Arbeit, ab ${abAb.replace(' ', ' ')} netto: Vertrieb, Positionierung und KI im Team. Mit Anleitung, ausgefülltem Beispiel und Bögen, auf Rechnung.`,
       bildVorzeile: 'Bausteine',
       bildTitel: 'Bausteine zum Selbermachen.',
       woertlich: true,
       aktiv: 'leistungen',
       seitenTyp: 'CollectionPage',
-      schema: [{ ...itemListe('Bausteine von Fokus Innovation', BS.map((b) => [b.seite, b.titel])), '@id': `${absolut('/bausteine/')}#bausteine` }],
+      schema: [{ ...itemListe('Bausteine von MAKE Innovation', BS.map((b) => [b.seite, b.titel])), '@id': `${absolut('/bausteine/')}#bausteine` }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, 'Bausteine']])}${vorzeile('Bausteine')}<h1 id="held-titel" class="glanz">${titel('Bausteine.', 'Zum Selbermachen.')}</h1><p class="lead">${wort(BZ.lead ?? '')}</p>
 <nav class="az breit" aria-label="Auf dieser Seite">${bereiche.map((bb) => `<a href="#bausteine-${bb.id}">${e(bb.name)}</a>`).join('')}<a href="#ablauf">So läuft es</a><a href="#bedingungen">Bedingungen</a></nav></div>
@@ -1257,7 +1266,7 @@ ${schlussakt({ quelle: 'bausteine_ende' })}`,
         : `<figure class="vorlage-blatt erscheint"><img class="blatt-titel" src="/assets/bild/bausteine/${bild}-titel.jpg" width="640" height="905" alt="Titelseite: ${e(b.titel)}"><img class="blatt-seite" src="/assets/bild/bausteine/${bild}-seite.jpg" width="900" height="1273" alt="Seite ${b.vorschau_seite ?? 2} als Beispiel"><figcaption>Seite ${b.vorschau_seite ?? 2} von ${b.seiten} · Vorschau</figcaption></figure>`;
       const feld = (name, text, typ = 'text', pflicht = true, auto = '', breit = false) => `<label${breit ? ' class="breit"' : ''}><span>${e(text)}${pflicht ? '' : ' <small>freiwillig</small>'}</span><input name="${name}" type="${typ}"${auto ? ` autocomplete="${auto}"` : ''} maxlength="${name === 'email' ? 160 : 120}"${pflicht ? ' required' : ''}${name === 'land' ? ' value="Deutschland"' : ''}></label>`;
       neu(pfad, {
-        titel: [`${b.titel}: Baustein · Fokus Innovation`, `${b.titel} · Fokus Innovation`, b.titel].find((x) => x.length <= 65),
+        titel: [`${b.titel}: Baustein · MAKE Innovation`, `${b.titel} · MAKE Innovation`, b.titel].find((x) => x.length <= 65),
         beschreibung: (() => {
           const preis = `${euro(b.preis).replace('\u00a0', ' ')} netto`;
           const wahl = [`${b.kurz} ${bausteinUmfang(b)}, ${preis}.`, `${b.kurz} ${bausteinUmfang(b)}, ${preis}, mit Anleitung, Beispiel und Bögen.`, `${b.titel}: ${bausteinUmfang(b)}, ${preis}, mit Anleitung, ausgefülltem Beispiel und Bögen zum Ausfüllen.`, `${b.titel}: ${preis}, mit Anleitung, ausgefülltem Beispiel und Bögen. Auf Rechnung, für Unternehmen.`].find((x) => x.length >= 110 && x.length <= 165);
@@ -1378,7 +1387,7 @@ ${schlussakt({ quelle: `${s.pfad}_ende`, bereich: s.id === 'unternehmen' ? 'inno
     const angebote = a.angebote.map(angebot).filter(Boolean);
     const weiter = a.weiter.map((id) => W.artikel.find((x) => x.id === id)).filter(Boolean);
     neu(pfad, {
-      titel: a.seo_titel.length + ' · Fokus Innovation'.length <= 65 ? `${a.seo_titel} · Fokus Innovation` : a.seo_titel,
+      titel: a.seo_titel.length + ' · MAKE Innovation'.length <= 65 ? `${a.seo_titel} · MAKE Innovation` : a.seo_titel,
       beschreibung: a.beschreibung,
       bildVorzeile: `${a.leitfaden ? 'Leitfaden' : 'Wissen'} · ${b.name}`,
       bildTitel: a.titel,
@@ -1489,7 +1498,7 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
       aktiv: 'leistungen',
       bildVorzeile: 'Preise',
       bildTitel: 'Alle Preise auf einen Blick. Fest und netto.',
-      schema: [{ '@type': 'OfferCatalog', '@id': `${absolut('/preise/')}#katalog`, name: 'Preise von Fokus Innovation', numberOfItems: angeboteAlle.length, itemListElement: angeboteAlle.filter((a) => !bald(a)).flatMap((a) => [angebotDaten(a)].flat().map((o) => ({ ...o, itemOffered: { '@type': 'Service', name: a.name, url: absolut(produktPfad(a)) } }))) }],
+      schema: [{ '@type': 'OfferCatalog', '@id': `${absolut('/preise/')}#katalog`, name: 'Preise von MAKE Innovation', numberOfItems: angeboteAlle.length, itemListElement: angeboteAlle.filter((a) => !bald(a)).flatMap((a) => [angebotDaten(a)].flat().map((o) => ({ ...o, itemOffered: { '@type': 'Service', name: a.name, url: absolut(produktPfad(a)) } }))) }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, 'Preise']])}${vorzeile('Preise')}<h1 id="held-titel" class="glanz">${titel('Alle Preise.', 'Offen und netto.')}</h1><p class="lead">Jeder Preis gilt für den beschriebenen Umfang. Den genauen Festpreis bekommen Sie vor dem Start schriftlich, ohne Abrechnung nach Stunden. Die Details stehen auf der Seite des Angebots.</p>
 <nav class="az breit" aria-label="Auf dieser Seite">${PREISE_REIHE.map((k) => `<a href="#preise-${k}">${e(B[k].name)}</a>`).join('')}${BS_LISTE.length ? '<a href="#preise-bausteine">Bausteine</a>' : ''}<a href="#kostenlos-titel">Kostenlos</a><a href="#konditionen-titel">Konditionen</a></nav></div>
@@ -1522,7 +1531,7 @@ ${schlussakt({ quelle: 'preise_ende' })}`,
   });
   seiten.push({
     pfad: 'site.webmanifest', datei: true,
-    html: `${JSON.stringify({ name: F.marke.name, short_name: 'Fokus', description: klar(F.marke.beschreibung), lang: 'de', start_url: '/', display: 'browser', background_color: '#F6F4F0', theme_color: '#F6F4F0', icons: [{ src: '/assets/bild/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: '/assets/bild/icon-512.png', sizes: '512x512', type: 'image/png' }] }, null, 2)}\n`,
+    html: `${JSON.stringify({ name: F.marke.name, short_name: 'MAKE Innovation', description: klar(F.marke.beschreibung), lang: 'de', start_url: '/', display: 'browser', background_color: '#F6F4F0', theme_color: '#F6F4F0', icons: [{ src: '/assets/bild/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: '/assets/bild/icon-512.png', sizes: '512x512', type: 'image/png' }] }, null, 2)}\n`,
   });
   seiten.push({ pfad: `${SEO.indexnow}.txt`, datei: true, html: `${SEO.indexnow}\n` });
 
@@ -1620,7 +1629,7 @@ ${W.artikel.map(artikelMd).join('\n\n')}
   seiten.erlaubteMails = [seite.kontakt.mail, seite.anwendung?.mail].filter(Boolean);
   const cent = (txt) => Math.round(Number(String(txt).replace(/[^\d,]/g, '').replace(',', '.')) * 100);
   seiten.startwerte = {
-    hinweis: 'Startwerte aus dem statischen Stand von fokusinnovation.de (node prototype/fokus-innovation/bauen.mjs --startwerte <datei>). Alles hier steht öffentlich auf der Website. Für die Demo-Saat nur die Struktur übernehmen (ids, Bereiche, welche Felder es gibt), die Werte erfinden.',
+    hinweis: 'Startwerte aus dem statischen Stand von makeinnovation.de (node prototype/fokus-innovation/bauen.mjs --startwerte <datei>). Alles hier steht öffentlich auf der Website. Für die Demo-Saat nur die Struktur übernehmen (ids, Bereiche, welche Felder es gibt), die Werte erfinden.',
     stand: HEUTE,
     markierungen: {
       'preis:<angebot>': 'angebote[].preisText — Listen, Karten, Preiskasten der Angebotsseite',
@@ -1642,7 +1651,8 @@ ${W.artikel.map(artikelMd).join('\n\n')}
 
 // ── Prüfen: Regeln der Seite ─────────────────────────────────────────────────────────────────────────────────────────
 const SPERRWOERTER = [
-  [/\bMAKE\b/, 'alter Markenname „MAKE“'], [/KEMARIS/, 'KEMARIS'], [/Make\.One/i, 'Make.One'], [/\bConnect\b/i, 'Connect (nicht erwähnen)'],
+  [/\bMAKE\b(?!\s+(Innovation|INNOVATION)\b)/, 'MAKE nur als „MAKE Innovation“'], [/Fokus\x20Innovation|FOKUS\x20INNOVATION|fokusinnovation/i, 'alter Markenname „Fokus\u00a0Innovation“'],
+  [/Make Innovation|MAKE Innovations\b/, 'Schreibweise „MAKE Innovation“'], [/KEMARIS/, 'KEMARIS'], [/Make\.One/i, 'Make.One'], [/\bConnect\b/i, 'Connect (nicht erwähnen)'],
   [/MAKE OS|Make OS/i, 'Name der eigenen Software'], [/\b(führend|revolutionär|disruptiv|einzigartig|Gamechanger)\b/i, 'Superlativ'],
   [/Made in Germany|Deutschland first/i, 'Nationalstolz-Vokabular'], [/Investor(en)?-?(zugang|zugänge|kontakte)/i, 'Investoren nur im Gespräch'],
 ];
@@ -1658,8 +1668,7 @@ export function pruefen(seiten) {
     const sichtbar = s.html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ');
     const ohneFirmierung = (seiten.firmierungen ?? []).reduce((x, n) => x.split(e(n)).join(' '), sichtbar);
     for (const [re, was] of SPERRWOERTER) if (re.test(ohneFirmierung)) fehler.push(`${s.pfad}: ${was}`);
-    // Erlaubt sind nur die Kontaktadresse und die Adresse des Verantwortlichen der Anwendung (seite.anwendung.mail, wie im Hinweis aus MAKE OS).
-    if (/makeinnovation/i.test((seiten.erlaubteMails ?? ['kevin@makeinnovation.de']).reduce((x, m) => x.split(m).join(''), sichtbar))) fehler.push(`${s.pfad}: alte Domain im Text`);
+    // Die alte Adresse (makeinnovation.de) meldet SPERRWOERTER; makeinnovation.de ist seit 10.11. die Adresse der Marke.
     if (/\bZoe\b/.test(sichtbar) && !/KI-Assistentin/.test(sichtbar)) fehler.push(`${s.pfad}: Zoe ohne Kennzeichnung als KI-Assistentin`);
     if (/\{(preis|ab|zusatz):/.test(s.html)) fehler.push(`${s.pfad}: Platzhalter nicht ersetzt`);
     if (s.datei) continue;

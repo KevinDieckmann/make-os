@@ -34,7 +34,7 @@ const anleitungKz = {
   spalten: [{ breite: 34 }, { breite: 78 }, { breite: 16 }],
   zeilen: [
     [t('Vertriebskennzahlen je Phase', 'titel')],
-    [t('Fokus Innovation · fokusinnovation.de · Vorlage zum freien Gebrauch', 'hinweis')],
+    [t('MAKE Innovation · makeinnovation.de · Vorlage zum freien Gebrauch', 'hinweis')],
     [],
     [t('So nutzen Sie die Tabelle', 'kopf'), t('', 'kopf'), t('', 'kopf')],
     [t('1. Phase wählen', 'fett'), t('Start: Der Gründer verkauft selbst. Aufbau: Erste Vertriebler verkaufen mit. Wachstum: Ein Team mit mehreren Rollen und einer Vertriebsleitung. Bei Zweifel gilt die frühere Phase.')],
@@ -65,7 +65,7 @@ const anleitungKz = {
     [],
     [t('Richtwerte', 'kopf'), t('', 'kopf'), t('', 'kopf')],
     [t('Bewusst keine', 'fett'), t('Quoten hängen von Branche, Preis, Kanal und Kontaktliste ab. Setzen Sie Ziele aus Ihren eigenen Werten. Zeit bis zum Abschluss und Herkunft der Aufträge rechnet die Vorlage „Vertriebs-Pipeline“.')],
-    [t('Mehr dazu', 'fett'), t('Ratgeber: fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/ · Vertriebscheck: fokusinnovation.de/check?thema=vertrieb')],
+    [t('Mehr dazu', 'fett'), t('Ratgeber: makeinnovation.de/wissen/vertriebskennzahlen-je-phase/ · Vertriebscheck: makeinnovation.de/check?thema=vertrieb')],
   ],
 };
 
@@ -254,7 +254,7 @@ const anleitungP = {
   spalten: [{ breite: 30 }, { breite: 84 }],
   zeilen: [
     [t('Vertriebs-Pipeline', 'titel')],
-    [t('Fokus Innovation · fokusinnovation.de · Vorlage zum freien Gebrauch', 'hinweis')],
+    [t('MAKE Innovation · makeinnovation.de · Vorlage zum freien Gebrauch', 'hinweis')],
     [],
     [t('So nutzen Sie die Tabelle', 'kopf'), t('', 'kopf')],
     [t('Eine Zeile je Chance', 'fett'), t('Tragen Sie im Blatt „Pipeline“ jede Chance ein: Kontakt, Bedarf, Quelle, erstes Gespräch, nächster Schritt mit Nachfass-Datum, Stufe und Wert. Lila Felder sind Eingaben, der Rest rechnet selbst.')],
@@ -271,7 +271,7 @@ const anleitungP = {
     [],
     [t('Am Monatsende', 'kopf'), t('', 'kopf')],
     [t('Auswertung', 'fett'), t('Im Blatt „Auswertung“ den Monatsersten eintragen. Angebote, Gewonnen, Verloren, Abschlussquote, Zeit bis zum Abschluss und Wert rechnet die Tabelle aus den Daten der Pipeline. Offene Chancen und offenen Wert übertragen Sie am Monatsende aus „Stand heute“.')],
-    [t('Mehr dazu', 'fett'), t('Ratgeber: fokusinnovation.de/wissen/fuenf-vertriebszahlen/ · Kennzahlen je Phase: fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/')],
+    [t('Mehr dazu', 'fett'), t('Ratgeber: makeinnovation.de/wissen/fuenf-vertriebszahlen/ · Kennzahlen je Phase: makeinnovation.de/wissen/vertriebskennzahlen-je-phase/')],
   ],
 };
 

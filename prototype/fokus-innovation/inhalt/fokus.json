@@ -1,16 +1,16 @@
 {
-  "hinweis": "Texte der Marke Fokus Innovation aus dem Positionierungs-Doc (25.10.2026). Angebote, Preise, Produktblätter und Fragen kommen aus makeinnovation/inhalt/*.json. Statistiken nur mit Quelle und nur die, die im Doc als „Website, geprüft“ stehen.",
+  "hinweis": "Texte der Marke MAKE Innovation aus dem Positionierungs-Doc (25.10.2026). Angebote, Preise, Produktblätter und Fragen kommen aus makeinnovation/inhalt/*.json. Statistiken nur mit Quelle und nur die, die im Doc als „Website, geprüft“ stehen.",
   "marke": {
-    "name": "Fokus Innovation",
-    "claim": "Fortschritt braucht Fokus.",
+    "name": "MAKE Innovation",
+    "claim": "Innovation braucht Umsetzung.",
     "leitidee": "Wir rücken Innovation in den Fokus.",
     "kurz": "Sichtbar, verkauft, verbunden.",
-    "beschreibung": "Fokus Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um."
+    "beschreibung": "MAKE Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um."
   },
-  "domain": "fokusinnovation.de",
+  "domain": "makeinnovation.de",
   "film": {
     "hinweis": "Die Story der Startseite (Kevin 25.10., geschärft 29.10., neu 30.10. abends nach drei Analysen: Aufmerksamkeit, Kernproblem der Gründer, Story-Psychologie; Einstieg von Kevin gewählt). Bild 1 trifft Sichtbarkeit und Vertrieb zugleich, Bild 2 Sichtbarkeit (entschieden wird vor dem Erstkontakt), Bild 3 Vertrieb (wer anfragt, wartet), Bild 4 die Antwort mit dem Slogan, Bild 5 schließt den Bogen von Bild 1. Keine Zahlen im Film.",
-    "marke": "Fokus Innovation · Agentur für Sichtbarkeit, Vertrieb und Innovation",
+    "marke": "MAKE Innovation · Agentur für Sichtbarkeit, Vertrieb und Innovation",
     "laerm": {
       "titel": "Ihr Produkt ist besser,|als Ihr Umsatz zeigt?",
       "satz": "Kaum jemand kennt es, und verkauft wird, wenn neben Produkt, Team und Buchhaltung Zeit bleibt."
@@ -289,12 +289,12 @@
     }
   },
   "events": {
-    "titel": "Fokus Innovation · Events",
+    "titel": "MAKE Innovation · Events",
     "satz": "Verschiedene Formate. Ein Fokus. Menschen zusammenbringen, die Neues umsetzen.",
     "text": "Kuratiert und auf Einladung: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir planen verschiedene Formate, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.",
     "kosten": "Für Gäste kostenlos",
     "termine": "Termine, Orte und Formate stehen in jeder Einladung. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste.",
-    "betreff": "Fokus Innovation · Events · Gästeliste",
+    "betreff": "MAKE Innovation · Events · Gästeliste",
     "formate_hinweis": "Diese Formate planen wir. Welches wann stattfindet, steht in der Einladung.",
     "formate": [
       {
@@ -444,7 +444,7 @@
       "name": "Kevin Dieckmann",
       "kuerzel": "KD",
       "rolle": "Vertrieb und Umsetzung",
-      "text": "Kevin kommt aus der Vertriebsführung: Er hat Vertriebsteams geführt, Partnernetze aufgebaut und war Head of Sales bei einem FinTech. Bei Fokus Innovation verantwortet er Vertrieb und Umsetzung, verbindet Vertrieb mit KI und arbeitet selbst in den Projekten mit, auch im internationalen Umfeld."
+      "text": "Kevin kommt aus der Vertriebsführung: Er hat Vertriebsteams geführt, Partnernetze aufgebaut und war Head of Sales bei einem FinTech. Bei MAKE Innovation verantwortet er Vertrieb und Umsetzung, verbindet Vertrieb mit KI und arbeitet selbst in den Projekten mit, auch im internationalen Umfeld."
     },
     {
       "name": "Malin",
@@ -594,123 +594,123 @@
     ],
     "seiten": {
       "start": {
-        "titel": "Fokus Innovation · Agentur für Vertrieb, Sichtbarkeit, Innovation",
+        "titel": "MAKE Innovation · Agentur für Vertrieb, Sichtbarkeit, Innovation",
         "beschreibung": "Agentur aus Berlin für Gründer, Start-ups und Unternehmer: Wir machen Ihr Produkt sichtbar und bauen den Vertrieb, der daraus Kunden macht. Mit festen Preisen."
       },
       "sichtbarkeit": {
-        "titel": "Positionierung, Homepage, Video und PR · Fokus Innovation",
+        "titel": "Positionierung, Homepage, Video und PR · MAKE Innovation",
         "beschreibung": "Sichtbarkeit mit festen Preisen: Positionierung ab {ab:positionierung}, Homepages ab {preis:homepage-landing}, Erklärvideos ab {preis:erklaervideo}, PR und Kommunikation ab {ab:pr-kommunikation} im Monat."
       },
       "vertrieb": {
-        "titel": "Vertrieb: Tagesworkshop, Head of Sales und CSO · Fokus Innovation",
+        "titel": "Vertrieb: Tagesworkshop, Head of Sales und CSO · MAKE Innovation",
         "beschreibung": "Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt: Tagesworkshop für {preis:tagesworkshop}, Head of Sales und Chief Sales Officer auf Zeit für 6 oder 12 Monate."
       },
       "innovation": {
-        "titel": "Innovation: KI, Automatisierung, Software · Fokus Innovation",
+        "titel": "Innovation: KI, Automatisierung, Software · MAKE Innovation",
         "beschreibung": "Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start mit dem kostenlosen Innovations-Check in rund 10 Minuten."
       },
       "tagesworkshop": {
-        "titel": "Tagesworkshop Vertrieb und Markteintritt · Fokus Innovation",
+        "titel": "Tagesworkshop Vertrieb und Markteintritt · MAKE Innovation",
         "beschreibung": "Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten umsetzen. {preis:tagesworkshop} netto, beim Mandat angerechnet."
       },
       "head-of-sales": {
-        "titel": "Head of Sales auf Zeit · Fokus Innovation",
+        "titel": "Head of Sales auf Zeit · MAKE Innovation",
         "beschreibung": "Vertriebsleitung auf Zeit für 6 oder 12 Monate: Wir bauen Ihren Vertrieb auf, machen Ihrem Team vor und übergeben ein System. {preis:head-of-sales} netto im Monat."
       },
       "cso": {
-        "titel": "Chief Sales Officer auf Zeit (CSO) · Fokus Innovation",
+        "titel": "Chief Sales Officer auf Zeit (CSO) · MAKE Innovation",
         "beschreibung": "Vertriebsleitung mit Strategie, Preisen, Teamaufbau und Recruiting für 6 oder 12 Monate. {preis:cso} netto im Monat, Wechsel vom Head of Sales jederzeit."
       },
       "homepage-landing": {
-        "titel": "Homepage Landing: One-Pager in 10 Werktagen · Fokus Innovation",
+        "titel": "Homepage Landing: One-Pager in 10 Werktagen · MAKE Innovation",
         "beschreibung": "Eine Seite, die in fünf Sekunden klar ist: One-Pager mit Texten von uns, SEO-Grundlagen und Anfragen direkt ins CRM. {preis:homepage-landing} netto, in 10 Werktagen."
       },
       "homepage-story": {
-        "titel": "Homepage Story: Website mit Unterseiten · Fokus Innovation",
+        "titel": "Homepage Story: Website mit Unterseiten · MAKE Innovation",
         "beschreibung": "Ihre Geschichte als Website: Startseite mit 3D-Effekt und drei Unterseiten, Texte von uns, fertig in 15 Werktagen. {preis:homepage-story} netto, einmalig."
       },
       "homepage-cinematic": {
-        "titel": "Homepage Cinematic: Website mit 3D-Szenen · Fokus Innovation",
+        "titel": "Homepage Cinematic: Website mit 3D-Szenen · MAKE Innovation",
         "beschreibung": "Startseite mit 3D-Szenen, fünf Unterseiten, Story-Workshop und Erklärvideo inklusive, fertig in 25 Werktagen. {preis:homepage-cinematic} netto, einmalig."
       },
       "erklaervideo": {
-        "titel": "Erklärvideo in 10 Werktagen · Fokus Innovation",
+        "titel": "Erklärvideo in 10 Werktagen · MAKE Innovation",
         "beschreibung": "Ihr Angebot in 90 Sekunden verstanden: Erklärvideo in Ihrer CI, ohne Dreh vor Ort, in drei Bildformaten mit Untertiteln. {preis:erklaervideo} netto, in 10 Werktagen."
       },
       "videostory": {
-        "titel": "Videostory: die Geschichte Ihrer Firma · Fokus Innovation",
+        "titel": "Videostory: die Geschichte Ihrer Firma · MAKE Innovation",
         "beschreibung": "Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich und in Ihrer CI, mit KI-Stimme oder Ihrer eigenen. {preis:videostory} netto, fertig in 15 Werktagen."
       },
       "video-serie": {
-        "titel": "Videoserie: zwei Videos im Monat · Fokus Innovation",
+        "titel": "Videoserie: zwei Videos im Monat · MAKE Innovation",
         "beschreibung": "Jeden Monat zwei neue Videos nach Redaktionsplan: Sie planen 30 Minuten mit, Skript und Schnitt machen wir. {preis:video-serie} netto im Monat, mindestens 3 Monate."
       },
       "positionierung": {
-        "titel": "Positionierung entwickeln in drei Tiefen · Fokus Innovation",
+        "titel": "Positionierung entwickeln in drei Tiefen · MAKE Innovation",
         "beschreibung": "Positionierung S, M oder L: von fünf klaren Sätzen bis zur Markenstory, mit KI vorbereitet und im Workshop mit Kevin geschärft. Ab {ab:positionierung} netto."
       },
       "umsetzungsprojekte": {
-        "titel": "Umsetzungsprojekte: KI und Software einführen · Fokus Innovation",
+        "titel": "Umsetzungsprojekte: KI und Software einführen · MAKE Innovation",
         "beschreibung": "KI und Software einführen, bis sie im Alltag genutzt werden: Projekte mit Festpreis und klarem Umfang, vorab vereinbart. Haben Sie ein Vorhaben, sprechen Sie uns an."
       },
       "innovations-check": {
-        "titel": "Innovations-Check: kostenlos in 10 Minuten · Fokus Innovation",
+        "titel": "Innovations-Check: kostenlos in 10 Minuten · MAKE Innovation",
         "beschreibung": "Wo steht Ihr Unternehmen bei Strategie, KI, Automatisierung, Daten und Team? Der kostenlose Innovations-Check zeigt es in rund 10 Minuten, mit Branchenvergleich."
       },
       "ueber-uns": {
-        "titel": "Über uns: Kevin Dieckmann und Malin · Fokus Innovation",
-        "beschreibung": "Warum es Fokus Innovation gibt, wer dahintersteht und woran Sie uns messen können: Werte, Arbeitsweise und was wir vorher im Vertrieb aufgebaut haben."
+        "titel": "Über uns: Kevin Dieckmann und Malin · MAKE Innovation",
+        "beschreibung": "Warum es MAKE Innovation gibt, wer dahintersteht und woran Sie uns messen können: Werte, Arbeitsweise und was wir vorher im Vertrieb aufgebaut haben."
       },
       "kontakt": {
-        "titel": "Kontakt · Fokus Innovation",
-        "beschreibung": "So erreichen Sie Fokus Innovation in Berlin: Erstgespräch vereinbaren, per E-Mail schreiben oder mit dem kostenlosen Innovations-Check in 10 Minuten starten."
+        "titel": "Kontakt · MAKE Innovation",
+        "beschreibung": "So erreichen Sie MAKE Innovation in Berlin: Erstgespräch vereinbaren, per E-Mail schreiben oder mit dem kostenlosen Innovations-Check in 10 Minuten starten."
       },
       "impressum": {
-        "titel": "Impressum · Fokus Innovation",
-        "beschreibung": "Impressum von Fokus Innovation: Anbieter nach § 5 DDG, Vertretung, Registereintrag, Kontakt und Vertragspartner für unsere Leistungen."
+        "titel": "Impressum · MAKE Innovation",
+        "beschreibung": "Impressum von MAKE Innovation: Anbieter nach § 5 DDG, Vertretung, Registereintrag, Kontakt und Vertragspartner für unsere Leistungen."
       },
       "datenschutz": {
-        "titel": "Datenschutz · Fokus Innovation",
-        "beschreibung": "Datenschutzhinweis von Fokus Innovation: keine Cookies, kein Tracking, Hosting in Deutschland. Was wir verarbeiten, wenn Sie den Check nutzen oder uns schreiben."
+        "titel": "Datenschutz · MAKE Innovation",
+        "beschreibung": "Datenschutzhinweis von MAKE Innovation: keine Cookies, kein Tracking, Hosting in Deutschland. Was wir verarbeiten, wenn Sie den Check nutzen oder uns schreiben."
       },
       "wissen": {
-        "titel": "Wissen: Vertrieb, Sichtbarkeit und KI · Fokus Innovation",
+        "titel": "Wissen: Vertrieb, Sichtbarkeit und KI · MAKE Innovation",
         "beschreibung": "Ratgeber aus unserer Arbeit: Vertrieb aufbauen, Head of Sales auf Zeit, Positionierung, Homepage, Erklärvideo und KI im Mittelstand. Praktisch und mit Quellen."
       },
       "preise": {
-        "titel": "Preise: alle Angebote im Überblick · Fokus Innovation",
-        "beschreibung": "Alle Preise von Fokus Innovation auf einer Seite: Positionierung, Homepages, Videos, PR, Tagesworkshop, Head of Sales und CSO. Netto, mit Laufzeit und Lieferzeit."
+        "titel": "Preise: alle Angebote im Überblick · MAKE Innovation",
+        "beschreibung": "Alle Preise von MAKE Innovation auf einer Seite: Positionierung, Homepages, Videos, PR, Tagesworkshop, Head of Sales und CSO. Netto, mit Laufzeit und Lieferzeit."
       },
       "fragen": {
-        "titel": "Häufige Fragen · Fokus Innovation",
-        "beschreibung": "Antworten auf die häufigsten Fragen zu Innovations-Check, Vertrieb, Homepages, Videos, Preisen und Verträgen bei Fokus Innovation in Berlin."
+        "titel": "Häufige Fragen · MAKE Innovation",
+        "beschreibung": "Antworten auf die häufigsten Fragen zu Innovations-Check, Vertrieb, Homepages, Videos, Preisen und Verträgen bei MAKE Innovation in Berlin."
       },
       "begriffe": {
-        "titel": "Begriffe von A bis Z: Vertrieb, Marketing, KI · Fokus Innovation",
+        "titel": "Begriffe von A bis Z: Vertrieb, Marketing, KI · MAKE Innovation",
         "beschreibung": "Was ist ein Sales Playbook, eine Pipeline oder Lead-Scoring? Kurze, klare Erklärungen der Begriffe aus Vertrieb, Sichtbarkeit und der Einführung von KI."
       },
       "kostenlos": {
-        "titel": "Kostenlos: Checks, Ratgeber, Vorlagen · Fokus Innovation",
+        "titel": "Kostenlos: Checks, Ratgeber, Vorlagen · MAKE Innovation",
         "beschreibung": "Kostenlose Checks, Ratgeber, Zahlen mit Quelle und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Für Unternehmer und Mittelstand."
       },
       "zahlen": {
-        "titel": "Zahlen zu Vertrieb, Sichtbarkeit und KI · Fokus Innovation",
+        "titel": "Zahlen zu Vertrieb, Sichtbarkeit und KI · MAKE Innovation",
         "beschreibung": "Studien zu Sichtbarkeit, Vertrieb und KI in deutschen Unternehmen, kurz erklärt. Jede Zahl mit Herausgeber, Jahr und Link zur Quelle."
       },
       "events": {
-        "titel": "Fokus Innovation · Events für Menschen, die Neues umsetzen",
+        "titel": "MAKE Innovation · Events für Menschen, die Neues umsetzen",
         "beschreibung": "Kuratiert und auf Einladung: Gesprächsrunden, Impulsabende, Workshops und Netzwerktreffen für Gründer und Mittelstand. Für Gäste kostenlos, Gastgeberin ist Malin."
       },
       "pr-kommunikation": {
-        "titel": "PR und Kommunikation auf Zeit · Fokus Innovation",
+        "titel": "PR und Kommunikation auf Zeit · MAKE Innovation",
         "beschreibung": "Auftritte und Beiträge in Leitmedien, Fachmedien, regionalen Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krise. Ab {ab:pr-kommunikation} netto im Monat."
       },
       "in-den-markt": {
-        "titel": "Innovation in den Markt bringen · Fokus Innovation",
+        "titel": "Innovation in den Markt bringen · MAKE Innovation",
         "beschreibung": "Ihr Produkt ist stark, jetzt braucht es Kunden: Positionierung, Website, Videos und PR machen Sie sichtbar, ein Vertrieb mit System macht Kunden daraus."
       },
       "ins-unternehmen": {
-        "titel": "Innovation ins Unternehmen bringen · Fokus Innovation",
+        "titel": "Innovation ins Unternehmen bringen · MAKE Innovation",
         "beschreibung": "KI im Alltag nutzen, nicht nur ausprobieren: Erst Abläufe und Daten ordnen, dann KI und neue Software einführen, bis Ihr Team damit arbeitet."
       }
     }
@@ -898,7 +898,7 @@
     ],
     "ein_satz": "Wir machen gute Produkte bekannt und bauen den Vertrieb, der daraus Kunden macht.",
     "sieben_woerter": "Sichtbar sein, planbar verkaufen, KI nutzen.",
-    "claim": "Fortschritt braucht Fokus."
+    "claim": "Innovation braucht Umsetzung."
   },
   "wochenreport_muster": {
     "titel": "So sieht ein Wochenreport aus",
@@ -1051,7 +1051,7 @@
       "titel": "Homepages.",
       "ruhig": "Drei Pakete, ein Ziel.",
       "lead": "Eine Website, auf der Besucher in fünf Sekunden verstehen, was Sie machen, und die Anfragen bringt. Es gibt drei Pakete mit festem Preis und fester Lieferzeit. Sie unterscheiden sich darin, wie viel Geschichte die Seite erzählt und wie aufwendig sie gestaltet ist.",
-      "seo_titel": "Homepages: drei Pakete mit Festpreis · Fokus Innovation",
+      "seo_titel": "Homepages: drei Pakete mit Festpreis · MAKE Innovation",
       "seo_beschreibung": "Homepage Landing, Story und Cinematic: drei Pakete mit festem Preis und fester Lieferzeit, Texte von uns, mobil zuerst und mit Anfrage ins CRM."
     },
     "Videos": {
@@ -1060,7 +1060,7 @@
       "titel": "Videos.",
       "ruhig": "Erklären, erzählen, dranbleiben.",
       "lead": "Unsere Videos zeigen in Sekunden, was Sie machen, vom einzelnen Erklärvideo bis zur Serie. Sie geben zuerst das Skript frei, dann entstehen die Bilder. Alle drei Angebote haben einen festen Preis, Erklärvideo und Videostory auch eine feste Lieferzeit.",
-      "seo_titel": "Videos für Unternehmen: drei Angebote · Fokus Innovation",
+      "seo_titel": "Videos für Unternehmen: drei Angebote · MAKE Innovation",
       "seo_beschreibung": "Erklärvideo, Videostory und Video Serie: Videos, die Ihr Angebot in Sekunden zeigen, mit Skript zur Freigabe, festem Preis und fester Lieferzeit."
     }
   },

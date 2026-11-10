@@ -1,8 +1,9 @@
-// Fokus Innovation · der Film der Startseite (Prototyp 25.10.2026, dritte Fassung — ruhiger).
-// Fünf Bilder, ein Motiv: vom Lärm zum Durchbruch, am Ende steht das Logo mit der Wortmarke. Der Fortschritt p (0 → 1) folgt dem
+// MAKE Innovation · der Film der Startseite (Prototyp 25.10.2026, vierte Fassung 10.11.: Zeichen „Durchbruch“).
+// Fünf Bilder, ein Motiv: vom Lärm zum Durchbruch – Punkte werden Kern, eine Wand wächst, der Kern nimmt mit seiner Spur Fahrt auf
+// und geht hindurch; am Ende steht das Logo mit der Wortmarke. Der Fortschritt p (0 → 1) folgt dem
 // Scrollen mit etwas Trägheit (das Scrollen bleibt das des Browsers); die Wörter erscheinen nach der Uhr, nicht am Scrollrad.
 // „Bewegung reduzieren“ oder kein WebGL → ein Standbild mit dem fertigen Logo, die Seite liest sich normal.
-import { szeneStarten, geschichte } from './szene.js?v=f1f2853060';
+import { szeneStarten, geschichte } from './szene.js?v=5cb1018678';
 
 const wurzel = document.documentElement;
 const ruhig = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -21,8 +22,9 @@ const span = (p, [a, b]) => clamp01((p - a) / (b - a));
 const ABLAUF = {
   aufgaben: [0.10, 0.22],     // die Aufgaben rund um den Gründer treten zurück
   fokus: [0.11, 0.33],        // die Punkte sammeln sich zum Kern: das Produkt
-  momentum: [0.50, 0.68],     // ein Punkt löst sich und zieht die Bahn: das System
-  durchbruch: [0.71, 0.80],   // er geht durch die Lücke nach außen: in den Markt
+  luecke: [0.35, 0.47],       // vor ihm wächst die Wand: der Markt, der noch nicht kauft
+  momentum: [0.50, 0.68],     // der Kern nimmt Fahrt auf, hinter ihm die Spur: das System
+  durchbruch: [0.71, 0.80],   // er geht durch die Wand und steht im Logo: der Durchbruch
 };
 const BLENDE = 0.035;
 const BLOECKE = [
@@ -69,7 +71,7 @@ if (!szene) {
   if (still) {
     const malen = () => {
       still.groesse();
-      geschichte(still.zustand, { fokus: 1, momentum: 1, durchbruch: 1 });
+      geschichte(still.zustand, { fokus: 1, luecke: 1, momentum: 1, durchbruch: 1 });
       still.zustand.punkteSichtbar = 0;
       still.zustand.puls = 0;
       still.malen(4);
@@ -135,7 +137,7 @@ function takt(jetzt) {
   bild++;
   if (!document.hidden && sichtbar && (!leerlauf || bild % 2 === 0)) {
     const z = szene.zustand;
-    geschichte(z, { fokus: span(pGlatt, ABLAUF.fokus), momentum: span(pGlatt, ABLAUF.momentum), durchbruch: span(pGlatt, ABLAUF.durchbruch) });
+    geschichte(z, { fokus: span(pGlatt, ABLAUF.fokus), luecke: span(pGlatt, ABLAUF.luecke), momentum: span(pGlatt, ABLAUF.momentum), durchbruch: span(pGlatt, ABLAUF.durchbruch) });
     // Beim Start tauchen die Punkte langsam auf
     z.punkteSichtbar = start === null ? 0 : clamp01((jetzt - start) / 1800);
     // Der Raum blüht beim Start einmal auf (1,4 s), jeder Bildwechsel gibt der Mitte ein kurzes Aufatmen
