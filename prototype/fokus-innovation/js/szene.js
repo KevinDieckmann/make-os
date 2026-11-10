@@ -37,9 +37,12 @@ float risse(vec2 p) {
   return sqrt(d2) - sqrt(d1);
 }
 // Ein Licht, das einen Strich entlang zum Kern läuft: hell an der Spitze, dahinter ein kurzer Schweif
+// Ein Licht läuft die Spur entlang: weicher Kopf, langer Schweif; es fließt links herein und rechts hinaus (kein harter Sprung)
 float lichtLauf(float entlang, float phase) {
-  float d = phase - entlang;
-  return exp(-max(d, 0.0) * 6.0) * smoothstep(-0.09, 0.0, d) * smoothstep(0.0, 0.12, phase);
+  float p = phase * 1.3 - 0.15;
+  float d = p - entlang;
+  float kopf = exp(-max(d, 0.0) * 4.5) * smoothstep(-0.22, 0.0, d);
+  return kopf * smoothstep(-0.15, 0.05, p) * (1.0 - smoothstep(1.0, 1.15, p));
 }
 void main() {
   vec2 uv = gl_FragCoord.xy / uRes;
@@ -180,13 +183,16 @@ void main() {
     float s2 = strich(w, vec2(ende - l2, 0.0), vec2(ende, 0.0), 1.3);
     float s3 = strich(w, vec2(ende - l3, -5.5), vec2(ende, -5.5), 1.3);
     float sd = min(s1, min(s2, s3));
-    float lang = l2, versatz = 0.0;
-    if (s1 < s2 && s1 < s3) { lang = l1; versatz = 0.31; } else if (s3 < s2) { lang = l3; versatz = 0.63; }
+    float lang = l2, versatz = 0.0, yl = 0.0;
+    if (s1 < s2 && s1 < s3) { lang = l1; versatz = 0.31; yl = 5.5; } else if (s3 < s2) { lang = l3; versatz = 0.63; yl = -5.5; }
     float entlang = clamp((w.x - (ende - lang)) / max(lang, 0.01), 0.0, 1.0);
-    float puls = lichtLauf(entlang, fract(uFaden + versatz)) * uTempo
-               + lichtLauf(entlang, fract(takt - versatz * 0.08)) * uRuhe * uPuls * 0.85;
-    col += uAkzent * (0.16 * uTempo * exp(-max(sd, 0.0) / 1.5) + 0.3 * puls * exp(-max(sd, 0.0) / 0.8)) * uSpurA;
-    col = mix(col, mix(uAkzent, vec3(1.0), 0.6 * puls), smoothstep(pw, -pw, sd) * uSpurA);
+    float phaseF = fract(uFaden + versatz), phaseR = fract(takt - versatz * 0.2);
+    float puls = min(1.0, lichtLauf(entlang, phaseF) * uTempo + lichtLauf(entlang, phaseR) * uRuhe * uPuls * 0.85);
+    col += uAkzent * (0.16 * uTempo * exp(-max(sd, 0.0) / 1.5) + 0.26 * puls * exp(-max(sd, 0.0) / 0.9)) * uSpurA;
+    col = mix(col, mix(uAkzent, vec3(1.0), 0.5 * puls), smoothstep(pw, -pw, sd) * uSpurA);
+    // Kommt das Licht vorn an, leuchtet die Spitze kurz auf
+    float an = lichtLauf(1.0, phaseF) * uTempo + lichtLauf(1.0, phaseR) * uRuhe * uPuls * 0.7;
+    col += mix(uAkzent, vec3(1.0), 0.35) * min(an, 1.0) * exp(-length(w - vec2(ende, yl)) / 1.3) * 0.32 * uSpurA;
   }
 
   // Der Kern: Kugel mit Licht von oben links, gestaucht beim Drücken, gestreckt in voller Fahrt
@@ -222,7 +228,7 @@ void main() {
 const PUNKTE_VS = `
 attribute vec4 aZufall;
 uniform vec2 uRes, uC;
-uniform float uZeit, uR, uCam, uKX, uSammeln, uStrom, uStromP, uTempo, uDpr, uSichtbar;
+uniform float uZeit, uR, uCam, uKX, uSammeln, uStrom, uStromP, uTempo, uDpr, uSichtbar, uStreck;
 varying float vA, vMisch, vStreck, vWeich, vStrich, vStrom;
 varying vec2 vRicht;
 vec2 bild(vec2 w) { return uC + (w - vec2(uCam, 0.0)) * (uR / 16.0); }
@@ -244,17 +250,18 @@ void main() {
   float tempoS = clamp(e * (1.0 - e) * 4.0, 0.0, 1.0) * 0.85;
   float unten = mix(0.28, 1.0, smoothstep(0.08, 0.46, p0.y));
   float aS = (0.2 + 0.3 * s.w) * mix(unten, 1.0, e) * (1.0 - smoothstep(0.75, 1.0, e));
-  // Momentum: drei Bahnen hinter dem Kern, das Licht strömt hinein
+  // Momentum: drei Bahnen hinter dem Kern, das Licht strömt bis an den Anfang seiner Linie und geht dort in sie über (nie über die Linie)
   float bahn = floor(s.z * 3.0);
   float by = 5.5 - 5.5 * bahn + (s.y - 0.5) * 1.8;
+  float lang = (bahn < 0.5 ? 8.5 : (bahn < 1.5 ? 10.5 : 6.5)) * uStreck;
   float lauf = fract(s.x + uStromP * (0.7 + 0.6 * s.w));
-  vec2 posS = bild(vec2(mix(uKX - 46.0, uKX - 9.5, lauf), by));
-  float aStr = (0.3 + 0.45 * s.w) * smoothstep(0.0, 0.22, lauf) * (1.0 - smoothstep(0.8, 1.0, lauf));
+  vec2 posS = bild(vec2(mix(uKX - 50.0, uKX - 16.6 - lang, lauf), by));
+  float aStr = (0.3 + 0.45 * s.w) * smoothstep(0.0, 0.22, lauf) * (1.0 - smoothstep(0.62, 1.0, lauf)) * smoothstep(0.18, 0.42, s.w);
   bool strom = uStrom > 0.001;
   pos = strom ? posS : pos;
-  vA = (strom ? aStr * uStrom * mix(0.45, 1.0, uTempo) : aS) * uSichtbar;
+  vA = (strom ? aStr * uStrom * mix(0.38, 1.0, uTempo) : aS) * uSichtbar;
   vRicht = strom ? vec2(1.0, 0.0) : vec2(richt.x, -richt.y);
-  vStreck = strom ? max(uTempo, 0.55) : tempoS;
+  vStreck = strom ? max(uTempo, 0.9) : tempoS;
   vWeich = strom ? 0.0 : smoothstep(0.78, 1.0, s.w) * (1.0 - e);
   vStrich = strom ? 0.0 : step(s.z, 0.28) * (1.0 - smoothstep(0.15, 0.6, e));
   vStrom = strom ? 1.0 : 0.0;
@@ -397,7 +404,7 @@ export function szeneStarten(canvas, { handy = false, anker = null } = {}) {
   }
   const uF = orte(gl, flaeche, ['uRes', 'uC', 'uKS', 'uZeit', 'uR', 'uKern', 'uKX', 'uCam', 'uWand', 'uSpurA', 'uStreck', 'uPuls', 'uWeite', 'uBluete', 'uImpuls',
     'uEnergie', 'uRiss', 'uBeule', 'uGlut', 'uLoch', 'uKnall', 'uTempo', 'uFaden', 'uFahrt', 'uRuhe', 'uTiefe', 'uAkzent', 'uKernF', 'uHell', 'uNacht']);
-  const uP = orte(gl, punkte, ['uRes', 'uC', 'uZeit', 'uR', 'uCam', 'uKX', 'uSammeln', 'uStrom', 'uStromP', 'uTempo', 'uDpr', 'uSichtbar', 'uAkzent', 'uKernF', 'uHell']);
+  const uP = orte(gl, punkte, ['uRes', 'uC', 'uZeit', 'uR', 'uCam', 'uKX', 'uSammeln', 'uStrom', 'uStromP', 'uTempo', 'uStreck', 'uDpr', 'uSichtbar', 'uAkzent', 'uKernF', 'uHell']);
   const uS = orte(gl, splitter, ['uRes', 'uC', 'uR', 'uCam', 'uT', 'uAkzent', 'uHell']);
 
   const dreieck = gl.createBuffer();
@@ -510,6 +517,7 @@ export function szeneStarten(canvas, { handy = false, anker = null } = {}) {
       gl.uniform1f(uP.uStrom, z.strom);
       gl.uniform1f(uP.uStromP, z.stromP);
       gl.uniform1f(uP.uTempo, z.tempo);
+      gl.uniform1f(uP.uStreck, z.streck);
       gl.uniform1f(uP.uDpr, dpr);
       gl.uniform1f(uP.uSichtbar, z.punkteSichtbar);
       gl.uniform3fv(uP.uAkzent, FARBEN.akzent);

@@ -4,7 +4,7 @@
 // seinen Platz im Endbild (Rechner: rechts, Claim und Knöpfe links · Handy: oben, darunter Wortmarke, Claim, Knöpfe).
 // Der Fortschritt p (0 → 1) folgt dem Scrollen mit etwas Trägheit (das Scrollen bleibt das des Browsers); die Wörter erscheinen nach der
 // Uhr, nicht am Scrollrad. „Bewegung reduzieren“ oder kein WebGL → ein Standbild mit dem Endbild, die Seite liest sich normal.
-import { szeneStarten, geschichte, BRUCH } from './szene.js?v=ce61b8dd81';
+import { szeneStarten, geschichte, BRUCH } from './szene.js?v=abc6f98e65';
 
 const wurzel = document.documentElement;
 const ruhig = matchMedia('(prefers-reduced-motion: reduce)').matches;

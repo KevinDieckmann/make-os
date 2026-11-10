@@ -144,4 +144,6 @@
 @media (max-width: 760px) {
   .ueberspringen { bottom: 12px; min-height: 40px; font-size: .8rem; }
   .block[data-block="laerm"] .film-text { bottom: max(14vh, 96px); }
+  /* Am Handy steht der Hinweis links unten, der Knopf „Film überspringen“ rechts – sie stoßen nicht aneinander */
+  .hinweis { left: var(--rand); translate: 0 0; align-items: flex-start; bottom: 6px; }
 }
