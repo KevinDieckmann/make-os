@@ -1144,7 +1144,7 @@ html.menue-offen { overflow: hidden; }
 .rechner-eingabe .einheit { min-width: 3.8rem; }
 @media (max-width: 560px) { .rechner-feld { grid-template-columns: minmax(0, 1fr); } .rechner-eingabe input { max-width: 12rem; } }
 
-/* Termine aus MAKE OS (31.10., js/inhalt.js) — ohne Termine bleibt die Liste verborgen. */
+/* Termine aus unserer Anwendung (31.10., js/inhalt.js) — ohne Termine bleibt die Liste verborgen. */
 [data-mk][hidden] { display: none; }
 .termine-liste { margin: 8px 0 20px; }
 .termine-liste li { display: grid; gap: 2px; padding: 12px 0; border-top: 1px solid var(--haar); }
