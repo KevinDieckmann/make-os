@@ -1627,6 +1627,7 @@ ${W.artikel.map(artikelMd).join('\n\n')}
   seiten.stand = STAND;
   // Firmierungen sind Rechtsangaben (Impressum, Verkäufer der Bausteine), keine Marke — der Prüfer lässt genau diese Namen zu.
   seiten.firmierungen = Object.values(seite.anbieter ?? {}).map((a) => a.name).filter((n) => n && !istPlatzhalter(n));
+  seiten.domain = F.domain;
   seiten.erlaubteMails = [seite.kontakt.mail, seite.anwendung?.mail].filter(Boolean);
   const cent = (txt) => Math.round(Number(String(txt).replace(/[^\d,]/g, '').replace(',', '.')) * 100);
   seiten.startwerte = {
@@ -1667,9 +1668,9 @@ export function pruefen(seiten) {
   let platzhalter = 0;
   for (const s of seiten) {
     const sichtbar = s.html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ');
-    const ohneFirmierung = (seiten.firmierungen ?? []).reduce((x, n) => x.split(e(n)).join(' '), sichtbar);
+    // Die eigene Adresse (fokus.json › domain) ist kein Sperrwort: läuft die Seite noch auf fokusinnovation.de, steht sie in Sitemap und llms.txt.
+    const ohneFirmierung = [...(seiten.firmierungen ?? []).map((n) => e(n)), ...(seiten.domain ? [seiten.domain] : [])].reduce((x, n) => x.split(n).join(' '), sichtbar);
     for (const [re, was] of SPERRWOERTER) if (re.test(ohneFirmierung)) fehler.push(`${s.pfad}: ${was}`);
-    // Die alte Adresse (makeinnovation.de) meldet SPERRWOERTER; makeinnovation.de ist seit 10.11. die Adresse der Marke.
     if (/\bZoe\b/.test(sichtbar) && !/KI-Assistentin/.test(sichtbar)) fehler.push(`${s.pfad}: Zoe ohne Kennzeichnung als KI-Assistentin`);
     if (/\{(preis|ab|zusatz):/.test(s.html)) fehler.push(`${s.pfad}: Platzhalter nicht ersetzt`);
     if (s.datei) continue;
