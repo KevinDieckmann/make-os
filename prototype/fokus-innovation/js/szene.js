@@ -58,7 +58,8 @@ void main() {
     float dl = length(dv * vec2(1.0, 0.85));
     float rad = 2.0 + 78.0 * (1.0 - exp(-uKnall * 2.1));
     float dicke = 1.4 + rad * 0.07;
-    welle2 = exp(-pow((dl - rad) / dicke, 2.0)) * exp(-uKnall * 1.8);
+    float wq = (dl - rad) / dicke;
+    welle2 = exp(-wq * wq) * exp(-uKnall * 1.8);
     w -= normalize(dv + 0.0001) * welle2 * 1.6;
     blitz = exp(-uKnall * 6.5);
   }
@@ -94,8 +95,9 @@ void main() {
   col += mix(uKernF, uAkzent, 0.5) * 0.07 * uEnergie * exp(-aussen / (uR * 1.5)) * uKern;
   float welleT = clamp((takt - 0.04) / 0.9, 0.0, 1.0);
   float welleR = mix(kernR, uR * 1.15, 1.0 - (1.0 - welleT) * (1.0 - welleT));
-  float welle = smoothstep(uR * 0.03, 0.0, abs(lr - welleR)) * (1.0 - welleT) * (1.0 - welleT) * step(0.001, welleT) * uKern * uPuls;
-  col = mix(col, uAkzent, welle * 0.4);
+  float wAbst = (lr - welleR) / (uR * 0.055);
+  float welle = exp(-wAbst * wAbst) * pow(1.0 - welleT, 3.0) * step(0.001, welleT) * uKern * uPuls;
+  col += mix(uAkzent, vec3(1.0), 0.2) * welle * 0.16;
 
   // Fahrt: feine Lichtstriche ziehen am Rand vorbei nach links (nur solange Tempo da ist, nicht hinter den Worten unten)
   if (uTempo > 0.01) {
@@ -126,12 +128,23 @@ void main() {
     float lochD = length(w - kp) - uLoch;
     float wd = uLoch > 0.0 ? max(wd0, -lochD) : wd0;
     float innen = smoothstep(pw, -pw, wd);
+    // Die Wand steht im Raum: weicher Schatten auf dem Grund
+    col *= 1.0 - 0.28 * exp(-max(wd, 0.0) / 2.2) * (1.0 - innen);
     // Leiser Schein um die Wand, wenn sie unter Druck steht oder glüht
     col += uAkzent * (0.22 * uRiss + 0.45 * uGlut) * exp(-max(wd, 0.0) / 1.8);
     // Material: oben etwas heller, zum Kern hin violett angestrahlt
     vec3 wf = uHell * (0.84 + 0.16 * smoothstep(-18.0, 18.0, w.y));
     float licht = exp(-max(length(w - kp) - 10.2, 0.0) / 7.0) * uKern;
     wf = mix(wf, mix(uHell, uAkzent, 0.7), 0.26 * licht * uTiefe);
+    // Kanten: zum Kern hin hell und violett angestrahlt, abgewandt etwas dunkler; ein leiser Glanzstreifen
+    float nahRand = smoothstep(-1.0, -0.05, abs(wp.x) - 3.5) * smoothstep(-0.2, -1.4, abs(wp.y) - hoehe);
+    float links = smoothstep(0.8, -0.8, wp.x);
+    wf += mix(vec3(1.0), uAkzent, 0.35 + 0.4 * licht) * nahRand * links * (0.07 + 0.12 * licht) * uTiefe;
+    wf *= 1.0 - 0.1 * nahRand * (1.0 - links) * uTiefe;
+    float glanzX = (wp.x + 1.3) / 0.8;
+    wf += 0.045 * exp(-glanzX * glanzX) * uTiefe;
+    // Fassung um die Öffnung: der Kern sitzt in der Wand
+    if (uLoch > 0.0) wf *= 1.0 - 0.16 * exp(-max(lochD, 0.0) / 1.1) * uTiefe;
     if (uRiss > 0.001 && abs(w.x) < 8.0) {
       vec2 rp = w - stoss;
       float rr = length(rp);
@@ -189,6 +202,7 @@ void main() {
     vec3 kf = uKernF * mix(1.0, 0.6 + 0.58 * diff, uTiefe);
     kf += vec3(0.77, 0.71, 0.99) * glanz * 0.3 * uTiefe;
     kf += uAkzent * 0.18 * uEnergie * (1.0 - n.z) * uTiefe;
+    kf += mix(uAkzent, vec3(1.0), 0.3) * 0.1 * pow(1.0 - n.z, 3.0) * uTiefe;
     col = mix(col, kf, a);
   }
 
@@ -238,9 +252,9 @@ void main() {
   float aStr = (0.3 + 0.45 * s.w) * smoothstep(0.0, 0.22, lauf) * (1.0 - smoothstep(0.8, 1.0, lauf));
   bool strom = uStrom > 0.001;
   pos = strom ? posS : pos;
-  vA = (strom ? aStr * uStrom : aS) * uSichtbar;
+  vA = (strom ? aStr * uStrom * mix(0.45, 1.0, uTempo) : aS) * uSichtbar;
   vRicht = strom ? vec2(1.0, 0.0) : vec2(richt.x, -richt.y);
-  vStreck = strom ? uTempo : tempoS;
+  vStreck = strom ? max(uTempo, 0.55) : tempoS;
   vWeich = strom ? 0.0 : smoothstep(0.78, 1.0, s.w) * (1.0 - e);
   vStrich = strom ? 0.0 : step(s.z, 0.28) * (1.0 - smoothstep(0.15, 0.6, e));
   vStrom = strom ? 1.0 : 0.0;
@@ -267,7 +281,9 @@ void main() {
   float kopf = mix(1.0, 0.2 + 0.8 * smoothstep(-halb, halb, entlang), min(1.0, vStreck * 3.0));
   float a = form * kopf * vA * mix(1.0, 0.5, vWeich);
   vec3 f = vMisch < 0.28 ? uAkzent : (vMisch > 0.93 ? uKernF : uHell);
-  f = mix(f, mix(uAkzent, uHell, 0.3), vStrom * 0.65);
+  float kopfPos = smoothstep(-halb, halb, entlang);
+  vec3 strichF = mix(mix(uAkzent, uKernF, 0.35), vec3(1.0), 0.15 + 0.55 * kopfPos * kopfPos);
+  f = mix(f, strichF, max(min(1.0, vStreck * 1.8) * (1.0 - vStrich), vStrom));
   gl_FragColor = vec4(f * a, a);
 }`;
 
