@@ -1,6 +1,6 @@
 // Problem-Bilder für die rechte Seite im Kopf der Seiten (Kevin 30.10.: „da rechts ist immer super platz für eine
 // visualisierung des Problems … und bedenk platzhalter für die videos“). Jedes Bild zeigt einmal „Heute“ und geht dann in
-// „Mit Fokus“ über (CSS in css/fokus.css › Problem-Bilder, ausgelöst von .erscheint.sichtbar; bei „Bewegung reduzieren“
+// „Mit uns“ über (CSS in css/fokus.css › Problem-Bilder, ausgelöst von .erscheint.sichtbar; bei „Bewegung reduzieren“
 // gleich der Endzustand). Reines SVG mit Klassen — keine Inline-Stile, kein Skript (CSP 'self'). Farben nur aus dem Logo.
 //
 // Videos: Steht für eine Seite ein Video in fokus.json › videos (Datei + Standbild), ersetzt es das Bild rechts
@@ -93,7 +93,7 @@ export function buehne(art, video) {
   if (video?.datei) return videoFigur(video);
   const b = BILDER[art];
   if (!b) throw new Error(`Problem-Bild „${art}“ gibt es nicht.`);
-  return `<figure class="problem-bild pb-${art} erscheint" aria-label="${esc(b.titel)}"><figcaption class="pb-kopf"><span class="etikett">Das Problem</span><span class="pb-zustand" aria-hidden="true"><span class="pb-heute">Heute</span><span class="pb-fokus">Mit Fokus</span></span></figcaption>
+  return `<figure class="problem-bild pb-${art} erscheint" aria-label="${esc(b.titel)}"><figcaption class="pb-kopf"><span class="etikett">Das Problem</span><span class="pb-zustand" aria-hidden="true"><span class="pb-heute">Heute</span><span class="pb-fokus">Mit uns</span></span></figcaption>
 <svg class="pb-svg" viewBox="0 0 400 236" aria-hidden="true" focusable="false">${b.svg()}</svg>
 <p class="pb-satz">${esc(b.satz)}</p></figure>`;
 }

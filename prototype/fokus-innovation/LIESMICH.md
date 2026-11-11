@@ -21,6 +21,8 @@ Online als Vorschau unter https://fokusinnovation.de (seit 26.10., noindex). Die
     - JSON-LD gültig und ohne leere Felder
     - jede Frage in den Daten auch sichtbar
     - Vorschaubild vorhanden
+- `grafiken.mjs`: die gezeichneten Bewegungen (SVG) für Bereiche, Team, Einstiege und Belegzahlen.
+- `arbeitsprobe.mjs` nimmt mit Chrome die zwei Bildschirmfotos der Arbeitsprobe von der laufenden Vorschau auf (`assets/bild/arbeitsprobe/rechner.jpg` 1440 × 900 und `handy.jpg` 780 × 1688). Nach einem neuen Zeichen, Film oder Kopf einmal laufen lassen.
 - `bilder.mjs` zeichnet mit Chrome ein Vorschaubild je Seite (1200 × 630), dazu Logo, Icons und favicon.ico. Nach neuen Seiten oder geänderten Titeln einmal laufen lassen.
 
 Aufruf:
@@ -78,6 +80,16 @@ rsync -a --delete unterlagen/ <main-checkout>/unterlagen/   # lange Vorlagen (nu
 - Die Ratgeber sind ruhige Leseseiten: links das Inhaltsverzeichnis, rechts der Text in einer angenehmen Zeilenlänge.
 - Der Film der Startseite erzählt den Gründer, der sich um alles kümmert. Das Erklärvideo erzählt dieselbe Story ([ERKLAERVIDEO_PROMPT.md](ERKLAERVIDEO_PROMPT.md)).
 - Die Seite wackelt beim Laden nicht (CLS 0). Die Schrift lädt mit `font-display: optional` und Vorladen.
+
+## Überarbeitung 11.11.2026: Rhythmus, größere Schrift, gezeichnete Bewegungen
+Nach dem Film fiel die Seite in ein gleichförmiges Textdokument. Geändert wurden gemeinsame Bausteine, nicht einzelne Seiten:
+- **Schrift und Breite:** am Rechner eine Stufe größer (`html` 106 %, ab 1700 px 119 %), Inhalt bis 1280 px (groß 1400 px). Abschnittsköpfe: Marke oben, links die Überschrift, rechts die Einleitung.
+- **Zeichnungen (`grafiken.mjs`):** je Bereich eine dunkle Fläche im Format 16:10 in der Formensprache des Zeichens (Kugel, Balken, Linien): Sichtbarkeit (Signale werden zu Anfragen), Vertrieb (Strecke bis zum Abschluss), Innovation (ein Ablauf, der beim Team ankommt). Dazu „Wir sitzen mit in Ihrem Team“ auf Papier und die Zeichen der zwei Einstiege. Reines SVG mit Klassen, Bewegung in `css/fokus.css › Gezeichnete Bewegungen`: einmal, nur im Sichtfeld, ohne Skript und bei „Bewegung reduzieren“ steht das Endbild.
+- **Belegzahlen (`belegBand`):** dunkles Band, Zahl groß, darunter ihre Bahn (Linie, Kugel, bei 100 % die Wand), Satz und Quelle. `js/seite.js` zählt einmal hoch. Startseite: drei Zahlen, Bereichsseiten: eine.
+- **Neun Situationen:** mit Skript drei Reiter mit je drei Karten, jede lässt sich antippen („Kenne ich“), der Stand steht beim Schluss-Satz. Ohne Skript stehen alle neun da. Es wird nichts gespeichert oder gesendet.
+- **Takt der Startseite:** Film (Nacht) · Einstieg mit zwei Türen (Papier) · Situationen (Papier) · Zahlen (Nacht) · drei Bereiche mit Zeichnung (Papier) · Warum wir · Fragen · Events (Sand, mit Tisch) · Wissen · Schlussakt (Nacht, Zeichen groß wie im letzten Bild des Films).
+- **Film ohne Skript:** statt leerer dunkler Fläche steht das Endbild (`css/film.css`, letzter Block).
+- **Erklärvideos:** Die dunkle Fläche der Bereiche (Startseite und Bereichsseiten) ist die vorbereitete Stelle. Sie sieht ohne Video vollständig aus; ein Video im Format 16:10 kann sie später übernehmen. Leere Player gibt es nicht.
 
 ## Offen für Kevin
 - Ratgeber lesen: Sie stehen unter Kevins Namen.

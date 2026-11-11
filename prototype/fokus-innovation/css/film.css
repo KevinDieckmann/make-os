@@ -147,3 +147,15 @@
   /* Am Handy steht der Hinweis links unten, der Knopf „Film überspringen“ rechts – sie stoßen nicht aneinander */
   .hinweis { left: var(--rand); translate: 0 0; align-items: flex-start; bottom: 6px; }
 }
+
+/* ── Ohne Skript (11.11.): statt 2,8 leerer dunkler Bildschirme steht das Endbild mit Zeichen, Claim und beiden Knöpfen ── */
+html:not(.js) .film { height: auto; }
+html:not(.js) .buehne { position: relative; height: 100vh; height: 100svh; min-height: 560px; }
+html:not(.js) .block, html:not(.js) .aufgaben, html:not(.js) .faden, html:not(.js) .ueberspringen { display: none; }
+html:not(.js) .block[data-block="ende"] { display: block; opacity: 1; visibility: visible; }
+html:not(.js) .ersatz { display: block; }
+html:not(.js) .ende-text > * { opacity: 1; translate: none; }
+html:not(.js) .ende-logo { opacity: 1; translate: -50% 0; }
+html:not(.js) .ende-knoepfe { pointer-events: auto; }
+/* Tippziel 44 px auch am Handy */
+@media (max-width: 760px) { .ueberspringen { min-height: 44px; } }

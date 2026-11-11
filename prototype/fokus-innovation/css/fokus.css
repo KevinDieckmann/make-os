@@ -1153,3 +1153,326 @@ html.menue-offen { overflow: hidden; }
 .termine-liste b { font-weight: 600; color: var(--tinte); }
 .termine-liste span { font-size: .94rem; color: var(--tinte-text); }
 .termine-liste a { justify-self: start; display: inline-flex; align-items: center; min-height: 44px; }
+
+/* ══ Überarbeitung 11.11.2026 (Kevin: „Schwachstellen finden und ausbauen, bessere Qualität, mehr special“) ══════════════════════════
+   Nach dem Film fiel die Seite in ein gleichförmiges Textdokument. Jetzt: größere, entschiedenere Schrift, Wechsel aus Papier, Nacht und
+   Sand, und wenige gezeichnete Bewegungen in der Formensprache des Zeichens (Kugel, Balken, Linien). Jede Bewegung läuft einmal, nur im
+   Sichtfeld; ohne Skript und bei „Bewegung reduzieren“ steht sofort das Endbild. Dieser Block steht am Ende und nennt seine eigenen
+   Regeln für Tablet und Handy (er überschreibt sonst die älteren weiter oben). */
+
+/* ── Schrift und Breite: am Rechner eine Stufe größer, auf großen Bildschirmen noch eine ── */
+:root { --breite: 1280px; --t-titel: clamp(2rem, 4vw, 3.5rem); --t-unter: clamp(1.2rem, 1.55vw, 1.45rem); --t-lead: clamp(1.14rem, 1.45vw, 1.34rem); }
+@media (min-width: 1200px) { html { font-size: 106.25%; } }
+@media (min-width: 1700px) { html { font-size: 118.75%; } :root { --breite: 1400px; } }
+.vorzeile, .etikett, .ab-marke, .blick dt { font-size: .8rem; }
+
+/* ── Abschnittskopf: Marke oben, darunter links die Überschrift, rechts die Einleitung (vorher: Marke links, alles andere eingerückt) ── */
+.ab-kopf { display: block; padding-top: 26px; margin-bottom: clamp(40px, 5vw, 72px); }
+.ab-marke { display: flex; align-items: center; gap: 10px; padding-top: 0; margin-bottom: clamp(20px, 2.4vw, 34px); }
+.ab-marke:not(:has(.nr))::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--akzent-papier); flex: none; }
+.ab-kopf > div { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 20px clamp(40px, 6vw, 96px); align-items: end; }
+.ab-kopf h2 { max-width: 19ch; line-height: 1.04; }
+.ab-kopf h2:only-child { grid-column: 1 / -1; max-width: 24ch; }
+.ab-kopf .lead { margin-top: 0; padding-bottom: .28em; }
+.zweispaltig .ab-marke { margin-bottom: 0; }
+@media (max-width: 820px) { .ab-kopf > div { grid-template-columns: minmax(0, 1fr); gap: 16px; } .ab-kopf .lead { padding-bottom: 0; } }
+
+/* ── Flächen über die ganze Breite: Sand und Nacht geben der Seite ihren Takt ── */
+.abschnitt.band { padding: clamp(72px, 8vw, 128px) 0; margin-bottom: var(--abschnitt); }
+.band.sand { background: var(--sand); }
+
+/* ── Startseite: Einstieg nach dem Film ── */
+.start-raster { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(36px, 4.4vw, 64px); }
+.start-held h1 { font-size: clamp(2.5rem, 6.2vw, 5.5rem); max-width: 11.5em; letter-spacing: -.042em; line-height: .99; }
+.start-held h1 .ruhig { font-size: .5em; line-height: 1.14; margin-top: .5em; letter-spacing: -.025em; }
+.start-zeile { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px clamp(40px, 6vw, 96px); align-items: end; }
+.start-zeile .lead { max-width: 44rem; }
+.start-zeile .knoepfe { margin-top: 0; justify-content: flex-end; flex-wrap: nowrap; gap: 12px; }
+@media (max-width: 1100px) { .start-zeile { grid-template-columns: minmax(0, 1fr); } .start-zeile .knoepfe { justify-content: flex-start; flex-wrap: wrap; } }
+.tueren { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rinne); }
+.tueren a { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "zeichen nr pfeil" "name name name" "satz satz satz"; align-items: center; align-content: start; gap: 0 16px; padding: clamp(22px, 2.6vw, 36px);
+  background: var(--papier-hell); border: 1px solid var(--haar); border-radius: 12px; transition: border-color .3s ease, background-color .3s ease, box-shadow .4s ease; }
+.tuer-zeichen { grid-area: zeichen; width: 44px; height: 44px; color: var(--tinte); overflow: visible; }
+.tuer-zeichen .spur { fill: none; stroke: var(--akzent); stroke-width: 2.6; stroke-linecap: round; }
+.tuer-zeichen .wand { fill: currentColor; }
+.tuer-zeichen .haus { fill: none; stroke: currentColor; stroke-width: 2.4; }
+.tuer-zeichen .kern { fill: var(--akzent-papier); }
+.tueren .nr { grid-area: nr; margin: 0; font-size: .8rem; line-height: 1.4; }
+.tueren b { grid-area: name; margin-top: clamp(28px, 4vw, 60px); font-size: clamp(1.3rem, 2.1vw, 1.9rem); line-height: 1.16; letter-spacing: -.022em; max-width: 24ch; color: var(--tinte); }
+.tueren .index-satz { grid-area: satz; margin-top: 12px; max-width: 34rem; font-size: 1.02rem; color: var(--tinte-text); }
+.tueren .pfeil { grid-area: pfeil; width: 22px; height: 22px; color: var(--tinte-leise); transition: translate .35s var(--ease), color .2s ease; }
+@media (hover: hover) {
+  .tueren a:hover { border-color: var(--akzent-papier); box-shadow: 0 24px 48px -32px rgba(124, 58, 237, .45); }
+  .tueren a:hover .pfeil { translate: 4px 0; color: var(--akzent-papier); }
+}
+@media (max-width: 820px) {
+  .start-zeile, .tueren { grid-template-columns: minmax(0, 1fr); }
+  .start-zeile .knoepfe { justify-content: flex-start; }
+  .tueren b { margin-top: 24px; }
+}
+
+/* ── „Kommt Ihnen das bekannt vor?“: neun Situationen als wählbare Ansicht (js/seite.js). Ohne Skript stehen alle neun da. ── */
+.wahl-leiste { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 32px; margin-bottom: clamp(22px, 2.6vw, 36px); }
+.wahl-leiste[hidden] { display: none; }
+.wahl-reiter { display: inline-flex; gap: 4px; max-width: 100%; padding: 5px; border: 1px solid var(--haar-mittel); border-radius: 999px; background: var(--papier-hell); }
+.wahl-knopf { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 22px; border: 0; border-radius: 999px; background: transparent; color: var(--tinte-text);
+  font: 600 1rem/1.2 var(--schrift); letter-spacing: -.005em; white-space: nowrap; cursor: pointer; transition: background-color .25s ease, color .25s ease; }
+.wahl-knopf .nr { margin: 0; font-size: .8rem; }
+.wahl-knopf:hover { color: var(--tinte); background: rgba(17, 19, 22, .05); }
+.wahl-knopf[aria-selected="true"] { background: var(--tinte); color: var(--papier-hell); }
+.wahl-knopf[aria-selected="true"] .nr { color: var(--akzent); }
+.wahl-marke { display: none; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; place-items: center; background: var(--akzent-papier); color: #FFFFFF; font-size: .78rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wahl-marke:not(:empty) { display: inline-grid; }
+.wahl-hinweis { color: var(--tinte-leise); font-size: .98rem; }
+.wahl-feld + .wahl-feld { margin-top: 40px; }
+.wahl-feld[hidden] { display: none; }
+.wahl-feld .gruppe-titel .nr { margin-right: 12px; font-size: .8em; }
+.wahl.an .wahl-feld + .wahl-feld { margin-top: 0; }
+.wahl.an .wahl-feld .gruppe-titel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.wahl .momente { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--rinne); border-top: 0; counter-reset: none; }
+.wahl .momente li { display: flex; padding: 0; border: 0; font-size: 1rem; counter-increment: none; }
+.wahl .momente li::before { content: none; }
+.wahl .momente li:hover { background: none; }
+.wahl:not(.an) .momente li, .moment { display: flex; flex-direction: column; gap: 20px; width: 100%; min-height: clamp(210px, 20vw, 290px); padding: clamp(22px, 2.2vw, 32px);
+  background: var(--papier-hell); border: 1px solid var(--haar); border-radius: 12px; text-align: left; color: inherit; }
+.moment { margin: 0; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .3s ease, border-color .3s ease, box-shadow .4s ease; }
+.moment-nr { font-size: .86rem; font-weight: 600; line-height: 1.4; color: var(--akzent-papier); font-variant-numeric: tabular-nums; }
+.moment-text { font-size: clamp(1.18rem, 1.7vw, 1.55rem); font-weight: 500; line-height: 1.32; letter-spacing: -.014em; color: var(--tinte); text-wrap: pretty; }
+.moment-fuss { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 4px; font-size: .92rem; font-weight: 600; color: var(--tinte-leise); transition: color .3s ease; }
+.moment-kugel { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 1.5px solid var(--haar-mittel); transition: background-color .3s ease, border-color .3s ease, box-shadow .3s ease, scale .35s var(--ease); }
+.moment[aria-pressed="true"] { background: var(--akzent-zart); border-color: var(--akzent-papier); }
+.moment[aria-pressed="true"] .moment-kugel { background: var(--akzent-papier); border-color: var(--akzent-papier); box-shadow: 0 0 0 5px rgba(124, 58, 237, .14); scale: 1.08; }
+.moment[aria-pressed="true"] .moment-fuss { color: var(--akzent-papier); }
+@media (hover: hover) { .moment:hover { border-color: var(--akzent-papier); box-shadow: 0 24px 48px -34px rgba(124, 58, 237, .5); } }
+.momente-schluss { grid-template-columns: minmax(0, 1fr) auto; }
+.momente-schluss p { font-size: var(--t-unter); }
+.momente-schluss .wahl-stand { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin-top: -4px; font-size: .98rem; font-weight: 600; letter-spacing: 0; color: var(--tinte-leise); }
+.momente-schluss .wahl-stand[hidden] { display: none; }
+.momente-schluss .wahl-stand::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--haar-mittel); flex: none; }
+.momente-schluss.trifft { border-top-color: var(--akzent-papier); }
+.momente-schluss.trifft .wahl-stand { color: var(--akzent-papier); }
+.momente-schluss.trifft .wahl-stand::before { background: var(--akzent-papier); border-color: var(--akzent-papier); }
+@media (max-width: 1020px) { .wahl:not(.an) .momente li, .moment { min-height: 0; } }
+@media (max-width: 820px) {
+  .wahl .momente { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .wahl .momente li { padding: 0; font-size: 1rem; }
+  .wahl-reiter { display: flex; width: 100%; }
+  .wahl-knopf { flex: 1 1 auto; padding: 0 12px; font-size: .95rem; }
+  .momente-schluss { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+}
+@media (max-width: 480px) { .wahl-knopf .nr { display: none; } .wahl-knopf { padding: 0 8px; gap: 6px; } }
+
+/* ── Belegzahlen als großer Moment: dunkles Band, die Zahl groß, darunter ihre Bahn (Linie, Kugel, bei 100 % die Wand) ── */
+.belege { position: relative; margin-bottom: var(--abschnitt); padding: clamp(80px, 9vw, 144px) 0 clamp(72px, 8vw, 128px); background: var(--nacht); }
+@supports (background: color-mix(in srgb, red, blue)) {
+  .belege { background: radial-gradient(80% 120% at 84% -10%, color-mix(in srgb, var(--kern-nacht) 30%, var(--nacht)) 0%, color-mix(in srgb, var(--kern-nacht) 8%, var(--nacht)) 46%, var(--nacht) 74%); }
+}
+.belege-kopf { margin-bottom: clamp(48px, 6vw, 88px); }
+.belege-kopf h2 { margin-top: 20px; font-size: var(--t-titel); letter-spacing: -.03em; line-height: 1.04; }
+.belege-reihe { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 56px clamp(32px, 4.5vw, 72px); }
+.beleg { display: flex; flex-direction: column; min-width: 0; }
+.beleg .etikett { margin-bottom: clamp(14px, 1.6vw, 22px); }
+.beleg .etikett .nr { margin-right: 12px; color: var(--akzent); }
+.beleg-wert { display: block; font-size: clamp(4rem, 9.2vw, 8.4rem); font-weight: 600; letter-spacing: -.055em; line-height: .92; color: var(--hell); white-space: nowrap; }
+.beleg-einheit { font-size: .46em; font-weight: 500; letter-spacing: -.02em; color: var(--akzent); }
+.beleg-bahn { width: 100%; max-width: 26rem; height: auto; margin: clamp(18px, 2vw, 30px) 0 clamp(16px, 1.8vw, 26px); overflow: visible; }
+.beleg-grund { stroke: rgba(242, 243, 243, .22); stroke-width: 1.5; stroke-linecap: round; }
+.beleg-wand { fill: var(--hell); }
+.beleg-strecke { stroke: var(--akzent); stroke-width: 4; stroke-linecap: round; }
+.beleg-kugel { fill: var(--kern-nacht); filter: drop-shadow(0 0 6px rgba(139, 92, 246, .85)); }
+.beleg figcaption { max-width: 30rem; font-size: 1.1rem; line-height: 1.5; color: var(--leise-dunkel); }
+.beleg cite { display: block; margin-top: 8px; font-size: .88rem; }
+.beleg cite a { display: inline-flex; align-items: center; min-height: 44px; color: var(--grau); text-decoration: underline; text-decoration-color: var(--haar-dunkel); text-underline-offset: .25em; transition: color .2s ease; }
+.beleg cite a:hover { color: var(--hell); text-decoration-color: var(--akzent); }
+.belege-reihe.n1 { grid-template-columns: minmax(0, 1fr); }
+.belege-reihe.n1 .beleg { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-areas: "wert text" "bahn text"; column-gap: clamp(40px, 6vw, 96px); align-items: end; }
+.belege-reihe.n1 .beleg-wert { grid-area: wert; }
+.belege-reihe.n1 .beleg-bahn { grid-area: bahn; margin-bottom: 0; }
+.belege-reihe.n1 figcaption { grid-area: text; max-width: 36rem; font-size: var(--t-lead); color: var(--hell); }
+.belege-reihe.n1 cite { margin-top: 14px; }
+@media (max-width: 820px) {
+  .belege-reihe.n1 .beleg { display: flex; align-items: stretch; }
+  .belege-reihe.n1 .beleg-bahn { margin-bottom: 22px; }
+  .belege-reihe.n1 .beleg-wert { font-size: clamp(4.4rem, 24vw, 7rem); }
+}
+@media (max-width: 700px) {
+  .belege-reihe { grid-template-columns: minmax(0, 1fr); gap: 56px; }
+  .beleg-wert { font-size: clamp(4.4rem, 24vw, 7rem); }
+}
+
+/* ── Drei Bereiche auf der Startseite: links Aussage und Problem (bleibt beim Scrollen stehen), rechts Zeichnung und Einstiege; der zweite gespiegelt ── */
+.leistung { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px clamp(40px, 6vw, 96px); align-items: start; padding: clamp(56px, 7vw, 104px) 0; }
+.ab-kopf + .leistung { padding-top: 0; }
+.leistung.gespiegelt { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.leistung.gespiegelt .leistung-kopf { order: 2; }
+.leistung .paar { margin-top: 20px; font-size: clamp(2.3rem, 4.7vw, 4.2rem); letter-spacing: -.045em; line-height: .98; }
+.leistung .satz { margin-top: 22px; max-width: 30rem; font-size: var(--t-lead); line-height: 1.5; color: var(--tinte); }
+.leistung-kopf .etikett { margin-top: clamp(28px, 3vw, 40px); }
+.leistung .problem { margin: 10px 0 0; max-width: 30rem; font-size: 1.05rem; line-height: 1.6; color: var(--tinte-text); }
+.leistung-kopf .textlink { margin-top: 22px; }
+.leistung-weg > .etikett { margin: clamp(28px, 3vw, 40px) 0 0; }
+.leistung-weg .wl { margin-top: 12px; }
+.wl-lage { font-size: 1.08rem; }
+.wl-ziel b { font-size: 1.02rem; }
+.wl-ziel span { font-size: .9rem; }
+@media (min-width: 1021px) { .leistung-kopf { position: sticky; top: calc(var(--kopf) + 36px); } }
+@media (max-width: 1020px) {
+  .leistung, .leistung.gespiegelt { grid-template-columns: minmax(0, 1fr); }
+  .leistung.gespiegelt .leistung-kopf { order: 0; }
+  .leistung .satz, .leistung .problem { max-width: 40rem; }
+}
+
+/* ── Gezeichnete Bewegungen (grafiken.mjs): dunkle Fläche wie im Film, Kugel, Balken, Linien. Vorher-Zustand nur unter .js … :not(.sichtbar). ── */
+.grafik { position: relative; margin: 0; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 14px; background: var(--nacht); color: var(--hell); box-shadow: 0 34px 64px -40px rgba(17, 19, 22, .6); }
+@supports (background: color-mix(in srgb, red, blue)) {
+  .grafik { background: radial-gradient(74% 84% at 50% 48%, color-mix(in srgb, var(--kern-nacht) 30%, var(--nacht)) 0%, color-mix(in srgb, var(--kern-nacht) 10%, var(--nacht)) 56%, var(--nacht) 100%); }
+}
+.grafik svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.g-marke { position: absolute; translate: -50% -50%; font-size: clamp(.68rem, 1.05vw, .86rem); font-weight: 600; letter-spacing: .12em; line-height: 1.2; text-transform: uppercase; white-space: nowrap; color: rgba(242, 243, 243, .74); transition: opacity .6s var(--ease); }
+.g-kern { fill: var(--kern-nacht); filter: drop-shadow(0 0 14px rgba(139, 92, 246, .62)); }
+.g-hof { fill: var(--kern-nacht); opacity: .15; }
+.g-spur { fill: none; stroke: var(--akzent); stroke-width: 9; stroke-linecap: round; }
+.g-logo-spur { fill: none; stroke: var(--akzent); stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
+.g-wand { fill: var(--hell); }
+.g-laeufer { transform-box: fill-box; transform-origin: center; }
+
+/* Sichtbarkeit: Signale gehen aus, Menschen werden zu Anfragen */
+.g-welle { fill: none; stroke: var(--hell); stroke-width: 2; stroke-linecap: round; opacity: .5; transform-origin: 196px 204px; transition: transform 1s var(--ease), opacity .9s var(--ease); }
+.g-welle.w1 { transition-delay: .5s; } .g-welle.w2 { opacity: .36; transition-delay: .8s; } .g-welle.w3 { opacity: .24; transition-delay: 1.1s; }
+.g-kunde { fill: none; stroke: rgba(242, 243, 243, .36); stroke-width: 2; transition: fill .5s ease, stroke .5s ease; }
+.g-kunde.an { fill: var(--akzent); stroke: var(--akzent); }
+.g-kunde.k1 { transition-delay: 1.8s; } .g-kunde.k2 { transition-delay: 2.05s; } .g-kunde.k3 { transition-delay: 2.3s; }
+.g-anfrage { fill: none; stroke: var(--akzent); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset .9s var(--ease); }
+.g-anfrage.a1 { transition-delay: 2s; } .g-anfrage.a2 { transition-delay: 2.25s; } .g-anfrage.a3 { transition-delay: 2.5s; }
+.g-sichtbarkeit .g-spur { transition: opacity .6s ease .3s; }
+.g-sichtbarkeit .m1 { left: 30.6%; top: 69%; } .g-sichtbarkeit .m2 { left: 57%; top: 10.5%; transition-delay: 1s; } .g-sichtbarkeit .m3 { left: 85%; top: 15%; transition-delay: 2.4s; }
+.js .g-sichtbarkeit:not(.sichtbar) .g-welle { transform: scale(.5); opacity: 0; }
+.js .g-sichtbarkeit:not(.sichtbar) .g-kunde.an { fill: transparent; stroke: rgba(242, 243, 243, .36); }
+.js .g-sichtbarkeit:not(.sichtbar) .g-anfrage { stroke-dashoffset: 1; }
+.js .g-sichtbarkeit:not(.sichtbar) .g-spur { opacity: 0; }
+.js .g-sichtbarkeit:not(.sichtbar) :is(.m2, .m3) { opacity: 0; }
+
+/* Vertrieb: eine geordnete Strecke, die Kugel läuft sie ab und geht durch die Wand */
+.g-bahn { stroke: rgba(242, 243, 243, .22); stroke-width: 2; stroke-linecap: round; }
+.g-strecke { stroke: var(--akzent); stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
+.g-station { fill: var(--akzent); stroke: var(--akzent); stroke-width: 2; transition: fill .35s ease, stroke .35s ease; }
+.g-station.s2 { transition-delay: 1.45s; } .g-station.s3 { transition-delay: 2.5s; }
+.g-verloren { fill: none; stroke: var(--hell); stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 2 8; opacity: .2; transition: opacity 1.2s ease 1.4s; }
+.g-ende { fill: none; stroke: var(--hell); stroke-width: 1.4; opacity: .2; transition: opacity 1.2s ease 1.4s; }
+.g-vertrieb .g-logo-spur { transition: stroke-dashoffset .6s var(--ease) 3.5s; }
+.g-vertrieb .m1 { left: 15%; top: 63.5%; } .g-vertrieb .m2 { left: 37.5%; top: 63.5%; transition-delay: 1.45s; } .g-vertrieb .m3 { left: 60%; top: 63.5%; transition-delay: 2.5s; } .g-vertrieb .m4 { left: 85.6%; top: 78.5%; transition-delay: 3.7s; }
+.g-vertrieb.sichtbar .g-laeufer { animation: gLauf 3.4s linear .5s both; }
+.g-vertrieb.sichtbar .g-strecke { animation: gStrecke 3.4s linear .5s both; }
+@keyframes gLauf {
+  0%, 5% { translate: -113px 0; scale: .3; animation-timing-function: cubic-bezier(.45, 0, .25, 1); }
+  28%, 36% { translate: -77px 0; scale: .34; animation-timing-function: cubic-bezier(.45, 0, .25, 1); }
+  58%, 66% { translate: -41px 0; scale: .4; animation-timing-function: cubic-bezier(.5, 0, .6, 1); }
+  84% { translate: -18.5px 0; scale: .52; animation-timing-function: ease-in-out; }
+  90% { translate: -16.5px 0; scale: .56; animation-timing-function: cubic-bezier(.3, 0, .1, 1); }
+  100% { translate: 0 0; scale: 1; }
+}
+@keyframes gStrecke {
+  0%, 5% { stroke-dashoffset: 1; animation-timing-function: cubic-bezier(.45, 0, .25, 1); }
+  28%, 36% { stroke-dashoffset: .59; animation-timing-function: cubic-bezier(.45, 0, .25, 1); }
+  58%, 66% { stroke-dashoffset: .18; animation-timing-function: cubic-bezier(.5, 0, .6, 1); }
+  84%, 100% { stroke-dashoffset: 0; }
+}
+.js .g-vertrieb:not(.sichtbar) .g-laeufer { translate: -113px 0; scale: .3; }
+.js .g-vertrieb:not(.sichtbar) .g-strecke { stroke-dashoffset: 1; }
+.js .g-vertrieb:not(.sichtbar) :is(.s2, .s3) { fill: var(--nacht-2); stroke: rgba(242, 243, 243, .4); }
+.js .g-vertrieb:not(.sichtbar) :is(.g-verloren, .g-ende) { opacity: .55; }
+.js .g-vertrieb:not(.sichtbar) .g-logo-spur { stroke-dashoffset: 1; }
+.js .g-vertrieb:not(.sichtbar) :is(.m2, .m3, .m4) { opacity: 0; }
+
+/* Innovation: vier Teile werden ein Ablauf, die Kugel läuft ihn einmal ab und kommt in der Mitte an */
+.g-ring { fill: none; stroke: rgba(242, 243, 243, .2); stroke-width: 2; }
+.g-umlauf { fill: none; stroke: var(--akzent); stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
+.g-knoten { fill: var(--akzent); stroke: var(--akzent); stroke-width: 2; transition: fill .35s ease, stroke .35s ease; }
+.g-knoten.n1 { transition-delay: .5s; } .g-knoten.n2 { transition-delay: 1.4s; } .g-knoten.n3 { transition-delay: 2s; } .g-knoten.n4 { transition-delay: 2.6s; }
+.g-speiche { stroke: var(--akzent); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; opacity: .7; transition: stroke-dashoffset .7s var(--ease) 4.3s; }
+.g-speiche.p2 { transition-delay: 4.4s; } .g-speiche.p3 { transition-delay: 4.5s; } .g-speiche.p4 { transition-delay: 4.6s; }
+.g-innovation .g-hof { transition: opacity .8s ease 4.2s; }
+.g-bahn-dreh { transform-origin: 320px 196px; }
+.g-innovation .m1 { left: 50%; top: 11%; } .g-innovation .m2 { left: 72.2%; top: 49%; translate: 0 -50%; transition-delay: 1.4s; } .g-innovation .m3 { left: 50%; top: 87.5%; transition-delay: 2s; } .g-innovation .m4 { left: 27.8%; top: 49%; translate: -100% -50%; transition-delay: 2.6s; }
+.g-innovation .m5 { left: 50%; top: 64.5%; color: var(--hell); transition-delay: 4.3s; }
+.g-innovation.sichtbar .g-bahn-dreh { animation: gDreh 3.1s cubic-bezier(.42, .12, .5, .92) .5s both; }
+.g-innovation.sichtbar .g-umlauf { animation: gUmlauf 3.1s cubic-bezier(.42, .12, .5, .92) .5s both; }
+.g-innovation.sichtbar .g-laeufer { animation: gMitte 3.9s linear .5s both; }
+@keyframes gDreh { from { rotate: 0deg; } to { rotate: 360deg; } }
+@keyframes gUmlauf { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes gMitte { 0%, 80% { translate: 0 -118px; scale: .5; animation-timing-function: cubic-bezier(.3, 0, .1, 1); } 100% { translate: 0 0; scale: 1; } }
+.js .g-innovation:not(.sichtbar) .g-laeufer { translate: 0 -118px; scale: .5; }
+.js .g-innovation:not(.sichtbar) .g-umlauf, .js .g-innovation:not(.sichtbar) .g-speiche { stroke-dashoffset: 1; }
+.js .g-innovation:not(.sichtbar) .g-knoten { fill: var(--nacht-2); stroke: rgba(242, 243, 243, .4); }
+.js .g-innovation:not(.sichtbar) .g-hof { opacity: 0; }
+.js .g-innovation:not(.sichtbar) :is(.m2, .m3, .m4, .m5) { opacity: 0; }
+
+/* „Wir sitzen mit in Ihrem Team“ (auf Papier): Ihre Runde, ein Platz ist unserer */
+.grafik.hell { aspect-ratio: 420 / 252; overflow: visible; border-radius: 0; background: none; box-shadow: none; color: var(--tinte); }
+.grafik.hell .g-marke { color: var(--tinte-leise); }
+.g-runde { fill: none; stroke: var(--haar-mittel); stroke-width: 1.2; }
+.g-platz { fill: var(--papier-hell); stroke: var(--tinte); stroke-width: 1.5; }
+.g-platz.frei { fill: none; stroke: var(--akzent-papier); stroke-dasharray: 3 4; }
+.g-team .g-kern { fill: var(--akzent-papier); filter: none; }
+.g-team .g-spur { stroke-width: 5.5; }
+.grafik.hell .g-marke { font-size: clamp(.72rem, 1vw, .86rem); }
+.g-faden { fill: none; stroke: var(--akzent-papier); stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; opacity: .75; transition: stroke-dashoffset .8s var(--ease) 1.5s; }
+.g-faden.f2 { transition-delay: 1.62s; } .g-faden.f3 { transition-delay: 1.74s; } .g-faden.f4 { transition-delay: 1.86s; } .g-faden.f5 { transition-delay: 1.98s; }
+.g-gast { transition: translate 1.2s var(--ease) .4s, opacity .5s ease .4s; }
+.g-team .m1 { left: 25.2%; top: 66.5%; color: var(--akzent-papier); transition-delay: 1.5s; } .g-team .m2 { left: 87%; top: 50%; }
+.js .g-team:not(.sichtbar) .g-gast { translate: -150px 0; opacity: 0; }
+.js .g-team:not(.sichtbar) .g-faden { stroke-dashoffset: 1; }
+.js .g-team:not(.sichtbar) .m1 { opacity: 0; }
+.warum { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px clamp(40px, 6vw, 96px); align-items: center; }
+.warum .raster { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--rinne); border-top: 0; }
+.warum .spalte, .warum .spalte + .spalte { padding: 24px 0 30px; border-left: 0; border-top: 1px solid var(--tinte); }
+.warum .spalte:hover { background: none; }
+@media (max-width: 1020px) { .warum { grid-template-columns: minmax(0, 1fr); } .warum .grafik { max-width: 560px; } }
+@media (max-width: 640px) { .warum .raster { grid-template-columns: minmax(0, 1fr); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .grafik, .grafik *, .g-marke, .beleg-bahn * { transition: none !important; animation: none !important; }
+}
+
+/* ── Bereichsseiten: „Das Wichtigste vorweg“ neben der Zeichnung des Bereichs ── */
+.kurz-buehne { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 40px clamp(40px, 6vw, 96px); align-items: center; }
+.kurz-buehne .kurz-gesagt { max-width: none; margin-bottom: 28px; }
+.kurz-buehne .blick { grid-template-columns: minmax(0, 1fr); }
+.kurz-buehne .blick div { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 4px 20px; align-items: baseline; padding: 16px 0; }
+.kurz-buehne .blick dd { margin-top: 0; }
+@media (max-width: 1020px) { .kurz-buehne { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 480px) { .kurz-buehne .blick div { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── Events auf der Startseite: Sand über die ganze Breite, rechts der Tisch ── */
+.events-buehne { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 48px clamp(40px, 6vw, 96px); align-items: center; }
+.events-buehne h2 { margin-top: 22px; max-width: 15ch; font-size: var(--t-titel); letter-spacing: -.03em; line-height: 1.04; }
+.events-buehne .lead { margin-top: 24px; max-width: 34rem; }
+/* film.css kennt auf der Startseite eine eigene .faden (der Faden am Rand des Films): die Linien am Tisch bleiben, wo sie gezeichnet sind */
+.tafel .faden { translate: none; }
+.events-bild .tafel { max-width: 580px; margin: 0 0 0 auto; }
+@media (max-width: 900px) { .events-buehne { grid-template-columns: minmax(0, 1fr); } .events-bild .tafel { margin: 0; max-width: 480px; } }
+
+/* ── Schlussakt: das Zeichen groß rechts, wie im letzten Bild des Films ── */
+.schlussakt .w { position: relative; }
+.schluss-bild { display: none; }
+@media (min-width: 1100px) {
+  .schluss-bild { display: block; position: absolute; right: var(--rand); top: 4px; width: clamp(220px, 23vw, 340px); height: auto; color: var(--hell); overflow: visible; }
+  .schluss-bild .kern { filter: drop-shadow(0 0 26px rgba(139, 92, 246, .5)); }
+  .schluss-zeichen { display: none; }
+  .schluss-kopf { max-width: min(52rem, 100% - clamp(260px, 27vw, 400px)); }
+  .js .schluss-bild.erscheint .spur { stroke-dasharray: 26; stroke-dashoffset: 26; transition: stroke-dashoffset 1.1s var(--ease) .5s; }
+  .js .schluss-bild.erscheint.sichtbar .spur { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .js .schluss-bild.erscheint .spur { stroke-dashoffset: 0; transition: none; } }
+
+/* ── Preiskarten: am Rechner drei je Reihe über die ganze Breite (vorher vier schmale Spalten, die vierte blieb meist leer) ── */
+@media (min-width: 1021px) { .preis-karten { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; } }
+
+/* ── Kontakt: rechts neben dem Einstieg dieselbe Runde wie bei „Warum wir“ ── */
+.kontakt-held { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+@media (max-width: 820px) { .kontakt-held { grid-template-columns: minmax(0, 1fr); } .kontakt-held .grafik { max-width: 420px; } }
+
+/* ── Arbeitsprobe (11.11.): Im neuen Endbild steht das Zeichen rechts. Das Handy rückt deshalb an den rechten Rand und wird schmaler,
+      damit es Zeichen und Wortmarke nicht verdeckt (Zeichen reicht bis etwa 84 % der Bildbreite). ── */
+.geraet.handy { right: -6%; width: 20%; border-width: 4px; border-radius: 18px; }
+@media (max-width: 900px) { .geraet.handy { right: -3%; width: 18%; border-width: 3px; border-radius: 12px; } }
