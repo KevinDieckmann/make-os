@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 32" width="52" height="32">
+  <style>.f{fill:#111}@media (prefers-color-scheme:dark){.f{fill:#f5f5f5}}</style>
+  <!-- Monogramm „Lotwerk“: ein L als Winkel und ein Lot am Querbalken -->
+  <path class="f" d="M0 0h7v25h15v7H0z"/>
+  <path class="f" d="M26 0h26v5H40.5v12h-3V5H26z"/>
+  <path class="f" d="M32.5 17h13L39 31.5z"/>
+</svg>

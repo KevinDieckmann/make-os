@@ -1,0 +1,54 @@
+/* ─── MAKE Studios · Leiste für Beispielseiten ──────────────────────────────────────────────────────
+   Jede Seite unter beispiele/<name>/ bindet diese Datei ein und trägt unten die Leiste:
+   Zeichen + Wortmarke (zurück zu den Beispielseiten) · Hinweis „Beispiel“ · Knopf „Erstgespräch“.
+   Eigene Klassen (ms-…) und eigene Schriftnamen, damit die Leiste das Design der Beispielseite nie stört. */
+@font-face { font-family: "MS Bricolage"; src: url("../schriften/bricolage-grotesque.woff2") format("woff2"); font-weight: 200 800; font-stretch: 75% 100%; font-display: swap; }
+@font-face { font-family: "MS Mono"; src: url("../schriften/jetbrains-mono.woff2") format("woff2"); font-weight: 400 600; font-display: swap; }
+
+/* Platzhalter am Seitenende, damit die Leiste nichts verdeckt. */
+.ms-platz { height: calc(92px + env(safe-area-inset-bottom)); }
+
+.ms-leiste {
+  position: fixed; z-index: 2147483000; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 14px;
+  max-width: calc(100vw - 24px); margin: 0; padding: 6px 6px 6px 16px;
+  border-radius: 999px; background: rgba(13, 12, 11, .92); color: #F2EDE4;
+  -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2);
+  box-shadow: 0 12px 32px rgba(13, 12, 11, .28), inset 0 0 0 1px rgba(242, 237, 228, .12);
+  font: 500 15px/1.2 "MS Bricolage", system-ui, sans-serif; letter-spacing: 0; text-align: left;
+  -webkit-font-smoothing: antialiased;
+}
+.ms-leiste *, .ms-leiste *::before, .ms-leiste *::after { box-sizing: border-box; }
+
+.ms-marke { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; color: inherit; text-decoration: none; white-space: nowrap; }
+.ms-marke img { display: block; width: 24px; height: 24px; border-radius: 6px; }
+.ms-marke b { font-weight: 800; font-stretch: 75%; }
+.ms-marke span { font-weight: 300; font-stretch: 75%; letter-spacing: .04em; }
+
+.ms-hinweis {
+  padding-left: 14px; border-left: 1px solid rgba(242, 237, 228, .18);
+  font: 500 11px/1.3 "MS Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase;
+  color: rgba(242, 237, 228, .7); white-space: nowrap;
+}
+.ms-hinweis b { color: #FF5A1F; font-weight: 600; }
+
+.ms-knopf {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 18px;
+  border-radius: 999px; background: #F2EDE4; color: #0D0C0B; text-decoration: none; font-weight: 600; white-space: nowrap;
+  transition: background-color .2s;
+}
+.ms-knopf::after { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: #FF5A1F; }
+.ms-knopf:hover { background: #fff; }
+.ms-leiste a:focus-visible { outline: 2px solid #FF5A1F; outline-offset: 3px; }
+
+@media (max-width: 720px) {
+  .ms-lang { display: none; }
+}
+@media (max-width: 480px) {
+  .ms-leiste { left: 12px; right: 12px; transform: none; justify-content: space-between; gap: 10px; padding-left: 12px; font-size: 14px; }
+  .ms-marke span { display: none; }
+  .ms-hinweis { padding-left: 10px; }
+  .ms-knopf { padding: 0 14px; }
+}
+@media print { .ms-leiste, .ms-platz { display: none; } }

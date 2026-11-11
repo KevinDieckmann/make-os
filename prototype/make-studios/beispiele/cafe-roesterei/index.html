@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beispiel · Lohe Kaffeerösterei · MAKE Studios</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Beispielseite einer erfundenen Kaffeerösterei in Berlin.">
+<meta name="theme-color" content="#070707">
+<link rel="icon" href="../../zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/geist-variabel.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="schriften/spacemono-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="schriften/allura-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../leiste.css">
+<link rel="stylesheet" href="seite.css">
+<script type="module" src="seite.js"></script>
+</head>
+<body>
+
+<a class="sprung" href="#inhalt">Zum Inhalt springen</a>
+
+<!-- Vorlader: eine Tasse füllt sich. Nur Dekor, ohne Skript blendet er sich per CSS selbst aus. -->
+<div class="vorlader" aria-hidden="true">
+  <p class="vorlader-titel"><span class="schraeg">//</span> Wird gebrüht</p>
+  <p class="vorlader-zahl">000</p>
+  <p class="vorlader-marke">LOHE</p>
+  <svg class="vorlader-becher" viewBox="0 0 120 170" focusable="false">
+    <defs>
+      <clipPath id="becher-innen"><path d="M20 26 L100 26 L88 150 Q88 158 80 158 L40 158 Q32 158 32 150 Z"/></clipPath>
+      <linearGradient id="becher-kaffee" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#b07a45"/>
+        <stop offset="1" stop-color="#2a1a0f"/>
+      </linearGradient>
+    </defs>
+    <g clip-path="url(#becher-innen)"><rect class="vorlader-fuellung" x="0" y="156" width="120" height="170" fill="url(#becher-kaffee)"/></g>
+    <path d="M20 26 L100 26 L88 150 Q88 158 80 158 L40 158 Q32 158 32 150 Z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M14 26 H106" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+  </svg>
+</div>
+
+<header class="kopf">
+  <div class="kopf-leiste">
+    <button class="kopf-menue" type="button" aria-expanded="false" aria-controls="seitenmenue" aria-label="Menü öffnen">
+      <span class="kopf-menue-strich"></span><span class="kopf-menue-strich"></span>
+    </button>
+    <nav class="kopf-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="#karte" data-unterstrich>Karte</a></li>
+        <li><a href="#roestung" data-unterstrich>Röstung</a></li>
+        <li><a href="#haus" data-unterstrich>Haus</a></li>
+        <li><a href="#haltung" data-unterstrich>Haltung</a></li>
+      </ul>
+    </nav>
+    <a class="kopf-marke" href="#start" aria-label="Lohe Kaffeerösterei, zum Seitenanfang">LOHE</a>
+    <a class="kopf-bestellen" href="#vorbestellen"><span class="puls" aria-hidden="true"></span><span data-unterstrich>Vorbestellen</span></a>
+  </div>
+</header>
+
+<div class="seitenmenue" id="seitenmenue" hidden>
+  <p class="seitenmenue-titel"><span class="schraeg">//</span> Navigation</p>
+  <nav aria-label="Seitenmenü">
+    <ol class="seitenmenue-liste">
+      <li><a href="#karte"><span class="seitenmenue-nr">01</span>Karte</a></li>
+      <li><a href="#roestung"><span class="seitenmenue-nr">02</span>Röstung</a></li>
+      <li><a href="#haus"><span class="seitenmenue-nr">03</span>Haus</a></li>
+      <li><a href="#haltung"><span class="seitenmenue-nr">04</span>Haltung</a></li>
+      <li><a href="#vorbestellen"><span class="seitenmenue-nr">05</span>Vorbestellen</a></li>
+    </ol>
+  </nav>
+  <p class="seitenmenue-fuss">Beispielstraße 1 · Berlin<br>Mo–Fr 07:00–18:00 · Sa–So 09:00–17:00</p>
+</div>
+
+<main id="inhalt">
+
+  <!-- ═══ 1 · Start ═══ -->
+  <section class="held" id="start" aria-label="Willkommen" data-kopf="dunkel">
+    <div class="opal" aria-hidden="true"><div class="opal-ersatz"></div><canvas class="opal-leinwand"></canvas></div>
+    <div class="held-schleier" aria-hidden="true"></div>
+    <div class="held-inhalt">
+      <div class="held-text">
+        <div class="held-titelraster">
+          <div class="held-titelblock">
+            <p class="etikett" data-auf="10" data-feder="90/26" data-start><span class="schraeg">//</span> Kaffeerösterei · Berlin</p>
+            <h1 class="held-titel"><span class="held-zeilen" data-zeilen data-start>Geröstet für den</span> <span class="held-schrift" data-clip="-12% {} -22% -4%" data-clip-von="100" data-clip-bis="-8" data-feder="36/26" data-verz="420" data-start>Augenblick</span></h1>
+          </div>
+        </div>
+        <div class="held-unten">
+          <p class="held-lede" data-woerter="held" data-verz="260" data-start>Kaffee aus eigener Röstung, ruhig zubereitet. Zum Bleiben an der Bar oder für den Weg in den Tag.</p>
+          <span class="held-cta" data-auf="12" data-feder="90/26" data-verz="520" data-start><a class="cta" href="#karte">Zur Karte</a></span>
+        </div>
+      </div>
+
+      <figure class="held-bild">
+        <div class="held-modell" role="img" aria-label="Eine Kaffeetüte der Lohe Kaffeerösterei neben einem Becher zum Mitnehmen"></div>
+        <span class="held-griff" aria-hidden="true"></span>
+      </figure>
+
+      <aside class="held-leiste" aria-label="Besuch">
+        <span class="held-leiste-grund" aria-hidden="true"></span>
+        <p class="held-zeiten" data-auf="16" data-feder="90/26" data-verz="620" data-start><span class="block" data-ziffern data-verz="760">Mo–Fr 07:00–18:00</span><span class="block" data-ziffern data-verz="830">Sa–So 09:00–17:00</span></p>
+        <span class="trennstrich" data-linie="y" data-verz="700" data-start></span>
+        <address class="held-adresse" data-auf="16" data-feder="90/26" data-verz="760" data-start><span class="block">Beispielstraße 1</span><span class="block">Berlin</span></address>
+        <span class="trennstrich ab-sm" data-linie="y" data-verz="840" data-start></span>
+        <p class="held-roestung ab-sm" data-auf="16" data-feder="90/26" data-verz="900" data-start><span class="block">Röstung</span><span class="block">jeden Donnerstag</span></p>
+      </aside>
+    </div>
+
+    <div class="held-karten" aria-hidden="true">
+      <div class="held-karte" data-stueck="tuete">
+        <p class="held-karte-etikett"><span class="schraeg">//</span> in der Tüte</p>
+        <p class="held-karte-name">Hausröstung Nº 07</p>
+        <ul class="held-karte-fakten"><li>250 g</li><li>Ganze Bohne</li><li>Berlin</li></ul>
+      </div>
+      <div class="held-karte" data-stueck="becher">
+        <p class="held-karte-etikett"><span class="schraeg">//</span> im Becher</p>
+        <p class="held-karte-name">Flat White</p>
+        <ul class="held-karte-fakten"><li>250 ml</li><li>Täglich frisch</li><li>Zum Mitnehmen</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 2 · Karte ═══ -->
+  <section class="karte" id="karte" aria-labelledby="karte-titel" data-kopf="hell">
+    <div class="wirbel wirbel-karte" aria-hidden="true" data-wirbel="links"><span class="wirbel-parallax"><span class="wirbel-maske"><span class="wirbel-farbe"></span></span></span></div>
+    <div class="karte-inhalt">
+      <div class="karte-kopf">
+        <p class="etikett karte-etikett" data-clip="0 {} 0 0" data-feder="46/26"><span class="schraeg">//</span> unsere Karte</p>
+        <h2 class="karte-titel" id="karte-titel" data-zeilen>Unsere Lieblinge heute</h2>
+        <div class="karte-lede-raum">
+          <p class="karte-lede" data-woerter data-verz="320">Vier Lieblinge von der Bar und aus der Backstube. Bei jedem steht dabei, woher es kommt.</p>
+        </div>
+      </div>
+
+      <div class="tageskarte" id="tageskarte" aria-hidden="true">
+        <div class="tageskarte-dreh">
+          <div class="tageskarte-papier">
+            <p class="tageskarte-titel">Tageskarte</p>
+            <p class="tageskarte-unter">Lohe Kaffeerösterei</p>
+            <span class="tageskarte-strich"></span>
+            <ul class="tageskarte-liste">
+              <li><span>Espresso</span><span>Brasilien</span></li>
+              <li><span>Cortado</span><span>Brasilien</span></li>
+              <li><span>Flat White</span><span>Kolumbien</span></li>
+              <li><span>Filter der Woche</span><span>wechselnd</span></li>
+              <li><span>Matcha auf Eis</span><span>Japan</span></li>
+              <li><span>Eislatte</span><span>Kolumbien</span></li>
+              <li><span>Chai</span><span>hausgemacht</span></li>
+              <li><span>Kakao</span><span>mit Hafer</span></li>
+            </ul>
+            <span class="tageskarte-strich"></span>
+            <ul class="tageskarte-liste">
+              <li><span>Zimtschnecke</span><span>Backstube</span></li>
+              <li><span>Bananenbrot</span><span>Backstube</span></li>
+              <li><span>Butterbrezel</span><span>morgens</span></li>
+            </ul>
+            <span class="tageskarte-strich"></span>
+            <p class="tageskarte-fuss">Bohnen auch zum Mitnehmen<br>Mahlgrad nach Wunsch</p>
+          </div>
+        </div>
+      </div>
+
+      <span class="karte-cta" data-auf="12" data-feder="90/26" data-verz="420">
+        <button class="cta cta-dunkel" type="button" aria-expanded="false" aria-controls="tageskarte" data-tageskarte>Tageskarte zeigen</button>
+      </span>
+
+      <ul class="karte-reihe">
+        <li class="karte-zelle">
+          <div class="neigen" data-neigen><div class="neigen-innen">
+            <article class="kachel" data-auf="28" data-feder="80/26" data-verz="0" data-scrub-raum>
+              <p class="kachel-nr" data-ziffern data-verz="160">01</p>
+              <div class="kachel-medium ist-beschnitten">
+                <div class="kachel-scrub" data-scrub="ty:11:0" data-scrub-von="top_bottom" data-scrub-bis="center_center">
+                  <div class="kachel-rahmen kachel-rahmen-1"><img class="kachel-foto" src="medien/karte-espresso.webp" alt="Ein Cortado im Pappbecher mit einem Herz im Milchschaum" width="900" height="957" loading="lazy" decoding="async"></div>
+                </div>
+              </div>
+              <div class="kachel-zeile">
+                <h3 class="kachel-name" data-clip="0 {} -30% 0" data-feder="58/26" data-verz="300">Cortado</h3>
+                <p class="kachel-herkunft" data-clip="0 {} -30% 0" data-feder="58/26" data-verz="340">Brasilien</p>
+              </div>
+              <p class="kachel-text">Espresso mit wenig warmer Milch, kurz und rund. Geschmack: Kakao, Haselnuss.</p>
+            </article>
+          </div></div>
+        </li>
+        <li class="karte-zelle">
+          <div class="neigen" data-neigen><div class="neigen-innen">
+            <article class="kachel" data-auf="28" data-feder="80/26" data-verz="90" data-scrub-raum>
+              <p class="kachel-nr" data-ziffern data-verz="250">02</p>
+              <div class="kachel-medium ist-beschnitten">
+                <div class="kachel-scrub" data-scrub="ty:11:0" data-scrub-von="top_bottom" data-scrub-bis="center_center">
+                  <div class="kachel-rahmen kachel-rahmen-2"><img class="kachel-foto" src="medien/karte-flatwhite.webp" alt="Ein Flat White im Pappbecher mit Latte Art" width="900" height="1350" loading="lazy" decoding="async"></div>
+                </div>
+              </div>
+              <div class="kachel-zeile">
+                <h3 class="kachel-name" data-clip="0 {} -30% 0" data-feder="58/26" data-verz="390">Flat White</h3>
+                <p class="kachel-herkunft" data-clip="0 {} -30% 0" data-feder="58/26" data-verz="430">Kolumbien</p>
+              </div>
+              <p class="kachel-text">Doppelter Espresso unter feinem Milchschaum. Geschmack: Karamell, Milchschokolade.</p>
+            </article>
+          </div></div>
+        </li>
+        <li class="karte-zelle">
+          <div class="neigen" data-neigen><div class="neigen-innen">
+            <article class="kachel" data-auf="28" data-feder="80/26" data-verz="180" data-scrub-raum>
+              <p class="kachel-nr" data-ziffern data-verz="340">03</p>
+              <div class="kachel-medium">
+                <div class="kachel-scrub" data-scrub="ty:11:0" data-scrub-von="top_bottom" data-scrub-bis="center_center">
+                  <div class="kachel-rahmen kachel-rahmen-3"><img class="kachel-foto" src="medien/karte-matcha.webp" alt="Matcha auf Eis im Glasbecher mit Strohhalm" width="900" height="1350" loading="lazy" decoding="async"></div>
+                </div>
+              </div>
+              <div class="kachel-zeile">
+                <h3 class="kachel-name" data-clip="0 {} -30% 0" data-feder="58/26" data-verz="480">Matcha auf Eis</h3>
+                <p class="kachel-herkunft" data-clip="0 {} -30% 0" data-feder="58/26" data-verz="520">Japan</p>
+              </div>
+              <p class="kachel-text">Matcha aus Uji, Hafermilch und Eis. Geschmack: grasig, mild, cremig.</p>
+            </article>
+          </div></div>
+        </li>
+        <li class="karte-zelle">
+          <div class="neigen" data-neigen><div class="neigen-innen">
+            <article class="kachel" data-auf="28" data-feder="80/26" data-verz="270" data-scrub-raum>
+              <p class="kachel-nr" data-ziffern data-verz="430">04</p>
+              <div class="kachel-medium ist-beschnitten">
+                <div class="kachel-scrub" data-scrub="ty:11:0" data-scrub-von="top_bottom" data-scrub-bis="center_center">
+                  <div class="kachel-rahmen kachel-rahmen-4"><img class="kachel-foto" src="medien/karte-zimtschnecke.webp" alt="Eine glasierte Zimtschnecke auf einem Keramikteller" width="1000" height="667" loading="lazy" decoding="async"></div>
+                </div>
+              </div>
+              <div class="kachel-zeile">
+                <h3 class="kachel-name" data-clip="0 {} -30% 0" data-feder="58/26" data-verz="570">Zimtschnecke</h3>
+                <p class="kachel-herkunft" data-clip="0 {} -30% 0" data-feder="58/26" data-verz="610">Backstube</p>
+              </div>
+              <p class="kachel-text">Hefeteig mit Zimt und Kardamom, jeden Morgen gebacken. Geschmack: warm, würzig.</p>
+            </article>
+          </div></div>
+        </li>
+      </ul>
+      <p class="karte-wisch" aria-hidden="true"><span class="karte-wisch-nr">01</span><span class="karte-wisch-linie"><span class="karte-wisch-stand"></span></span><span>04</span></p>
+    </div>
+  </section>
+
+  <!-- ═══ 3 · Röstung: echter Film in drei Einstellungen. Ohne Skript und bei reduzierter Bewegung stehen drei Standbilder nebeneinander. ═══ -->
+  <section class="roesten" id="roestung" aria-labelledby="roesten-titel" data-kopf="dunkel">
+    <div class="roesten-buehne">
+      <div class="roest-schleier" aria-hidden="true"></div>
+      <div class="roest-kopf">
+        <p class="etikett roest-etikett" data-clip="0 {} 0 0" data-feder="46/26"><span class="puls" aria-hidden="true"></span><span class="schraeg">//</span> Röstung · jeden Donnerstag</p>
+        <h2 class="roest-titel" id="roesten-titel"><span class="roest-zeilen" data-zeilen>Donnerstag ist</span> <span class="roest-schrift" data-clip="-12% {} -22% -4%" data-clip-von="100" data-clip-bis="-8" data-feder="36/26" data-verz="260">Rösttag</span></h2>
+        <p class="roest-lede" data-woerter data-verz="320">Einmal in der Woche läuft die Trommel. Was Sie hier sehen, steht ein paar Tage später bei uns im Regal.</p>
+      </div>
+
+      <ol class="roest-schritte">
+        <li class="roest-schritt ist-aktiv">
+          <figure class="roest-bild roest-bild-1">
+            <img class="roest-poster" src="medien/roest-auswurf.webp" alt="Die Klappe der Rösttrommel ist offen, geröstete Bohnen fallen ins Kühlsieb" width="1280" height="720" loading="lazy" decoding="async">
+            <video class="roest-video" src="medien/roest-auswurf.mp4" muted playsinline loop preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture></video>
+          </figure>
+          <div class="roest-text">
+            <p class="roest-nr">01 <span class="roest-von">/ 03</span></p>
+            <h3 class="roest-name">Auswurf</h3>
+            <p class="roest-satz">Farbe, Duft und Knacken stimmen. Die Klappe geht auf, und die Bohnen fallen aus der Trommel ins Kühlsieb.</p>
+          </div>
+        </li>
+        <li class="roest-schritt">
+          <figure class="roest-bild roest-bild-2">
+            <img class="roest-poster" src="medien/roest-kuehlsieb.webp" alt="Ein Rührarm dreht frisch geröstete Bohnen im Kühlsieb" width="1280" height="720" loading="lazy" decoding="async">
+            <video class="roest-video" src="medien/roest-kuehlsieb.mp4" muted playsinline loop preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture></video>
+          </figure>
+          <div class="roest-text">
+            <p class="roest-nr">02 <span class="roest-von">/ 03</span></p>
+            <h3 class="roest-name">Kühlsieb</h3>
+            <p class="roest-satz">Der Rührarm dreht, kühle Luft zieht durch. So bleibt die Röstung genau dort stehen, wo wir sie haben wollen.</p>
+          </div>
+        </li>
+        <li class="roest-schritt">
+          <figure class="roest-bild roest-bild-3">
+            <img class="roest-poster" src="medien/roest-abfuellen.webp" alt="Zwei Hände füllen geröstete Bohnen aus dem Kühlsieb in einen Sack" width="1280" height="720" loading="lazy" decoding="async">
+            <video class="roest-video" src="medien/roest-abfuellen.mp4" muted playsinline loop preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture></video>
+          </figure>
+          <div class="roest-text">
+            <p class="roest-nr">03 <span class="roest-von">/ 03</span></p>
+            <h3 class="roest-name">Abfüllen</h3>
+            <p class="roest-satz">Noch handwarm kommen die Bohnen von Hand in den Sack. Dort ruhen sie, bevor sie in die Tüte dürfen.</p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="roest-wahl" role="group" aria-label="Einstellung des Films wählen" hidden>
+        <button class="roest-knopf" type="button" aria-pressed="true" data-roest-schritt="0"><span class="roest-knopf-nr" aria-hidden="true">01</span><span class="roest-knopf-name">Auswurf</span></button>
+        <button class="roest-knopf" type="button" aria-pressed="false" data-roest-schritt="1"><span class="roest-knopf-nr" aria-hidden="true">02</span><span class="roest-knopf-name">Kühlsieb</span></button>
+        <button class="roest-knopf" type="button" aria-pressed="false" data-roest-schritt="2"><span class="roest-knopf-nr" aria-hidden="true">03</span><span class="roest-knopf-name">Abfüllen</span></button>
+        <span class="roest-gang" aria-hidden="true"><span class="roest-gang-stand"></span></span>
+      </div>
+
+      <button class="roest-pause" type="button" hidden><span class="roest-pause-zeichen" aria-hidden="true"></span><span class="roest-pause-text">Film anhalten</span></button>
+    </div>
+  </section>
+
+  <!-- ═══ 4 · Haus ═══ -->
+  <section class="haus" id="haus" aria-label="Unser Haus" data-kopf="hell">
+    <div class="wirbel wirbel-haus" aria-hidden="true" data-wirbel="rechts"><span class="wirbel-parallax"><span class="wirbel-maske"><span class="wirbel-farbe"></span></span></span></div>
+    <div class="haus-raum" aria-hidden="true"></div>
+    <div class="haus-drehraum" aria-hidden="true"></div>
+    <div class="haus-inhalt">
+      <div class="haus-uhr">
+        <figure class="haus-zifferblatt" data-auf="0" data-feder="60/26">
+          <div class="haus-scrub" data-scrub="ty:26:0" data-scrub-von="top_bottom" data-scrub-bis="center_center" data-scrub-ziel=".haus-raum">
+            <div class="haus-blatt" role="img" aria-label="Eine Uhr mit der aktuellen Uhrzeit in Berlin">
+              <img src="medien/haus-zifferblatt.webp" alt="" width="900" height="900" loading="lazy" decoding="async">
+              <svg class="haus-zeiger" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+                <line class="zeiger-stunde" x1="100" y1="100" x2="100" y2="42"/>
+                <line class="zeiger-minute" x1="100" y1="100" x2="100" y2="24"/>
+                <line class="zeiger-sekunde" x1="100" y1="112" x2="100" y2="20"/>
+                <circle cx="100" cy="100" r="3.2"/>
+              </svg>
+            </div>
+          </div>
+        </figure>
+        <div class="haus-becher" aria-hidden="true">
+          <div class="haus-neigen" data-neigen-raum="#haus">
+            <div class="haus-becher-scrub" data-scrub="ty:80:0" data-scrub-von="top_bottom" data-scrub-bis="center_center" data-scrub-ziel=".haus-raum">
+              <div class="haus-becher-dreh" data-scrub="rot:0:38" data-scrub-von="center_center" data-scrub-bis="bottom_top" data-scrub-ziel=".haus-drehraum">
+                <img src="medien/haus-eislatte.webp" alt="" width="900" height="1350" loading="lazy" decoding="async">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="haus-etikett" data-clip="0 {} 0 0" data-feder="46/26"><span class="puls" aria-hidden="true"></span><span class="schraeg">//</span> unser Haus</p>
+      <ul class="haus-liste">
+        <li data-clip="0 {} 0 0" data-feder="80/26" data-verz="160"><address><span class="block">Beispielstraße 1</span><span class="block">Berlin</span></address></li>
+        <li data-clip="0 {} 0 0" data-feder="80/26" data-verz="270"><span class="block">Bar, Fensterplätze</span><span class="block">und Röstraum</span></li>
+        <li data-clip="0 {} 0 0" data-feder="80/26" data-verz="380"><span class="block">Bohnen auch</span><span class="block">zum Mitnehmen</span></li>
+      </ul>
+      <p class="haus-jetzt" data-haus-jetzt aria-live="off"></p>
+      <p class="haus-zeiten" data-clip="0 {} 0 0" data-feder="46/26" data-verz="280"><span class="block">Geöffnet</span><span class="block" data-ziffern data-verz="360">Mo–Fr 07–18</span><span class="block" data-ziffern data-verz="430">Sa–So 09–17</span></p>
+    </div>
+  </section>
+
+  <!-- ═══ 5 · Haltung ═══ -->
+  <section class="ruhe" id="haltung" aria-label="Unsere Haltung" data-kopf="dunkel">
+    <div class="opal" aria-hidden="true"><div class="opal-ersatz"></div><canvas class="opal-leinwand"></canvas></div>
+    <div class="ruhe-schleier" aria-hidden="true"></div>
+    <div class="ruhe-szene" aria-hidden="true"></div>
+    <div class="ruhe-inhalt">
+      <figure class="ruhe-becher" data-ruhe-becher>
+        <span class="ruhe-becher-bild" role="img" aria-label="Ein Becher der Lohe Kaffeerösterei, leicht geneigt, zwischen schwebenden Kaffeebohnen"></span>
+      </figure>
+      <div class="ruhe-kopf">
+        <h2 class="ruhe-titel" data-zeilen>Die Stadt ist laut. Ihr Kaffee darf leise sein.</h2>
+      </div>
+      <div class="ruhe-lede-raum">
+        <p class="ruhe-lede" data-woerter data-verz="220">Bleiben Sie für ein Gespräch oder nehmen Sie den Becher mit. Beides geht ohne Aufwand. Hier wird nichts gehetzt, und nichts hält Sie länger als geplant.</p>
+      </div>
+      <ul class="ruhe-saetze">
+        <li data-clip="0 {} 0 0" data-feder="80/26" data-verz="340">Guter Kaffee.</li>
+        <li data-clip="0 {} 0 0" data-feder="80/26" data-verz="430">Ohne Getue.</li>
+        <li data-clip="0 {} 0 0" data-feder="80/26" data-verz="520">In Ruhe geröstet.</li>
+      </ul>
+      <p class="etikett ruhe-etikett" data-auf="10" data-feder="90/26" data-verz="420"><span class="schraeg">//</span> unsere Haltung</p>
+    </div>
+  </section>
+
+  <!-- ═══ 6 · Vorbestellen (Vorführung) ═══ -->
+  <section class="bestellen" id="vorbestellen" aria-label="Vorbestellen, eine Vorführung" data-kopf="dunkel">
+    <div class="bestellen-klebe">
+      <div class="bestellen-grund" aria-hidden="true"><div class="bestellen-grund-bild"></div></div>
+      <div class="drucker-buehne" aria-hidden="true">
+        <img class="drucker-geraet" src="medien/drucker.webp" alt="" width="404" height="72" decoding="async">
+        <div class="drucker-fenster">
+          <div class="bon">
+            <div class="bon-papier">
+              <p class="bon-titel">Lohe Kaffeerösterei</p>
+              <p class="bon-zeile bon-mitte">Beispielstraße 1 · Berlin</p>
+              <span class="bon-strich"></span>
+              <img class="bon-bild" src="medien/bon-latte.webp" alt="" width="252" height="360" decoding="async">
+              <span class="bon-strich"></span>
+              <div class="bon-posten">
+                <p class="bon-zeile"><span>Getränk</span><span class="bon-getraenk">Flat White</span></p>
+                <p class="bon-zeile"><span>Bohne</span><span class="bon-bohne">Kolumbien</span></p>
+                <p class="bon-zeile"><span>Geschmack</span><span class="bon-geschmack">Karamell, Schokolade</span></p>
+                <p class="bon-zeile"><span>Abholung</span><span>an der Bar</span></p>
+              </div>
+              <span class="bon-strich"></span>
+              <p class="bon-zeile bon-mitte">Danke für Ihren Besuch. Bis gleich.</p>
+              <span class="bon-strich"></span>
+              <div class="bon-satz">
+                <p class="bon-satz-text">Frisch gebrüht, wenn Sie kommen.</p>
+                <div class="bon-satz-seite">
+                  <p>Dieser Bon ist eine Vorführung.</p>
+                  <p class="bon-chip">Nichts gesendet</p>
+                </div>
+              </div>
+              <div class="bon-strichcode"></div>
+              <p class="bon-fuss">Beispielseite · keine Bestellung</p>
+            </div>
+            <svg class="bon-kante" viewBox="0 0 328 9" preserveAspectRatio="none" focusable="false"><path class="bon-kante-pfad" d="M0 0 L328 0 Z"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bestellen-text">
+        <div class="bestellen-schleier-oben" aria-hidden="true"></div>
+        <div class="bestellen-schleier-unten" aria-hidden="true"></div>
+        <div class="bestellen-kopf">
+          <h2 class="bestellen-titel" data-zeilen>Kaffee für genau jetzt.</h2>
+          <p class="bestellen-notiz" data-clip="0 {} 0 0" data-feder="46/26" data-verz="180">Wir kümmern uns um den Kaffee. Sie um Ihren Tag.</p>
+        </div>
+        <div class="bestellen-seite" data-auf="16" data-feder="80/26" data-verz="280">
+          <p class="bestellen-lede" data-woerter data-verz="320" data-rand="0">Bestellen Sie vorab, und Ihr Becher wird gebrüht, wenn Sie kommen, nicht davor. Probieren Sie es aus: Wählen Sie ein Getränk, der Drucker gibt den Bon aus.</p>
+          <div class="bestellen-wahl" role="group" aria-label="Getränk für den Bon wählen">
+            <button class="wahl" type="button" aria-pressed="false" data-getraenk="cortado">Cortado</button>
+            <button class="wahl" type="button" aria-pressed="true" data-getraenk="flatwhite">Flat White</button>
+            <button class="wahl" type="button" aria-pressed="false" data-getraenk="matcha">Matcha auf Eis</button>
+            <button class="wahl" type="button" aria-pressed="false" data-getraenk="eislatte">Eislatte</button>
+          </div>
+          <p class="bestellen-hinweis" role="status"><span class="puls" aria-hidden="true"></span><span data-bon-ansage>Vorführung · es wird nichts gesendet</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="fuss" data-kopf="dunkel">
+  <div class="wirbel wirbel-fuss" aria-hidden="true"><span class="wirbel-parallax"><span class="wirbel-maske"><span class="wirbel-farbe"></span></span></span></div>
+  <p class="fuss-marke" data-clip="0 {} 0 0" data-feder="42/26" data-verz="180"><a href="#start" aria-label="Lohe Kaffeerösterei, zum Seitenanfang">LOHE</a></p>
+  <p class="fuss-claim" data-steigen data-verz="260">Kaffee für jetzt. Geröstet für Ihren Tag.</p>
+  <div class="fuss-raster">
+    <div class="fuss-spalten">
+      <div class="fuss-spalte">
+        <p data-steigen data-verz="160">Seite</p>
+        <ul>
+          <li data-steigen data-verz="230"><a href="#karte" data-unterstrich>Karte</a></li>
+          <li data-steigen data-verz="300"><a href="#haus" data-unterstrich>Unser Haus</a></li>
+          <li data-steigen data-verz="370"><a href="#haltung" data-unterstrich>Haltung</a></li>
+          <li data-steigen data-verz="440"><a href="#vorbestellen" data-unterstrich>Vorbestellen</a></li>
+        </ul>
+      </div>
+      <div class="fuss-spalte">
+        <p data-steigen data-verz="290">Rösterei</p>
+        <ul>
+          <li data-steigen data-verz="360"><a href="#roestung" data-unterstrich>Röstung donnerstags</a></li>
+          <li data-steigen data-verz="430">Ganze Bohne</li>
+          <li data-steigen data-verz="500">Mahlgrad nach Wunsch</li>
+        </ul>
+      </div>
+    </div>
+    <span class="fuss-strich-klein" aria-hidden="true"></span>
+    <div class="fuss-kontakt">
+      <p data-steigen data-verz="550">Kontakt</p>
+      <ul>
+        <li data-steigen data-verz="620">Fragen Sie gern</li>
+        <li data-steigen data-verz="690">direkt an der Bar.</li>
+      </ul>
+    </div>
+  </div>
+  <span class="fuss-linie fuss-linie-oben" data-linie="x" data-verz="120" aria-hidden="true"></span>
+  <p class="fuss-haus" data-steigen data-verz="300"><span class="puls puls-klein" aria-hidden="true"></span>Unser Haus</p>
+  <div class="fuss-reihe">
+    <address class="fuss-adresse"><span class="block" data-steigen data-verz="340">Beispielstraße 1</span><span class="block" data-steigen data-verz="410">Berlin</span></address>
+    <span class="fuss-teiler fuss-teiler-a" data-linie="y" data-verz="300" aria-hidden="true"></span>
+    <p class="fuss-block fuss-block-b"><span class="block" data-steigen data-verz="400">Röstung</span><span class="block" data-steigen data-verz="470">jeden Donnerstag</span></p>
+    <span class="fuss-teiler fuss-teiler-b" data-linie="y" data-verz="360" aria-hidden="true"></span>
+    <p class="fuss-block fuss-block-c"><span class="block" data-steigen data-verz="460">Bohnen</span><span class="block" data-steigen data-verz="530">auch zum Mitnehmen</span></p>
+    <p class="fuss-zeiten"><span class="block" data-steigen data-verz="200"><span data-ziffern data-verz="260">Mo–Fr 07:00–18:00</span></span><span class="block" data-steigen data-verz="260"><span data-ziffern data-verz="320">Sa–So 09:00–17:00</span></span></p>
+  </div>
+  <span class="fuss-linie fuss-linie-unten" data-linie="x" data-verz="220" aria-hidden="true"></span>
+  <div class="fuss-recht">
+    <p class="fuss-copy" data-steigen data-verz="560">© 2026 Lohe Kaffeerösterei</p>
+    <p class="fuss-r2" data-steigen data-verz="600">Ruhig geröstet in Berlin</p>
+    <p class="fuss-r3" data-steigen data-verz="640">Erfundener Betrieb</p>
+  </div>
+</footer>
+
+<p class="meldung" role="status" aria-live="polite" hidden></p>
+
+<!-- ═══ Leiste von MAKE Studios: auf jeder Beispielseite, unverändert ═══ -->
+<div class="ms-platz" aria-hidden="true"></div>
+<nav class="ms-leiste" aria-label="MAKE Studios">
+  <a class="ms-marke" href="../../#beispielseiten" aria-label="Zurück zu den Beispielseiten von MAKE Studios"><img src="../../zeichen.svg" alt="" width="24" height="24"><b>MAKE</b><span>STUDIOS</span></a>
+  <span class="ms-hinweis"><b>Beispiel</b><span class="ms-lang"> · Namen erfunden</span></span>
+  <a class="ms-knopf" href="../../#erstgespraech-gastro">Erstgespräch</a>
+</nav>
+
+</body>
+</html>

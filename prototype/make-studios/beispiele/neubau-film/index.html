@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beispiel · Hellgrund · MAKE Studios</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Beispielseite eines Berliner Bauträgers mit einem Film beim Scrollen. Bauträger und Projekt sind erfunden.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="../../zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="medien/folge/000.webp" as="image" media="(max-width: 999.98px)">
+<link rel="preload" href="medien/folge-gross/000.webp" as="image" media="(min-width: 1000px)">
+<link rel="stylesheet" href="../leiste.css">
+<link rel="stylesheet" href="../vendor/lenis/lenis.css">
+<link rel="stylesheet" href="seite.css">
+<script type="module" src="seite.js"></script>
+</head>
+<body>
+
+<!-- Vorhang: Marke, Linie und ein rollender Prozentzähler. Er hebt sich nach höchstens etwa drei Sekunden.
+     Ohne Skript blendet er sich per CSS selbst aus, bei reduzierter Bewegung erscheint er gar nicht. -->
+<div class="vorhang" aria-hidden="true">
+  <div class="vh-spalten"><i></i><i></i><i></i><i></i></div>
+  <p class="vh-marke">Hellgrund</p>
+  <div class="vh-linie"><span class="vh-fuell"></span></div>
+  <div class="vh-zahl"><div class="vh-laeufer"></div></div>
+</div>
+
+<p class="meldung" role="status" aria-live="polite" hidden></p>
+
+<!-- Glasmenü oben rechts: unten sitzt die Leiste von MAKE Studios. -->
+<nav class="dock" aria-label="Seitenmenü">
+  <div class="dock-leiste">
+    <a class="dock-marke" href="#oben" aria-label="Hellgrund, zurück zum Anfang">
+      <svg class="zeichen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 18.5h18"/><path d="M6.5 18.5a5.5 5.5 0 0 1 11 0"/><path d="M12 5.5v2.4M5.4 8.6l1.6 1.6M18.6 8.6L17 10.2"/></svg>
+      <span>Hellgrund</span>
+    </a>
+    <button class="dock-knopf" type="button" aria-expanded="false" aria-controls="dock-menue" aria-label="Menü öffnen">
+      <svg class="ic-menue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <svg class="ic-zu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <ul id="dock-menue" class="dock-menue">
+    <li><a href="#oben">Anfang</a></li>
+    <li><a href="#projekt">Projekt</a></li>
+    <li><a href="#details">Details</a></li>
+    <li><a href="#rundgang">Rundgang</a></li>
+    <li><a href="#haltung">Haltung</a></li>
+    <li><a class="dock-anfrage" href="#kontakt" data-anfrage="">Termin anfragen</a></li>
+  </ul>
+</nav>
+
+<div class="seite">
+
+<!-- ═══ Szene: in Bewegung ein Weg über 1400 Viewports mit festgehaltener Bühne.
+     Ohne Bewegung dieselben Teile als ruhige Folge von Standbildern.
+     Die Bildfolge liegt zweimal vor: 1280 × 720 für schmale, 1920 × 1080 für breite Fenster. ═══ -->
+<section id="oben" class="szene" aria-label="Film beim Scrollen und Projekt HALM">
+  <div class="buehne">
+
+    <div class="film" aria-hidden="true">
+      <picture>
+        <source media="(min-width: 1000px)" srcset="medien/folge-gross/000.webp" width="1920" height="1080">
+        <img class="film-poster" src="medien/folge/000.webp" alt="" width="1280" height="720" decoding="async">
+      </picture>
+      <canvas class="film-leinwand"></canvas>
+    </div>
+
+    <div class="raster" aria-hidden="true"><div class="raster-in"><i></i><i></i><i></i><i></i></div></div>
+
+    <div class="block block-1">
+      <img class="block-bild" src="medien/folge/000.webp" srcset="medien/folge/000.webp 1280w, medien/folge-gross/000.webp 1920w" sizes="100vw" alt="Holzhaus mit großen Glasflächen in einer Dünenlandschaft am Meer, im Nebel" width="1280" height="720" loading="lazy" decoding="async">
+      <h1 class="block-kopf"><span class="vh">Licht ins Haus</span>
+        <span class="block-aus" aria-hidden="true">
+          <span class="slot slot-ol"><span class="wort">Licht</span></span>
+          <span class="slot slot-mr"><span class="wort">ins</span></span>
+          <span class="slot slot-ul"><span class="wort">Haus</span></span>
+        </span>
+      </h1>
+      <p class="block-text rechts"><span class="beispielfilm"><span class="stern-klein" aria-hidden="true">✦</span> Beispielfilm · hier läuft Ihr Film</span> Ein Haus, das dem Licht folgt. Klare Formen, große Glasflächen und Räume, in denen der Tag zur Ruhe kommt.</p>
+    </div>
+
+    <div class="block block-2">
+      <img class="block-bild" src="medien/folge/052.webp" srcset="medien/folge/052.webp 1280w, medien/folge-gross/052.webp 1920w" sizes="100vw" alt="Das Haus von der Wasserseite, mit Terrasse und Blick in die Räume" width="1280" height="720" loading="lazy" decoding="async">
+      <h2 class="block-kopf"><span class="vh">Raum mit Maß</span>
+        <span class="block-aus" aria-hidden="true">
+          <span class="slot slot-or"><span class="wort">Raum</span></span>
+          <span class="slot slot-ml"><span class="wort">mit</span></span>
+          <span class="slot slot-ur"><span class="wort">Maß</span></span>
+        </span>
+      </h2>
+      <p class="block-text">Jedes Maß hat einen Grund. Grundrisse, die sich nach Ihrem Alltag richten, und Details, die über Jahre halten.</p>
+    </div>
+
+    <div class="block block-3">
+      <img class="block-bild" src="medien/folge/104.webp" srcset="medien/folge/104.webp 1280w, medien/folge-gross/104.webp 1920w" sizes="100vw" alt="Wohnraum mit Sofa, Holzküche und raumhohen Fenstern zum Meer, am Abend" width="1280" height="720" loading="lazy" decoding="async">
+      <h2 class="block-kopf"><span class="vh">Ruhe am Wasser</span>
+        <span class="block-aus" aria-hidden="true">
+          <span class="slot slot-ol"><span class="wort">Ruhe</span></span>
+          <span class="slot slot-m"><span class="wort">am</span></span>
+          <span class="slot slot-ur"><span class="wort">Wasser</span></span>
+        </span>
+      </h2>
+      <p class="block-text">Draußen Weite, drinnen Wärme. Die Fenster holen die Landschaft ins Haus, und jeder Raum wird zum Rückzugsort.</p>
+    </div>
+
+    <!-- Projekt HALM: Innenraum fährt von unten ein, darüber eine Glastafel. -->
+    <div id="projekt" class="projekt">
+      <div class="projekt-bild"><picture>
+        <source media="(max-width: 767.98px)" srcset="medien/halm-raum-1000.jpg 1000w, medien/halm-raum-1600.jpg 1600w" sizes="150vh">
+        <img src="medien/halm-raum-1600.jpg" srcset="medien/halm-raum-1600.jpg 1600w, medien/halm-raum-2400.jpg 2400w" sizes="(max-aspect-ratio: 3/2) 150vh, 100vw" alt="Wohn- und Essbereich mit dunkler Küche, gedecktem Esstisch, Sofa und raumhohen hellen Vorhängen" width="2400" height="1599" loading="lazy" decoding="async">
+      </picture></div>
+      <article class="tafel" aria-labelledby="halm-titel">
+        <p class="etikett zeilen" data-zeit="label"><span class="zeile">Beispielprojekt</span><span class="zeile">Wohnen in Berlin</span></p>
+        <div class="tafel-mitte">
+          <h2 id="halm-titel" class="halm"><span class="vh">HALM</span><span class="wort halm-wort" aria-hidden="true">HALM</span></h2>
+          <p class="tafel-text">Ein Wohnhaus in Berlin, das sich zum Licht hin öffnet. Große Fenster, ruhige Materialien und Grundrisse, in denen man ankommt.</p>
+        </div>
+        <div class="tafel-fuss">
+          <ul class="ausstattung">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M12 3v18M5 12h14"/></svg><span>Bodentiefe Fenster</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20.5h18"/><path d="M8 17c-1.6-1.6 1.6-3.2 0-4.8s1.6-3.2 0-4.8"/><path d="M12 17c-1.6-1.6 1.6-3.2 0-4.8s1.6-3.2 0-4.8"/><path d="M16 17c-1.6-1.6 1.6-3.2 0-4.8s1.6-3.2 0-4.8"/></svg><span>Fußbodenheizung</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11h18M3 20.5h18"/><path d="M6 11v9.5M10 11v9.5M14 11v9.5M18 11v9.5"/><path d="M12 3.5a3 3 0 0 1 3 3"/></svg><span>Eigener Freisitz</span></li>
+          </ul>
+          <p class="etikett zeilen fuss-etikett" data-zeit="label"><span class="zeile">Exposé</span><span class="zeile">auf Anfrage</span></p>
+        </div>
+      </article>
+    </div>
+
+    <!-- Details: zweiter Innenraum, von unten aufgedeckt; Zähler; der Stern öffnet den Film. -->
+    <div id="details" class="details-ebene">
+      <div class="details-flaeche">
+        <div class="details-bild"><picture>
+          <source media="(max-width: 767.98px)" srcset="medien/halm-detail-1000.jpg 1000w, medien/halm-detail-1600.jpg 1600w" sizes="124vh">
+          <img src="medien/halm-detail-1600.jpg" srcset="medien/halm-detail-1600.jpg 1600w, medien/halm-detail-2400.jpg 2400w" sizes="(max-aspect-ratio: 5/4) 124vh, 100vw" alt="Ecke eines Wohnraums am Abend: Holzstuhl, schwarzer Beistelltisch mit Vase und Zweig" width="2400" height="1942" loading="lazy" decoding="async">
+        </picture></div>
+        <div class="kreuz" aria-hidden="true"><i></i><i></i></div>
+        <div class="details-kopf">
+          <h2 class="details-titel"><span>Aus Plänen werden</span><span>Räume zum Leben</span></h2>
+          <p class="beispielwerte"><span class="stern-klein" aria-hidden="true">✦</span> Beispielwerte · hier stehen Ihre Zahlen</p>
+        </div>
+        <dl class="zahlen">
+          <div class="zahl z-or"><dt>Wohnungen</dt><dd><span class="vh">64</span><span class="trommel" aria-hidden="true" data-wert="64">64</span></dd></div>
+          <div class="zahl z-ul"><dt>Geschosse</dt><dd><span class="vh">7</span><span class="trommel" aria-hidden="true" data-wert="7">7</span></dd></div>
+          <div class="zahl z-ur"><dt>Wohnfläche in m²</dt><dd><span class="vh">4.800</span><span class="trommel" aria-hidden="true" data-wert="4800">4.800</span></dd></div>
+        </dl>
+      </div>
+
+      <div class="stern" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path class="stern-hell" d="M0 12C6 12 12 6 12 0C12 6 18 12 24 12C18 12 12 18 12 24C12 18 6 12 0 12Z"/><path class="stern-ton" d="M0 12C6 12 12 6 12 0C12 6 18 12 24 12C18 12 12 18 12 24C12 18 6 12 0 12Z"/></svg>
+      </div>
+
+      <!-- Rundgang: drei kurze Einstellungen, stumm, weich überblendet. Ohne Skript zeigt der Browser die erste mit Bedienleiste. -->
+      <div id="rundgang" class="film-teil">
+        <a class="besichtigung" href="#kontakt" data-anfrage="Besichtigung"><span class="stern-klein" aria-hidden="true">✦</span> Besichtigung vereinbaren</a>
+        <div class="ueber-links">
+          <h3 class="rundgang zeilen" data-zeit="label"><span class="zeile">Ein Rundgang durch</span><span class="zeile">Haus und Wohnung</span></h3>
+          <p class="film-hinweis"><span class="stern-klein" aria-hidden="true">✦</span> Beispielfilm · hier läuft Ihr Film</p>
+        </div>
+        <div class="rolle">
+          <video class="rolle-film f-haus an vorn" controls muted loop playsinline preload="none" poster="medien/rundgang-1-haus.webp" aria-label="Beispielfilm ohne Ton, erste Einstellung: zwei Wohnhäuser mit Balkonen unter ziehenden Wolken">
+            <source src="medien/rundgang-1-haus.mp4" type="video/mp4">
+          </video>
+          <video class="rolle-film f-raum" muted loop playsinline preload="none" data-poster="medien/rundgang-2-raum.webp" aria-label="Zweite Einstellung: heller Wohnraum mit Treppe und Sofa">
+            <source src="medien/rundgang-2-raum.mp4" type="video/mp4">
+          </video>
+          <video class="rolle-film f-licht" muted loop playsinline preload="none" data-poster="medien/rundgang-3-licht.webp" aria-label="Dritte Einstellung: Sofa am Eckfenster, Sonnenlicht fällt in den Raum">
+            <source src="medien/rundgang-3-licht.mp4" type="video/mp4">
+          </video>
+        </div>
+        <ol class="stationen nur-js" aria-label="Einstellungen des Films">
+          <li><button class="station" type="button" aria-pressed="true" aria-label="Einstellung 1 von 3: Haus"><span class="st-nr" aria-hidden="true">01</span><span class="st-name" aria-hidden="true">Haus</span><span class="st-lauf" aria-hidden="true"><i></i></span></button></li>
+          <li><button class="station" type="button" aria-pressed="false" aria-label="Einstellung 2 von 3: Raum"><span class="st-nr" aria-hidden="true">02</span><span class="st-name" aria-hidden="true">Raum</span><span class="st-lauf" aria-hidden="true"><i></i></span></button></li>
+          <li><button class="station" type="button" aria-pressed="false" aria-label="Einstellung 3 von 3: Licht"><span class="st-nr" aria-hidden="true">03</span><span class="st-name" aria-hidden="true">Licht</span><span class="st-lauf" aria-hidden="true"><i></i></span></button></li>
+        </ol>
+        <button class="film-knopf nur-js" type="button" aria-label="Film anhalten">
+          <svg class="ic-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><rect x="7" y="5.5" width="3.2" height="13" rx=".6"/><rect x="13.8" y="5.5" width="3.2" height="13" rx=".6"/></svg>
+          <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+          <span class="film-knopf-text">Film anhalten</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ Haltung: das eigene Wort des Bauträgers, kein Kundenzitat. ═══ -->
+<section id="haltung" class="haltung" aria-labelledby="haltung-titel">
+  <div class="haltung-kopf">
+    <h2 id="haltung-titel"><span class="stern-ton-klein" aria-hidden="true">✦</span> Unsere Haltung</h2>
+    <div class="blaettern nur-js">
+      <p aria-hidden="true">01 / 03</p>
+      <button type="button" aria-label="Vorheriger Satz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+      <button type="button" aria-label="Nächster Satz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+  <figure class="haltung-figur">
+    <div class="portrait"><span class="portrait-in"><img src="medien/founder.webp" alt="Beispielfoto: Porträt eines Mannes am Zeichentisch mit Bauplänen, schwarzweiß" width="1024" height="1024" loading="lazy" decoding="async"></span></div>
+    <div class="haltung-text">
+      <span class="zitatzeichen" aria-hidden="true">“</span>
+      <div class="aussagen" aria-live="polite">
+        <blockquote class="aussage-satz an">
+          <p class="aussage zeilen" data-zeit="quote" data-frei=""><span class="zeile">Wir bauen nur, was wir selbst bewohnen würden: mit Licht in jedem Raum, ehrlichen Materialien und der Zeit, die gute Details brauchen.</span></p>
+        </blockquote>
+        <blockquote class="aussage-satz">
+          <p class="aussage zeilen" data-zeit="quote" data-frei=""><span class="zeile">Ein Grundriss ist gut, wenn er auch in vielen Jahren noch passt. Deshalb planen wir Räume, die sich mit Ihrem Leben verändern können.</span></p>
+        </blockquote>
+        <blockquote class="aussage-satz">
+          <p class="aussage zeilen" data-zeit="quote" data-frei=""><span class="zeile">Wir sagen vorher, was wir bauen. Und wir bauen, was wir gesagt haben: vom ersten Gespräch bis zur Schlüsselübergabe.</span></p>
+        </blockquote>
+      </div>
+      <figcaption><span class="name">Ihr Name</span><span class="rolle-text">Geschäftsführung</span></figcaption>
+    </div>
+  </figure>
+  <span class="dock-wache" aria-hidden="true"></span>
+</section>
+
+<div class="fuss-platz" aria-hidden="true"></div>
+</div>
+
+<!-- ═══ Fuß: hinter der Seite festgehalten und beim Scrollen aufgedeckt. ═══ -->
+<footer class="fuss">
+  <img class="fuss-bild" src="medien/footer-bg.webp" alt="" width="2560" height="1429" loading="lazy" decoding="async">
+  <div class="fuss-ton" aria-hidden="true"></div>
+  <div class="raster fuss-raster" aria-hidden="true"><div class="raster-in"><i></i><i></i><i></i><i></i></div></div>
+  <div class="fuss-inhalt">
+    <div class="fuss-ruf">
+      <h2 class="fuss-frage zeilen" data-zeit="cta"><span class="zeile">Wann dürfen wir</span><span class="zeile">Ihnen HALM zeigen?</span></h2>
+      <p class="fuss-satz">Besichtigung, Beratung oder Unterlagen: Sagen Sie uns, was Sie brauchen. Wir melden uns mit einem Terminvorschlag.</p>
+      <a class="glas-knopf" href="#kontakt" data-anfrage=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 8v8h8"/><path d="M12 12l4 4-4 4"/></svg><span>Termin anfragen</span></a>
+    </div>
+    <div class="fuss-adresse">
+      <p class="adr-titel">Besuch nach Vereinbarung</p>
+      <p>Hellgrund</p>
+      <p>Beispielstraße 1 · Berlin</p>
+    </div>
+    <nav class="fuss-nav" aria-label="Fußbereich">
+      <ul>
+        <li><a href="#oben">Anfang</a></li>
+        <li><a href="#projekt">Projekt</a></li>
+        <li><a href="#details">Details</a></li>
+        <li><a href="#rundgang">Rundgang</a></li>
+        <li><a href="#haltung">Haltung</a></li>
+      </ul>
+    </nav>
+  </div>
+  <p class="wortmarke"><span class="vh">Hellgrund</span><span class="wm-wort" aria-hidden="true">Hellgrund</span></p>
+</footer>
+<span id="kontakt" class="kontakt-anker" aria-hidden="true"></span>
+
+<!-- Marke folgt dem Zeiger über dem Film (nur feiner Zeiger, breite Fenster). -->
+<div class="marke-zeiger" aria-hidden="true"><span>Pause</span></div>
+
+<!-- Anfrage: sendet nichts. Das Absenden wird abgefangen, geprüft und zeigt einen ruhigen Hinweis. -->
+<dialog class="anfrage" aria-labelledby="anfrage-titel" data-lenis-prevent="">
+  <form class="anfrage-form" novalidate>
+    <div class="anfrage-kopf">
+      <h2 id="anfrage-titel">Termin anfragen</h2>
+      <button class="anfrage-zu" type="button" aria-label="Fenster schließen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <fieldset class="anliegen">
+      <legend>Worum geht es?</legend>
+      <label><input type="radio" name="anliegen" value="Besichtigung" checked><span>Besichtigung</span></label>
+      <label><input type="radio" name="anliegen" value="Beratung"><span>Beratung</span></label>
+      <label><input type="radio" name="anliegen" value="Unterlagen"><span>Unterlagen</span></label>
+    </fieldset>
+    <div class="feld">
+      <label for="f-name">Name</label>
+      <input id="f-name" type="text" name="name" autocomplete="name" aria-describedby="f-name-fehler">
+      <p class="feld-fehler" id="f-name-fehler" hidden></p>
+    </div>
+    <div class="feld">
+      <label for="f-email">E-Mail</label>
+      <input id="f-email" type="email" name="email" autocomplete="email" inputmode="email" aria-describedby="f-email-fehler">
+      <p class="feld-fehler" id="f-email-fehler" hidden></p>
+    </div>
+    <div class="feld">
+      <label for="f-nachricht">Nachricht (optional)</label>
+      <textarea id="f-nachricht" name="nachricht" rows="3"></textarea>
+    </div>
+    <button class="glas-knopf senden" type="submit"><span>Anfrage senden</span></button>
+    <p class="anfrage-hinweis" role="status" aria-live="polite"></p>
+  </form>
+</dialog>
+
+<!-- ═══ Leiste von MAKE Studios: auf jeder Beispielseite, unverändert ═══ -->
+<div class="ms-platz" aria-hidden="true"></div>
+<nav class="ms-leiste" aria-label="MAKE Studios">
+  <a class="ms-marke" href="../../#beispielseiten" aria-label="Zurück zu den Beispielseiten von MAKE Studios"><img src="../../zeichen.svg" alt="" width="24" height="24"><b>MAKE</b><span>STUDIOS</span></a>
+  <span class="ms-hinweis"><b>Beispiel</b><span class="ms-lang"> · Namen erfunden</span></span>
+  <a class="ms-knopf" href="../../#erstgespraech-immobilien">Erstgespräch</a>
+</nav>
+
+</body>
+</html>

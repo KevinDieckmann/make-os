@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MAKE Studios · Websites, Sichtbarkeit und Video aus Berlin</title>
+<meta name="description" content="MAKE Studios baut Websites, macht Sie bei Google sichtbar und dreht Videos. Für Cafés, Agenturen und Immobilien in Berlin.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#F2EDE4">
+<link rel="icon" href="zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="schriften/instrument-serif-italic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="referenzen/cafe-roesterei-poster.webp" as="image" type="image/webp" fetchpriority="high">
+<link rel="stylesheet" href="studio.css">
+<link rel="stylesheet" href="anfrage.css">
+<link rel="stylesheet" href="statisch.css" media="(prefers-reduced-motion: reduce)">
+<noscript><link rel="stylesheet" href="statisch.css"></noscript>
+<script src="seite.js" defer></script>
+<script src="studio.js" defer></script>
+<script src="anfrage.js" defer></script>
+</head>
+<body>
+
+<!-- Das Zeichen: Irisblende mit sechs Lamellen. Einmal hier, überall per <use>. -->
+<svg class="vorrat" aria-hidden="true" focusable="false">
+  <defs>
+    <mask id="m-iris" maskUnits="userSpaceOnUse" x="-10" y="-10" width="120" height="120">
+      <circle cx="50" cy="50" r="46" fill="#fff"/>
+      <polygon points="50,70 32.68,60 32.68,40 50,30 67.32,40 67.32,60" fill="#000"/>
+      <path d="M50 70L15.36 90M32.68 60L-1.96 40M32.68 40L32.68 0M50 30L84.64 10M67.32 40L101.96 60M67.32 60L67.32 100" stroke="#000" stroke-width="4"/>
+    </mask>
+    <g id="g-iris"><rect x="-10" y="-10" width="120" height="120" mask="url(#m-iris)"/></g>
+  </defs>
+</svg>
+
+<a class="springen" href="#entwuerfe">Film überspringen</a>
+
+<div class="lader" aria-hidden="true">
+  <svg class="lader-blende" viewBox="0 0 100 100"><use href="#g-iris"/></svg>
+</div>
+
+<header class="kopf">
+  <a class="marke" href="#film" aria-label="MAKE Studios, zum Anfang">
+    <svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-iris"/></svg>
+    <span class="marke-wort"><b>MAKE</b> <span>STUDIOS</span></span>
+  </a>
+  <nav class="kopf-nav" aria-label="Hauptmenü">
+    <a href="#branchen">Branchen</a>
+    <a href="#entwuerfe">Entwürfe</a>
+    <a href="#beispielseiten">Beispiele</a>
+    <a href="#analysen">Analysen</a>
+    <a href="#check">Check</a>
+    <a href="#leistungen">Leistungen</a>
+    <a href="#ablauf">Ablauf</a>
+  </nav>
+  <div class="kopf-rechts">
+    <a class="knopf knopf-klein" href="#kontakt" data-buchen>Erstgespräch</a>
+    <button class="menue-knopf" type="button" aria-expanded="false" aria-controls="menue" hidden><span class="menue-knopf-wort">Menü</span><span class="menue-knopf-zeichen" aria-hidden="true"><i></i><i></i></span></button>
+  </div>
+</header>
+
+<!-- Menü für schmale Fenster: eigenes Fenster (dialog) mit Fokusfalle, Escape und Scroll-Sperre (seite.js) -->
+<dialog class="menue" id="menue" aria-label="Menü">
+  <div class="menue-kopf">
+    <span class="marke"><svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-iris"/></svg><span class="marke-wort"><b>MAKE</b> <span>STUDIOS</span></span></span>
+    <button class="menue-zu" type="button" aria-label="Menü schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <nav class="menue-nav" aria-label="Hauptmenü">
+    <a href="#branchen"><span>01</span>Branchen</a>
+    <a href="#entwuerfe"><span>02</span>Entwürfe</a>
+    <a href="#beispielseiten"><span>03</span>Beispiele</a>
+    <a href="#analysen"><span>04</span>Analysen</a>
+    <a href="#check"><span>05</span>Check</a>
+    <a href="#leistungen"><span>06</span>Leistungen</a>
+    <a href="#ablauf"><span>07</span>Ablauf</a>
+    <a href="#fragen"><span>08</span>Fragen</a>
+  </nav>
+  <div class="menue-fuss">
+    <a class="knopf knopf-gross" href="#kontakt" data-buchen>Erstgespräch buchen</a>
+    <a class="menue-mail" href="mailto:kevin@makeinnovation.de?subject=Anfrage%20MAKE%20Studios">kevin@makeinnovation.de</a>
+  </div>
+</dialog>
+
+<main>
+
+<!-- ─── Der Film: ein Fortschritt p über die ganze Spur, die Bühne bleibt stehen ─── -->
+<section class="film" id="film" aria-label="Showreel MAKE Studios">
+  <div class="buehne">
+
+    <!-- 01 Intro -->
+    <div class="szene szene-held">
+      <p class="ueberzeile">MAKE Studios · Berlin</p>
+      <h1 class="held-titel"><span class="zeile">Wir machen</span> <span class="zeile">Sie <em>sichtbar.</em></span></h1>
+      <p class="held-text">Websites, Google-Profil und Video für Cafés, Agenturen und Immobilien. Gestaltet und umgesetzt in Berlin.</p>
+      <div class="held-aktionen">
+        <a class="knopf" href="#kontakt" data-buchen>Erstgespräch buchen</a>
+        <a class="link-pfeil" href="#beispielseiten">Beispielseiten ansehen</a>
+      </div>
+      <!-- Ruhige Fassung (ohne JavaScript, „Bewegung reduzieren“): der Bildschirm als stehendes Bild neben dem Text -->
+      <figure class="held-bild" aria-hidden="true">
+        <div class="geraet geraet-fenster">
+          <div class="geraet-leiste"><i></i><i></i><i></i><span>Beispielseite · Lohe Kaffeerösterei</span></div>
+          <div class="geraet-bild"><img src="referenzen/cafe-roesterei-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async"></div>
+        </div>
+      </figure>
+    </div>
+
+    <div class="laufband" aria-hidden="true">
+      <div class="laufband-spur">
+        <span>Websites</span><i></i><span>Google-Profil</span><i></i><span>Reels</span><i></i><span>Fotos</span><i></i><span>Speisekarte</span><i></i><span>Exposé-Video</span><i></i><span>Fallbeispiele</span><i></i><span>Bewertungen</span><i></i>
+        <span>Websites</span><i></i><span>Google-Profil</span><i></i><span>Reels</span><i></i><span>Fotos</span><i></i><span>Speisekarte</span><i></i><span>Exposé-Video</span><i></i><span>Fallbeispiele</span><i></i><span>Bewertungen</span><i></i>
+      </div>
+    </div>
+
+    <!-- 02 Branchen: der Bildschirm des Intros dreht sich und wird zur ersten Karte des Karussells -->
+    <div class="szene szene-branchen" id="branchen">
+      <p class="ueberzeile">Branchen</p>
+      <h2 class="szenen-titel">Drei Branchen.<br>Eine Aufgabe: <em>mehr Anfragen.</em></h2>
+    </div>
+
+    <div class="karussell-rahmen">
+      <div class="karussell">
+        <article class="karte karte-0">
+          <div class="karte-innen">
+            <!-- Vorderseite: der Bildschirm. Die Aufnahmen der fünf Beispielseiten laufen nacheinander (seite.js). -->
+            <div class="karte-seite karte-vorne schirm" aria-hidden="true" data-folge-rahmen>
+              <div class="schirm-leiste">
+                <span class="schirm-punkte"><i></i><i></i><i></i></span>
+                <span class="schirm-name">Beispielseite · <b data-folge-name>Lohe Kaffeerösterei</b></span>
+                <span class="aufnahme"><i></i>Aufnahme</span>
+              </div>
+              <div class="schirm-fenster aufnahme-flaeche" data-aufnahme="cafe-roesterei" data-folge="cafe-roesterei,neubau-film,cafe-bistro,dach-sanierung,bauunternehmen" data-regie="film">
+                <img class="aufnahme-poster" src="referenzen/cafe-roesterei-poster.webp" alt="" width="960" height="600" decoding="async" fetchpriority="high">
+                <span class="schirm-striche" data-folge-striche><i></i><i></i><i></i><i></i><i></i></span>
+              </div>
+            </div>
+            <div class="karte-seite karte-hinten">
+              <div class="karte-medium aufnahme-flaeche" data-aufnahme="cafe-roesterei-hoch" data-regie="film" aria-hidden="true">
+                <img class="aufnahme-poster" src="referenzen/cafe-roesterei-hoch-poster.webp" alt="" width="540" height="1168" loading="lazy" decoding="async">
+              </div>
+              <div class="karte-oben"><span>01</span><span>Gastro</span></div>
+              <span class="etikett karte-etikett">Beispielseite · Lohe</span>
+              <div class="karte-unten">
+                <h3 class="karte-titel">Cafés &amp; Restaurants</h3>
+                <p class="karte-satz">Gäste entscheiden auf dem Handy, wo sie essen.</p>
+                <ul class="karte-liste"><li>Website mit Speisekarte</li><li>Google-Profil gepflegt</li><li>Reels aus Ihrer Küche</li></ul>
+              </div>
+            </div>
+          </div>
+        </article>
+        <article class="karte karte-1">
+          <div class="karte-innen">
+            <div class="karte-seite karte-vorne">
+              <!-- Für Agenturen gibt es noch keine Beispielseite: ein Entwurf, als solcher gekennzeichnet -->
+              <div class="karte-medium karte-entwurf" aria-hidden="true">
+                <div class="mini-nav"><b>Ihre Agentur</b><span>Arbeiten</span><span>Kontakt</span></div>
+                <p class="mini-gross">Ideen, die man <em>sieht.</em></p>
+                <div class="mini-faelle"><i></i><i></i><i></i></div>
+              </div>
+              <div class="karte-oben"><span>02</span><span>B2B</span></div>
+              <span class="etikett karte-etikett">Entwurf</span>
+              <div class="karte-unten">
+                <h3 class="karte-titel">Agenturen</h3>
+                <p class="karte-satz">Gewählt wird vor dem ersten Gespräch.</p>
+                <ul class="karte-liste"><li>Website mit Fallbeispielen</li><li>Showreel und Porträts</li><li>Klarer Weg zur Anfrage</li></ul>
+              </div>
+            </div>
+          </div>
+        </article>
+        <article class="karte karte-2">
+          <div class="karte-innen">
+            <div class="karte-seite karte-vorne">
+              <div class="karte-medium aufnahme-flaeche" data-aufnahme="bauunternehmen-hoch" data-regie="film" aria-hidden="true">
+                <img class="aufnahme-poster" src="referenzen/bauunternehmen-hoch-poster.webp" alt="" width="540" height="1168" loading="lazy" decoding="async">
+              </div>
+              <div class="karte-oben"><span>03</span><span>Objekte</span></div>
+              <span class="etikett karte-etikett">Beispielseite · Lotwerk Bau</span>
+              <div class="karte-unten">
+                <h3 class="karte-titel">Immobilien</h3>
+                <p class="karte-satz">Objekte, die man sehen will.</p>
+                <ul class="karte-liste"><li>Exposé-Video je Objekt</li><li>Seite für Eigentümer</li><li>Profil mit Bewertungen</li></ul>
+              </div>
+            </div>
+          </div>
+        </article>
+        <article class="karte karte-3">
+          <div class="karte-innen">
+            <div class="karte-seite karte-vorne">
+              <div class="karte-medium aufnahme-flaeche" data-aufnahme="neubau-film-hoch" data-regie="film" aria-hidden="true">
+                <img class="aufnahme-poster" src="referenzen/neubau-film-hoch-poster.webp" alt="" width="540" height="1168" loading="lazy" decoding="async">
+              </div>
+              <div class="karte-oben"><span>04</span><span>Bewegtbild</span></div>
+              <span class="etikett karte-etikett">Beispielseite · Hellgrund</span>
+              <div class="karte-unten">
+                <h3 class="karte-titel">Video</h3>
+                <p class="karte-satz">Bewegtbild, das hängen bleibt.</p>
+                <ul class="karte-liste"><li>Reels und Kurzvideos</li><li>Imagefilm</li><li>Fotos für Website und Profil</li></ul>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <!-- 03 Analyse: die Blende öffnet sich. In der Mitte ein Handy mit einer Beispielseite, links und rechts die zwei Zahlen. -->
+    <div class="blende">
+      <div class="szene szene-analyse">
+        <p class="ueberzeile">Analyse</p>
+        <h2 class="szenen-titel">Die erste Begegnung<br>findet <em>online</em> statt.</h2>
+      </div>
+      <div class="kennzahlen">
+        <div class="kennzahl kennzahl-a">
+          <p class="kennzahl-wert"><span class="zaehler" data-ziel="97">97</span>&#8239;%</p>
+          <p class="kennzahl-satz">der Befragten lesen Online-Bewertungen zu lokalen Unternehmen.</p>
+          <p class="kennzahl-quelle">BrightLocal, Local Consumer Review Survey 2026 · USA</p>
+        </div>
+        <div class="kennzahl-handy" aria-hidden="true">
+          <div class="geraet geraet-handy">
+            <div class="geraet-bild aufnahme-flaeche" data-aufnahme="dach-sanierung-hoch" data-regie="film">
+              <img class="aufnahme-poster" src="referenzen/dach-sanierung-hoch-poster.webp" alt="" width="540" height="1168" loading="lazy" decoding="async">
+            </div>
+            <span class="etikett">Beispielseite<span> · Firstlinie</span></span>
+          </div>
+        </div>
+        <div class="kennzahl kennzahl-b">
+          <p class="kennzahl-wert"><span class="zaehler" data-ziel="2,7">2,7</span>&#8239;×</p>
+          <p class="kennzahl-satz">höher ist die Wahrscheinlichkeit, dass ein Unternehmen mit vollständigem Google-Profil als seriös gilt.</p>
+          <p class="kennzahl-quelle">Google, Hilfe zum Unternehmensprofil · Herstellerangabe</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 Märkte: der Streifen läuft quer -->
+    <div class="streifen">
+      <div class="streifen-spur">
+        <section class="tafel tafel-start" aria-label="Analysen je Branche">
+          <p class="ueberzeile">Analysen je Branche</p>
+          <h2 class="tafel-titel">Wo Ihre Kundschaft <em>sucht.</em><br>Und was sie dort sehen muss.</h2>
+          <p class="tafel-text">Allein in Berlin konkurrieren Tausende Betriebe um dieselbe Kundschaft. Gewählt wird, wer online überzeugt.</p>
+          <div class="tafel-markt">
+            <p><b>1.022</b>Cafés</p>
+            <p><b>1.551</b>Makler&shy;büros</p>
+            <p><b>1.441</b>Werbe&shy;agenturen</p>
+          </div>
+          <p class="tafel-quelle">Amt für Statistik Berlin-Brandenburg, Umsatzsteuerstatistik 2024 · umsatzsteuerpflichtige Unternehmen</p>
+        </section>
+
+        <section class="tafel" aria-label="Cafés und Restaurants">
+          <div class="tafel-text-seite">
+            <p class="ueberzeile">01 · Cafés &amp; Restaurants</p>
+            <p class="tafel-zahl">53&#8239;%</p>
+            <p class="tafel-satz">der Befragten sehen sich die Speisekarte vor dem Besuch online an. Bei den 16- bis 29-Jährigen sind es 65 Prozent.</p>
+            <p class="tafel-quelle">Bitkom, Umfrage Juni 2024 · Deutschland</p>
+            <h3 class="tafel-unter">Was das für Sie heißt</h3>
+            <ul class="tafel-liste"><li>Speisekarte und Öffnungszeiten aktuell, direkt bei Google</li><li>Fotos, die Lust machen</li><li>Reels, die zeigen, wie es bei Ihnen ist</li></ul>
+          </div>
+          <div class="attrappe attrappe-handy" aria-hidden="true">
+            <div class="geraet geraet-handy">
+              <div class="geraet-bild aufnahme-flaeche" data-aufnahme="cafe-bistro-hoch" data-regie="film">
+                <img class="aufnahme-poster" src="referenzen/cafe-bistro-hoch-poster.webp" alt="" width="540" height="1168" loading="lazy" decoding="async">
+              </div>
+              <span class="etikett">Beispielseite · Kerbel</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="tafel" aria-label="Agenturen">
+          <div class="tafel-text-seite">
+            <p class="ueberzeile">02 · Agenturen</p>
+            <p class="tafel-zahl">94&#8239;%</p>
+            <p class="tafel-satz">der B2B-Einkäufer haben ihre Wunschanbieter gereiht, bevor sie mit einem sprechen. 77 Prozent kaufen am Ende genau dort.</p>
+            <p class="tafel-quelle">6sense, Buyer Experience Report 2025 · international</p>
+            <h3 class="tafel-unter">Was das für Sie heißt</h3>
+            <ul class="tafel-liste"><li>Fallbeispiele, die Ergebnisse zeigen</li><li>Ein Showreel statt langer Texte</li><li>Klare Wege zur Anfrage</li></ul>
+          </div>
+          <div class="attrappe attrappe-browser" aria-hidden="true">
+            <div class="browser">
+              <div class="browser-leiste"><i></i><i></i><i></i><span>fallbeispiel</span></div>
+              <div class="browser-bild"><span class="etikett">Entwurf</span><span class="browser-titel">Ausgangslage, Idee, Ergebnis.</span></div>
+              <div class="browser-chips"><span>Strategie</span><span>Kampagne</span><span>Film</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tafel" aria-label="Immobilien">
+          <div class="tafel-text-seite">
+            <p class="ueberzeile">03 · Immobilien</p>
+            <p class="tafel-zahl">87&#8239;%</p>
+            <p class="tafel-satz">der Menschen auf Wohnungs- oder Haussuche nutzen digitale Kanäle. 96 Prozent legen Wert auf aussagekräftige Fotos.</p>
+            <p class="tafel-quelle">Bitkom, Umfragen 2025 und 2021 · Deutschland</p>
+            <h3 class="tafel-unter">Was das für Sie heißt</h3>
+            <ul class="tafel-liste"><li>Exposé-Videos, die Besichtigungen vorbereiten</li><li>Eine Website, die Eigentümer überzeugt</li><li>Bewertungen sichtbar machen</li></ul>
+          </div>
+          <div class="attrappe attrappe-fenster" aria-hidden="true">
+            <div class="geraet geraet-fenster">
+              <div class="geraet-leiste"><i></i><i></i><i></i><span>Beispielseite · Firstlinie</span></div>
+              <div class="geraet-bild aufnahme-flaeche" data-aufnahme="dach-sanierung" data-regie="film">
+                <img class="aufnahme-poster" src="referenzen/dach-sanierung-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async">
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- 05 Ergebnis: die fertigen Seiten als Bildschirme im Raum, Aufnahme läuft auf dem vordersten -->
+    <div class="ergebnis">
+      <div class="ergebnis-kopf">
+        <p class="ueberzeile">Ergebnis</p>
+        <h2 class="szenen-titel">Fünf Seiten, <em>fertig gebaut.</em></h2>
+        <p class="ergebnis-hinweis">Beispielseiten für erfundene Betriebe</p>
+      </div>
+      <div class="ergebnis-raum" aria-hidden="true">
+        <div class="werk">
+          <div class="geraet geraet-fenster">
+            <div class="geraet-leiste"><i></i><i></i><i></i><span>Beispielseite · Lohe Kaffeerösterei</span></div>
+            <div class="geraet-bild aufnahme-flaeche" data-aufnahme="cafe-roesterei" data-regie="film"><img class="aufnahme-poster" src="referenzen/cafe-roesterei-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async"></div>
+          </div>
+          <div class="geraet geraet-handy"><div class="geraet-bild aufnahme-flaeche" data-aufnahme="cafe-roesterei-hoch" data-regie="film"><img class="aufnahme-poster" src="referenzen/cafe-roesterei-hoch-poster.webp" alt="" width="540" height="1168" loading="lazy" decoding="async"></div></div>
+        </div>
+        <div class="werk">
+          <div class="geraet geraet-fenster">
+            <div class="geraet-leiste"><i></i><i></i><i></i><span>Beispielseite · Kerbel</span></div>
+            <div class="geraet-bild aufnahme-flaeche" data-aufnahme="cafe-bistro" data-regie="film"><img class="aufnahme-poster" src="referenzen/cafe-bistro-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async"></div>
+          </div>
+          <div class="geraet geraet-handy"><div class="geraet-bild aufnahme-flaeche" data-aufnahme="cafe-bistro-hoch" data-regie="film"><img class="aufnahme-poster" src="referenzen/cafe-bistro-hoch-poster.webp" alt="" width="540" height="1168" loading="lazy" decoding="async"></div></div>
+        </div>
+        <div class="werk">
+          <div class="geraet geraet-fenster">
+            <div class="geraet-leiste"><i></i><i></i><i></i><span>Beispielseite · Hellgrund</span></div>
+            <div class="geraet-bild aufnahme-flaeche" data-aufnahme="neubau-film" data-regie="film"><img class="aufnahme-poster" src="referenzen/neubau-film-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async"></div>
+          </div>
+          <div class="geraet geraet-handy"><div class="geraet-bild aufnahme-flaeche" data-aufnahme="neubau-film-hoch" data-regie="film"><img class="aufnahme-poster" src="referenzen/neubau-film-hoch-poster.webp" alt="" width="540" height="1168" loading="lazy" decoding="async"></div></div>
+        </div>
+        <div class="werk">
+          <div class="geraet geraet-fenster">
+            <div class="geraet-leiste"><i></i><i></i><i></i><span>Beispielseite · Firstlinie Dach &amp; Sanierung</span></div>
+            <div class="geraet-bild aufnahme-flaeche" data-aufnahme="dach-sanierung" data-regie="film"><img class="aufnahme-poster" src="referenzen/dach-sanierung-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async"></div>
+          </div>
+          <div class="geraet geraet-handy"><div class="geraet-bild aufnahme-flaeche" data-aufnahme="dach-sanierung-hoch" data-regie="film"><img class="aufnahme-poster" src="referenzen/dach-sanierung-hoch-poster.webp" alt="" width="540" height="1168" loading="lazy" decoding="async"></div></div>
+        </div>
+        <div class="werk">
+          <div class="geraet geraet-fenster">
+            <div class="geraet-leiste"><i></i><i></i><i></i><span>Beispielseite · Lotwerk Bau</span></div>
+            <div class="geraet-bild aufnahme-flaeche" data-aufnahme="bauunternehmen" data-regie="film"><img class="aufnahme-poster" src="referenzen/bauunternehmen-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async"></div>
+          </div>
+          <div class="geraet geraet-handy"><div class="geraet-bild aufnahme-flaeche" data-aufnahme="bauunternehmen-hoch" data-regie="film"><img class="aufnahme-poster" src="referenzen/bauunternehmen-hoch-poster.webp" alt="" width="540" height="1168" loading="lazy" decoding="async"></div></div>
+        </div>
+      </div>
+      <div class="ergebnis-text">
+        <ol class="werk-texte">
+          <li class="werk-text"><span class="werk-nr">01<i>/05</i></span><p class="werk-branche">Café · Rösterei</p><h3 class="werk-name">Lohe Kaffeerösterei</h3><p class="werk-merkmale">Röstfilm · 3D-Becher · Bon vorbestellen</p></li>
+          <li class="werk-text"><span class="werk-nr">02<i>/05</i></span><p class="werk-branche">Frühstück · Bistro</p><h3 class="werk-name">Kerbel</h3><p class="werk-merkmale">Auftaktfilm · Tag im Fenster · Tischanfrage</p></li>
+          <li class="werk-text"><span class="werk-nr">03<i>/05</i></span><p class="werk-branche">Neubau · Bauträger</p><h3 class="werk-name">Hellgrund</h3><p class="werk-merkmale">Film beim Scrollen · Rundgang · Terminanfrage</p></li>
+          <li class="werk-text"><span class="werk-nr">04<i>/05</i></span><p class="werk-branche">Dach · Sanierung</p><h3 class="werk-name">Firstlinie Dach &amp; Sanierung</h3><p class="werk-merkmale">Details am Foto · Schnitt · Dachcheck</p></li>
+          <li class="werk-text"><span class="werk-nr">05<i>/05</i></span><p class="werk-branche">Bauunternehmen</p><h3 class="werk-name">Lotwerk Bau</h3><p class="werk-merkmale">Baustellen-Film · 5 Schritte · Anfrage</p></li>
+        </ol>
+        <a class="link-pfeil ergebnis-link" href="#beispielseiten">Alle fünf Seiten öffnen</a>
+      </div>
+    </div>
+
+    <!-- 06 Kontakt: Vorhang, Chrom-Blende, Aufruf -->
+    <div class="vorhang">
+      <canvas class="chrom" aria-hidden="true"></canvas>
+      <div class="szene szene-ziel">
+        <p class="ueberzeile">Kontakt</p>
+        <h2 class="ziel-titel">Lassen Sie uns <em>sprechen.</em></h2>
+        <p class="ziel-text">Erzählen Sie uns von Ihrem Betrieb. Wir schauen uns Ihren heutigen Auftritt an und sagen Ihnen offen, wo Anfragen verloren gehen.</p>
+        <div class="ziel-aktionen">
+          <a class="knopf knopf-gross" href="mailto:kevin@makeinnovation.de?subject=Erstgespr%C3%A4ch%20MAKE%20Studios" data-buchen>Erstgespräch buchen</a>
+          <a class="link-pfeil" href="#check">Sichtbarkeits-Check machen</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anzeige: Kapitel, Zeitcode, Fortschritt -->
+    <div class="anzeige">
+      <span class="anzeige-kapitel" aria-hidden="true"><b>01</b> Intro</span>
+      <span class="anzeige-balken" aria-hidden="true"><i></i></span>
+      <span class="anzeige-zeit zeitcode" aria-hidden="true">00:00:00:00</span>
+      <button class="anzeige-pause" type="button" aria-pressed="false" aria-label="Bewegung anhalten"></button>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Ab hier die ruhige Seite: alles noch einmal zum Nachlesen ─── -->
+<section class="abschnitt abschnitt-entwuerfe" id="entwuerfe" aria-labelledby="entwuerfe-titel">
+  <div class="abschnitt-kopf entwuerfe-kopf">
+    <div>
+      <p class="ueberzeile">Entwürfe</p>
+      <h2 class="abschnitt-titel" id="entwuerfe-titel">So könnte <em>Ihr</em> Auftritt aussehen.</h2>
+    </div>
+    <p class="abschnitt-text">Drei Entwürfe, einer je Branche. Der Name oben ist Ihr Platzhalter. Sie zeigen, worauf wir bei jeder Seite achten.</p>
+  </div>
+
+  <div class="filter" role="group" aria-label="Entwürfe nach Branche zeigen" hidden>
+    <button type="button" class="filter-knopf" data-filter="alle" aria-pressed="true">Alle</button>
+    <button type="button" class="filter-knopf" data-filter="gastro" aria-pressed="false">Cafés &amp; Restaurants</button>
+    <button type="button" class="filter-knopf" data-filter="agentur" aria-pressed="false">Agenturen</button>
+    <button type="button" class="filter-knopf" data-filter="immo" aria-pressed="false">Immobilien</button>
+  </div>
+
+  <div class="entwuerfe">
+    <article class="entwurf entwurf-gastro" data-branche="gastro" aria-labelledby="ew-gastro">
+      <div class="entwurf-buehne" aria-hidden="true">
+        <div class="mock mock-gastro">
+          <div class="mock-leiste"><i></i><i></i><i></i><span>ihr-cafe.de</span></div>
+          <div class="mock-seite">
+            <div class="mock-nav"><b>Ihr Café</b><span>Karte</span><span>Fotos</span><span>Anfahrt</span></div>
+            <div class="mock-held">
+              <div class="mock-held-text">
+                <p class="mock-serif">Kaffee, Kuchen und Frühstück am Wasser.</p>
+                <span class="mock-knopf">Tisch reservieren</span>
+              </div>
+              <div class="mock-foto"></div>
+            </div>
+            <div class="mock-karte">
+              <p><span>Frühstück</span><i></i><span>ab 8 Uhr</span></p>
+              <p><span>Kuchen vom Tag</span><i></i><span>hausgemacht</span></p>
+              <p><span>Kaffee</span><i></i><span>Siebträger</span></p>
+            </div>
+          </div>
+        </div>
+        <div class="handy mock-handy">
+          <div class="handy-bild"><span class="etikett">Profil</span></div>
+          <p class="handy-name">Ihr Café</p>
+          <p class="handy-zeile">Café · Geöffnet</p>
+          <div class="handy-knoepfe"><span>Route</span><span>Anrufen</span><span>Website</span></div>
+          <div class="handy-reihe"><i></i><i></i><i></i></div>
+        </div>
+        <span class="etikett entwurf-etikett">Entwurf</span>
+      </div>
+      <div class="entwurf-text">
+        <p class="entwurf-nr">01 · Cafés &amp; Restaurants</p>
+        <h3 class="entwurf-titel" id="ew-gastro">Gefunden, bevor <em>der Hunger</em> entscheidet.</h3>
+        <dl class="entwurf-punkte">
+          <div><dt>Ihre Lage</dt><dd>Gäste entscheiden auf dem Handy, oft unterwegs und in wenigen Sekunden. Sie wollen Karte, Fotos und Öffnungszeiten sehen, bevor sie kommen.</dd></div>
+          <div><dt>Was wir bauen</dt><dd>Eine Seite, die zuerst auf dem Handy funktioniert: Speisekarte als Text statt PDF, Fotos aus Ihrem Haus, Route und Reservierung mit einem Tipp. Dazu ein vollständiges Google-Profil.</dd></div>
+          <div><dt>Woran Sie es merken</dt><dd>Im Google-Profil sehen Sie, wie oft angerufen, nach der Route gefragt oder Ihre Website geöffnet wurde.</dd></div>
+        </dl>
+      </div>
+    </article>
+
+    <article class="entwurf entwurf-agentur" data-branche="agentur" aria-labelledby="ew-agentur">
+      <div class="entwurf-buehne" aria-hidden="true">
+        <div class="mock mock-agentur">
+          <div class="mock-leiste"><i></i><i></i><i></i><span>ihre-agentur.de</span></div>
+          <div class="mock-seite">
+            <div class="mock-nav"><b>Ihre Agentur</b><span>Arbeiten</span><span>Team</span><span>Kontakt</span></div>
+            <p class="mock-gross">Ideen, die man <em>sieht.</em></p>
+            <div class="mock-faelle">
+              <div><span>01 · Kampagne</span></div>
+              <div><span>02 · Marke</span></div>
+              <div><span>03 · Film</span><i class="mock-play"></i></div>
+            </div>
+          </div>
+        </div>
+        <span class="etikett entwurf-etikett">Entwurf</span>
+      </div>
+      <div class="entwurf-text">
+        <p class="entwurf-nr">02 · Agenturen</p>
+        <h3 class="entwurf-titel" id="ew-agentur">Auf der Liste, bevor <em>das Gespräch</em> beginnt.</h3>
+        <dl class="entwurf-punkte">
+          <div><dt>Ihre Lage</dt><dd>Auftraggeber wissen meist schon, wen sie fragen, bevor sie zum ersten Mal mit jemandem sprechen. Ihr Auftritt muss diese Vorauswahl bestehen.</dd></div>
+          <div><dt>Was wir bauen</dt><dd>Fallbeispiele mit Ausgangslage, Idee und Ergebnis. Ein Showreel statt langer Texte, Ihr Team mit Gesicht und ein klarer Weg zur Anfrage.</dd></div>
+          <div><dt>Woran Sie es merken</dt><dd>Sie sehen, welche Fallbeispiele aufgerufen werden und über welche Seite Anfragen hereinkommen.</dd></div>
+        </dl>
+      </div>
+    </article>
+
+    <article class="entwurf entwurf-immo" data-branche="immo" aria-labelledby="ew-immo">
+      <div class="entwurf-buehne" aria-hidden="true">
+        <div class="mock mock-immo">
+          <div class="mock-leiste"><i></i><i></i><i></i><span>ihr-maklerbuero.de</span></div>
+          <div class="mock-seite">
+            <div class="mock-nav"><b>Ihr Maklerbüro</b><span>Objekte</span><span>Verkaufen</span><span>Über uns</span></div>
+            <div class="mock-objekt">
+              <div class="mock-haus"><span class="mock-chip"><i class="mock-play"></i>Video-Rundgang</span></div>
+              <div class="mock-objekt-text">
+                <p class="mock-objekt-titel">Altbau mit Balkon</p>
+                <p class="mock-objekt-ort">3 Zimmer · Prenzlauer Berg</p>
+                <span class="mock-knopf">Besichtigung anfragen</span>
+              </div>
+            </div>
+            <p class="mock-eigentuemer"><span>Sie möchten verkaufen?</span><b>Wert anfragen</b></p>
+          </div>
+        </div>
+        <span class="etikett entwurf-etikett">Entwurf</span>
+      </div>
+      <div class="entwurf-text">
+        <p class="entwurf-nr">03 · Immobilien</p>
+        <h3 class="entwurf-titel" id="ew-immo">Besichtigt wird zuerst <em>am Bildschirm.</em></h3>
+        <dl class="entwurf-punkte">
+          <div><dt>Ihre Lage</dt><dd>Die Suche beginnt digital, und Fotos entscheiden über die Besichtigung. Eigentümer und Eigentümergemeinschaften prüfen Ihr Büro online, bevor sie anrufen.</dd></div>
+          <div><dt>Was wir bauen</dt><dd>Objektseiten mit Fotos und Video-Rundgang, ein Exposé-Video je Objekt und eine eigene Seite für Eigentümer mit Anfrage zur Wertermittlung. Für Hausverwaltungen: ein Auftritt, der Beiräten zeigt, wie Sie arbeiten.</dd></div>
+          <div><dt>Woran Sie es merken</dt><dd>Sie sehen, wie oft ein Exposé-Video abgespielt wird und wie viele Eigentümer über die Seite anfragen.</dd></div>
+        </dl>
+      </div>
+    </article>
+  </div>
+
+</section>
+
+<!-- ─── Beispielseiten: ganze Seiten für erfundene Betriebe, zum Öffnen und Selbst-Scrollen ─── -->
+<section class="abschnitt abschnitt-beispiele" id="beispielseiten" aria-labelledby="beispiele-titel">
+  <div class="abschnitt-kopf beispiele-kopf">
+    <div>
+      <p class="ueberzeile">Beispielseiten</p>
+      <h2 class="abschnitt-titel" id="beispiele-titel">Ganze Seiten, <em>zum Durchklicken.</em></h2>
+    </div>
+    <div class="beispiele-rechts">
+      <p class="abschnitt-text">Fünf fertige Seiten für erfundene Betriebe. Öffnen Sie eine und scrollen Sie selbst: So fühlt sich ein Auftritt an, bevor wir mit Ihrem anfangen.</p>
+      <button class="aufnahmen-halt" type="button" aria-pressed="false" hidden>Aufnahmen anhalten</button>
+    </div>
+  </div>
+
+  <div class="beispiel-gruppe" aria-labelledby="gruppe-gastro">
+    <div class="gruppe-kopf"><h3 class="gruppe-titel" id="gruppe-gastro">Cafés &amp; Restaurants</h3><span class="gruppe-zahl">02</span></div>
+    <div class="referenzen">
+      <article class="referenz">
+        <div class="referenz-rahmen" aria-hidden="true">
+          <div class="referenz-leiste"><i></i><i></i><i></i><span>Beispielseite</span></div>
+          <div class="referenz-fenster aufnahme-flaeche" data-aufnahme="cafe-roesterei" data-regie="zeiger" data-rueckfall="referenzen/cafe-roesterei.webp"><img class="aufnahme-poster referenz-bild" src="referenzen/cafe-roesterei-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async"><span class="referenz-lauf"></span></div>
+        </div>
+        <div class="referenz-text">
+          <p class="referenz-branche">Café · Rösterei</p>
+          <h4 class="referenz-name"><a class="referenz-link" href="beispiele/cafe-roesterei/">Lohe Kaffeerösterei</a></h4>
+          <p class="referenz-satz">Eine Rösterei mit echtem Röstfilm: Beim Scrollen fallen die Bohnen aus der Trommel und drehen im Kühlsieb. Dazu Becher und Tüte in 3D und ein Bondrucker zum Ausprobieren.</p>
+          <div class="referenz-fuss">
+            <ul class="referenz-merkmale" aria-label="Auf der Seite"><li>Röstfilm</li><li>3D-Becher</li><li>Bon vorbestellen</li></ul>
+            <span class="referenz-los" aria-hidden="true">Seite ansehen</span>
+          </div>
+        </div>
+      </article>
+      <article class="referenz">
+        <div class="referenz-rahmen" aria-hidden="true">
+          <div class="referenz-leiste"><i></i><i></i><i></i><span>Beispielseite</span></div>
+          <div class="referenz-fenster aufnahme-flaeche" data-aufnahme="cafe-bistro" data-regie="zeiger" data-rueckfall="referenzen/cafe-bistro.webp"><img class="aufnahme-poster referenz-bild" src="referenzen/cafe-bistro-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async"><span class="referenz-lauf"></span></div>
+        </div>
+        <div class="referenz-text">
+          <p class="referenz-branche">Frühstück · Bistro</p>
+          <h4 class="referenz-name"><a class="referenz-link" href="beispiele/cafe-bistro/">Kerbel</a></h4>
+          <p class="referenz-satz">Ein Frühstückslokal mit Film vom Frühstückstisch. Beim Scrollen vergeht im Bogenfenster ein ganzer Tag, von 8 bis 17 Uhr. Dazu eine Karte mit Bild und Filter und eine Tischanfrage.</p>
+          <div class="referenz-fuss">
+            <ul class="referenz-merkmale" aria-label="Auf der Seite"><li>Auftaktfilm</li><li>Tag im Fenster</li><li>Tischanfrage</li></ul>
+            <span class="referenz-los" aria-hidden="true">Seite ansehen</span>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <div class="beispiel-gruppe" aria-labelledby="gruppe-bau">
+    <div class="gruppe-kopf"><h3 class="gruppe-titel" id="gruppe-bau">Bau &amp; Immobilien</h3><span class="gruppe-zahl">03</span></div>
+    <div class="referenzen">
+      <article class="referenz referenz-breit">
+        <div class="referenz-rahmen" aria-hidden="true">
+          <div class="referenz-leiste"><i></i><i></i><i></i><span>Beispielseite</span></div>
+          <div class="referenz-fenster aufnahme-flaeche" data-aufnahme="neubau-film" data-regie="zeiger" data-rueckfall="referenzen/neubau-film.webp"><img class="aufnahme-poster referenz-bild" src="referenzen/neubau-film-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async"><span class="referenz-lauf"></span></div>
+        </div>
+        <div class="referenz-text">
+          <p class="referenz-branche">Neubau · Bauträger</p>
+          <h4 class="referenz-name"><a class="referenz-link" href="beispiele/neubau-film/">Hellgrund</a></h4>
+          <p class="referenz-satz">Ein Bauträger stellt sein Wohnprojekt vor: Beim Scrollen läuft ein Film vom Haus bis in die Räume. Danach folgen die Eckdaten, ein Rundgang in drei Einstellungen und eine Terminanfrage für die Besichtigung.</p>
+          <div class="referenz-fuss">
+            <ul class="referenz-merkmale" aria-label="Auf der Seite"><li>Film beim Scrollen</li><li>Rundgang</li><li>Terminanfrage</li></ul>
+            <span class="referenz-los" aria-hidden="true">Seite ansehen</span>
+          </div>
+        </div>
+      </article>
+      <article class="referenz">
+        <div class="referenz-rahmen" aria-hidden="true">
+          <div class="referenz-leiste"><i></i><i></i><i></i><span>Beispielseite</span></div>
+          <div class="referenz-fenster aufnahme-flaeche" data-aufnahme="dach-sanierung" data-regie="zeiger" data-rueckfall="referenzen/dach-sanierung.webp"><img class="aufnahme-poster referenz-bild" src="referenzen/dach-sanierung-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async"><span class="referenz-lauf"></span></div>
+        </div>
+        <div class="referenz-text">
+          <p class="referenz-branche">Dach · Sanierung</p>
+          <h4 class="referenz-name"><a class="referenz-link" href="beispiele/dach-sanierung/">Firstlinie Dach &amp; Sanierung</a></h4>
+          <p class="referenz-satz">Ein Dachdecker, der seine Arbeit erklärt: Sechs Markierungen am Foto folgen dem Wasser vom First bis zum Fallrohr, ein Schnitt zeigt die Sanierung. Dazu ein Dachcheck.</p>
+          <div class="referenz-fuss">
+            <ul class="referenz-merkmale" aria-label="Auf der Seite"><li>Details am Foto</li><li>Schnitt</li><li>Dachcheck</li></ul>
+            <span class="referenz-los" aria-hidden="true">Seite ansehen</span>
+          </div>
+        </div>
+      </article>
+      <article class="referenz">
+        <div class="referenz-rahmen" aria-hidden="true">
+          <div class="referenz-leiste"><i></i><i></i><i></i><span>Beispielseite</span></div>
+          <div class="referenz-fenster aufnahme-flaeche" data-aufnahme="bauunternehmen" data-regie="zeiger" data-rueckfall="referenzen/bauunternehmen.webp"><img class="aufnahme-poster referenz-bild" src="referenzen/bauunternehmen-poster.webp" alt="" width="960" height="600" loading="lazy" decoding="async"><span class="referenz-lauf"></span></div>
+        </div>
+        <div class="referenz-text">
+          <p class="referenz-branche">Bauunternehmen</p>
+          <h4 class="referenz-name"><a class="referenz-link" href="beispiele/bauunternehmen/">Lotwerk Bau</a></h4>
+          <p class="referenz-satz">Ein Bauunternehmen, das schlüsselfertig baut: Projekte nach Bereichen, ein kurzer Film von der Baustelle und der Ablauf in fünf Schritten bis zur Übergabe. Dazu eine Projektanfrage.</p>
+          <div class="referenz-fuss">
+            <ul class="referenz-merkmale" aria-label="Auf der Seite"><li>Baustellen-Film</li><li>5 Schritte</li><li>Anfrage</li></ul>
+            <span class="referenz-los" aria-hidden="true">Seite ansehen</span>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <p class="beispiele-hinweis">Betriebe, Namen und Adressen sind erfunden. Bilder und Filme sind Beispielmaterial.</p>
+
+  <div class="aufruf">
+    <p class="aufruf-text">Ihr Betrieb als <em>nächste Seite?</em></p>
+    <a class="knopf" href="#kontakt" data-buchen>Erstgespräch buchen</a>
+  </div>
+</section>
+
+<section class="satz-band" aria-label="Unser Anspruch">
+  <p class="satz-gross"><span>Gute Betriebe gibt es viele.</span> <span>Gewählt wird, wen man <em>zuerst sieht.</em></span></p>
+</section>
+
+<section class="abschnitt abschnitt-analysen" id="analysen">
+  <div class="abschnitt-kopf">
+    <p class="ueberzeile">Analysen</p>
+    <h2 class="abschnitt-titel">Die Zahlen hinter <em>der Seite.</em></h2>
+    <p class="abschnitt-text">Wir arbeiten mit belegten Zahlen. Jede Aussage auf dieser Seite hat eine Quelle, die Sie selbst nachlesen können.</p>
+  </div>
+  <div class="analysen">
+    <section class="analyse-gruppe" aria-labelledby="ag-gastro">
+      <div class="analyse-kopf">
+        <p class="analyse-nr">01</p>
+        <h3 class="analyse-gruppe-titel" id="ag-gastro">Cafés &amp; Restaurants</h3>
+        <p class="analyse-folgerung">Die Wahl fällt auf dem Handy. Speisekarte, Öffnungszeiten und Fotos müssen dort stimmen, wo gesucht wird.</p>
+        <p class="analyse-berlin"><b>1.022</b> Cafés und <b>3.767</b> Restaurants mit Bedienung in Berlin</p>
+      </div>
+      <div class="analysen-raster">
+        <article class="analyse"><p class="analyse-zahl">53&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="53" height="4"/></svg><p class="analyse-mass" aria-hidden="true">53 von 100</p><p class="analyse-satz">der Befragten sehen sich die Speisekarte vor dem Besuch online an. Bei den 16- bis 29-Jährigen sind es 65 Prozent.</p><p class="analyse-quelle"><a href="https://www.bitkom.org/Presse/Presseinformation/Restaurants-und-Cafes-Online-Bewertungen-entscheidend">Bitkom, Juni 2024</a> · Deutschland</p></article>
+        <article class="analyse"><p class="analyse-zahl">69&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="69" height="4"/></svg><p class="analyse-mass" aria-hidden="true">69 von 100</p><p class="analyse-satz">erwarten Fotos, wenn sie sich ein Café oder Restaurant online ansehen.</p><p class="analyse-quelle"><a href="https://www.bitkom.org/Presse/Presseinformation/Restaurants-und-Cafes-Online-Bewertungen-entscheidend">Bitkom, Juni 2024</a> · Deutschland</p></article>
+        <article class="analyse"><p class="analyse-zahl">42&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="42" height="4"/></svg><p class="analyse-mass" aria-hidden="true">42 von 100</p><p class="analyse-satz">sind schon einmal wegen eines Beitrags in sozialen Medien in ein Café oder Restaurant gegangen.</p><p class="analyse-quelle"><a href="https://www.bitkom.org/Presse/Presseinformation/Restaurants-und-Cafes-Online-Bewertungen-entscheidend">Bitkom, Juni 2024</a> · Deutschland</p></article>
+        <article class="analyse"><p class="analyse-zahl">47&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="47" height="4"/></svg><p class="analyse-mass" aria-hidden="true">47 von 100</p><p class="analyse-satz">reservieren am liebsten online.</p><p class="analyse-quelle"><a href="https://www.bitkom.org/Presse/Presseinformation/Restaurants-und-Cafes-Online-Bewertungen-entscheidend">Bitkom, Juni 2024</a> · Deutschland</p></article>
+      </div>
+    </section>
+
+    <section class="analyse-gruppe" aria-labelledby="ag-agentur">
+      <div class="analyse-kopf">
+        <p class="analyse-nr">02</p>
+        <h3 class="analyse-gruppe-titel" id="ag-agentur">Agenturen</h3>
+        <p class="analyse-folgerung">Ihr Auftritt verkauft, bevor Sie sprechen. Fallbeispiele und ein stimmiges Bild entscheiden, ob Sie auf die Liste kommen.</p>
+        <p class="analyse-berlin"><b>1.441</b> Werbeagenturen in Berlin</p>
+      </div>
+      <div class="analysen-raster">
+        <article class="analyse"><p class="analyse-zahl">94&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="94" height="4"/></svg><p class="analyse-mass" aria-hidden="true">94 von 100</p><p class="analyse-satz">der B2B-Einkäufer haben ihre Wunschanbieter gereiht, bevor sie zum ersten Mal mit einem sprechen.</p><p class="analyse-quelle"><a href="https://6sense.com/report/buyer-experience/">6sense, Buyer Experience Report 2025</a> · international</p></article>
+        <article class="analyse"><p class="analyse-zahl">77&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="77" height="4"/></svg><p class="analyse-mass" aria-hidden="true">77 von 100</p><p class="analyse-satz">kaufen am Ende bei genau diesem frühen Favoriten.</p><p class="analyse-quelle"><a href="https://6sense.com/report/buyer-experience/">6sense, Buyer Experience Report 2025</a> · international</p></article>
+        <article class="analyse"><p class="analyse-zahl">61&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="61" height="4"/></svg><p class="analyse-mass" aria-hidden="true">61 von 100</p><p class="analyse-satz">der B2B-Einkäufer würden am liebsten ganz ohne Vertriebsgespräch entscheiden.</p><p class="analyse-quelle"><a href="https://www.gartner.com/en/newsroom/press-releases/2025-06-25-gartner-sales-survey-finds-61-percent-of-b2b-buyers-prefer-a-rep-free-buying-experience">Gartner, Juni 2025</a> · international</p></article>
+        <article class="analyse"><p class="analyse-zahl">69&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="69" height="4"/></svg><p class="analyse-mass" aria-hidden="true">69 von 100</p><p class="analyse-satz">bemerken Widersprüche zwischen dem, was die Website sagt, und dem, was der Vertrieb erzählt.</p><p class="analyse-quelle"><a href="https://www.gartner.com/en/newsroom/press-releases/2025-06-25-gartner-sales-survey-finds-61-percent-of-b2b-buyers-prefer-a-rep-free-buying-experience">Gartner, Juni 2025</a> · international</p></article>
+      </div>
+    </section>
+
+    <section class="analyse-gruppe" aria-labelledby="ag-immo">
+      <div class="analyse-kopf">
+        <p class="analyse-nr">03</p>
+        <h3 class="analyse-gruppe-titel" id="ag-immo">Immobilien</h3>
+        <p class="analyse-folgerung">Bilder und Video sind die erste Besichtigung. Und Eigentümer prüfen Sie online, bevor sie anrufen.</p>
+        <p class="analyse-berlin"><b>1.551</b> Maklerbüros und <b>2.054</b> Hausverwaltungen in Berlin</p>
+      </div>
+      <div class="analysen-raster">
+        <article class="analyse"><p class="analyse-zahl">87&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="87" height="4"/></svg><p class="analyse-mass" aria-hidden="true">87 von 100</p><p class="analyse-satz">der Menschen auf Wohnungs- oder Haussuche nutzen dafür digitale Kanäle.</p><p class="analyse-quelle"><a href="https://www.bitkom.org/Presse/Presseinformation/Zwischen-Klick-und-Klingel-neues-Zuhause-suchen">Bitkom, Oktober 2025</a> · Deutschland</p></article>
+        <article class="analyse"><p class="analyse-zahl">96&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="96" height="4"/></svg><p class="analyse-mass" aria-hidden="true">96 von 100</p><p class="analyse-satz">legen Wert auf aussagekräftige Fotos des Objekts.</p><p class="analyse-quelle"><a href="https://www.bitkom.org/Presse/Presseinformation/70-Prozent-suchen-online-Immobilien">Bitkom, November 2021</a> · Deutschland · älter</p></article>
+        <article class="analyse"><p class="analyse-zahl">+40&#8239;%</p><div class="analyse-vergleich" aria-hidden="true"><p><span>ohne Video</span><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none"><rect class="spur" width="100" height="4"/><rect class="wert wert-leise" width="71" height="4"/></svg></p><p><span>mit Video</span><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none"><rect class="spur" width="100" height="4"/><rect class="wert" width="100" height="4"/></svg></p></div><p class="analyse-satz">mehr Kontaktanfragen bei Angeboten mit Video-Besichtigung, laut ImmoScout24.</p><p class="analyse-quelle"><a href="https://www.immobilienscout24.de/unternehmen/news-medien/news/default-title/gerade-in-zeiten-von-corona-video-besichtigung-fuer-60-prozent-der-deutschen-gute-alternative-bei-der-immobiliensuche/">ImmoScout24, April 2020</a> · Deutschland · älter</p></article>
+        <article class="analyse"><p class="analyse-zahl">74&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="74" height="4"/></svg><p class="analyse-mass" aria-hidden="true">74 von 100</p><p class="analyse-satz">der Eigentümer wünschen sich eine kostenlose Bewertung, bevor sie einen Makler wählen.</p><p class="analyse-quelle"><a href="https://www.scout24.com/fileadmin/user_upload/20240508_IS24_Eigentuemer_und_Makler.pdf">ImmoScout24, Mai 2024</a> · Deutschland</p></article>
+      </div>
+    </section>
+
+    <section class="analyse-gruppe" aria-labelledby="ag-alle">
+      <div class="analyse-kopf">
+        <p class="analyse-nr">04</p>
+        <h3 class="analyse-gruppe-titel" id="ag-alle">Für alle</h3>
+        <p class="analyse-folgerung">Bewertungen und ein vollständiges Google-Profil sind die Grundlage, in jeder Branche.</p>
+      </div>
+      <div class="analysen-raster">
+        <article class="analyse"><p class="analyse-zahl">97&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="97" height="4"/></svg><p class="analyse-mass" aria-hidden="true">97 von 100</p><p class="analyse-satz">der Befragten lesen Online-Bewertungen zu lokalen Unternehmen.</p><p class="analyse-quelle"><a href="https://www.brightlocal.com/research/local-consumer-review-survey/">BrightLocal, Local Consumer Review Survey 2026</a> · USA</p></article>
+        <article class="analyse"><p class="analyse-zahl">68&#8239;%</p><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="spur" width="100" height="4"/><rect class="wert" width="68" height="4"/></svg><p class="analyse-mass" aria-hidden="true">68 von 100</p><p class="analyse-satz">kommen nur für Unternehmen mit mindestens vier Sternen in Frage.</p><p class="analyse-quelle"><a href="https://www.brightlocal.com/research/local-consumer-review-survey/">BrightLocal, Local Consumer Review Survey 2026</a> · USA</p></article>
+        <article class="analyse"><p class="analyse-zahl">2,7&#8239;×</p><div class="analyse-vergleich" aria-hidden="true"><p><span>Profil lückenhaft</span><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none"><rect class="spur" width="100" height="4"/><rect class="wert wert-leise" width="37" height="4"/></svg></p><p><span>Profil vollständig</span><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none"><rect class="spur" width="100" height="4"/><rect class="wert" width="100" height="4"/></svg></p></div><p class="analyse-satz">höher ist die Wahrscheinlichkeit, dass Kundschaft ein Unternehmen mit vollständigem Profil für seriös hält.</p><p class="analyse-quelle"><a href="https://support.google.com/business/answer/10515606?hl=de">Google, Hilfe zum Unternehmensprofil</a> · Herstellerangabe</p></article>
+        <article class="analyse"><p class="analyse-zahl">+70&#8239;%</p><div class="analyse-vergleich" aria-hidden="true"><p><span>Profil lückenhaft</span><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none"><rect class="spur" width="100" height="4"/><rect class="wert wert-leise" width="59" height="4"/></svg></p><p><span>Profil vollständig</span><svg class="analyse-balken" viewBox="0 0 100 4" preserveAspectRatio="none"><rect class="spur" width="100" height="4"/><rect class="wert" width="100" height="4"/></svg></p></div><p class="analyse-satz">höher ist die Wahrscheinlichkeit eines Besuchs, wenn das Profil vollständig ist.</p><p class="analyse-quelle"><a href="https://support.google.com/business/answer/10515606?hl=de">Google, Hilfe zum Unternehmensprofil</a> · Herstellerangabe</p></article>
+      </div>
+    </section>
+  </div>
+  <p class="analysen-fuss">Stand: November 2026. Studien aus anderen Ländern und ältere Erhebungen sind gekennzeichnet. Betriebe in Berlin: <a href="https://download.statistik-berlin-brandenburg.de/2efdd8847651e5dd/bae73efaffc0/SB_L04-01-00_2024j01_BE.pdf">Amt für Statistik Berlin-Brandenburg, Umsatzsteuerstatistik 2024</a>, Unternehmen mit mehr als 22.000 Euro Jahresumsatz.</p>
+</section>
+
+<section class="abschnitt abschnitt-check" id="check" aria-labelledby="check-titel">
+  <div class="abschnitt-kopf">
+    <p class="ueberzeile">Sichtbarkeits-Check</p>
+    <h2 class="abschnitt-titel" id="check-titel">Wie gut findet man <em>Sie?</em></h2>
+    <p class="abschnitt-text">Acht kurze Fragen zu Ihrem Auftritt. Sie sehen sofort, wo Sie stehen und wo Ihr größter Hebel liegt.</p>
+    <ul class="check-punkte"><li>Zwei Minuten</li><li>Ohne Anmeldung</li><li>Nichts wird gespeichert</li></ul>
+  </div>
+  <div class="check" data-check>
+    <div class="check-statisch">
+      <p class="check-zaehler">Acht Fragen, zum Beispiel</p>
+      <ul class="check-liste">
+        <li>Ist Ihr Google-Profil bestätigt und vollständig?</li>
+        <li>Antworten Sie auf Bewertungen?</li>
+        <li>Lässt sich Ihre Website am Handy gut bedienen?</li>
+        <li>Zeigen Sie eigene Fotos statt Bildern aus Datenbanken?</li>
+      </ul>
+      <a class="knopf" href="#kontakt" data-buchen>Im Erstgespräch gemeinsam prüfen</a>
+    </div>
+  </div>
+</section>
+
+<section class="abschnitt abschnitt-leistungen" id="leistungen">
+  <div class="abschnitt-kopf">
+    <p class="ueberzeile">Leistungen</p>
+    <h2 class="abschnitt-titel">Alles, damit man Sie <em>findet.</em></h2>
+  </div>
+  <div class="leistungen-raster">
+    <article class="leistung">
+      <span class="leistung-nr">01</span>
+      <h3>Website</h3>
+      <p>Schnell, klar, zuerst fürs Handy gebaut. Mit allem, was Ihre Kundschaft vor der Anfrage wissen will.</p>
+      <dl class="leistung-branchen">
+        <div><dt>Cafés</dt><dd>Speisekarte als Text, Fotos, Reservierung</dd></div>
+        <div><dt>Agenturen</dt><dd>Fallbeispiele, Team, klarer Anfrageweg</dd></div>
+        <div><dt>Immobilien</dt><dd>Objektseiten, Seite für Eigentümer</dd></div>
+      </dl>
+      <p class="leistung-immer">Immer dabei: Gestaltung und Texte, kurze Ladezeit, Gerüst für Impressum und Datenschutz.</p>
+    </article>
+    <article class="leistung">
+      <span class="leistung-nr">02</span>
+      <h3>Sichtbarkeit</h3>
+      <p>Dort auftauchen, wo gesucht wird: bei Google, auf der Karte und in den sozialen Medien.</p>
+      <dl class="leistung-branchen">
+        <div><dt>Cafés</dt><dd>Google-Profil mit Karte, Fotos, Öffnungszeiten</dd></div>
+        <div><dt>Agenturen</dt><dd>Google- und LinkedIn-Profil, Arbeiten als Beiträge</dd></div>
+        <div><dt>Immobilien</dt><dd>Google-Profil, Bewertungen von Kundschaft und Eigentümern</dd></div>
+      </dl>
+      <p class="leistung-immer">Immer dabei: Bewertungen sammeln und beantworten.</p>
+    </article>
+    <article class="leistung">
+      <span class="leistung-nr">03</span>
+      <h3>Video &amp; Foto</h3>
+      <p>Bewegtbild, das zeigt, wie es bei Ihnen wirklich ist. Gedreht vor Ort in Berlin.</p>
+      <dl class="leistung-branchen">
+        <div><dt>Cafés</dt><dd>Reels aus Küche und Gastraum, Fotos der Gerichte</dd></div>
+        <div><dt>Agenturen</dt><dd>Showreel, Porträts, Blick hinter die Kulissen</dd></div>
+        <div><dt>Immobilien</dt><dd>Exposé-Video, Video-Rundgang, Objektfotos</dd></div>
+      </dl>
+      <p class="leistung-immer">Immer dabei: Schnitt in den Formaten für Website, Profil und Instagram.</p>
+    </article>
+  </div>
+</section>
+
+<section class="abschnitt abschnitt-ablauf" id="ablauf">
+  <div class="abschnitt-kopf">
+    <p class="ueberzeile">Ablauf</p>
+    <h2 class="abschnitt-titel">Sechs Schritte bis <em>online.</em></h2>
+  </div>
+  <ol class="ablauf-liste">
+    <li><span>01</span><h3>Briefing</h3><p><b>Sie</b> erzählen uns vor Ort, was Ihren Betrieb ausmacht.</p><p><b>Wir</b> sehen uns an, wie man Sie heute online findet.</p></li>
+    <li><span>02</span><h3>Design</h3><p><b>Wir</b> entwerfen Ihren Auftritt, zuerst für das Handy.</p><p><b>Sie</b> sehen den Entwurf, bevor gebaut wird.</p></li>
+    <li><span>03</span><h3>Feedback</h3><p><b>Sie</b> sagen uns, was fehlt oder anders sein soll.</p><p><b>Wir</b> arbeiten es ein.</p></li>
+    <li><span>04</span><h3>Umsetzung</h3><p><b>Wir</b> bauen die Seite, richten das Google-Profil ein, fotografieren und drehen.</p><p><b>Sie</b> geben uns Zugang zum Profil und einen Termin für den Dreh.</p></li>
+    <li><span>05</span><h3>Abnahme</h3><p><b>Sie</b> prüfen alles in Ruhe.</p><p><b>Wir</b> gehen erst mit Ihrem Okay online.</p></li>
+    <li><span>06</span><h3>Live</h3><p><b>Wir</b> schalten frei und prüfen, ob man Sie findet.</p><p><b>Sie</b> sehen, über welche Wege Kundschaft zu Ihnen kommt.</p></li>
+  </ol>
+</section>
+
+<section class="abschnitt abschnitt-fragen" id="fragen">
+  <div class="abschnitt-kopf">
+    <p class="ueberzeile">Fragen</p>
+    <h2 class="abschnitt-titel">Kurz <em>beantwortet.</em></h2>
+  </div>
+  <div class="fragen-liste">
+    <details><summary>Was kostet eine Website bei Ihnen?</summary><p>Das hängt vom Umfang ab. Nach dem Erstgespräch erhalten Sie ein festes Angebot, bevor irgendetwas passiert.</p></details>
+    <details><summary>Kommen Sie zu uns?</summary><p>Ja. Wir sitzen in Berlin und lernen Ihren Betrieb am liebsten vor Ort kennen. Bei Gastro gern nachmittags, außerhalb des Mittags- und Abendgeschäfts.</p></details>
+    <details><summary>Machen Sie auch nur Video oder nur das Google-Profil?</summary><p>Ja. Sie können einzelne Bausteine buchen. Am meisten bringt es, wenn Website, Profil und Bildmaterial zusammenpassen.</p></details>
+    <details><summary>Was brauchen Sie von uns?</summary><p>Ein Gespräch vor Ort, Ihr Logo, Zugang zu Ihrem Google-Profil und einen Termin für Fotos und Video. Die Texte schreiben wir gern aus dem Gespräch.</p></details>
+    <details><summary>Wer steht hinter MAKE Studios?</summary><p>MAKE Studios ist eine Marke der MAKE Innovation GmbH in Berlin. Ihr Vertrag läuft über die GmbH.</p></details>
+  </div>
+</section>
+
+<section class="abschnitt abschnitt-kontakt" id="kontakt">
+  <p class="ueberzeile">Kontakt</p>
+  <h2 class="kontakt-titel">Bereit, <em>gesehen</em> zu werden?</h2>
+  <p class="abschnitt-text">Buchen Sie ein Erstgespräch oder schreiben Sie uns ein paar Zeilen. Wir melden uns persönlich.</p>
+  <div class="kontakt-aktionen" id="erstgespraech">
+    <a class="knopf knopf-gross" href="mailto:kevin@makeinnovation.de?subject=Erstgespr%C3%A4ch%20MAKE%20Studios" data-buchen>Erstgespräch buchen</a>
+    <a class="kontakt-mail" href="mailto:kevin@makeinnovation.de?subject=Anfrage%20MAKE%20Studios">kevin@makeinnovation.de</a>
+  </div>
+  <a class="link-pfeil kontakt-check" href="#check">Erst den Sichtbarkeits-Check machen</a>
+</section>
+
+</main>
+
+<footer class="fuss">
+  <div class="fuss-oben">
+    <a class="marke fuss-marke" href="#film" aria-label="MAKE Studios, zum Anfang"><svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-iris"/></svg><span class="marke-wort"><b>MAKE</b> <span>STUDIOS</span></span></a>
+    <p class="fuss-satz">Websites, Sichtbarkeit und Video aus Berlin.</p>
+  </div>
+  <nav class="fuss-nav" aria-label="Seite">
+    <a href="#branchen">Branchen</a>
+    <a href="#entwuerfe">Entwürfe</a>
+    <a href="#beispielseiten">Beispiele</a>
+    <a href="#analysen">Analysen</a>
+    <a href="#check">Check</a>
+    <a href="#leistungen">Leistungen</a>
+    <a href="#ablauf">Ablauf</a>
+    <a href="#fragen">Fragen</a>
+    <a href="#kontakt">Kontakt</a>
+  </nav>
+  <div class="fuss-unten">
+    <span>Eine Marke der MAKE Innovation GmbH, Berlin</span>
+    <nav aria-label="Rechtliches"><a href="https://fokusinnovation.de/impressum/">Impressum</a><a href="https://fokusinnovation.de/datenschutz/">Datenschutz</a></nav>
+  </div>
+</footer>
+
+<dialog class="buchen" id="buchen" aria-labelledby="buchen-titel">
+  <form class="buchen-form" novalidate>
+    <div class="buchen-kopf">
+      <h2 class="ueberzeile buchen-titel" id="buchen-titel">Erstgespräch buchen</h2>
+      <p class="buchen-schritt" aria-live="polite"><span class="buchen-schritt-wort">Schritt </span><b>1</b> von 3</p>
+      <button class="buchen-zu" type="button" data-zu aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="buchen-balken" aria-hidden="true"><i></i></div>
+    <div class="buchen-inhalt">
+
+      <section data-teil aria-labelledby="buchen-frage-1">
+        <h3 class="buchen-frage" id="buchen-frage-1" tabindex="-1">Worum <em>geht es?</em></h3>
+        <fieldset data-feld="branche">
+          <legend>Ihre Branche</legend>
+          <div class="wahl-reihe">
+            <label class="wahl"><input type="radio" name="branche" value="gastro" data-text="Café oder Restaurant"><span>Café oder Restaurant</span></label>
+            <label class="wahl"><input type="radio" name="branche" value="agentur" data-text="Agentur"><span>Agentur</span></label>
+            <label class="wahl"><input type="radio" name="branche" value="immobilien" data-text="Immobilien"><span>Immobilien</span></label>
+            <label class="wahl"><input type="radio" name="branche" value="andere" data-text="Etwas anderes"><span>Etwas anderes</span></label>
+          </div>
+          <p class="feld-fehler" hidden></p>
+        </fieldset>
+        <fieldset>
+          <legend>Was interessiert Sie? <span class="optional">Mehrfachwahl</span></legend>
+          <div class="wahl-reihe">
+            <label class="wahl wahl-mehr"><input type="checkbox" name="interesse" value="website" data-text="Website"><span>Website</span></label>
+            <label class="wahl wahl-mehr"><input type="checkbox" name="interesse" value="profil" data-text="Google-Profil"><span>Google-Profil</span></label>
+            <label class="wahl wahl-mehr"><input type="checkbox" name="interesse" value="video" data-text="Video und Foto"><span>Video &amp; Foto</span></label>
+            <label class="wahl wahl-mehr"><input type="checkbox" name="interesse" value="offen" data-text="Noch offen"><span>Noch offen</span></label>
+          </div>
+        </fieldset>
+      </section>
+
+      <section data-teil aria-labelledby="buchen-frage-2" hidden>
+        <h3 class="buchen-frage" id="buchen-frage-2" tabindex="-1">Wann passt es <em>Ihnen?</em></h3>
+        <fieldset data-feld="art">
+          <legend>Wie sprechen wir?</legend>
+          <div class="wahl-reihe">
+            <label class="wahl"><input type="radio" name="art" value="vorort" data-text="Vor Ort bei Ihnen"><span>Vor Ort bei Ihnen</span></label>
+            <label class="wahl"><input type="radio" name="art" value="video" data-text="Video-Call"><span>Video-Call</span></label>
+            <label class="wahl"><input type="radio" name="art" value="telefon" data-text="Telefon"><span>Telefon</span></label>
+          </div>
+          <p class="feld-fehler" hidden></p>
+        </fieldset>
+        <fieldset data-feld="tag">
+          <legend>Ihr Wunschtag</legend>
+          <div class="buchen-tage"></div>
+          <p class="feld-fehler" hidden></p>
+        </fieldset>
+        <fieldset data-feld="zeit">
+          <legend>Ihr Zeitfenster</legend>
+          <div class="wahl-raster">
+            <label class="wahl"><input type="radio" name="zeit" value="vormittag" data-text="Vormittag (9 bis 12 Uhr)"><span>Vormittag<small>9 bis 12 Uhr</small></span></label>
+            <label class="wahl"><input type="radio" name="zeit" value="mittag" data-text="Mittag (12 bis 14 Uhr)"><span>Mittag<small>12 bis 14 Uhr</small></span></label>
+            <label class="wahl"><input type="radio" name="zeit" value="nachmittag" data-text="Nachmittag (14 bis 17 Uhr)"><span>Nachmittag<small>14 bis 17 Uhr</small></span></label>
+          </div>
+          <p class="feld-fehler" hidden></p>
+        </fieldset>
+        <p class="buchen-gastro" hidden>Für Cafés und Restaurants schlagen wir den Nachmittag vor, außerhalb des Mittags- und Abendgeschäfts.</p>
+        <p class="buchen-hinweis">Wir bestätigen den Termin persönlich per E-Mail. Passt der Tag nicht, schlagen wir einen anderen vor.</p>
+      </section>
+
+      <section data-teil aria-labelledby="buchen-frage-3" hidden>
+        <h3 class="buchen-frage" id="buchen-frage-3" tabindex="-1">Wie erreichen wir <em>Sie?</em></h3>
+        <div class="felder">
+          <div class="feld" data-feld="name">
+            <label for="b-name">Ihr Name</label>
+            <input id="b-name" name="name" type="text" autocomplete="name" maxlength="120">
+            <p class="feld-fehler" hidden></p>
+          </div>
+          <div class="feld" data-feld="betrieb">
+            <label for="b-betrieb">Ihr Betrieb</label>
+            <input id="b-betrieb" name="betrieb" type="text" autocomplete="organization" maxlength="160">
+            <p class="feld-fehler" hidden></p>
+          </div>
+          <div class="feld" data-feld="email">
+            <label for="b-email">E-Mail</label>
+            <input id="b-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="200">
+            <p class="feld-fehler" hidden></p>
+          </div>
+          <div class="feld">
+            <label for="b-telefon">Telefon <span class="optional">optional</span></label>
+            <input id="b-telefon" name="telefon" type="tel" autocomplete="tel" maxlength="40">
+          </div>
+          <div class="feld feld-breit">
+            <label for="b-web">Website oder Google-Profil <span class="optional">optional</span></label>
+            <input id="b-web" name="web" type="text" inputmode="url" autocomplete="url" maxlength="300">
+          </div>
+          <div class="feld feld-breit">
+            <label for="b-nachricht">Nachricht <span class="optional">optional</span></label>
+            <textarea id="b-nachricht" name="nachricht" rows="4" maxlength="2000"></textarea>
+          </div>
+        </div>
+        <label class="buchen-check" hidden><input type="checkbox" name="check_mit" checked><span class="buchen-check-text">Ergebnis Ihres Sichtbarkeits-Checks mitschicken</span></label>
+        <p class="buchen-datenschutz">Beim Senden öffnet sich Ihr E-Mail-Programm mit dem fertigen Text. Diese Seite speichert und versendet nichts. <a href="https://fokusinnovation.de/datenschutz/">Datenschutz</a></p>
+      </section>
+
+      <div class="buchen-fertig" hidden>
+        <svg class="buchen-fertig-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-iris"/></svg>
+        <h3 class="buchen-frage" tabindex="-1">Fast <em>geschafft.</em></h3>
+        <p>Ihr E-Mail-Programm hat sich mit der fertigen Anfrage geöffnet. Bitte senden Sie die Nachricht dort ab, wir antworten persönlich.</p>
+        <p>Hat sich nichts geöffnet? Kopieren Sie den Text und schicken Sie ihn an kevin@makeinnovation.de.</p>
+        <div class="buchen-fertig-aktionen">
+          <a class="knopf" href="mailto:kevin@makeinnovation.de" data-erneut>E-Mail erneut öffnen</a>
+          <button class="buchen-leise" type="button" data-kopieren>Text kopieren</button>
+        </div>
+        <textarea class="buchen-kopie" readonly hidden aria-label="Text der Anfrage"></textarea>
+        <button class="buchen-leise buchen-schliessen" type="button" data-zu>Schließen</button>
+      </div>
+
+    </div>
+    <div class="buchen-fuss">
+      <button class="buchen-leise" type="button" data-zurueck hidden>Zurück</button>
+      <button class="knopf" type="submit" data-weiter>Weiter</button>
+    </div>
+  </form>
+</dialog>
+
+</body>
+</html>

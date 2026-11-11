@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beispiel · Lotwerk · MAKE Studios</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Lotwerk, Bauunternehmen in Berlin: Wohnungsbau, Gewerbebau, Umbau und Bestand. Eine Beispielseite mit erfundenem Betrieb.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="medien/zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/dm-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="medien/held.webp" as="image" type="image/webp" fetchpriority="high">
+<link rel="stylesheet" href="../leiste.css">
+<link rel="stylesheet" href="../vendor/lenis/lenis.css">
+<link rel="stylesheet" href="seite.css">
+<script type="module" src="seite.js"></script>
+</head>
+<body>
+
+<!-- Ein Untergrund für die ganze Seite: federt zwischen Schwarz und Off-White -->
+<div class="grund" aria-hidden="true"><div class="grund-dunkel" data-grund-dunkel></div></div>
+
+<a class="sprung" href="#inhalt">Zum Inhalt springen</a>
+
+<!-- ═══ Ladefeld: Zeichen füllt sich, Karten werden ausgeteilt, die letzte wird zum Heldenfoto ═══ -->
+<div class="vorlader" data-vorlader aria-hidden="true">
+  <div class="vorlader-stapel" data-stapel>
+    <div class="stapel-karte" data-karte="-12"><img src="medien/turm.webp" alt="" width="1000" height="1207" decoding="async"></div>
+    <div class="stapel-karte" data-karte="9"><img src="medien/fassade.webp" alt="" width="1000" height="1207" decoding="async"></div>
+    <div class="stapel-karte" data-karte="-5"><img src="medien/halle.webp" alt="" width="1400" height="1268" decoding="async"></div>
+    <div class="stapel-karte" data-karte="14"><img src="medien/pavillon.webp" alt="" width="1000" height="1207" decoding="async"></div>
+    <div class="stapel-karte" data-karte="-8"><img src="medien/kolonnade.webp" alt="" width="1400" height="987" decoding="async"></div>
+    <div class="stapel-karte stapel-finale" data-finale>
+      <div class="bildebene"><img src="medien/held.webp" alt="" width="2560" height="1422" decoding="async"></div>
+      <div class="held-schleier"></div>
+    </div>
+  </div>
+  <div class="vorlader-zeichen" data-vorlader-zeichen>
+    <span class="zeichen-maske zeichen-grund"></span>
+    <span class="zeichen-maske zeichen-fuellung" data-fuellung></span>
+  </div>
+  <div class="vorlader-zeile" data-vorlader-zeile>
+    <span>Lädt</span>
+    <span data-prozent>00 %</span>
+  </div>
+</div>
+
+<!-- ═══ Kopf: Zellen mit gestrichelten Linien, färbt sich mit dem Untergrund ═══ -->
+<header class="kopf" data-kopf data-thema="dunkel">
+  <a class="kopf-marke kopf-zelle" href="#oben" aria-label="Lotwerk, zum Seitenanfang">
+    <span class="zeichen-maske kopf-zeichen" data-kopf-zeichen></span>
+    <span class="wortmarke">Lotwerk</span>
+  </a>
+  <div class="kopf-zelle kopf-frei" aria-hidden="true"></div>
+  <nav class="kopf-nav" aria-label="Bereiche">
+    <a href="#ueber"><span data-roll>Über uns</span></a>
+    <a href="#projekte"><span data-roll>Projekte</span></a>
+    <a href="#ablauf"><span data-roll>Ablauf</span></a>
+    <a href="#team"><span data-roll>Team</span></a>
+    <a href="#kontakt"><span data-roll>Kontakt</span></a>
+  </nav>
+  <span class="kopf-zelle kopf-ort">Berlin</span>
+  <a class="kopf-zelle kopf-knopf" href="#kontakt"><span class="pfeil" aria-hidden="true"><i></i><i></i></span><span data-roll>Projekt anfragen</span></a>
+  <button class="kopf-zelle kopf-burger" type="button" aria-expanded="false" aria-controls="menue" data-burger>
+    <span class="burger-box" aria-hidden="true"><i data-burger-linie></i><i data-burger-linie></i></span>
+    <span class="unsichtbar">Menü</span>
+  </button>
+</header>
+
+<!-- Menü fürs Handy -->
+<div class="menue" id="menue" data-menue hidden>
+  <nav aria-label="Bereiche (Menü)">
+    <a class="pfeil-link" href="#ueber"><span class="pfeil-link-text">Über uns</span><span class="pfeil" aria-hidden="true"><i></i><i></i></span></a>
+    <a class="pfeil-link" href="#projekte"><span class="pfeil-link-text">Projekte</span><span class="pfeil" aria-hidden="true"><i></i><i></i></span></a>
+    <a class="pfeil-link" href="#ablauf"><span class="pfeil-link-text">Ablauf</span><span class="pfeil" aria-hidden="true"><i></i><i></i></span></a>
+    <a class="pfeil-link" href="#team"><span class="pfeil-link-text">Team</span><span class="pfeil" aria-hidden="true"><i></i><i></i></span></a>
+    <a class="pfeil-link" href="#kontakt"><span class="pfeil-link-text">Kontakt</span><span class="pfeil" aria-hidden="true"><i></i><i></i></span></a>
+  </nav>
+  <p class="menue-ort"><span>Standort</span><span>Berlin</span></p>
+  <a class="knopf knopf-hell menue-knopf" href="#kontakt"><span class="pfeil" aria-hidden="true"><i></i><i></i></span><span>Projekt anfragen</span></a>
+</div>
+
+<p class="ladehinweis" data-ladehinweis role="status" hidden>Einige Bilder konnten nicht geladen werden. Bitte laden Sie die Seite neu.</p>
+
+<main id="inhalt">
+
+  <!-- ═══ 1 · Held ═══ -->
+  <section class="held" id="oben" data-grund="dunkel" data-kopf-thema="dunkel" aria-labelledby="held-titel">
+    <div class="held-inhalt" data-fluss>
+      <div class="held-buehne" data-held-buehne>
+        <div class="bildebene" data-held-parallax><img src="medien/held.webp" alt="Beispielprojekt: Wohnhaus aus Sichtbeton am Hang, von innen beleuchtet" width="2560" height="1422" fetchpriority="high" decoding="async" data-wichtig></div>
+        <div class="held-schleier"></div>
+      </div>
+
+      <h1 class="held-titel" id="held-titel" data-worte="kopf" data-held-text>Räume bauen, die bleiben.</h1>
+      <p class="held-schluss" data-held-text>
+        <span class="held-zeile" data-worte="kopf">Gebaut für heute.</span>
+        <span class="held-zeile" data-worte="kopf">Gedacht für Generationen.</span>
+      </p>
+
+      <ul class="held-zahlen" data-held-text>
+        <li><span class="zahl-wert" data-zahl>1 Vertrag</span><span class="zahl-name">für den ganzen Bau</span></li>
+        <li><span class="zahl-wert" data-zahl>5 Schritte</span><span class="zahl-name">bis zur Übergabe</span></li>
+        <li><span class="zahl-wert" data-zahl>3 Schwerpunkte</span><span class="zahl-name">Wohnen, Gewerbe, Bestand</span></li>
+      </ul>
+
+      <div class="held-band">
+        <div class="haarlinie" aria-hidden="true"></div>
+        <p class="held-intro" data-worte="text" data-held-text>Vom ersten Plan bis zur Schlüsselübergabe bauen wir Wohn- und Gewerbeprojekte in Berlin, genau geplant und mit klarer Verantwortung.</p>
+      </div>
+
+      <div class="held-aktionen" data-held-text>
+        <a class="kasten-link ecken" href="#projekte"><span class="kasten-fuellung" aria-hidden="true"></span><span data-roll="dunkel">Projekte ansehen</span></a>
+        <a class="kasten-link ecken" href="#ablauf"><span class="kasten-fuellung" aria-hidden="true"></span><span data-roll="dunkel">Unser Ablauf</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 2 · Über uns ═══ -->
+  <section class="ueber" id="ueber" data-grund="hell" data-kopf-thema="hell" aria-labelledby="ueber-titel">
+    <div class="ueber-band" data-fluss>
+      <div class="ueber-kopf">
+        <p class="etikett" data-auftritt>Lotwerk Bau · Berlin</p>
+        <h2 class="ueber-titel" id="ueber-titel" data-worte="kopf">Bauen, bei dem jedes Maß sitzt</h2>
+      </div>
+
+      <a class="ueber-bild" href="#ablauf" data-ueber-bild>
+        <span class="ueber-fotos" aria-hidden="true">
+          <img src="medien/wohnturm.webp" alt="" width="1100" height="1328" loading="lazy" decoding="async">
+          <img src="medien/turm.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+          <img src="medien/buero.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+          <img src="medien/sockel.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+          <img src="medien/fassade.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+          <img src="medien/treppe.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+          <img src="medien/glashaus.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+          <img src="medien/essraum.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+          <img src="medien/kolonnade.webp" alt="" width="1400" height="987" loading="lazy" decoding="async">
+          <img src="medien/pavillon.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+        </span>
+        <span class="knopf knopf-dunkel ueber-knopf"><span class="pfeil" aria-hidden="true"><i></i><i></i></span><span data-roll>So bauen wir</span></span>
+      </a>
+
+      <ul class="ueber-themen" aria-label="Leistungen">
+        <li>Wohnungsbau</li>
+        <li>Gewerbebau</li>
+        <li>Umbau und Bestand</li>
+        <li>Generalunternehmer</li>
+        <li>Bauleitung</li>
+      </ul>
+
+      <p class="ueber-auftrag" data-worte="text" data-immer data-einzug>Wir bauen schlüsselfertig aus einer Hand: ein Vertrag, ein Ansprechpartner, ein Zeitplan bis zur Übergabe.</p>
+
+      <div class="ueber-zahlen">
+        <p class="etikett ueber-zahlen-etikett" data-auftritt>Beispielwerte · hier stehen Ihre Zahlen</p>
+        <ul>
+          <li data-auftritt><span class="zahl-wert" data-zahl>18 Jahre</span><span class="zahl-name">am Bau</span></li>
+          <li data-auftritt><span class="zahl-wert" data-zahl>120+</span><span class="zahl-name">fertige Projekte</span></li>
+          <li data-auftritt><span class="zahl-wert" data-zahl>45.000 m²</span><span class="zahl-name">gebaute Fläche</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 3 · Projekte ═══ -->
+  <section class="projekte" id="projekte" data-grund="dunkel" data-kopf-thema="dunkel" aria-labelledby="projekte-titel">
+    <h2 class="unsichtbar" id="projekte-titel">Projekte</h2>
+    <div class="projekte-reihe" data-fluss>
+      <a class="projekt" href="#kontakt" data-projektart="Gewerbe" data-drift="90">
+        <span class="projekt-maske">
+          <span class="projekt-bild"><img src="medien/gewerbe.webp" alt="Beispielprojekt Gewerbe: Bürogebäude mit Pfeilerfassade, abends beleuchtet" width="1100" height="1454" loading="lazy" decoding="async"></span>
+          <span class="schleier" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="projekt-etikett ecken">Beispielprojekt</span>
+          <span class="projekt-name" data-worte="karte">Gewerbe</span>
+          <span class="knopf knopf-dunkel projekt-knopf"><span class="pfeil" aria-hidden="true"><i></i><i></i></span><span data-roll>Ähnliches anfragen</span></span>
+        </span>
+      </a>
+      <a class="projekt projekt-hoch" href="#kontakt" data-projektart="Wohnen" data-drift="55">
+        <span class="projekt-maske">
+          <span class="projekt-bild"><img src="medien/wohnturm.webp" alt="Beispielprojekt Wohnen: Wohnhaus mit geschwungenen, bepflanzten Balkonen" width="1100" height="1328" loading="lazy" decoding="async"></span>
+          <span class="schleier" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="projekt-etikett ecken">Beispielprojekt</span>
+          <span class="projekt-name" data-worte="karte">Wohnen</span>
+          <span class="knopf knopf-dunkel projekt-knopf"><span class="pfeil" aria-hidden="true"><i></i><i></i></span><span data-roll>Ähnliches anfragen</span></span>
+        </span>
+      </a>
+      <a class="projekt" href="#kontakt" data-projektart="Gastronomie und Hotel" data-drift="90">
+        <span class="projekt-maske">
+          <span class="projekt-bild"><img src="medien/halle.webp" alt="Beispielprojekt Gastronomie und Hotel: Speisesaal mit Hängeleuchten und großen Fenstern" width="1400" height="1268" loading="lazy" decoding="async"></span>
+          <span class="schleier" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="projekt-etikett ecken">Beispielprojekt</span>
+          <span class="projekt-name" data-worte="karte">Gastronomie und Hotel</span>
+          <span class="knopf knopf-dunkel projekt-knopf"><span class="pfeil" aria-hidden="true"><i></i><i></i></span><span data-roll>Ähnliches anfragen</span></span>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ═══ 4 · Baustelle: ein Film in drei Einstellungen ═══ -->
+  <section class="baustelle" id="baustelle" data-grund="dunkel" data-kopf-thema="dunkel" aria-labelledby="baustelle-titel">
+    <div class="baustelle-innen" data-fluss="spaet">
+      <div class="film" data-film>
+        <div class="film-maske" data-film-maske>
+          <div class="film-ebene" data-film-ebene>
+            <div class="film-bild film-bild-plan" data-film-bild>
+              <img src="medien/film-plan.webp" alt="" width="1280" height="720" loading="lazy" decoding="async">
+              <video src="medien/film-plan.mp4" muted playsinline loop preload="none" aria-hidden="true" tabindex="-1"></video>
+            </div>
+            <div class="film-bild film-bild-kran" data-film-bild>
+              <img src="medien/film-kran.webp" alt="" width="1280" height="720" loading="lazy" decoding="async">
+              <video src="medien/film-kran.mp4" muted playsinline loop preload="none" aria-hidden="true" tabindex="-1"></video>
+            </div>
+            <div class="film-bild film-bild-ausbau" data-film-bild>
+              <img src="medien/film-ausbau.webp" alt="" width="1280" height="720" loading="lazy" decoding="async">
+              <video src="medien/film-ausbau.mp4" muted playsinline loop preload="none" aria-hidden="true" tabindex="-1"></video>
+            </div>
+          </div>
+          <div class="film-schleier" aria-hidden="true"></div>
+          <div class="film-lot" aria-hidden="true" data-film-lot><i></i></div>
+        </div>
+        <div class="film-rahmen ecken" aria-hidden="true"></div>
+
+        <p class="projekt-etikett ecken film-etikett">Beispielfilm</p>
+        <div class="film-text">
+          <p class="etikett film-ort" data-auftritt>Auf der Baustelle</p>
+          <h2 class="film-titel" id="baustelle-titel" data-worte="kopf">Vom Plan auf die Baustelle.</h2>
+          <p class="unsichtbar">Beispielfilm in drei Einstellungen: ein Zirkel auf einem Bauplan, Kräne über einem eingerüsteten Haus, ein Bauleiter mit Helm und Plan im Ausbau.</p>
+        </div>
+
+        <div class="film-leiste" role="group" aria-label="Einstellungen des Films">
+          <button class="film-takt" type="button" aria-pressed="true" data-takt><i class="takt-linie" aria-hidden="true"><b data-fortschritt></b></i><span class="takt-nr">01</span><span class="takt-name">Am Plan</span></button>
+          <button class="film-takt" type="button" aria-pressed="false" data-takt><i class="takt-linie" aria-hidden="true"><b data-fortschritt></b></i><span class="takt-nr">02</span><span class="takt-name">Am Kran</span></button>
+          <button class="film-takt" type="button" aria-pressed="false" data-takt><i class="takt-linie" aria-hidden="true"><b data-fortschritt></b></i><span class="takt-nr">03</span><span class="takt-name">Im Ausbau</span></button>
+          <button class="film-pause" type="button" data-film-pause><span class="pause-zeichen" aria-hidden="true"></span><span class="unsichtbar" data-film-pause-text>Film anhalten</span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 5 · Ablauf ═══ -->
+  <section class="ablauf" id="ablauf" data-grund="dunkel" data-kopf-thema="dunkel" aria-labelledby="ablauf-titel" data-ablauf>
+    <div class="ablauf-innen" data-fluss>
+      <h2 class="etikett ablauf-etikett" id="ablauf-titel" data-auftritt>Unser Ablauf · 5 Schritte</h2>
+
+      <ol class="ablauf-schritte">
+        <li><button class="schritt" type="button" aria-describedby="ablauf-text" aria-pressed="true" data-schritt data-text="Wir verstehen Ihr Vorhaben, klären die Anforderungen und legen gemeinsam fest, woran wir Erfolg messen." data-breite="18.4375">01 / Planung</button></li>
+        <li><button class="schritt" type="button" aria-describedby="ablauf-text" aria-pressed="false" data-schritt data-text="Wir bringen Entwurf, technische Vorgaben und alle Gewerke in einen klaren, baureifen Plan." data-breite="16.6875">02 / Entwurf und Technik</button></li>
+        <li><button class="schritt" type="button" aria-describedby="ablauf-text" aria-pressed="false" data-schritt data-text="Wir setzen das Projekt um, sorgfältig abgestimmt und auf der Baustelle jeden Tag kontrolliert." data-breite="21.75">03 / Bau</button></li>
+        <li><button class="schritt" type="button" aria-describedby="ablauf-text" aria-pressed="false" data-schritt data-text="Wir prüfen Qualität, Termine und jedes Gewerk, damit Ihr Projekt auf Kurs bleibt." data-breite="16.8125">04 / Kontrolle</button></li>
+        <li><button class="schritt" type="button" aria-describedby="ablauf-text" aria-pressed="false" data-schritt data-text="Wir erledigen die letzten Details und übergeben Räume, die bereit sind für das, was kommt." data-breite="15.875">05 / Übergabe</button></li>
+      </ol>
+
+      <div class="ablauf-buehne" aria-hidden="true">
+        <div class="buehne-parallax" data-buehne-parallax>
+          <div class="buehne-kipp" data-buehne-kipp>
+            <div class="buehne-dreh" data-buehne-dreh>
+              <div class="buehne-bilder" data-buehne-bilder>
+                <img src="medien/planung.webp" alt="" width="1000" height="1379" loading="lazy" decoding="async">
+                <img src="medien/treppe.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+                <img src="medien/fassade.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+                <img src="medien/buero.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+                <img src="medien/glashaus.webp" alt="" width="1000" height="1207" loading="lazy" decoding="async">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="ablauf-text" id="ablauf-text" data-ablauf-text>Wir verstehen Ihr Vorhaben, klären die Anforderungen und legen gemeinsam fest, woran wir Erfolg messen.</p>
+    </div>
+  </section>
+
+  <!-- ═══ 6 · Team ═══ -->
+  <section class="team" id="team" data-grund="hell" data-kopf-thema="hell" aria-labelledby="team-titel">
+    <div class="team-innen" data-fluss>
+      <div class="team-kopf">
+        <h2 class="team-titel" id="team-titel" data-worte="kopf">Die Menschen hinter jedem Projekt.</h2>
+        <p class="team-intro" data-worte="text" data-immer>Ein Team aus Fachleuten für Planung, Technik und Baustelle. Sie haben vom ersten Gespräch an feste Ansprechpartner.</p>
+      </div>
+
+      <div class="team-reihen-rahmen" data-team-reihen>
+      <ul class="team-reihen">
+        <li class="team-reihe">
+          <div class="team-links">
+            <p class="etikett team-etikett">01 //  Geschäftsführung</p>
+            <p class="team-name">Ihr Name</p>
+            <p class="team-bio" data-worte="text" data-immer>Hier stellen Sie sich vor: wofür Sie stehen und was Ihnen an jedem Bau wichtig ist.</p>
+          </div>
+          <figure class="team-foto"><img src="medien/team-1.webp" alt="Beispielfoto für die Geschäftsführung: Mann mit Brille und dunklem Mantel vor einer Betonwand" width="668" height="556" loading="lazy" decoding="async"></figure>
+          <div class="team-meta">
+            <span class="team-rolle"><i aria-hidden="true"></i>Leitung</span>
+            <span class="team-hinweis">Beispielfoto · Platzhalter</span>
+          </div>
+        </li>
+        <li class="team-reihe">
+          <div class="team-links">
+            <p class="etikett team-etikett">02 //  Planung</p>
+            <p class="team-name">Ihr Name</p>
+            <p class="team-bio" data-worte="text" data-immer>Hier steht, wie Ihre Planung aus einem Entwurf einen durchdachten, baureifen Plan macht.</p>
+          </div>
+          <figure class="team-foto"><img src="medien/team-2.webp" alt="Beispielfoto für die Planung: Frau mit dunklen Haaren vor einer Betonwand" width="668" height="556" loading="lazy" decoding="async"></figure>
+          <div class="team-meta">
+            <span class="team-rolle"><i aria-hidden="true"></i>Planung und Technik</span>
+            <span class="team-hinweis">Beispielfoto · Platzhalter</span>
+          </div>
+        </li>
+        <li class="team-reihe">
+          <div class="team-links">
+            <p class="etikett team-etikett">03 //  Bauleitung</p>
+            <p class="team-name">Ihr Name</p>
+            <p class="team-bio" data-worte="text" data-immer>Hier steht, wie Ihre Bauleitung jedes Detail sauber, pünktlich und genau umsetzt.</p>
+          </div>
+          <figure class="team-foto"><img src="medien/team-3.webp" alt="Beispielfoto für die Bauleitung: Mann mit weißem Schutzhelm" width="668" height="556" loading="lazy" decoding="async"></figure>
+          <div class="team-meta">
+            <span class="team-rolle"><i aria-hidden="true"></i>Bauleitung</span>
+            <span class="team-hinweis">Beispielfoto · Platzhalter</span>
+          </div>
+        </li>
+      </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 7 · Kontakt ═══ -->
+  <section class="kontakt" id="kontakt" data-grund="dunkel" data-kopf-thema="weg" aria-labelledby="kontakt-titel">
+    <div class="kontakt-innen" data-fluss>
+      <div class="kontakt-bild" aria-hidden="true">
+        <div class="kontakt-bildebene" data-kontakt-parallax><img src="medien/kontakt.webp" alt="" width="2200" height="1800" loading="lazy" decoding="async"></div>
+      </div>
+
+      <div class="kontakt-schiene">
+        <p class="kontakt-marke" data-auftritt><span class="zeichen-maske kontakt-zeichen" aria-hidden="true"></span><span class="wortmarke">Lotwerk</span></p>
+        <nav class="kontakt-nav" aria-label="Bereiche (Fuß)">
+          <a class="pfeil-link" href="#ueber" data-auftritt><span class="pfeil-link-text">Über uns</span><span class="pfeil" aria-hidden="true"><i></i><i></i></span></a>
+          <a class="pfeil-link" href="#projekte" data-auftritt><span class="pfeil-link-text">Projekte</span><span class="pfeil" aria-hidden="true"><i></i><i></i></span></a>
+          <a class="pfeil-link" href="#ablauf" data-auftritt><span class="pfeil-link-text">Ablauf</span><span class="pfeil" aria-hidden="true"><i></i><i></i></span></a>
+          <a class="pfeil-link" href="#team" data-auftritt><span class="pfeil-link-text">Team</span><span class="pfeil" aria-hidden="true"><i></i><i></i></span></a>
+          <a class="pfeil-link" href="#oben" data-auftritt><span class="pfeil-link-text">Nach oben</span><span class="pfeil" aria-hidden="true"><i></i><i></i></span></a>
+        </nav>
+        <address class="kontakt-adresse" data-auftritt>
+          <span>Telefon · Ihre Nummer</span>
+          <span>E-Mail · Ihre Adresse</span>
+          <span>Beispielstraße 1 · Berlin</span>
+        </address>
+      </div>
+
+      <form class="formular" data-formular>
+        <div class="formular-kopf">
+          <h2 class="formular-titel" id="kontakt-titel">Projekt anfragen</h2>
+          <p class="formular-unter">Erzählen Sie uns kurz von Ihrem Vorhaben. Wir melden uns mit einem Vorschlag für ein erstes Gespräch.</p>
+        </div>
+        <label class="feld"><span class="unsichtbar">Vorname (Pflichtfeld)</span><input name="vorname" type="text" autocomplete="given-name" placeholder="Vorname *" required></label>
+        <label class="feld"><span class="unsichtbar">Telefon (freiwillig)</span><input name="telefon" type="tel" autocomplete="tel" placeholder="Telefon (freiwillig)"></label>
+        <label class="feld"><span class="unsichtbar">E-Mail (Pflichtfeld)</span><input name="email" type="email" autocomplete="email" placeholder="E-Mail *" required></label>
+        <label class="feld feld-wahl"><span class="unsichtbar">Projektart</span>
+          <select name="projektart" data-projektart-wahl>
+            <option value="">Projektart</option>
+            <option>Wohnen</option>
+            <option>Gewerbe</option>
+            <option>Gastronomie und Hotel</option>
+            <option>Umbau und Bestand</option>
+          </select>
+        </label>
+        <label class="feld"><span class="unsichtbar">Ort des Vorhabens (Pflichtfeld)</span><input name="ort" type="text" placeholder="Ort des Vorhabens *" required></label>
+        <label class="feld feld-text"><span class="unsichtbar">Ihr Vorhaben</span><textarea name="vorhaben" placeholder="Erzählen Sie uns von Ihrem Vorhaben"></textarea></label>
+        <label class="zustimmung"><input type="checkbox" name="zustimmung" required><span>Ich bin einverstanden, zu meiner Anfrage kontaktiert zu werden, und habe die <u>Datenschutzhinweise</u> gelesen.</span></label>
+        <button class="knopf knopf-dunkel formular-knopf" type="button" data-absenden><span class="pfeil" aria-hidden="true"><i></i><i></i></span><span data-roll>Projekt besprechen</span></button>
+        <p class="formular-meldung" data-meldung role="status" aria-live="polite"></p>
+      </form>
+
+      <div class="kontakt-recht">
+        <p class="kontakt-rechtlich" data-auftritt><span>Impressum</span><span aria-hidden="true">/</span><span>Datenschutz</span></p>
+        <p class="kontakt-copy" data-auftritt>© Lotwerk Bau · Beispielseite</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══ Leiste von MAKE Studios: auf jeder Beispielseite, unverändert ═══ -->
+<div class="ms-platz" aria-hidden="true"></div>
+<nav class="ms-leiste" aria-label="MAKE Studios">
+  <a class="ms-marke" href="../../#beispielseiten" aria-label="Zurück zu den Beispielseiten von MAKE Studios"><img src="../../zeichen.svg" alt="" width="24" height="24"><b>MAKE</b><span>STUDIOS</span></a>
+  <span class="ms-hinweis"><b>Beispiel</b><span class="ms-lang"> · Namen erfunden</span></span>
+  <a class="ms-knopf" href="../../#erstgespraech-andere">Erstgespräch</a>
+</nav>
+
+</body>
+</html>

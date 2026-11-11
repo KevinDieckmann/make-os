@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beispiel · Firstlinie Dach &amp; Sanierung · MAKE Studios</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Beispielseite eines Dach- und Sanierungsbetriebs in Berlin. Erfundener Betrieb.">
+<meta name="theme-color" content="#16283a">
+<link rel="icon" href="../../zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="schriften/geist-mono.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../leiste.css">
+<link rel="stylesheet" href="seite.css">
+<script type="module" src="seite.js"></script>
+</head>
+<body>
+
+<!-- Eröffnung: Hauszeichen wird gezeichnet, Zähler läuft, die Tafel hebt sich mit einer Firstfalte ab.
+     Ohne Skript blendet sie sich per CSS nach gut drei Sekunden selbst aus. -->
+<div class="oeffnung" role="status" aria-live="polite">
+  <span class="vh">Firstlinie Dach und Sanierung wird geladen</span>
+  <div class="oe-wortmarke" aria-hidden="true">FIRSTLINIE</div>
+  <div class="oe-mitte" aria-hidden="true">
+    <svg class="oe-zeichen" viewBox="16 16 24 22">
+      <path class="oe-haus" d="M18 25.4634L28 18L38 25.4634V36H18V25.4634Z" pathLength="1"/>
+      <rect class="oe-falz" x="22.5455" y="22.3902" width="0.909" height="13.6098"/>
+      <rect class="oe-falz" x="27.5455" y="19.3171" width="0.909" height="16.6829"/>
+      <rect class="oe-falz" x="32.5455" y="22.3902" width="0.909" height="13.6098"/>
+    </svg>
+    <p class="oe-name">Firstlinie Dach &amp; Sanierung</p>
+    <div class="oe-zaehlwerk"><span class="oe-zahl">000</span><span class="oe-rille"><span class="oe-fuellung"></span></span></div>
+  </div>
+</div>
+
+<p class="hinweis-laden" role="status"><span class="hl-ohne-skript">Die Seite wird ohne Bewegungen angezeigt.</span><span class="hl-text"></span></p>
+
+<div class="feld">
+<div class="karte">
+<div class="brunnen">
+
+  <div class="statusleiste">
+    <div class="sl-links">
+      <span class="sl-stark sl-breit">Berlin</span>
+      <span class="sl-trenner sl-breit" aria-hidden="true">\</span>
+      <span class="sl-breit sl-uhr" hidden><time class="sl-zeit">00:00</time> Uhr</span>
+      <span class="sl-trenner sl-breit sl-uhr" aria-hidden="true" hidden>\</span>
+      <span class="sl-live"><span class="live-punkt" aria-hidden="true"></span>Dachchecks nach Termin</span>
+    </div>
+    <span class="sl-zeiten">Mo bis Fr · nach Vereinbarung</span>
+  </div>
+
+  <header class="kopf glas">
+    <a class="kopf-logo kopf-stueck" href="#start" aria-label="Firstlinie Dach und Sanierung, zum Seitenanfang">
+      <svg viewBox="0 0 56 56" aria-hidden="true"><path fill-rule="evenodd" d="M18 25.4634L28 18L38 25.4634V36H18V25.4634ZM22.5455 22.3902H23.4545V36H22.5455V22.3902ZM27.5455 19.3171H28.4545V36H27.5455V19.3171ZM32.5455 22.3902H33.4545V36H32.5455V22.3902Z"/></svg>
+    </a>
+    <nav class="kopf-pille kopf-stueck" aria-label="Seitenbereiche">
+      <span class="kp-plakette" aria-hidden="true"></span>
+      <a class="kp-link aktiv" href="#start">Start</a>
+      <a class="kp-link" href="#leistungen">Leistungen</a>
+      <a class="kp-link" href="#ablauf">Ablauf</a>
+      <a class="kp-link" href="#projekt">Projekt</a>
+    </nav>
+    <div class="kopf-aktionen kopf-stueck">
+      <a class="pille pille-hell pille-kompakt kopf-cta" href="#anfrage">
+        <span class="pille-fenster"><span class="pille-stapel"><span>Dachcheck anfragen</span><span class="pille-zweit" aria-hidden="true">Termin vor Ort</span></span></span>
+        <svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg>
+      </a>
+      <button class="kopf-menue" type="button" aria-expanded="false" aria-controls="menue" aria-label="Menü öffnen">
+        <span class="km-balken" aria-hidden="true"><span class="km-oben"></span><span class="km-unten"></span></span>
+      </button>
+    </div>
+
+    <div class="menue" id="menue" hidden>
+      <nav aria-label="Menü">
+        <ol class="menue-liste">
+          <li><a class="menue-link aktiv" href="#start">Start<span>01</span></a></li>
+          <li><a class="menue-link" href="#leistungen">Leistungen<span>02</span></a></li>
+          <li><a class="menue-link" href="#ablauf">Ablauf<span>03</span></a></li>
+          <li><a class="menue-link" href="#projekt">Projekt<span>04</span></a></li>
+        </ol>
+        <div class="menue-fuss">
+          <span class="menue-name">Firstlinie Dach &amp; Sanierung</span>
+          <a class="pille pille-hell menue-cta" href="#anfrage">
+            <span class="pille-fenster"><span class="pille-stapel"><span>Dachcheck anfragen</span></span></span>
+            <svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg>
+          </a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- 1 · Held: ein ruhiger Film über einem Ziegeldach. Das Standbild steht sofort, der Film kommt nach (breite Fenster laden die größere Fassung). -->
+    <section class="held" id="start" aria-label="Firstlinie Dach und Sanierung">
+      <div class="held-box" data-film-rahmen>
+        <div class="held-lage">
+          <div class="held-kamera film" data-film>
+            <picture>
+              <source media="(min-width: 90rem)" srcset="medien/film/dach-gauben-gross-poster.jpg">
+              <img class="held-foto wichtig" src="medien/film/dach-gauben-poster.jpg" alt="Ziegeldach mit Gauben und gemauerten Schornsteinen vor blauem Himmel" width="1280" height="720" fetchpriority="high">
+            </picture>
+            <video class="film-video" muted playsinline loop preload="none" width="1280" height="720" aria-hidden="true" tabindex="-1" data-gross="medien/film/dach-gauben-gross.mp4"><source src="medien/film/dach-gauben.mp4" type="video/mp4"></video>
+          </div>
+        </div>
+        <div class="held-schleier" aria-hidden="true"></div>
+
+        <h1 class="held-titel"><span class="vh">Dicht bis zum letzten Anschluss.</span><span class="ht-zeile ht-1" aria-hidden="true">Dicht bis zum</span> <span class="ht-zeile ht-2" aria-hidden="true">letzten Anschluss.</span></h1>
+
+        <div class="held-fuss">
+          <ul class="held-material" aria-label="Materialien">
+            <li>Ziegel</li>
+            <li>Schiefer</li>
+            <li>Metall</li>
+            <li>Flachdach</li>
+          </ul>
+          <div class="held-film">
+            <span class="hf-text">Im Bild: Ziegeldach mit Gauben</span>
+            <button class="film-knopf" type="button" hidden>
+              <svg class="fk-pause" viewBox="0 0 14 14" aria-hidden="true"><path d="M4 2.500V11.500M10 2.500V11.500"/></svg>
+              <svg class="fk-start" viewBox="0 0 14 14" aria-hidden="true"><path d="M4 2.200L11.500 7L4 11.800Z"/></svg>
+              <span class="vh film-knopf-text">Film anhalten</span>
+            </button>
+          </div>
+        </div>
+
+        <a class="pille pille-hell held-cta" href="#anfrage">
+          <span class="pille-fenster"><span class="pille-stapel"><span>Dachcheck anfragen</span><span class="pille-zweit" aria-hidden="true">Termin vor Ort</span></span></span>
+          <svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- 2 · Über uns (angeheftet), danach Leistungen, die darüber gleiten -->
+    <div class="nadel">
+      <section class="ueber" id="ueber-uns" aria-labelledby="ueber-titel">
+        <div class="aussage">
+          <p class="augenbraue" id="ueber-titel"><span class="ab-index">(01)</span><span class="ab-text">Über uns</span></p>
+          <p class="aussage-text">Wir <strong>decken, dämmen und dichten Dächer</strong> in Berlin und im Umland. Ein Team, <strong>ein Bauleiter, vom ersten Gerüst bis zur Abnahme.</strong></p>
+        </div>
+
+        <div class="zahlen">
+          <p class="zahlen-hinweis">Beispielwerte · hier stehen Ihre Zahlen</p>
+          <dl class="zahlen-liste">
+            <div class="zahl-zelle"><dt class="zahl-etikett">Leistungen aus einer Hand</dt><dd class="zahl" data-wert="06">06</dd></div>
+            <div class="zahl-zelle"><dt class="zahl-etikett">Schritte bis zur Abnahme</dt><dd class="zahl" data-wert="04">04</dd></div>
+            <div class="zahl-zelle"><dt class="zahl-etikett">Punkte je Sanierung</dt><dd class="zahl" data-wert="09">09</dd></div>
+            <div class="zahl-zelle"><dt class="zahl-etikett">Bauleiter je Baustelle</dt><dd class="zahl" data-wert="01">01</dd></div>
+          </dl>
+        </div>
+
+        <div class="arbeitsweise">
+          <p class="aw-titel">So arbeiten wir</p>
+          <ul class="aw-chips">
+            <li class="chip chip-weich">Festpreis vor Baubeginn</li>
+            <li class="chip chip-weich">Fotos jeder Schicht</li>
+            <li class="chip chip-weich">Ein Bauleiter</li>
+            <li class="chip chip-weich">Baustelle abends geräumt</li>
+            <li class="chip chip-weich">Abnahme mit Protokoll</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="halt" aria-hidden="true"></div>
+
+      <!-- 3 · Leistungen: Fotos zeigen das Dach, Zeichnungen erklären es -->
+      <section class="leistungen" id="leistungen" aria-labelledby="leistungen-titel">
+        <div class="kopfzeile">
+          <div class="kz-links">
+            <p class="augenbraue"><span class="ab-index">(02)</span><span class="ab-text">Leistungen</span></p>
+            <h2 class="kz-titel" id="leistungen-titel"><span class="kz-zeile kz-1">Sechs Bereiche,</span> <span class="kz-zeile kz-2">ein Ansprechpartner.</span></h2>
+          </div>
+          <p class="kz-seite">Nicht dabei, was Sie suchen? Dann sagen wir Ihnen, wer es gut macht.</p>
+        </div>
+
+        <ul class="karten">
+          <li class="leistung" data-zoom>
+            <div class="zoom l-foto"><img src="medien/leistungen/steildach-360.jpg" srcset="medien/leistungen/steildach-360.jpg 360w, medien/leistungen/steildach-720.jpg 720w" sizes="(min-width: 48rem) 11rem, 90vw" alt="Rotes Ziegeldach mit gemörteltem Grat vor blauem Himmel" width="360" height="360" loading="lazy"></div>
+            <div class="l-text">
+              <h3>Steildach</h3>
+              <p>Neueindeckung mit Ziegel, Schiefer oder Metall. Lattung, Unterdeckung und Anschlüsse aus einer Hand, damit nichts zwischen zwei Gewerken liegen bleibt.</p>
+              <span class="l-notiz">Ziegel · Schiefer · Metall</span>
+            </div>
+          </li>
+          <li class="leistung" data-zoom>
+            <div class="zoom l-foto l-zeichnung">
+              <span class="fd-etikett" aria-hidden="true">Schnitt · Flachdach</span>
+              <svg class="zeichnung" viewBox="12 118 320 166" role="img" aria-label="Schnitt durch ein Flachdach mit Decke, Dampfsperre, Gefälledämmung und Abdichtung bis an die Attika">
+                <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+                  <path class="fd-strich" pathLength="1" stroke-opacity="0.9" stroke-width="1.6" d="M28 252H276V270H28Z"/>
+                  <path class="fd-blass" stroke-opacity="0.35" stroke-width="1" d="M40 270L58 252M64 270L82 252M88 270L106 252M112 270L130 252M136 270L154 252M160 270L178 252M184 270L202 252M208 270L226 252M232 270L250 252M256 270L274 252"/>
+                  <path class="fd-strich" pathLength="1" stroke-opacity="0.9" stroke-width="1.6" d="M276 270V132H312V270"/>
+                  <path class="fd-strich" pathLength="1" stroke-opacity="0.7" stroke-width="1.2" d="M28 246H276"/>
+                  <path class="fd-strich" pathLength="1" stroke-opacity="0.9" stroke-width="1.6" d="M28 246V214L276 196V246"/>
+                  <path class="fd-blass" stroke-opacity="0.3" stroke-width="1" d="M60 244V212M92 244V210M124 244V207M156 244V205M188 244V203M220 244V200M252 244V198"/>
+                  <path class="fd-strich" pathLength="1" stroke="#d99a6c" stroke-width="2.4" d="M28 208L270 190V138H318"/>
+                  <path class="fd-blass" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1.2" d="M236 170L84 181M84 181L94 175M84 181L95 186"/>
+                </g>
+              </svg>
+            </div>
+            <div class="l-text">
+              <h3>Flachdach</h3>
+              <p>Abdichtung mit Bitumen oder Kunststoffbahnen, Gefälle für sauberen Ablauf und Anschlüsse an der Attika, die auch stehendes Wasser aushalten.</p>
+              <span class="l-notiz">Bitumen · Kunststoff</span>
+            </div>
+          </li>
+          <li class="leistung" data-zoom>
+            <div class="zoom l-foto l-zeichnung">
+              <span class="fd-etikett" aria-hidden="true">Detail · Klammer</span>
+              <svg class="zeichnung" viewBox="0 0 300 220" role="img" aria-label="Detail: Dachziegel auf der Lattung, eine Sturmklammer hält den Ziegel an der Latte">
+                <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+                  <path class="fd-blass" stroke-opacity=".45" stroke-width="1.2" d="M14 40H62M54 34L62 40L54 46M14 62H46M38 56L46 62L38 68"/>
+                  <g transform="translate(30 196) rotate(-26) scale(1.1)">
+                    <path class="fd-strich" pathLength="1" stroke-opacity=".9" stroke-width="1.4" d="M-10 2H248"/>
+                    <path class="fd-blass" stroke-opacity=".8" stroke-width="1.3" d="M40 0h20v-13H40zM130 0h20v-13h-20zM220 0h20v-13h-20z"/>
+                    <path class="fd-strich" pathLength="1" stroke-opacity=".9" stroke-width="1.5" d="M64 -15L-6 -26.200v-9L64 -24z"/>
+                    <path class="fd-strich" pathLength="1" stroke-opacity=".9" stroke-width="1.5" d="M154 -15L54 -31v-9L154 -24z"/>
+                    <path class="fd-strich" pathLength="1" stroke-opacity=".9" stroke-width="1.5" d="M244 -15L144 -31v-9L244 -24z"/>
+                    <path class="fd-strich" pathLength="1" stroke="#d99a6c" stroke-width="2.2" d="M56 -43.500l12 2V6H48v-6"/>
+                  </g>
+                </g>
+              </svg>
+            </div>
+            <div class="l-text">
+              <h3>Reparatur nach Sturm</h3>
+              <p>Zuerst sichern wir das Dach. Dann halten wir den Schaden mit Fotos für Ihre Versicherung fest, reparieren und klammern die Deckung dort, wo der Wind angreift.</p>
+              <span class="l-notiz">Sichern, belegen, reparieren</span>
+            </div>
+          </li>
+          <li class="leistung" data-zoom>
+            <div class="zoom l-foto"><img src="medien/leistungen/gauben-360.jpg" srcset="medien/leistungen/gauben-360.jpg 360w, medien/leistungen/gauben-720.jpg 720w" sizes="(min-width: 48rem) 11rem, 90vw" alt="Ziegeldächer mit Dachfenstern, Schornsteinen und einer Gaube" width="360" height="360" loading="lazy"></div>
+            <div class="l-text">
+              <h3>Dachfenster und Gauben</h3>
+              <p>Mehr Licht unter dem Dach. Einbau mit Eindeckrahmen und luftdichtem Anschluss innen, damit am Fenster weder Wasser noch Zugluft durchkommt.</p>
+              <span class="l-notiz">Einbau und Austausch</span>
+            </div>
+          </li>
+          <li class="leistung" data-zoom>
+            <div class="zoom l-foto"><img src="medien/leistungen/schiefer-360.jpg" srcset="medien/leistungen/schiefer-360.jpg 360w, medien/leistungen/schiefer-720.jpg 720w" sizes="(min-width: 48rem) 11rem, 90vw" alt="Alte Deckung in Schuppenform, von Flechten bewachsen" width="360" height="360" loading="lazy"></div>
+            <div class="l-text">
+              <h3>Dachsanierung mit Dämmung</h3>
+              <p>Wir öffnen das Dach bis auf die Sparren, prüfen das Holz und dämmen neu. Danach ist das Dach dicht und der Raum darunter wärmer.</p>
+              <span class="l-notiz">Bis auf die Sparren</span>
+            </div>
+          </li>
+          <li class="leistung" data-zoom>
+            <div class="zoom l-foto l-zeichnung">
+              <span class="fd-etikett" aria-hidden="true">Detail · Anschluss</span>
+              <svg class="zeichnung" viewBox="0 0 300 220" role="img" aria-label="Detail: Ein Dach schließt an eine Wand an, ein Blech führt von den Ziegeln die Wand hinauf und endet unter einer Leiste">
+                <defs><clipPath id="wa-dach"><path d="M0 0H214V220H0Z"/></clipPath></defs>
+                <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+                  <path class="fd-strich" pathLength="1" stroke-opacity=".9" stroke-width="1.6" d="M214 208V12H270V208"/>
+                  <path class="fd-blass" stroke-opacity=".3" stroke-width="1" d="M214 40H270M214 68H270M214 96H270M214 124H270M214 152H270M214 180H270M242 12V40M228 40V68M256 40V68M242 68V96M228 96V124M256 96V124M242 124V152M228 152V180M256 152V180M242 180V208"/>
+                  <g clip-path="url(#wa-dach)">
+                    <g transform="translate(18 200) rotate(-27)">
+                      <path class="fd-strich" pathLength="1" stroke-opacity=".9" stroke-width="1.5" d="M0 2H240"/>
+                      <path class="fd-blass" stroke-opacity=".8" stroke-width="1.3" d="M70 0h18v-12H70zM145 0h18v-12h-18zM220 0h18v-12h-18z"/>
+                      <path class="fd-strich" pathLength="1" stroke-opacity=".9" stroke-width="1.5" d="M92 -14L6 -28v-8L92 -22z"/>
+                      <path class="fd-strich" pathLength="1" stroke-opacity=".9" stroke-width="1.5" d="M167 -14L81 -28v-8L167 -22z"/>
+                      <path class="fd-strich" pathLength="1" stroke-opacity=".9" stroke-width="1.5" d="M242 -14L156 -28v-8L242 -22z"/>
+                    </g>
+                  </g>
+                  <path class="fd-strich" pathLength="1" stroke="#d99a6c" stroke-width="2.4" d="M146 97.500L210.500 64.500V24"/>
+                  <path class="fd-strich" pathLength="1" stroke-opacity=".9" stroke-width="1.6" d="M205 30V19h9"/>
+                </g>
+              </svg>
+            </div>
+            <div class="l-text">
+              <h3>Fassade und Abdichtung</h3>
+              <p>Wandanschlüsse, Kamine und Fassadenbekleidung. Die meisten Undichtigkeiten entstehen an Übergängen, deshalb arbeiten wir dort am genauesten.</p>
+              <span class="l-notiz">Anschlüsse · Bekleidung</span>
+            </div>
+          </li>
+        </ul>
+
+        <!-- Liste der Sanierung: jeder Punkt klappt auf und zeigt seine Schicht im Schnitt -->
+        <div class="liste">
+          <div class="liste-kopf">
+            <h3 class="liste-titel" id="liste-titel">Was zu einer Dachsanierung gehört</h3>
+            <p class="liste-hinweis">Neun Punkte, erst von außen nach innen, dann wieder zurück. Der Schnitt zeigt, wo am Dach wir gerade sind.</p>
+          </div>
+          <div class="liste-flaeche">
+            <div class="schnitt-feld">
+              <span class="fd-etikett" aria-hidden="true">Schnitt · Steildach</span>
+              <svg class="schnitt" viewBox="0 0 560 420" role="img" aria-label="Schnitt durch ein Steildach von der Traufe bis zum First: Gerüst, Sparren, Dampfbremse, Dämmung, Unterdeckung, Lattung, Ziegel, First und Rinne">
+                <defs><clipPath id="sn-links"><path d="M0 0H474V420H0Z"/></clipPath></defs>
+                <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+                  <path class="sn-fest" stroke-opacity=".5" stroke-width="1.2" d="M186 369.6L224 343V420M186 369.6V420"/>
+                  <path class="sn-fest" stroke-opacity=".22" stroke-width="1" d="M186 386H224M186 403H224M205 369.6V386M196 386V403M214 386V403M205 403V420"/>
+                  <path class="sn-fest" stroke-opacity=".3" stroke-width="1" stroke-dasharray="3 5" d="M474 8V184"/>
+                  <path class="sn-fest" stroke-opacity=".3" stroke-width="1" d="M474 47L508 70.8M474 114.4L508 138.2M474 167.9L508 191.7"/>
+                  <g class="s s1" stroke-width="1.5">
+                    <path class="sn-strich" pathLength="1" d="M24 420V262"/><path class="sn-strich" pathLength="1" d="M64 420V318"/>
+                    <path class="sn-strich" pathLength="1" d="M16 352H72M16 356H72"/><path class="sn-strich" pathLength="1" d="M16 408H72"/>
+                    <path stroke-opacity=".6" d="M24 408L64 356"/>
+                    <path stroke-dasharray="2 4" d="M24 266L64 318"/>
+                    <circle cx="24" cy="278" r="2.2"/><circle cx="24" cy="306" r="2.2"/><circle cx="24" cy="334" r="2.2"/>
+                  </g>
+                  <g clip-path="url(#sn-links)">
+                    <g transform="translate(214 350) rotate(-35)">
+                      <path class="s s2 s3 sn-strich" pathLength="1" stroke-width="1.6" d="M-40 0H430V-44H-40Z"/>
+                      <g class="s s3"><path stroke-width="1.4" stroke-dasharray="5 4" d="M150 -38H262V-6H150Z"/><circle cx="170" cy="-22" r="2.2"/><circle cx="242" cy="-22" r="2.2"/></g>
+                      <path class="s s4 sn-strich" pathLength="1" stroke-width="2" d="M13 6H430"/>
+                      <g class="s s5" stroke-width="1"><path d="M20 -5L31 -39L42 -5L53 -39L64 -5L75 -39L86 -5L97 -39L108 -5L119 -39L130 -5L141 -39L152 -5L163 -39L174 -5L185 -39L196 -5L207 -39L218 -5L229 -39L240 -5L251 -39L262 -5L273 -39L284 -5L295 -39L306 -5L317 -39L328 -5L339 -39L350 -5L361 -39L372 -5L383 -39L394 -5L405 -39L416 -5L427 -39"/><path class="sn-strich" pathLength="1" stroke-width="1.2" d="M-14 -44H430V-62H-14Z"/><path d="M-10 -47L-3 -59L4 -47L11 -59L18 -47L25 -59L32 -47L39 -59L46 -47L53 -59L60 -47L67 -59L74 -47L81 -59L88 -47L95 -59L102 -47L109 -59L116 -47L123 -59L130 -47L137 -59L144 -47L151 -59L158 -47L165 -59L172 -47L179 -59L186 -47L193 -59L200 -47L207 -59L214 -47L221 -59L228 -47L235 -59L242 -47L249 -59L256 -47L263 -59L270 -47L277 -59L284 -47L291 -59L298 -47L305 -59L312 -47L319 -59L326 -47L333 -59L340 -47L347 -59L354 -47L361 -59L368 -47L375 -59L382 -47L389 -59L396 -47L403 -59L410 -47L417 -59L424 -47"/></g>
+                      <g class="s s6" stroke-width="1.3"><path class="sn-strich" pathLength="1" stroke-width="1.8" d="M-56 -65H430"/><path class="sn-strich" pathLength="1" d="M-46 -66H430V-74H-46Z"/></g>
+                      <g class="s s7" stroke-width="1.2"><path d="M-34 -74h11v-9h-11zM12 -74h11v-9h-11zM58 -74h11v-9h-11zM104 -74h11v-9h-11zM150 -74h11v-9h-11zM196 -74h11v-9h-11zM242 -74h11v-9h-11zM288 -74h11v-9h-11zM334 -74h11v-9h-11zM380 -74h11v-9h-11zM426 -74h11v-9h-11z"/><path stroke-width="1.4" d="M-21 -85L-84 -94v-6L-21 -91zM25 -85L-38 -94v-6L25 -91zM71 -85L8 -94v-6L71 -91zM117 -85L54 -94v-6L117 -91zM163 -85L100 -94v-6L163 -91zM209 -85L146 -94v-6L209 -91zM255 -85L192 -94v-6L255 -91zM301 -85L238 -94v-6L301 -91zM347 -85L284 -94v-6L347 -91zM393 -85L330 -94v-6L393 -91zM439 -85L376 -94v-6L439 -91z"/></g>
+                    </g>
+                  </g>
+                  <g class="s s8" stroke-width="1.6"><path class="sn-strich" pathLength="1" d="M450 66Q474 14 498 66"/><path stroke-width="1.2" d="M469.500 52h9v13h-9z"/></g>
+                  <g class="s s9" stroke-width="1.6"><path class="sn-strich" pathLength="1" d="M75 326A13.5 13.5 0 0 0 102 326"/><path stroke-width="1.2" d="M102 326L116 317"/><path class="sn-strich" pathLength="1" d="M88.500 339.500V352L176 380V420"/></g>
+                </g>
+              </svg>
+              <p class="schnitt-wahl" aria-hidden="true"><span class="sw-nr"></span><span class="sw-text"></span></p>
+            </div>
+            <ol class="liste-raster" aria-labelledby="liste-titel">
+              <li class="liste-punkt offen" data-schicht="1"><span class="lp-linie" aria-hidden="true"></span>
+                <button class="lp-zeile" type="button" id="lp1-knopf" aria-expanded="true" aria-controls="lp1-inhalt"><span class="lp-nr">01</span><span class="lp-text">Gerüst und Absturzsicherung</span><svg class="lp-plus" viewBox="0 0 14 14" aria-hidden="true"><path d="M0 7H14M7 0V14"/></svg></button>
+                <div class="lp-klappe" id="lp1-inhalt"><p class="lp-mehr">Das Gerüst steht, bevor der erste Ziegel bewegt wird, mit Seitenschutz und Fangnetz. So arbeiten wir sicher und nichts fällt in Ihren Garten.</p></div>
+              </li>
+              <li class="liste-punkt" data-schicht="2"><span class="lp-linie" aria-hidden="true"></span>
+                <button class="lp-zeile" type="button" id="lp2-knopf" aria-expanded="false" aria-controls="lp2-inhalt"><span class="lp-nr">02</span><span class="lp-text">Rückbau bis auf die Sparren</span><svg class="lp-plus" viewBox="0 0 14 14" aria-hidden="true"><path d="M0 7H14M7 0V14"/></svg></button>
+                <div class="lp-klappe" id="lp2-inhalt"><p class="lp-mehr">Alte Deckung, Latten und Bahnen kommen herunter und werden getrennt entsorgt. Erst jetzt sieht man, wie es dem Holz geht.</p></div>
+              </li>
+              <li class="liste-punkt" data-schicht="3"><span class="lp-linie" aria-hidden="true"></span>
+                <button class="lp-zeile" type="button" id="lp3-knopf" aria-expanded="false" aria-controls="lp3-inhalt"><span class="lp-nr">03</span><span class="lp-text">Sparren prüfen und ergänzen</span><svg class="lp-plus" viewBox="0 0 14 14" aria-hidden="true"><path d="M0 7H14M7 0V14"/></svg></button>
+                <div class="lp-klappe" id="lp3-inhalt"><p class="lp-mehr">Wir prüfen jeden Sparren auf Feuchte und Schädlinge. Schwache Stellen verstärken wir mit einer Lasche oder ersetzen sie. Vorher rufen wir Sie an.</p></div>
+              </li>
+              <li class="liste-punkt" data-schicht="4"><span class="lp-linie" aria-hidden="true"></span>
+                <button class="lp-zeile" type="button" id="lp4-knopf" aria-expanded="false" aria-controls="lp4-inhalt"><span class="lp-nr">04</span><span class="lp-text">Dampfbremse, luftdicht verklebt</span><svg class="lp-plus" viewBox="0 0 14 14" aria-hidden="true"><path d="M0 7H14M7 0V14"/></svg></button>
+                <div class="lp-klappe" id="lp4-inhalt"><p class="lp-mehr">Die Folie auf der Raumseite hält feuchte Luft aus der Dämmung fern. Dicht ist sie nur, wenn jede Naht und jeder Anschluss verklebt ist.</p></div>
+              </li>
+              <li class="liste-punkt" data-schicht="5"><span class="lp-linie" aria-hidden="true"></span>
+                <button class="lp-zeile" type="button" id="lp5-knopf" aria-expanded="false" aria-controls="lp5-inhalt"><span class="lp-nr">05</span><span class="lp-text">Dämmung zwischen und auf den Sparren</span><svg class="lp-plus" viewBox="0 0 14 14" aria-hidden="true"><path d="M0 7H14M7 0V14"/></svg></button>
+                <div class="lp-klappe" id="lp5-inhalt"><p class="lp-mehr">Zwischen den Sparren füllt die Dämmung jedes Gefach. Darüber liegt eine zweite Lage ohne Lücken, damit kein Sparren als Wärmebrücke bleibt.</p></div>
+              </li>
+              <li class="liste-punkt" data-schicht="6"><span class="lp-linie" aria-hidden="true"></span>
+                <button class="lp-zeile" type="button" id="lp6-knopf" aria-expanded="false" aria-controls="lp6-inhalt"><span class="lp-nr">06</span><span class="lp-text">Unterdeckung und Konterlattung</span><svg class="lp-plus" viewBox="0 0 14 14" aria-hidden="true"><path d="M0 7H14M7 0V14"/></svg></button>
+                <div class="lp-klappe" id="lp6-inhalt"><p class="lp-mehr">Die Unterdeckbahn ist das zweite Dach unter den Ziegeln. Die Konterlatten darüber lassen den Spalt, durch den alles wieder abtrocknet.</p></div>
+              </li>
+              <li class="liste-punkt" data-schicht="7"><span class="lp-linie" aria-hidden="true"></span>
+                <button class="lp-zeile" type="button" id="lp7-knopf" aria-expanded="false" aria-controls="lp7-inhalt"><span class="lp-nr">07</span><span class="lp-text">Lattung und Eindeckung</span><svg class="lp-plus" viewBox="0 0 14 14" aria-hidden="true"><path d="M0 7H14M7 0V14"/></svg></button>
+                <div class="lp-klappe" id="lp7-inhalt"><p class="lp-mehr">Auf die Traglatten kommen Ziegel, Schiefer oder Metall. Wo der Wind stark angreift, klammern wir die Deckung zusätzlich.</p></div>
+              </li>
+              <li class="liste-punkt" data-schicht="8"><span class="lp-linie" aria-hidden="true"></span>
+                <button class="lp-zeile" type="button" id="lp8-knopf" aria-expanded="false" aria-controls="lp8-inhalt"><span class="lp-nr">08</span><span class="lp-text">Kehle, First und Anschlüsse</span><svg class="lp-plus" viewBox="0 0 14 14" aria-hidden="true"><path d="M0 7H14M7 0V14"/></svg></button>
+                <div class="lp-klappe" id="lp8-inhalt"><p class="lp-mehr">An Kehle, First, Kamin und Gaube entscheidet sich, ob ein Dach dicht bleibt. Hier arbeiten wir mit Blech und von Hand.</p></div>
+              </li>
+              <li class="liste-punkt" data-schicht="9"><span class="lp-linie" aria-hidden="true"></span>
+                <button class="lp-zeile" type="button" id="lp9-knopf" aria-expanded="false" aria-controls="lp9-inhalt"><span class="lp-nr">09</span><span class="lp-text">Rinne, Entsorgung und Abnahme</span><svg class="lp-plus" viewBox="0 0 14 14" aria-hidden="true"><path d="M0 7H14M7 0V14"/></svg></button>
+                <div class="lp-klappe" id="lp9-inhalt"><p class="lp-mehr">Zum Schluss hängen wir Rinne und Fallrohr ein, räumen auf und gehen das Dach mit Ihnen ab. Die Fotos aller Schichten bekommen Sie dazu.</p></div>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 4 · Ablauf -->
+    <section class="ablauf" id="ablauf" aria-labelledby="ablauf-titel">
+      <div class="kopfzeile">
+        <div class="kz-links">
+          <p class="augenbraue"><span class="ab-index">(03)</span><span class="ab-text">Ablauf</span></p>
+          <h2 class="kz-titel" id="ablauf-titel"><span class="kz-zeile kz-1">Erst der Plan,</span> <span class="kz-zeile kz-2">dann das Gerüst.</span></h2>
+        </div>
+        <p class="kz-seite">Vier Schritte, immer in dieser Reihenfolge. Sie kennen den Preis, bevor wir anfangen.</p>
+      </div>
+
+      <ol class="schritte">
+        <li class="schritt offen">
+          <div class="schritt-karte">
+            <button class="schritt-zeile" type="button" id="s1-knopf" aria-expanded="true" aria-controls="s1-inhalt">
+              <span class="sz-nr">01</span><span class="sz-mitte"><span class="sz-titel">Die Besichtigung</span><span class="sz-notiz">Vor Ort, mit Fotos</span></span>
+              <svg class="sz-pfeil" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 17.5L18 6M18 18V6H6"/></svg>
+            </button>
+            <div class="schritt-klappe" id="s1-inhalt" role="region" aria-labelledby="s1-knopf">
+              <div class="schritt-detail">
+                <div class="zoom sd-foto sd-befund">
+                  <img src="medien/ablauf/befund-480.jpg" srcset="medien/ablauf/befund-480.jpg 480w, medien/ablauf/befund-960.jpg 960w" sizes="(min-width: 90rem) 25rem, (min-width: 48rem) 19rem, 90vw" alt="Befundfoto: Moos am First eines roten Ziegeldachs, darunter drei Lüfterziegel" width="480" height="312">
+                  <span class="bf-ring" aria-hidden="true"></span>
+                  <span class="bf-schild" aria-hidden="true">Befundfoto · Moos am First</span>
+                </div>
+                <p class="sd-text">Wir kommen zu zweit, fotografieren jeden Befund und gehen die Bilder direkt mit Ihnen durch. Ohne Verkaufsgespräch auf der Leiter.</p>
+                <div class="sd-fakten">
+                  <span class="sd-linie" aria-hidden="true"></span>
+                  <div class="sd-reihe">
+                    <dl><div><dt>Vor Ort</dt><dd>Zwei Fachleute</dd></div><div><dt>Sie erhalten</dt><dd>Alle Fotos des Befunds</dd></div></dl>
+                    <a class="pille pille-tief sd-cta" href="#anfrage"><span class="pille-fenster"><span class="pille-stapel"><span>Dachcheck anfragen</span><span class="pille-zweit" aria-hidden="true">Termin vor Ort</span></span></span><svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg></a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="schritt-trenner" aria-hidden="true"></span><span class="schritt-luft" aria-hidden="true"></span>
+        </li>
+        <li class="schritt">
+          <div class="schritt-karte">
+            <button class="schritt-zeile" type="button" id="s2-knopf" aria-expanded="false" aria-controls="s2-inhalt">
+              <span class="sz-nr">02</span><span class="sz-mitte"><span class="sz-titel">Das schriftliche Angebot</span><span class="sz-notiz">Festpreis</span></span>
+              <svg class="sz-pfeil" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 17.5L18 6M18 18V6H6"/></svg>
+            </button>
+            <div class="schritt-klappe" id="s2-inhalt" role="region" aria-labelledby="s2-knopf">
+              <div class="schritt-detail">
+                <div class="sd-foto sd-zeichnung">
+                  <svg class="blatt" viewBox="0 0 400 260" role="img" aria-label="Skizze eines Angebots auf einer Seite: Gerüst, Rückbau, Material, Entsorgung, Arbeitszeit und darunter der Festpreis">
+                    <g transform="rotate(-2 200 130)">
+                      <rect x="92" y="18" width="216" height="226" rx="7" fill="#ffffff"/>
+                      <text class="bl-klein" x="110" y="43">ANGEBOT · BEISPIEL</text>
+                      <text class="bl-titel" x="110" y="66">Dachsanierung</text>
+                      <path stroke="#dee3e8" stroke-width="1" d="M110 79H290"/>
+                      <g class="bl-zeilen">
+                        <text x="110" y="101">Gerüst</text><text x="110" y="122">Rückbau</text><text x="110" y="143">Material</text><text x="110" y="164">Entsorgung</text><text x="110" y="185">Arbeitszeit</text>
+                      </g>
+                      <path stroke="#c3cad2" stroke-width="1" stroke-dasharray="1 4" stroke-linecap="round" d="M160 98H236M168 119H236M168 140H236M186 161H236M188 182H236"/>
+                      <path stroke="#dee3e8" stroke-width="9" stroke-linecap="round" d="M250 97H286M256 118H286M246 139H286M262 160H286M252 181H286"/>
+                      <path stroke="#0e2035" stroke-width="1" d="M110 199H290"/>
+                      <text class="bl-fest" x="110" y="222">Festpreis</text>
+                      <rect x="222" y="210" width="68" height="16" rx="8" fill="#133153"/>
+                    </g>
+                  </svg>
+                </div>
+                <p class="sd-text">Eine Seite, nach Posten gegliedert: Gerüst, Rückbau, Material, Entsorgung, Arbeitszeit. Finden wir beim Öffnen morsche Sparren, halten wir an und rufen Sie an, bevor weitere Kosten entstehen.</p>
+                <div class="sd-fakten">
+                  <span class="sd-linie" aria-hidden="true"></span>
+                  <div class="sd-reihe">
+                    <dl><div><dt>Umfang</dt><dd>Eine Seite, alle Posten</dd></div><div><dt>Festpreis</dt><dd>Für den vereinbarten Umfang</dd></div></dl>
+                    <a class="pille pille-tief sd-cta" href="#anfrage"><span class="pille-fenster"><span class="pille-stapel"><span>Dachcheck anfragen</span><span class="pille-zweit" aria-hidden="true">Termin vor Ort</span></span></span><svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg></a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="schritt-trenner" aria-hidden="true"></span><span class="schritt-luft" aria-hidden="true"></span>
+        </li>
+        <li class="schritt">
+          <div class="schritt-karte">
+            <button class="schritt-zeile" type="button" id="s3-knopf" aria-expanded="false" aria-controls="s3-inhalt">
+              <span class="sz-nr">03</span><span class="sz-mitte"><span class="sz-titel">Die Ausführung</span><span class="sz-notiz">Ein Bauleiter</span></span>
+              <svg class="sz-pfeil" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 17.5L18 6M18 18V6H6"/></svg>
+            </button>
+            <div class="schritt-klappe" id="s3-inhalt" role="region" aria-labelledby="s3-knopf">
+              <div class="schritt-detail">
+                <div class="sd-foto sd-zeichnung">
+                  <svg class="bauplan" viewBox="0 0 400 260" role="img" aria-label="Beispielablauf über drei Wochen: Gerüst über die ganze Zeit, danach Rückbau, Dämmung und Eindeckung, am Ende die Abnahme. Jeden Abend ist das Dach regendicht.">
+                    <text class="bp-klein" x="24" y="34">BEISPIELABLAUF · DREI WOCHEN</text>
+                    <g class="bp-klein bp-leise"><text x="132" y="62">WOCHE 1</text><text x="216" y="62">WOCHE 2</text><text x="300" y="62">WOCHE 3</text></g>
+                    <path fill="none" stroke="#ffffff" stroke-opacity=".16" stroke-width="1" d="M132 70V214M216 70V214M300 70V214M384 70V214"/>
+                    <g class="bp-zeile"><text x="24" y="92">Gerüst</text><text x="24" y="120">Rückbau</text><text x="24" y="148">Dämmung</text><text x="24" y="176">Eindeckung</text><text x="24" y="204">Abnahme</text></g>
+                    <g fill="none" stroke-linecap="round" stroke-width="8">
+                      <path stroke="#ffffff" stroke-opacity=".3" d="M136 88H380"/>
+                      <path stroke="#ffffff" stroke-opacity=".9" d="M136 116H186"/>
+                      <path stroke="#ffffff" stroke-opacity=".9" d="M180 144H262"/>
+                      <path stroke="#ffffff" stroke-opacity=".9" d="M250 172H350"/>
+                    </g>
+                    <circle cx="368" cy="200" r="6" fill="#d99a6c"/>
+                    <path fill="none" stroke="#d99a6c" stroke-width="2" stroke-linecap="round" d="M140.4 228v8M157.2 228v8M174 228v8M190.8 228v8M207.6 228v8M224.4 228v8M241.2 228v8M258 228v8M274.8 228v8M291.6 228v8M308.4 228v8M325.2 228v8M342 228v8M358.8 228v8M375.6 228v8"/>
+                    <text class="bp-klein bp-leise" x="24" y="236">ABENDS DICHT</text>
+                  </svg>
+                </div>
+                <p class="sd-text">Bevor der erste Ziegel fällt, sind Garten und Einfahrt abgedeckt. Abends ist die Baustelle geräumt und das Dach regendicht. Ein Bauleiter bleibt vom ersten bis zum letzten Tag.</p>
+                <div class="sd-fakten">
+                  <span class="sd-linie" aria-hidden="true"></span>
+                  <div class="sd-reihe">
+                    <dl><div><dt>Bauleitung</dt><dd>Eine Person, durchgehend</dd></div><div><dt>Abends</dt><dd>Dach regendicht gesichert</dd></div></dl>
+                    <a class="pille pille-tief sd-cta" href="#anfrage"><span class="pille-fenster"><span class="pille-stapel"><span>Dachcheck anfragen</span><span class="pille-zweit" aria-hidden="true">Termin vor Ort</span></span></span><svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg></a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="schritt-trenner" aria-hidden="true"></span><span class="schritt-luft" aria-hidden="true"></span>
+        </li>
+        <li class="schritt">
+          <div class="schritt-karte">
+            <button class="schritt-zeile" type="button" id="s4-knopf" aria-expanded="false" aria-controls="s4-inhalt">
+              <span class="sz-nr">04</span><span class="sz-mitte"><span class="sz-titel">Die Abnahme</span><span class="sz-notiz">Mit Protokoll</span></span>
+              <svg class="sz-pfeil" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 17.5L18 6M18 18V6H6"/></svg>
+            </button>
+            <div class="schritt-klappe" id="s4-inhalt" role="region" aria-labelledby="s4-knopf">
+              <div class="schritt-detail">
+                <div class="zoom sd-foto"><img src="medien/ablauf/abnahme-480.jpg" srcset="medien/ablauf/abnahme-480.jpg 480w, medien/ablauf/abnahme-960.jpg 960w" sizes="(min-width: 90rem) 25rem, (min-width: 48rem) 19rem, 90vw" alt="Fertig gedecktes Ziegeldach mit Grat, dahinter Dächer mit Gauben und Schornstein" width="480" height="312" loading="lazy"></div>
+                <p class="sd-text">Wir gehen das Dach mit Ihnen ab und übergeben Fotos aller verdeckten Schichten mit dem Abnahmeprotokoll. Übrige Ziegel bleiben für spätere Reparaturen bei Ihnen.</p>
+                <div class="sd-fakten">
+                  <span class="sd-linie" aria-hidden="true"></span>
+                  <div class="sd-reihe">
+                    <dl><div><dt>Sie erhalten</dt><dd>Protokoll und Fotos</dd></div><div><dt>Restmaterial</dt><dd>Bleibt bei Ihnen</dd></div></dl>
+                    <a class="pille pille-tief sd-cta" href="#anfrage"><span class="pille-fenster"><span class="pille-stapel"><span>Dachcheck anfragen</span><span class="pille-zweit" aria-hidden="true">Termin vor Ort</span></span></span><svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg></a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="schritt-trenner" aria-hidden="true"></span><span class="schritt-luft" aria-hidden="true"></span>
+        </li>
+      </ol>
+    </section>
+
+    <!-- 5 · Beispielprojekt: sechs Markierungen sitzen fest am Foto, die Liste darunter nennt sie -->
+    <section class="projekt" id="projekt" aria-labelledby="projekt-titel">
+      <div class="kopfzeile">
+        <div class="kz-links">
+          <p class="augenbraue"><span class="ab-index">(04)</span><span class="ab-text">Beispielprojekt</span></p>
+          <h2 class="kz-titel" id="projekt-titel"><span class="kz-zeile kz-1">Ein Dach,</span> <span class="kz-zeile kz-2">Detail für Detail.</span></h2>
+        </div>
+        <p class="kz-seite">So stellen wir Projekte vor: mit den Stellen, auf die es ankommt. Tippen Sie auf die Markierungen.</p>
+      </div>
+
+      <article class="haupt" aria-labelledby="haupt-titel">
+        <div class="haupt-rahmen">
+          <div class="haupt-lage">
+            <div class="haupt-kamera">
+              <img src="medien/projekt/giebel-900.jpg" srcset="medien/projekt/giebel-600.jpg 600w, medien/projekt/giebel-900.jpg 900w, medien/projekt/giebel-1400.jpg 1400w, medien/projekt/giebel-2000.jpg 2000w" sizes="(min-width: 48rem) 92vw, 90vw" alt="Ein Dachdecker arbeitet vom Hubsteiger aus am Firstende eines Backsteingiebels. Davor ein Ziegeldach mit Grat, Schneefanggitter, Dachrinne und Fallrohr." width="900" height="600" loading="lazy">
+            </div>
+          </div>
+          <span class="chip chip-tag haupt-tag">Beispielprojekt</span>
+        </div>
+        <div class="haupt-marken">
+          <div class="marke-ort mo-first" data-seite="links" data-detail="d-first">
+            <button class="marke marke-zahl" type="button" aria-expanded="false" aria-controls="mk-first"><span class="marke-puls" aria-hidden="true"></span><span class="marke-scheibe" aria-hidden="true">01</span><span class="vh">Detail 1: Firstende</span></button>
+            <div class="marke-karte" id="mk-first" role="tooltip"><b>Firstende</b><span>Abschluss am Giebel, hier wird gearbeitet</span></div>
+          </div>
+          <div class="marke-ort mo-ortgang" data-seite="links" data-detail="d-ortgang">
+            <button class="marke marke-zahl" type="button" aria-expanded="false" aria-controls="mk-ortgang"><span class="marke-puls" aria-hidden="true"></span><span class="marke-scheibe" aria-hidden="true">02</span><span class="vh">Detail 2: Ortgang</span></button>
+            <div class="marke-karte" id="mk-ortgang" role="tooltip"><b>Ortgang</b><span>Die Ziegelreihe am Giebelrand</span></div>
+          </div>
+          <div class="marke-ort mo-grat" data-seite="rechts" data-detail="d-grat">
+            <button class="marke marke-zahl" type="button" aria-expanded="false" aria-controls="mk-grat"><span class="marke-puls" aria-hidden="true"></span><span class="marke-scheibe" aria-hidden="true">03</span><span class="vh">Detail 3: Grat</span></button>
+            <div class="marke-karte" id="mk-grat" role="tooltip"><b>Grat</b><span>Formziegel, mit Klammern gesichert</span></div>
+          </div>
+          <div class="marke-ort mo-schnee" data-seite="rechts" data-detail="d-schnee">
+            <button class="marke marke-zahl" type="button" aria-expanded="false" aria-controls="mk-schnee"><span class="marke-puls" aria-hidden="true"></span><span class="marke-scheibe" aria-hidden="true">04</span><span class="vh">Detail 4: Schneefang</span></button>
+            <div class="marke-karte" id="mk-schnee" role="tooltip"><b>Schneefang</b><span>Gitter über der Rinne</span></div>
+          </div>
+          <div class="marke-ort mo-rinne" data-seite="rechts" data-detail="d-rinne">
+            <button class="marke marke-zahl" type="button" aria-expanded="false" aria-controls="mk-rinne"><span class="marke-puls" aria-hidden="true"></span><span class="marke-scheibe" aria-hidden="true">05</span><span class="vh">Detail 5: Dachrinne</span></button>
+            <div class="marke-karte" id="mk-rinne" role="tooltip"><b>Dachrinne</b><span>Sammelt das Wasser der ganzen Fläche</span></div>
+          </div>
+          <div class="marke-ort mo-rohr" data-seite="rechts" data-detail="d-rohr">
+            <button class="marke marke-zahl" type="button" aria-expanded="false" aria-controls="mk-rohr"><span class="marke-puls" aria-hidden="true"></span><span class="marke-scheibe" aria-hidden="true">06</span><span class="vh">Detail 6: Fallrohr</span></button>
+            <div class="marke-karte" id="mk-rohr" role="tooltip"><b>Fallrohr</b><span>Hier verlässt das Wasser das Dach</span></div>
+          </div>
+        </div>
+      </article>
+
+      <div class="details">
+        <div class="details-kopf">
+          <h3 class="details-titel" id="haupt-titel">Vom First bis zum Fallrohr</h3>
+          <p class="details-text">Am Giebel wird das Firstende neu gesetzt. Die sechs Markierungen folgen dem Weg, den das Wasser von dort nimmt.</p>
+          <ul class="hu-chips"><li class="chip chip-meta">Steildach</li><li class="chip chip-meta">Tonziegel</li><li class="chip chip-meta">Backsteingiebel</li></ul>
+        </div>
+        <ol class="details-liste">
+          <li class="detail" id="d-first"><span class="detail-nr" aria-hidden="true">01</span><span class="detail-text"><b>Firstende</b><span>Am höchsten Punkt schließt der First an den Giebel an. Hier wird gerade gearbeitet.</span></span></li>
+          <li class="detail" id="d-ortgang"><span class="detail-nr" aria-hidden="true">02</span><span class="detail-text"><b>Ortgang</b><span>Die Ziegelreihe am Giebelrand hält Wind und Schlagregen von der Kante fern.</span></span></li>
+          <li class="detail" id="d-grat"><span class="detail-nr" aria-hidden="true">03</span><span class="detail-text"><b>Grat</b><span>Wo zwei Dachflächen aufeinandertreffen, decken Formziegel die Fuge. Klammern halten sie bei Sturm.</span></span></li>
+          <li class="detail" id="d-schnee"><span class="detail-nr" aria-hidden="true">04</span><span class="detail-text"><b>Schneefang</b><span>Das Gitter hält Schnee und lose Teile zurück, bevor sie auf den Gehweg fallen.</span></span></li>
+          <li class="detail" id="d-rinne"><span class="detail-nr" aria-hidden="true">05</span><span class="detail-text"><b>Dachrinne</b><span>Sie sammelt das Wasser der ganzen Fläche. Gefälle und saubere Stöße entscheiden, ob sie überläuft.</span></span></li>
+          <li class="detail" id="d-rohr"><span class="detail-nr" aria-hidden="true">06</span><span class="detail-text"><b>Fallrohr</b><span>Über den Stutzen läuft das Wasser ins Fallrohr und verlässt das Dach.</span></span></li>
+        </ol>
+      </div>
+
+      <div class="projekte">
+        <div class="auftrag">
+          <div class="auftrag-box ab-walm">
+            <div class="zoom auftrag-foto"><img src="medien/projekt/walmdach-600.jpg" srcset="medien/projekt/walmdach-600.jpg 600w, medien/projekt/walmdach-1200.jpg 1200w" sizes="(min-width: 64rem) 30vw, (min-width: 48rem) 45vw, 90vw" alt="Zwei Walmdächer mit roten Tonziegeln, die Grate sind in Mörtel gesetzt" width="600" height="400" loading="lazy"></div>
+            <div class="marke-ort mo-walm" data-seite="rechts">
+              <button class="marke" type="button" aria-expanded="false" aria-controls="mk-walm"><span class="marke-puls" aria-hidden="true"></span><span class="marke-scheibe" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 12H22M12 2V22"/></svg></span><span class="vh">Grat</span></button>
+              <div class="marke-karte" id="mk-walm" role="tooltip"><b>Grat</b><span>Formziegel im Mörtelbett decken die Fuge</span></div>
+            </div>
+          </div>
+          <p class="auftrag-titel">Beispiel: Walmdach</p>
+          <ul class="auftrag-chips"><li class="chip chip-meta">Tonziegel</li><li class="chip chip-meta">Grate</li></ul>
+        </div>
+        <div class="auftrag">
+          <div class="auftrag-box ab-zeile">
+            <div class="zoom auftrag-foto"><img src="medien/projekt/haeuserzeile-600.jpg" srcset="medien/projekt/haeuserzeile-600.jpg 600w, medien/projekt/haeuserzeile-1200.jpg 1200w" sizes="(min-width: 64rem) 30vw, (min-width: 48rem) 45vw, 90vw" alt="Häuserzeile aus Backstein mit Ziegeldächern, Dachrinnen und Fallrohren" width="600" height="400" loading="lazy"></div>
+            <div class="marke-ort mo-zeile" data-seite="rechts">
+              <button class="marke" type="button" aria-expanded="false" aria-controls="mk-zeile"><span class="marke-puls" aria-hidden="true"></span><span class="marke-scheibe" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 12H22M12 2V22"/></svg></span><span class="vh">Rinne und Fallrohr</span></button>
+              <div class="marke-karte" id="mk-zeile" role="tooltip"><b>Rinne und Fallrohr</b><span>Hier verlässt das Wasser das Dach</span></div>
+            </div>
+          </div>
+          <p class="auftrag-titel">Beispiel: Häuserzeile</p>
+          <ul class="auftrag-chips"><li class="chip chip-meta">Ziegel</li><li class="chip chip-meta">Rinnen</li></ul>
+        </div>
+        <div class="doku">
+          <p class="doku-text">Alles, was später unter der Eindeckung verschwindet, fotografieren wir vorher. Die Bilder bekommen Sie mit dem Abnahmeprotokoll.</p>
+          <p class="doku-zeile"><span class="doku-wer">So dokumentieren wir</span><span class="doku-was">Bei jedem Projekt</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 · Anfrage: Film vom Team auf dem Weg zum Haus, davor der Dachcheck mit wenigen Fragen -->
+    <section class="anfrage" id="anfrage" aria-labelledby="anfrage-titel">
+      <div class="buehne-lauf">
+        <div class="buehne">
+          <div class="anfrage-box">
+            <div class="af-rahmen" data-film-rahmen>
+              <div class="af-foto film" data-film>
+                <picture>
+                  <source media="(min-width: 90rem)" srcset="medien/film/dach-besuch-gross-poster.jpg">
+                  <img src="medien/film/dach-besuch-poster.jpg" alt="Drei Handwerker in Arbeitskleidung kommen mit Werkzeug und Geräten auf die Kamera zu, hinter ihnen ein Haus mit dunklem Ziegeldach" width="1280" height="720" loading="lazy">
+                </picture>
+                <video class="film-video" muted playsinline loop preload="none" width="1280" height="720" aria-hidden="true" tabindex="-1" data-gross="medien/film/dach-besuch-gross.mp4"><source src="medien/film/dach-besuch.mp4" type="video/mp4"></video>
+                <span class="af-schleier" aria-hidden="true"></span>
+              </div>
+              <span class="af-glanz" aria-hidden="true"></span>
+              <p class="augenbraue auf-dunkel af-ankunft af-auge"><span class="ab-index">(05)</span><span class="ab-text">Dachcheck anfragen</span></p>
+              <h2 class="af-titel af-ankunft" id="anfrage-titel"><span class="af-z1">Zeit für einen</span> <span class="af-z2">Blick aufs Dach?</span></h2>
+              <p class="af-intro af-ankunft">Besichtigung vor Ort, Fotos am selben Tag und ein schriftliches Angebot, bevor jemand Ihr Dach anfasst.</p>
+              <div class="af-telefon af-ankunft">
+                <span class="aft-etikett">Oder rufen Sie uns an</span>
+                <span class="aft-nummer">Ihre Telefonnummer</span>
+                <span class="aft-zeiten">Mo bis Fr · nach Vereinbarung</span>
+              </div>
+              <button class="film-knopf af-film af-ankunft" type="button" hidden>
+                <svg class="fk-pause" viewBox="0 0 14 14" aria-hidden="true"><path d="M4 2.500V11.500M10 2.500V11.500"/></svg>
+                <svg class="fk-start" viewBox="0 0 14 14" aria-hidden="true"><path d="M4 2.200L11.500 7L4 11.800Z"/></svg>
+                <span class="vh film-knopf-text">Film anhalten</span>
+              </button>
+            </div>
+
+            <form class="formular af-ankunft" method="dialog" novalidate aria-labelledby="formular-titel">
+              <p class="fo-etikett">Dachcheck · wenige Fragen</p>
+              <h3 class="fo-titel" id="formular-titel">Schriftliches Angebot anfordern</h3>
+              <p class="fo-intro">Besichtigung vor Ort, Fotos am selben Tag und ein schriftliches Angebot, bevor jemand Ihr Dach anfasst.</p>
+              <fieldset class="fo-frage">
+                <legend>Worum geht es?</legend>
+                <div class="fo-wahl">
+                  <span class="fo-plakette" aria-hidden="true"></span>
+                  <label class="fo-chip"><input type="radio" name="anlass" value="Undichte Stelle"><span>Undichte Stelle</span></label>
+                  <label class="fo-chip"><input type="radio" name="anlass" value="Sturmschaden"><span>Sturmschaden</span></label>
+                  <label class="fo-chip"><input type="radio" name="anlass" value="Sanierung geplant"><span>Sanierung</span></label>
+                  <label class="fo-chip"><input type="radio" name="anlass" value="Nur prüfen lassen" checked><span>Nur prüfen</span></label>
+                </div>
+              </fieldset>
+              <fieldset class="fo-frage">
+                <legend>Alter des Daches, ungefähr</legend>
+                <div class="fo-wahl">
+                  <span class="fo-plakette" aria-hidden="true"></span>
+                  <label class="fo-chip"><input type="radio" name="alter" value="Dach unter 10 Jahre alt"><span>Unter 10 Jahre</span></label>
+                  <label class="fo-chip"><input type="radio" name="alter" value="Dach 10 bis 30 Jahre alt"><span>10 bis 30</span></label>
+                  <label class="fo-chip"><input type="radio" name="alter" value="Dach über 30 Jahre alt"><span>Über 30</span></label>
+                  <label class="fo-chip"><input type="radio" name="alter" value="Alter des Dachs unbekannt" checked><span>Weiß nicht</span></label>
+                </div>
+              </fieldset>
+              <div class="fo-felder">
+                <div class="fo-paar">
+                  <div class="fo-gruppe"><input class="fo-feld" id="fo-name" name="name" type="text" placeholder=" " autocomplete="name" required aria-describedby="fo-name-fehler"><label for="fo-name">Name</label><p class="fo-fehler" id="fo-name-fehler" hidden>Bitte tragen Sie Ihren Namen ein.</p></div>
+                  <div class="fo-gruppe"><input class="fo-feld" id="fo-telefon" name="telefon" type="tel" placeholder=" " autocomplete="tel" inputmode="tel" required aria-describedby="fo-telefon-fehler"><label for="fo-telefon">Telefon</label><p class="fo-fehler" id="fo-telefon-fehler" hidden>Bitte eine Nummer, unter der wir Sie erreichen.</p></div>
+                </div>
+                <div class="fo-gruppe"><input class="fo-feld" id="fo-adresse" name="adresse" type="text" placeholder=" " autocomplete="street-address"><label for="fo-adresse">Adresse des Objekts <span class="fo-frei">(freiwillig)</span></label></div>
+              </div>
+              <div class="fo-fuss">
+                <button class="pille pille-tief pille-block" type="submit"><span class="pille-fenster"><span class="pille-stapel"><span>Dachcheck anfragen</span></span></span><svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg></button>
+                <p class="fo-notiz">Antwort am nächsten Werktag</p>
+                <p class="fo-meldung" role="status" aria-live="polite"></p>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <ul class="zusagen">
+        <li class="zusage"><svg class="zu-symbol" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" rx="14"/><path pathLength="1" d="M30 16.5L22 13.5L14 16.5V22.5C14 26.5 18 29.5 22 30.5C26 29.5 30 26.5 30 22.5V16.5Z"/></svg><span class="zu-text"><span class="zu-etikett">Festpreis</span><span class="zu-wert">Für den vereinbarten Umfang</span></span></li>
+        <li class="zusage"><svg class="zu-symbol" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" rx="14"/><path pathLength="1" d="M14 23L19 28L30 16"/></svg><span class="zu-text"><span class="zu-etikett">Kein Verkaufsgespräch</span><span class="zu-wert">Wir schauen, fotografieren, rechnen</span></span></li>
+        <li class="zusage"><svg class="zu-symbol" viewBox="0 0 44 44" aria-hidden="true"><rect width="44" height="44" rx="14"/><circle pathLength="1" cx="22" cy="22" r="8.25"/><path pathLength="1" d="M22 17V22L26 24"/></svg><span class="zu-text"><span class="zu-etikett">Antwortzeit</span><span class="zu-wert">Am nächsten Werktag</span></span></li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<footer class="fuss">
+  <div class="fuss-oben">
+    <p class="fuss-aussage"><span>Dächer, die halten.</span> <span class="fuss-leise">Termine, die stehen.</span></p>
+    <nav class="fuss-nav" aria-label="Fußbereich">
+      <a href="#leistungen">Leistungen<svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg></a>
+      <a href="#ablauf">Ablauf<svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg></a>
+      <a href="#projekt">Beispielprojekt<svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg></a>
+      <a href="#anfrage">Dachcheck anfragen<svg class="pfeil" viewBox="0 0 10 10" aria-hidden="true"><path d="M0.5 9.15L9 0.65M9 9.65V0.65H0"/></svg></a>
+    </nav>
+  </div>
+  <div class="fuss-kontakt">
+    <span class="fk-linie" aria-hidden="true"></span>
+    <dl class="fk-liste">
+      <div class="fk-zelle"><dt>Standort</dt><dd>Beispielstraße 1 · Berlin</dd></div>
+      <div class="fk-zelle"><dt>Telefon</dt><dd>Ihre Telefonnummer</dd></div>
+      <div class="fk-zelle"><dt>Erreichbar</dt><dd>Mo bis Fr, nach Vereinbarung</dd></div>
+      <div class="fk-zelle"><dt>E-Mail</dt><dd>Ihre E-Mail-Adresse</dd></div>
+    </dl>
+    <span class="fk-linie" aria-hidden="true"></span>
+  </div>
+  <div class="fuss-wort" aria-hidden="true"><span class="fw-text">FIRSTLINIE</span></div>
+  <div class="fuss-unten">
+    <p class="fu-recht"><span>© 2026 Firstlinie Dach &amp; Sanierung</span><span class="fu-trenn">  ·  </span><span>Beispielseite</span></p>
+    <a class="fu-hoch" href="#start"><span class="fu-text">Nach oben</span><svg class="fu-knopf" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="14"/><path d="M10.4444 17.5556L18 10M18 18V10H10"/></svg></a>
+  </div>
+</footer>
+
+</div>
+</div>
+
+<!-- ═══ Leiste von MAKE Studios: auf jeder Beispielseite, unverändert ═══ -->
+<div class="ms-platz" aria-hidden="true"></div>
+<nav class="ms-leiste" aria-label="MAKE Studios">
+  <a class="ms-marke" href="../../#beispielseiten" aria-label="Zurück zu den Beispielseiten von MAKE Studios"><img src="../../zeichen.svg" alt="" width="24" height="24"><b>MAKE</b><span>STUDIOS</span></a>
+  <span class="ms-hinweis"><b>Beispiel</b><span class="ms-lang"> · Namen erfunden</span></span>
+  <a class="ms-knopf" href="../../#erstgespraech-andere">Erstgespräch</a>
+</nav>
+
+</body>
+</html>

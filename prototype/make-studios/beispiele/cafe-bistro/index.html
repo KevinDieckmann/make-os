@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beispiel · Kerbel · MAKE Studios</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Kerbel, Frühstück und Bistro in Berlin. Eine Beispielseite mit erfundenem Betrieb.">
+<meta name="theme-color" content="#F5EFE2">
+<link rel="icon" href="../../zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/fraunces-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../leiste.css">
+<link rel="stylesheet" href="seite.css">
+<script type="module" src="seite.js"></script>
+</head>
+<body>
+
+<!-- Zeichenvorrat: kleine Linienbilder, überall mit <use> eingesetzt -->
+<svg class="vorrat" width="0" height="0" aria-hidden="true" focusable="false">
+  <symbol id="i-ei" viewBox="0 0 48 48"><path class="weiss" d="M9 27c-3-7 2-15 10-15 4-4 12-3 15 2 6 1 9 8 6 13 1 6-5 11-11 9-4 4-12 3-15-1-5 0-8-4-5-8z"/><circle class="gelb" cx="24" cy="24" r="6"/></symbol>
+  <symbol id="i-schale" viewBox="0 0 48 48"><path d="M7 24h34c0 8-7 15-17 15S7 32 7 24z"/><path d="M14 39h20"/><path d="M29 24l9-15"/><path d="M17 16c-2 2 2 4 0 6M23 13c-2 2 2 4 0 6"/></symbol>
+  <symbol id="i-schnecke" viewBox="0 0 48 48"><path d="M24 24a2 2 0 0 1 4 0a4 4 0 0 1-8 0a6 6 0 0 1 12 0a8 8 0 0 1-16 0a10 10 0 0 1 20 0a12 12 0 0 1-24 0"/></symbol>
+  <symbol id="i-tasse" viewBox="0 0 48 48"><path d="M9 19h24v9a10 10 0 0 1-10 10h-4A10 10 0 0 1 9 28z"/><path d="M33 22h3a5 5 0 0 1 0 10h-3"/><path d="M17 8c-2 2 2 4 0 6M24 8c-2 2 2 4 0 6"/><path d="M6 42h32"/></symbol>
+  <symbol id="t-tasse" viewBox="0 0 48 48"><path d="M5 46h34"/><path d="M10 22h24v9a12 12 0 0 1-12 12h0a12 12 0 0 1-12-12z"/><path d="M34 25h3a5 5 0 0 1 0 10h-3"/><path d="M18 9c-2 2 2 4 0 6M26 9c-2 2 2 4 0 6"/></symbol>
+  <symbol id="t-kanne" viewBox="0 0 48 48"><path d="M11 46h24"/><path d="M11 46c-3-4-5-9-5-14 0-6 7-10 17-10s17 4 17 10c0 5-2 10-5 14"/><path d="M16 22c0-4 3-7 7-7s7 3 7 7"/><path d="M23 15v-4"/><path d="M40 30c4-1 6-5 6-9"/><path d="M7 27c-4 0-6 3-6 6s2 6 6 6"/></symbol>
+  <symbol id="t-glas" viewBox="0 0 48 72"><path d="M13 30h22l-3 40H16z"/><path d="M14.5 44h19"/><path class="kraut" d="M24 50c0-14-2-28-8-44"/><path class="kraut" d="M22 30c-6-1-9-5-9-10 5 0 8 4 9 10z"/><path class="kraut" d="M23 22c6-2 9-6 9-11-5 1-8 5-9 11z"/><path class="kraut" d="M19 13c-5-1-7-4-7-8 4 0 6 3 7 8z"/></symbol>
+  <symbol id="t-kuchen" viewBox="0 0 48 48"><path d="M3 46h42"/><path d="M8 43l3-15h26l3 15z"/><path d="M11 28c2-6 7-9 13-9s11 3 13 9"/><path d="M20 21c2-2 6-2 8 0"/><path d="M17 43l1-15M24 43V28M31 43l-1-15"/></symbol>
+  <symbol id="t-schale" viewBox="0 0 48 48"><path d="M6 30h36c0 9-8 15-18 15S6 39 6 30z"/><path d="M15 46h18"/><path d="M31 30l8-15"/><path d="M18 18c-2 2 2 4 0 6M25 15c-2 2 2 4 0 6"/></symbol>
+</svg>
+
+<a class="sprung" href="#oben">Zum Inhalt springen</a>
+
+<header class="kopf">
+  <a class="kopf-marke" href="#oben" aria-label="Kerbel, zum Seitenanfang"><span class="kopf-name">Kerbel</span><span class="kopf-art">Frühstück &amp; Bistro</span></a>
+  <nav class="kopf-nav" id="bereiche" aria-label="Bereiche">
+    <a href="#karte"><span class="nav-nr" aria-hidden="true">01</span>Karte</a>
+    <a href="#tag"><span class="nav-nr" aria-hidden="true">02</span>Der Tag</a>
+    <a href="#haus"><span class="nav-nr" aria-hidden="true">03</span>Das Haus</a>
+    <a class="nav-nur-menue" href="#tisch"><span class="nav-nr" aria-hidden="true">04</span>Tisch anfragen</a>
+    <a href="#besuch"><span class="nav-nr" aria-hidden="true">05</span>Besuch</a>
+    <p class="nav-fuss">Montag bis Freitag 8 bis 17 Uhr · Samstag und Sonntag 9 bis 17 Uhr</p>
+  </nav>
+  <a class="knopf knopf-dotter kopf-knopf" href="#tisch">Tisch anfragen</a>
+  <button class="kopf-menue" type="button" aria-expanded="false" aria-controls="bereiche" aria-label="Menü öffnen"><span aria-hidden="true"></span><span aria-hidden="true"></span></button>
+</header>
+
+<main id="oben" tabindex="-1">
+
+  <!-- ═══ Auftakt: Kopf wie eine Morgenzeitung ═══ -->
+  <section class="auftakt" aria-labelledby="name">
+    <div class="zeitungskopf">
+      <span>Frühstück &amp; Bistro</span>
+      <span class="zeitungskopf-mitte"><span class="ausgabe" data-ausgabe>Die Morgenausgabe</span> · <span data-datum>heute</span></span>
+      <span>Berlin</span>
+    </div>
+    <h1 class="namensschild" id="name" aria-label="Kerbel"><span class="buchstabe">K</span><span class="buchstabe">e</span><span class="buchstabe">r</span><span class="buchstabe">b</span><span class="buchstabe">e</span><span class="buchstabe">l</span></h1>
+    <div class="doppellinie" aria-hidden="true"></div>
+
+    <div class="auftakt-raster">
+      <div class="auftakt-text">
+        <p class="titelzeile">Ein Frühstück, das sich <em>Zeit</em> lässt.</p>
+        <p class="vorspann">Eier aus der Pfanne, Brot vom Brett und Kräuter aus dem Hof. Gefrühstückt wird bei uns bis in den Nachmittag, mittags kommt eine kleine, ehrliche Karte dazu.</p>
+        <p class="heute-offen" data-offen hidden><span class="offen-punkt" aria-hidden="true"></span><span data-offen-text></span></p>
+        <div class="auftakt-aktionen">
+          <a class="knopf knopf-dotter" href="#tisch">Tisch anfragen</a>
+          <a class="knopf knopf-linie" href="#karte">Zur Karte</a>
+        </div>
+      </div>
+
+      <figure class="aufmacher">
+        <div class="aufmacher-buehne">
+          <div class="film aufmacher-film" data-film="auftakt">
+            <img class="film-poster" src="medien/fruehstueckstisch.webp" width="1280" height="674" alt="Gedeckter Frühstückstisch: eine Schale Melone, Brot im Korb, eine Birne und ein Glas Orangensaft" fetchpriority="high" decoding="async">
+            <video class="film-video" src="medien/fruehstueckstisch.mp4" muted playsinline loop preload="none" width="1280" height="674" tabindex="-1" aria-hidden="true"></video>
+            <button class="film-knopf" type="button" hidden aria-label="Film anhalten"><span aria-hidden="true"></span></button>
+          </div>
+          <svg class="stempel" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+            <defs><path id="stempel-kreis" d="M100 100m-74 0a74 74 0 1 1 148 0a74 74 0 1 1-148 0"/></defs>
+            <circle class="stempel-grund" cx="100" cy="100" r="98"/>
+            <g class="stempel-ring"><text><textPath href="#stempel-kreis" startOffset="0" textLength="456" lengthAdjust="spacing">Frühstück bis 15 Uhr · Kerbel · Berlin ·</textPath></text></g>
+            <use href="#i-ei" x="62" y="62" width="76" height="76"/>
+          </svg>
+          <p class="brett-zettel">
+            <span class="zettel-kopf">Heute auf dem Brett</span>
+            <span class="zettel-gericht" data-tagesgericht>Spiegelei auf Sauerteig</span>
+            <span class="zettel-tag" data-wochentag>mit Kerbel und Schnittlauch</span>
+          </p>
+        </div>
+        <figcaption class="bildzeile"><b>Aufmacher</b> Der Frühstückstisch, kurz nach neun.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- Laufband -->
+  <div class="laufband" aria-hidden="true">
+    <div class="laufband-spur">
+      <span>Spiegelei auf Sauerteig</span><i></i><span>Avocadobrot mit Ei</span><i></i><span>Pfannkuchen mit Beeren</span><i></i><span>Zimtschnecken</span><i></i><span>Filterkaffee zum Nachschenken</span><i></i><span>Kerbel-Stulle</span><i></i><span>Käsekuchen vom Blech</span><i></i>
+      <span>Spiegelei auf Sauerteig</span><i></i><span>Avocadobrot mit Ei</span><i></i><span>Pfannkuchen mit Beeren</span><i></i><span>Zimtschnecken</span><i></i><span>Filterkaffee zum Nachschenken</span><i></i><span>Kerbel-Stulle</span><i></i><span>Käsekuchen vom Blech</span><i></i>
+    </div>
+  </div>
+
+  <!-- ═══ Die Karte ═══ -->
+  <section class="abschnitt karte" id="karte" aria-labelledby="karte-titel">
+    <div class="abschnitt-kopf auftauchen">
+      <p class="ueberzeile"><span>01</span> Die Karte</p>
+      <h2 class="abschnitt-titel" id="karte-titel">Klein, saisonal und <em>ohne Umwege.</em></h2>
+      <p class="abschnitt-text">Frühstück bis 15 Uhr, Mittagstisch ab 12 Uhr. Was der Hof gerade hergibt, landet auf dem Teller. Beispielkarte ohne Preise.</p>
+    </div>
+
+    <div class="karte-bilder" role="group" aria-label="Vier Gerichte im Bild">
+      <figure class="karten-bild auftauchen" data-art="veg">
+        <div class="bild-rahmen"><img src="medien/spiegelei-520.webp" srcset="medien/spiegelei-520.webp 520w, medien/spiegelei-960.webp 960w" sizes="(max-width: 760px) 76vw, (max-width: 1100px) 46vw, 310px" width="520" height="650" alt="Spiegelei auf geröstetem Brot mit gehackten Kräutern, auf einem Teller mit grünem Rand, von oben auf einem Holztisch" loading="lazy" decoding="async"></div>
+        <figcaption><span class="bild-gang">Früh · bis 15 Uhr</span><span class="bild-name">Spiegelei auf Sauerteig<abbr class="marke-art" title="vegetarisch">V</abbr></span><span class="bild-text">Geröstetes Brot, ein Spiegelei, Kerbel und Schnittlauch.</span></figcaption>
+      </figure>
+      <figure class="karten-bild auftauchen" data-art="veg">
+        <div class="bild-rahmen"><img src="medien/avocadobrot-520.webp" srcset="medien/avocadobrot-520.webp 520w, medien/avocadobrot-940.webp 940w" sizes="(max-width: 760px) 76vw, (max-width: 1100px) 46vw, 310px" width="520" height="650" alt="Dunkles Brot mit Avocado und halbierten, wachsweichen Eiern, dazu Dill und Granatapfelkerne" loading="lazy" decoding="async"></div>
+        <figcaption><span class="bild-gang">Früh · bis 15 Uhr</span><span class="bild-name">Avocadobrot mit Ei<abbr class="marke-art" title="vegetarisch">V</abbr></span><span class="bild-text">Roggenbrot, Avocado, wachsweiches Ei, Dill und Granatapfel.</span></figcaption>
+      </figure>
+      <figure class="karten-bild auftauchen" data-art="veg">
+        <div class="bild-rahmen"><img src="medien/suppe-520.webp" srcset="medien/suppe-520.webp 520w, medien/suppe-960.webp 960w" sizes="(max-width: 760px) 76vw, (max-width: 1100px) 46vw, 310px" width="520" height="650" alt="Tomatensuppe mit Bohnen in einer weißen Schale, obenauf Basilikum, ein Klecks Pesto und eine Sesamstange" loading="lazy" decoding="async"></div>
+        <figcaption><span class="bild-gang">Mittag · ab 12 Uhr</span><span class="bild-name">Tomatensuppe mit Bohnen<abbr class="marke-art" title="vegetarisch">V</abbr></span><span class="bild-text">Mit Basilikum, einem Löffel Pesto und einer Sesamstange.</span></figcaption>
+      </figure>
+      <figure class="karten-bild auftauchen" data-art="veg">
+        <div class="bild-rahmen"><img src="medien/pfannkuchen-520.webp" srcset="medien/pfannkuchen-520.webp 520w, medien/pfannkuchen-960.webp 960w" sizes="(max-width: 760px) 76vw, (max-width: 1100px) 46vw, 310px" width="520" height="650" alt="Ein Stapel Pfannkuchen auf einem Holzteller, obenauf eine Brombeere mit Minze, daneben Himbeeren und Brombeeren" loading="lazy" decoding="async"></div>
+        <figcaption><span class="bild-gang">Süß · den ganzen Tag</span><span class="bild-name">Pfannkuchen mit Beeren<abbr class="marke-art" title="vegetarisch">V</abbr></span><span class="bild-text">Ein Stapel aus der Pfanne, Brombeeren, Himbeeren, Minze.</span></figcaption>
+      </figure>
+    </div>
+
+    <div class="karte-filter auftauchen" role="group" aria-label="Karte filtern">
+      <button class="filter" type="button" data-filter="alle" aria-pressed="true">Alles</button>
+      <button class="filter" type="button" data-filter="veg" aria-pressed="false">Vegetarisch</button>
+      <button class="filter" type="button" data-filter="vegan" aria-pressed="false">Vegan</button>
+      <p class="filter-zahl" aria-live="polite" data-filter-zahl></p>
+    </div>
+
+    <div class="karte-spalten">
+      <article class="gang auftauchen">
+        <h3 class="gang-titel"><svg class="gang-bild" aria-hidden="true"><use href="#i-ei"/></svg>Früh</h3>
+        <p class="gang-zeit">bis 15 Uhr</p>
+        <ul class="gerichte">
+          <li class="gericht" data-art="veg"><span class="gericht-name">Spiegelei auf Sauerteig</span><span class="gericht-text">Geröstetes Brot, ein Spiegelei, Kerbel und Schnittlauch.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="veg"><span class="gericht-name">Avocadobrot mit Ei</span><span class="gericht-text">Roggenbrot, Avocado, wachsweiches Ei, Dill und Granatapfel.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="veg"><span class="gericht-name">Shakshuka</span><span class="gericht-text">Tomaten, Paprika, Ei, Koriander, Fladenbrot.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="veg"><span class="gericht-name">Rührei mit Kräutern</span><span class="gericht-text">Schnittlauch, Kerbel und Dill, dazu Roggenbrot.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="vegan"><span class="gericht-name">Hafer-Porridge</span><span class="gericht-text">Mit Haferdrink, Apfel, Zimt und gerösteten Nüssen.</span><abbr class="marke-art marke-vegan" title="vegan">VG</abbr></li>
+          <li class="gericht" data-art=""><span class="gericht-name">Das große Brett</span><span class="gericht-text">Käse, Schinken, Ei, Marmelade, Butter und ein Brotkorb für zwei.</span></li>
+        </ul>
+      </article>
+      <article class="gang auftauchen">
+        <h3 class="gang-titel"><svg class="gang-bild" aria-hidden="true"><use href="#i-schale"/></svg>Mittag</h3>
+        <p class="gang-zeit">ab 12 Uhr</p>
+        <ul class="gerichte">
+          <li class="gericht" data-art="veg"><span class="gericht-name">Tomatensuppe mit Bohnen</span><span class="gericht-text">Mit Basilikum, einem Löffel Pesto und einer Sesamstange.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art=""><span class="gericht-name">Kerbel-Stulle</span><span class="gericht-text">Sauerteig, Spiegelei, Schinken, Avocado und Radieschen.</span></li>
+          <li class="gericht" data-art="veg"><span class="gericht-name">Linsen mit Wurzelgemüse</span><span class="gericht-text">Belugalinsen, Möhre, Pastinake, Joghurt.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="veg"><span class="gericht-name">Ofenkartoffel</span><span class="gericht-text">Mit Kräuterquark und Gurkensalat.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="vegan"><span class="gericht-name">Grüner Salat</span><span class="gericht-text">Blattsalat, Kerbel, Senfvinaigrette, geröstetes Brot.</span><abbr class="marke-art marke-vegan" title="vegan">VG</abbr></li>
+        </ul>
+      </article>
+      <article class="gang auftauchen">
+        <h3 class="gang-titel"><svg class="gang-bild" aria-hidden="true"><use href="#i-schnecke"/></svg>Süß</h3>
+        <p class="gang-zeit">den ganzen Tag</p>
+        <ul class="gerichte">
+          <li class="gericht" data-art="veg"><span class="gericht-name">Pfannkuchen mit Beeren</span><span class="gericht-text">Ein Stapel aus der Pfanne, Brombeeren, Himbeeren, Minze.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="veg"><span class="gericht-name">Zimtschnecke</span><span class="gericht-text">Aus dem Ofen, solange sie warm ist.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="veg"><span class="gericht-name">Croissant</span><span class="gericht-text">Pur, mit Marmelade oder mit Frischkäse und Kräutern gefüllt.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="veg"><span class="gericht-name">Käsekuchen vom Blech</span><span class="gericht-text">Mit Zitrone und Mürbeteig.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="veg"><span class="gericht-name">Bananenbrot</span><span class="gericht-text">Mit gesalzener Butter.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="veg"><span class="gericht-name">Joghurt mit Granola</span><span class="gericht-text">Granola aus dem Ofen, Beeren, Honig.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+        </ul>
+      </article>
+      <article class="gang auftauchen">
+        <h3 class="gang-titel"><svg class="gang-bild" aria-hidden="true"><use href="#i-tasse"/></svg>Im Glas</h3>
+        <p class="gang-zeit">immer</p>
+        <ul class="gerichte">
+          <li class="gericht" data-art="vegan"><span class="gericht-name">Filterkaffee</span><span class="gericht-text">Zum Nachschenken.</span><abbr class="marke-art marke-vegan" title="vegan">VG</abbr></li>
+          <li class="gericht" data-art="veg"><span class="gericht-name">Cappuccino</span><span class="gericht-text">Auf Wunsch mit Haferdrink.</span><abbr class="marke-art" title="vegetarisch">V</abbr></li>
+          <li class="gericht" data-art="vegan"><span class="gericht-name">Frischer Minztee</span><span class="gericht-text">Ein Bund Minze im Glas.</span><abbr class="marke-art marke-vegan" title="vegan">VG</abbr></li>
+          <li class="gericht" data-art="vegan"><span class="gericht-name">Orangensaft</span><span class="gericht-text">Frisch gepresst.</span><abbr class="marke-art marke-vegan" title="vegan">VG</abbr></li>
+          <li class="gericht" data-art="vegan"><span class="gericht-name">Rhabarberschorle</span><span class="gericht-text">Aus eigenem Sirup.</span><abbr class="marke-art marke-vegan" title="vegan">VG</abbr></li>
+        </ul>
+      </article>
+    </div>
+    <p class="karte-legende auftauchen"><abbr class="marke-art" title="vegetarisch">V</abbr> vegetarisch <abbr class="marke-art marke-vegan" title="vegan">VG</abbr> vegan</p>
+  </section>
+
+  <!-- ═══ Ein Tag bei Kerbel: beim Scrollen wandert die Sonne ums Fenster, im Fenster wechseln die Bilder ═══ -->
+  <section class="tag" id="tag" aria-labelledby="tag-titel">
+    <div class="tag-buehne">
+      <div class="tag-himmel" aria-hidden="true">
+        <div class="tag-sonne"></div>
+        <div class="tag-tisch">
+          <svg class="tag-ding tag-ding-gross" viewBox="0 0 48 48"><use href="#t-kanne"/></svg>
+          <svg class="tag-ding" viewBox="0 0 48 48"><use href="#t-tasse"/></svg>
+          <svg class="tag-ding tag-ding-hoch" viewBox="0 0 48 72"><use href="#t-glas"/></svg>
+          <svg class="tag-ding tag-ding-gross" viewBox="0 0 48 48"><use href="#t-kuchen"/></svg>
+          <svg class="tag-ding" viewBox="0 0 48 48"><use href="#t-schale"/></svg>
+          <svg class="tag-ding" viewBox="0 0 48 48"><use href="#t-tasse"/></svg>
+        </div>
+      </div>
+      <div class="tag-inhalt">
+        <h2 class="ueberzeile tag-ueberzeile" id="tag-titel"><span>02</span> Ein Tag bei Kerbel</h2>
+        <p class="tag-uhr" aria-hidden="true" data-uhr>8:00</p>
+        <ol class="tag-stationen">
+          <li class="station" data-zeit="8:00">
+            <figure class="station-bild"><img src="medien/gastraum-480.webp" srcset="medien/gastraum-480.webp 480w, medien/gastraum-900.webp 900w" sizes="(max-width: 960px) 62vw, 440px" width="480" height="640" alt="Heller Gastraum am Morgen: lange Holztische, dahinter die Theke und eine Palme" loading="lazy" decoding="async"></figure>
+            <div class="station-text"><span class="station-zeit">8:00</span><h3 class="station-titel">Wir schließen auf.</h3><p>Die langen Tische sind noch leer. Der erste Filterkaffee läuft durch, das Brot liegt auf dem Brett, die Kräuter kommen frisch aus dem Hof.</p></div>
+          </li>
+          <li class="station" data-zeit="10:00">
+            <figure class="station-bild"><img src="medien/beerenpfannkuchen-480.webp" srcset="medien/beerenpfannkuchen-480.webp 480w, medien/beerenpfannkuchen-900.webp 900w" sizes="(max-width: 960px) 62vw, 440px" width="480" height="640" alt="Pfannkuchen mit Erdbeeren und Heidelbeeren, eine Gabel sticht hinein" loading="lazy" decoding="async"></figure>
+            <div class="station-text"><span class="station-zeit">10:00</span><h3 class="station-titel">Die Pfannen laufen.</h3><p>Spiegelei, Rührei mit Kräutern, Pfannkuchen mit Beeren. Jetzt ist am meisten los, und niemand hat es eilig.</p></div>
+          </li>
+          <li class="station" data-zeit="12:30">
+            <figure class="station-bild"><img src="medien/stulle-480.webp" srcset="medien/stulle-480.webp 480w, medien/stulle-900.webp 900w" sizes="(max-width: 960px) 62vw, 440px" width="480" height="640" alt="Belegtes Brot mit Spiegelei, Schinken, Avocado und Radieschen auf einem hellen Teller" loading="lazy" decoding="async"></figure>
+            <div class="station-text"><span class="station-zeit">12:30</span><h3 class="station-titel">Mittagstisch.</h3><p>Eine Suppe, eine Stulle, ein Salat. Was es heute gibt, steht an der Tafel neben der Tür.</p></div>
+          </li>
+          <li class="station" data-zeit="15:00">
+            <figure class="station-bild film" data-film="tag">
+              <img class="film-poster" src="medien/cappuccino-hoch.webp" width="720" height="1280" alt="Eine Hand hält die Tasse, aus der Kanne fließt Milchschaum in den Cappuccino" loading="lazy" decoding="async">
+              <video class="film-video" src="medien/cappuccino-hoch.mp4" muted playsinline loop preload="none" width="720" height="1280" tabindex="-1" aria-hidden="true"></video>
+              <button class="film-knopf" type="button" hidden aria-label="Film anhalten"><span aria-hidden="true"></span></button>
+            </figure>
+            <div class="station-text"><span class="station-zeit">15:00</span><h3 class="station-titel">Kuchen und Kaffee.</h3><p>Zimtschnecken aus dem Ofen, Käsekuchen vom Blech und ein Cappuccino, der in Ruhe gegossen wird.</p></div>
+          </li>
+          <li class="station" data-zeit="17:00">
+            <figure class="station-bild station-bild-abend"><img src="medien/gastraum-480.webp" srcset="medien/gastraum-480.webp 480w, medien/gastraum-900.webp 900w" sizes="(max-width: 960px) 62vw, 440px" width="480" height="640" alt="Derselbe Gastraum in der Dämmerung, die langen Tische sind leer" loading="lazy" decoding="async"></figure>
+            <div class="station-text"><span class="station-zeit">17:00</span><h3 class="station-titel">Stühle hoch.</h3><p>Wir machen Feierabend. Morgen früh geht der Ofen wieder an.</p></div>
+          </li>
+        </ol>
+      </div>
+      <div class="tag-skala" role="group" aria-label="Zu einer Tageszeit springen">
+        <button type="button" class="skala-punkt" data-station="0"><span>8:00</span></button>
+        <button type="button" class="skala-punkt" data-station="1"><span>10:00</span></button>
+        <button type="button" class="skala-punkt" data-station="2"><span>12:30</span></button>
+        <button type="button" class="skala-punkt" data-station="3"><span>15:00</span></button>
+        <button type="button" class="skala-punkt" data-station="4"><span>17:00</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Das Haus: der Gastraum groß, darunter drei Sätze mit Bild ═══ -->
+  <section class="abschnitt haus" id="haus" aria-labelledby="haus-titel">
+    <div class="abschnitt-kopf auftauchen">
+      <p class="ueberzeile"><span>03</span> Das Haus</p>
+      <h2 class="abschnitt-titel" id="haus-titel">Ein Raum mit langen Tischen und <em>kurzen Wegen.</em></h2>
+    </div>
+    <figure class="haus-bild auftauchen">
+      <div class="haus-bild-rahmen"><img src="medien/gastraum-weit-800.webp" srcset="medien/gastraum-weit-800.webp 800w, medien/gastraum-weit-1600.webp 1600w" sizes="(max-width: 1400px) 92vw, 1310px" width="800" height="400" alt="Der Gastraum: zwei lange Holztische mit schwarzen Stühlen, weiße Wände, hinten die Theke mit Tafel" loading="lazy" decoding="async"></div>
+      <figcaption class="bildzeile"><b>Der Gastraum</b> Zwei lange Tische, die Theke immer im Blick.</figcaption>
+    </figure>
+    <div class="haus-raster">
+      <article class="haus-karte auftauchen">
+        <div class="haus-kopf"><img src="medien/kraeuter-560.webp" srcset="medien/kraeuter-560.webp 560w, medien/kraeuter-1040.webp 1040w" sizes="(max-width: 960px) 90vw, 400px" width="560" height="420" alt="Schnittlauch, Petersilie und Basilikum im Gegenlicht, dahinter ein Kochtopf" loading="lazy" decoding="async"></div>
+        <h3>Kräuter aus dem Hof</h3>
+        <p>Schnittlauch, Petersilie und Basilikum ziehen wir selbst, im Hof und in Töpfen gleich neben dem Herd. Geerntet wird, was heute auf die Teller kommt.</p>
+      </article>
+      <article class="haus-karte auftauchen">
+        <div class="haus-kopf"><img src="medien/croissants-560.webp" srcset="medien/croissants-560.webp 560w, medien/croissants-1040.webp 1040w" sizes="(max-width: 960px) 90vw, 400px" width="560" height="420" alt="Frisch gebackene Croissants auf einem Holzteller, daneben eine weiße Kanne" loading="lazy" decoding="async"></div>
+        <h3>Ofen statt Vitrine</h3>
+        <p>Croissants, Zimtschnecken und Bananenbrot backen wir in kleinen Mengen über den Tag. Was warm ist, kommt zuerst auf den Tisch.</p>
+      </article>
+      <article class="haus-karte auftauchen">
+        <div class="haus-kopf"><img src="medien/kaffeetisch-560.webp" srcset="medien/kaffeetisch-560.webp 560w, medien/kaffeetisch-1040.webp 1040w" sizes="(max-width: 960px) 90vw, 400px" width="560" height="420" alt="Holztisch von oben: Filterkaffee, eine Tasse Tee, ein Schokoladenbrötchen, Marmelade und eine Sonnenbrille" loading="lazy" decoding="async"></div>
+        <h3>Sitzen, so lange Sie mögen</h3>
+        <p>Laptop, Zeitung oder Familienfrühstück: Niemand räumt Ihnen den Teller weg, bevor Sie fertig sind.</p>
+      </article>
+    </div>
+    <blockquote class="haus-satz auftauchen"><p>Frühstück ist bei uns keine Uhrzeit, sondern der Teil des Tages, an dem <em>niemand</em> auf die Uhr schaut.</p></blockquote>
+  </section>
+
+  <!-- ═══ Tisch anfragen: Beispiel, sendet nichts ═══ -->
+  <section class="abschnitt tisch" id="tisch" aria-labelledby="tisch-titel">
+    <div class="tisch-raster">
+      <div class="tisch-kopf auftauchen">
+        <p class="ueberzeile"><span>04</span> Tisch anfragen</p>
+        <h2 class="abschnitt-titel" id="tisch-titel">Wir halten Ihnen <em>einen Platz frei.</em></h2>
+        <p class="abschnitt-text">Für spontane Besuche gibt es immer Plätze am langen Tisch. Für Gruppen ab vier Personen fragen Sie am besten vorher an.</p>
+        <p class="tisch-hinweis">Beispielseite: Ihre Angaben werden nicht gesendet.</p>
+      </div>
+
+      <div class="block-rahmen auftauchen">
+        <form class="block" id="tisch-form" method="dialog" novalidate aria-describedby="block-hinweis">
+          <p class="block-kopf"><span>Kerbel</span><span>Tischanfrage</span></p>
+
+          <fieldset class="wahl">
+            <legend>Wann?</legend>
+            <div class="wahl-reihe wahl-raster" data-tage>
+              <label class="chip"><input type="radio" name="tag" value="Heute" checked><span>Heute</span></label>
+              <label class="chip"><input type="radio" name="tag" value="Morgen"><span>Morgen</span></label>
+              <label class="chip"><input type="radio" name="tag" value="Übermorgen"><span>Übermorgen</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="wahl">
+            <legend>Um wie viel Uhr?</legend>
+            <div class="wahl-reihe wahl-raster">
+              <label class="chip"><input type="radio" name="uhr" value="8:30"><span>8:30</span></label>
+              <label class="chip"><input type="radio" name="uhr" value="9:30" checked><span>9:30</span></label>
+              <label class="chip"><input type="radio" name="uhr" value="10:30"><span>10:30</span></label>
+              <label class="chip"><input type="radio" name="uhr" value="11:30"><span>11:30</span></label>
+              <label class="chip"><input type="radio" name="uhr" value="12:30"><span>12:30</span></label>
+              <label class="chip"><input type="radio" name="uhr" value="14:00"><span>14:00</span></label>
+              <label class="chip"><input type="radio" name="uhr" value="15:00"><span>15:00</span></label>
+            </div>
+          </fieldset>
+
+          <div class="wahl">
+            <span class="wahl-titel" id="personen-titel">Wie viele Personen?</span>
+            <div class="zaehler" role="group" aria-labelledby="personen-titel">
+              <button type="button" class="zaehler-knopf" data-schritt="-1" aria-label="Eine Person weniger">−</button>
+              <output class="zaehler-wert" id="personen" aria-live="polite">2</output>
+              <button type="button" class="zaehler-knopf" data-schritt="1" aria-label="Eine Person mehr">+</button>
+            </div>
+          </div>
+
+          <label class="feld">
+            <span class="feld-titel">Ihr Name</span>
+            <input type="text" name="name" autocomplete="name" required maxlength="80" aria-describedby="name-fehler">
+            <span class="feld-fehler" id="name-fehler" aria-live="polite"></span>
+          </label>
+
+          <label class="feld">
+            <span class="feld-titel">Noch etwas? <small>freiwillig</small></span>
+            <textarea name="notiz" rows="2" maxlength="300" placeholder="Kinderstuhl, Hund, Geburtstag"></textarea>
+          </label>
+
+          <button type="submit" class="knopf knopf-tinte block-senden">Anfrage zeigen</button>
+          <p class="block-hinweis" id="block-hinweis">Beispielseite: Diese Anfrage wird nicht gesendet.</p>
+        </form>
+
+        <div class="bon" id="bon" hidden tabindex="-1" aria-labelledby="bon-titel">
+          <p class="bon-kopf" id="bon-titel">Kerbel · Tischanfrage</p>
+          <dl class="bon-liste">
+            <div><dt>Tag</dt><dd data-bon="tag"></dd></div>
+            <div><dt>Uhrzeit</dt><dd data-bon="uhr"></dd></div>
+            <div><dt>Personen</dt><dd data-bon="personen"></dd></div>
+            <div><dt>Name</dt><dd data-bon="name"></dd></div>
+            <div data-bon-zeile="notiz"><dt>Notiz</dt><dd data-bon="notiz"></dd></div>
+          </dl>
+          <p class="bon-satz">So sähe Ihre Anfrage aus. Dies ist eine Beispielseite, gesendet wurde nichts.</p>
+          <button type="button" class="knopf knopf-linie bon-neu" data-neu>Neue Anfrage</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Besuch ═══ -->
+  <section class="abschnitt besuch" id="besuch" aria-labelledby="besuch-titel">
+    <div class="besuch-raster">
+      <div class="besuch-text auftauchen">
+        <p class="ueberzeile"><span>05</span> Besuch</p>
+        <h2 class="abschnitt-titel" id="besuch-titel">Um die Ecke, <em>gleich hinter dem Park.</em></h2>
+        <dl class="besuch-liste">
+          <div><dt>Adresse</dt><dd>Beispielstraße 1<br>Berlin</dd></div>
+          <div><dt>Geöffnet</dt><dd><span data-zeiten="werktag">Montag bis Freitag 8 bis 17 Uhr</span><br><span data-zeiten="wochenende">Samstag und Sonntag 9 bis 17 Uhr</span></dd></div>
+          <div><dt>Kontakt</dt><dd><a href="#tisch">Tisch anfragen</a><br>Telefon und E-Mail lassen wir in diesem Beispiel weg.</dd></div>
+        </dl>
+        <p class="besuch-fuss">Adresse und Zeiten sind Beispielangaben.</p>
+      </div>
+      <figure class="plan auftauchen" aria-label="Stilisierte Karte der Umgebung">
+        <svg class="plan-bild" viewBox="0 0 600 480" aria-hidden="true">
+          <rect class="plan-grund" width="600" height="480" rx="28"/>
+          <path class="plan-park" d="M330 40h210a20 20 0 0 1 20 20v150a20 20 0 0 1-20 20H360a30 30 0 0 1-30-30z"/>
+          <g class="plan-baeume"><circle cx="390" cy="90" r="9"/><circle cx="430" cy="120" r="12"/><circle cx="480" cy="84" r="10"/><circle cx="510" cy="150" r="13"/><circle cx="400" cy="170" r="11"/><circle cx="460" cy="186" r="8"/></g>
+          <path class="plan-wasser" d="M-10 400c80-30 140 10 220-10s150-80 240-70 120 40 170 30"/>
+          <g class="plan-strassen">
+            <path d="M0 260h600"/><path d="M300 0v480"/><path d="M120 0v340"/><path d="M0 120h300"/><path d="M450 260v220"/><path d="M300 360h300"/>
+          </g>
+          <g class="plan-gassen"><path d="M0 190h300"/><path d="M200 0v260"/><path d="M370 260v220"/><path d="M530 260v100"/><path d="M60 260v120"/></g>
+          <text class="plan-schrift" x="436" y="216">Park</text>
+          <text class="plan-schrift" x="20" y="250">Beispielstraße</text>
+          <g class="plan-nadel" transform="translate(228 224)">
+            <circle class="plan-puls" r="16"/>
+            <circle class="plan-punkt" r="13"/>
+            <circle class="plan-kern" r="5"/>
+          </g>
+        </svg>
+        <figcaption>Karte stilisiert</figcaption>
+      </figure>
+    </div>
+  </section>
+
+</main>
+
+<footer class="fuss">
+  <p class="fuss-wort" aria-hidden="true">Kerbel</p>
+  <div class="fuss-zeile">
+    <span>Kerbel · Frühstück &amp; Bistro · Beispielstraße 1, Berlin</span>
+    <span>Betrieb, Namen und Adresse sind erfunden.</span>
+  </div>
+</footer>
+
+<!-- ═══ Leiste von MAKE Studios: auf jeder Beispielseite, unverändert ═══ -->
+<div class="ms-platz" aria-hidden="true"></div>
+<nav class="ms-leiste" aria-label="MAKE Studios">
+  <a class="ms-marke" href="../../#beispielseiten" aria-label="Zurück zu den Beispielseiten von MAKE Studios"><img src="../../zeichen.svg" alt="" width="24" height="24"><b>MAKE</b><span>STUDIOS</span></a>
+  <span class="ms-hinweis"><b>Beispiel</b><span class="ms-lang"> · Namen erfunden</span></span>
+  <a class="ms-knopf" href="../../#erstgespraech-gastro">Erstgespräch</a>
+</nav>
+
+</body>
+</html>

@@ -1,0 +1,295 @@
+/* ─── MAKE Studios · Erstgespräch buchen und Sichtbarkeits-Check ──────────────────────────────────────
+   Gehört zu anfrage.js. Gleiche Bausteine wie die Seite: Papier, Tinte, Signal; Pillen wie der Entwürfe-Filter.
+   Mit „Bewegung reduzieren“ schaltet statisch.css alle Bewegungen ab, beides bleibt voll bedienbar. */
+
+html.dialog-offen { overflow: hidden; }
+.buchen [hidden], .check [hidden] { display: none !important; }
+.vh {
+  position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ═══ Erstgespräch buchen: Fenster in drei Schritten ═══ */
+.buchen {
+  width: min(680px, calc(100vw - 32px)); max-width: none; max-height: min(880px, calc(100dvh - 40px));
+  padding: 0; border: 0; border-radius: 28px;
+  background: var(--papier); color: var(--tinte);
+  box-shadow: 0 50px 140px -40px rgba(13, 12, 11, .6), 0 0 0 1px rgba(13, 12, 11, .06);
+  overflow: hidden;
+}
+.buchen[open] { display: flex; flex-direction: column; animation: buchen-auf .5s var(--kurve) both; }
+.buchen::backdrop { background: rgba(13, 12, 11, .58); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: schleier .35s ease both; }
+.buchen-form { display: contents; }
+
+.buchen-kopf { flex: none; display: flex; align-items: center; gap: 14px; padding: 18px 18px 16px 28px; }
+.buchen-titel { flex: 1; min-width: 0; }
+.buchen-schritt { font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau); white-space: nowrap; }
+.buchen-schritt b { color: var(--tinte); font-weight: 600; }
+.buchen-zu {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
+  border: 1px solid var(--linie); border-radius: 50%; background: transparent; color: var(--tinte); cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.buchen-zu:hover { background: rgba(13, 12, 11, .06); border-color: rgba(13, 12, 11, .3); }
+.buchen-zu svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+.buchen-balken { flex: none; height: 3px; margin: 0 28px; border-radius: 2px; background: rgba(13, 12, 11, .1); overflow: hidden; }
+.buchen-balken i { display: block; height: 100%; background: var(--signal); transform-origin: 0 50%; transform: scaleX(var(--anteil, 0)); transition: transform .55s var(--kurve); }
+
+.buchen-inhalt { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 30px 28px 26px; }
+/* Beim Scrollen läuft der Inhalt an Balken und Fuß weich aus; in Ruhe liegt dort nur Innenabstand. */
+.buchen-inhalt {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+}
+.buchen-frage { font: 700 clamp(32px, 4.2vw, 46px)/.94 "Bricolage", system-ui, sans-serif; font-stretch: 75%; letter-spacing: -.02em; }
+.buchen-frage:focus { outline: none; }
+.buchen-frage em { color: var(--signal-tief); font-size: 1.06em; }
+
+.buchen fieldset { min-width: 0; margin: 26px 0 0; padding: 0; border: 0; }
+.buchen legend { padding: 0; margin-bottom: 12px; font: 600 16px/1.3 "Bricolage", system-ui, sans-serif; }
+.optional { margin-left: 6px; font: 500 11px/1 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); }
+
+/* Wahl-Pillen: echte Radio- und Checkbox-Felder, nur anders gezeichnet */
+.wahl-reihe { display: flex; flex-wrap: wrap; gap: 8px; }
+.wahl { position: relative; display: inline-flex; }
+.wahl input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.wahl span {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 18px;
+  border: 1px solid rgba(13, 12, 11, .24); border-radius: 999px;
+  font: 500 16px/1.15 "Bricolage", system-ui, sans-serif;
+  transition: background .2s, color .2s, border-color .2s;
+}
+.wahl:hover span { border-color: var(--tinte); }
+.wahl input:checked + span { background: var(--tinte); border-color: var(--tinte); color: var(--papier); }
+.wahl input:focus-visible + span { outline: 2px solid var(--signal); outline-offset: 3px; }
+.wahl-mehr input:checked + span::before { content: "✓"; margin-right: 8px; color: var(--signal); font-weight: 700; }
+.hat-fehler .wahl span { border-color: var(--signal-text); }
+
+.wahl-raster { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.wahl-raster .wahl, .buchen-tage .wahl { display: block; }
+.wahl-raster span, .wahl-tag span {
+  flex-direction: column; justify-content: center; gap: 5px; width: 100%; min-height: 64px; padding: 10px 8px;
+  border-radius: 16px; text-align: center;
+}
+.wahl small { font: 500 11.5px/1.15 "Mono", ui-monospace, monospace; letter-spacing: .04em; color: var(--grau); }
+.wahl input:checked + span small { color: rgba(242, 237, 228, .72); }
+.buchen-tage { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.wahl-tag span { font-size: 17px; font-weight: 600; }
+.wahl-tag small { letter-spacing: .12em; text-transform: uppercase; }
+
+.buchen-gastro { margin-top: 16px; padding: 12px 16px; border-radius: 14px; background: rgba(255, 90, 31, .12); font-size: 15px; line-height: 1.45; }
+.buchen-hinweis { margin-top: 20px; font-size: 15px; line-height: 1.5; color: var(--tinte-weich); }
+
+/* Kontaktfelder */
+.felder { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; margin-top: 26px; }
+.feld-breit { grid-column: 1 / -1; }
+.feld label { display: block; margin-bottom: 8px; font: 600 15px/1.3 "Bricolage", system-ui, sans-serif; }
+.feld input, .feld textarea {
+  display: block; width: 100%; min-height: 52px; padding: 13px 16px;
+  border: 1px solid rgba(13, 12, 11, .24); border-radius: 14px; background: #FAF7F2; color: var(--tinte);
+  font: 400 17px/1.4 "Bricolage", system-ui, sans-serif;
+  transition: border-color .2s, box-shadow .2s;
+}
+.feld textarea { min-height: 112px; resize: vertical; }
+.feld input:focus, .feld textarea:focus { outline: none; border-color: var(--tinte); box-shadow: 0 0 0 3px rgba(255, 90, 31, .35); }
+.feld [aria-invalid="true"] { border-color: var(--signal-text); }
+.feld-fehler { margin-top: 8px; font-size: 14px; font-weight: 500; color: var(--signal-text); }
+
+.buchen-check {
+  display: flex; align-items: flex-start; gap: 12px; margin-top: 22px; padding: 14px 16px;
+  border-radius: 14px; background: var(--papier-2); font-size: 15px; line-height: 1.4; cursor: pointer;
+}
+.buchen-check input { flex: none; width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--tinte); }
+.buchen-datenschutz { margin-top: 20px; font-size: 13.5px; line-height: 1.5; color: var(--grau); }
+.buchen-datenschutz a { text-underline-offset: 3px; }
+
+.buchen-fuss {
+  flex: none; display: flex; align-items: center; gap: 12px;
+  padding: 16px 28px 22px; border-top: 1px solid var(--linie); background: var(--papier);
+}
+.buchen-fuss .knopf { margin-left: auto; }
+.buchen-leise {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px;
+  border: 1px solid rgba(13, 12, 11, .24); border-radius: 999px; background: transparent; color: var(--tinte);
+  font: 600 16px/1 "Bricolage", system-ui, sans-serif; text-decoration: none; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.buchen-leise:hover { border-color: var(--tinte); background: rgba(13, 12, 11, .04); }
+
+/* Fertig: die Mail liegt im E-Mail-Programm bereit */
+.buchen-fertig-zeichen { width: 56px; height: 56px; margin-bottom: 26px; fill: var(--signal); animation: blende-dreht 9s linear infinite; }
+.buchen-fertig > p { max-width: 46ch; margin-top: 14px; font-size: 17px; line-height: 1.5; color: var(--tinte-weich); }
+.buchen-fertig-aktionen { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.buchen-kopie {
+  display: block; width: 100%; min-height: 200px; margin-top: 16px; padding: 14px 16px;
+  border: 1px solid rgba(13, 12, 11, .24); border-radius: 14px; background: #FAF7F2; color: var(--tinte);
+  font: 400 13.5px/1.55 "Mono", ui-monospace, monospace; resize: vertical;
+}
+.buchen-fertig .buchen-schliessen { margin-top: 26px; }
+
+@keyframes buchen-auf { from { opacity: 0; transform: translateY(18px) scale(.98); } }
+@keyframes buchen-hoch { from { transform: translateY(100%); } }
+@keyframes schleier { from { opacity: 0; } }
+@keyframes blende-dreht { to { transform: rotate(360deg); } }
+
+/* ═══ Kontakt: Buchen, E-Mail, Check ═══ */
+.kontakt-aktionen { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px 30px; }
+.kontakt-mail { font: 600 clamp(17px, 1.5vw, 21px)/1.2 "Bricolage", system-ui, sans-serif; color: var(--papier); text-underline-offset: 6px; text-decoration-thickness: 1px; }
+.kontakt-check { margin-top: 34px; color: rgba(242, 237, 228, .82); }
+
+/* ═══ Sichtbarkeits-Check ═══ */
+@property --wert { syntax: "<number>"; inherits: true; initial-value: 0; }
+
+.abschnitt-check { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(36px, 5vw, 96px); align-items: start; }
+.abschnitt-check .abschnitt-kopf { position: sticky; top: calc(var(--kopf-h) + 40px); margin-bottom: 0; }
+.check-punkte { display: flex; flex-wrap: wrap; gap: 8px; margin: 30px 0 0; padding: 0; list-style: none; }
+.check-punkte li {
+  padding: 10px 14px; border: 1px solid var(--linie); border-radius: 999px;
+  font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--tinte-weich);
+}
+
+.check {
+  position: relative; min-height: 580px; padding: clamp(24px, 3.4vw, 48px);
+  border-radius: 32px; background: var(--tinte); color: var(--papier); overflow: hidden;
+  scroll-margin-top: calc(var(--kopf-h) + 16px);
+}
+.check::before {
+  content: ""; position: absolute; right: -22%; bottom: -38%; width: 76%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 90, 31, .2), transparent); pointer-events: none;
+}
+.check-geraet, .check-statisch { position: relative; }
+
+.check-oben { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+.check-zaehler { font: 500 12px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: rgba(242, 237, 228, .62); }
+.check-zaehler b { color: var(--papier); font-weight: 600; }
+.check-zurueck {
+  min-height: 44px; padding: 0 16px; border: 1px solid var(--linie-hell); border-radius: 999px;
+  background: transparent; color: var(--papier); font: 500 15px/1 "Bricolage", system-ui, sans-serif; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.check-zurueck:hover { border-color: rgba(242, 237, 228, .5); background: rgba(242, 237, 228, .06); }
+.check-balken { margin-top: 12px; height: 3px; border-radius: 2px; background: rgba(242, 237, 228, .12); overflow: hidden; }
+.check-balken i { display: block; height: 100%; background: var(--signal); transform-origin: 0 50%; transform: scaleX(var(--anteil, 0)); animation: balken-schritt .55s var(--kurve) both; }
+
+.check-frage { max-width: 20ch; margin: 34px 0 24px; font: 700 clamp(30px, 3.1vw, 46px)/.98 "Bricolage", system-ui, sans-serif; font-stretch: 75%; letter-spacing: -.02em; }
+.check-frage:focus, .check-ergebnis-titel:focus { outline: none; }
+.check-antworten { display: grid; gap: 10px; }
+.check-antwort {
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 12px 18px;
+  border: 1px solid var(--linie-hell); border-radius: 16px; background: rgba(242, 237, 228, .04); color: var(--papier);
+  font: 500 17px/1.3 "Bricolage", system-ui, sans-serif; text-align: left; cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s, transform .3s var(--kurve);
+}
+.check-antwort:hover { border-color: rgba(242, 237, 228, .5); background: rgba(242, 237, 228, .08); }
+.check-antwort:active { transform: scale(.99); }
+.check-antwort[aria-pressed="true"] { border-color: var(--papier); background: var(--papier); color: var(--tinte); }
+.check-buchstabe {
+  flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px;
+  border: 1px solid rgba(242, 237, 228, .3); font: 600 12px/1 "Mono", ui-monospace, monospace;
+  transition: background .2s, border-color .2s, color .2s;
+}
+.check-antwort[aria-pressed="true"] .check-buchstabe { border-color: var(--signal); background: var(--signal); color: var(--tinte); }
+
+/* Neue Frage gleitet herein (statisch.css schaltet das bei „Bewegung reduzieren“ ab) */
+.check-frage, .check-antworten, .check-ergebnis { animation: check-rein .5s var(--kurve) both; }
+.check-antworten { animation-delay: .06s; }
+
+/* Ergebnis */
+.check-ergebnis-kopf { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: center; margin-top: 30px; }
+.check-wert { position: relative; display: grid; place-content: center; width: 164px; aspect-ratio: 1; text-align: center; animation: ring-fuellen 1.4s var(--kurve) .1s both; }
+.check-wert::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(var(--signal) calc(var(--wert) * 1turn), rgba(242, 237, 228, .12) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 11px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 11px));
+}
+.check-ergebnis-titel { position: relative; font-weight: inherit; }
+.check-zahl { display: block; font: 700 66px/.9 "Bricolage", system-ui, sans-serif; font-stretch: 75%; letter-spacing: -.03em; }
+.check-von { display: block; margin-top: 6px; font: 500 11px/1 "Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: rgba(242, 237, 228, .6); }
+.check-stufe {
+  display: inline-flex; padding: 8px 13px; border-radius: 999px; color: var(--tinte);
+  font: 600 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase;
+}
+.stufe-gut { background: var(--papier); }
+.stufe-mittel { background: var(--signal); }
+.stufe-offen { background: var(--rosa); }
+.check-satz { max-width: 36ch; margin-top: 14px; font-size: 19px; line-height: 1.4; color: rgba(242, 237, 228, .88); }
+
+.check-teile { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; margin: 30px 0 0; padding: 0; list-style: none; }
+.check-teile li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--linie-hell); font-size: 15px; color: rgba(242, 237, 228, .86); }
+.check-segmente { display: inline-flex; gap: 4px; }
+.check-segmente i { width: 22px; height: 6px; border-radius: 3px; background: rgba(242, 237, 228, .16); }
+.check-segmente i.an { background: var(--signal); }
+
+.check-unter { margin-top: 34px; font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: rgba(242, 237, 228, .62); }
+.check-hebel { display: grid; gap: 10px; margin: 14px 0 0; padding: 0; list-style: none; counter-reset: hebel; }
+.check-hebel li {
+  position: relative; padding: 18px 20px 18px 64px; border: 1px solid var(--linie-hell); border-radius: 18px;
+  background: rgba(242, 237, 228, .05); counter-increment: hebel;
+}
+.check-hebel li::before {
+  content: counter(hebel, decimal-leading-zero); position: absolute; left: 20px; top: 17px;
+  font: 700 24px/1 "Bricolage", system-ui, sans-serif; font-stretch: 75%; color: var(--signal);
+}
+.check-hebel-titel { font-size: 18px; font-weight: 600; line-height: 1.3; }
+.check-tipp { margin-top: 4px; font-size: 15px; line-height: 1.45; color: rgba(242, 237, 228, .74); }
+.check-beleg { margin-top: 12px; font-size: 14.5px; line-height: 1.45; color: rgba(242, 237, 228, .86); }
+.check-beleg b { margin-right: 2px; font: 700 22px/1 "Bricolage", system-ui, sans-serif; font-stretch: 75%; color: var(--signal); }
+.check-quelle { display: block; margin-top: 6px; font: 500 11.5px/1.45 "Mono", ui-monospace, monospace; color: rgba(242, 237, 228, .56); }
+.check-quelle a { color: inherit; text-underline-offset: 3px; }
+.check-klein { margin-top: 22px; font-size: 13px; line-height: 1.5; color: rgba(242, 237, 228, .56); }
+.check-aktionen { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin-top: 26px; }
+.check .knopf { background: var(--signal); color: var(--tinte); }
+.check .knopf::after { background: var(--tinte); }
+.check .knopf:hover { background: var(--papier); }
+.check-neu {
+  min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--papier); cursor: pointer;
+  font: 600 16px/1 "Bricolage", system-ui, sans-serif; text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 1px;
+}
+
+/* Ohne JavaScript: die Fragen als Liste, dazu der Weg ins Gespräch */
+.check-liste { display: grid; gap: 0; margin: 20px 0 28px; padding: 0; list-style: none; }
+.check-liste li { padding: 14px 0; border-bottom: 1px solid var(--linie-hell); font-size: 17px; color: rgba(242, 237, 228, .86); }
+
+@keyframes check-rein { from { opacity: 0; transform: translateY(12px); } }
+@keyframes balken-schritt { from { transform: scaleX(var(--von, 0)); } }
+@keyframes ring-fuellen { from { --wert: 0; } }
+
+/* ─── Tablet und schmaler ─── */
+@media (max-width: 1024px) {
+  .abschnitt-check { grid-template-columns: minmax(0, 1fr); }
+  .abschnitt-check .abschnitt-kopf { position: static; }
+  .check { min-height: 0; }
+}
+
+@media (max-width: 640px) {
+  .buchen {
+    width: 100%; margin: auto 0 0; border-radius: 24px 24px 0 0;
+    max-height: calc(100dvh - 16px);
+  }
+  .buchen[open] { animation-name: buchen-hoch; }
+  .buchen-kopf { padding: 12px 12px 12px 20px; }
+  .buchen-titel { font-size: 11px; }
+  .buchen-schritt-wort { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+  .buchen-balken { margin: 0 20px; }
+  .buchen-inhalt { padding: 24px 20px 22px; }
+  .buchen-fuss { padding: 12px 20px calc(14px + env(safe-area-inset-bottom)); }
+  .felder { grid-template-columns: minmax(0, 1fr); }
+  .buchen-tage { gap: 6px; }
+  .wahl-tag span { min-height: 60px; padding: 8px 2px; font-size: 16px; }
+  .wahl-raster { gap: 6px; }
+  .wahl-raster span { padding: 10px 4px; font-size: 15px; }
+  .wahl-raster small { font-size: 10.5px; }
+
+  .check { padding: 22px 18px 26px; border-radius: 24px; }
+  .check-frage { margin: 26px 0 20px; }
+  .check-antwort { min-height: 60px; padding: 12px 14px; font-size: 16px; }
+  .check-ergebnis-kopf { grid-template-columns: minmax(0, 1fr); gap: 20px; justify-items: start; }
+  .check-wert { width: 140px; }
+  .check-zahl { font-size: 56px; }
+  .check-teile { grid-template-columns: minmax(0, 1fr); }
+  .check-hebel li { padding: 16px 16px 16px 52px; }
+  .check-hebel li::before { left: 16px; font-size: 21px; }
+  .kontakt-aktionen { flex-direction: column; gap: 18px; }
+}

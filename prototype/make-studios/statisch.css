@@ -1,0 +1,82 @@
+/* ─── MAKE Studios · ruhige Seite ──────────────────────────────────────────────────────────────────────
+   Gilt ohne JavaScript, bei „Bewegung reduzieren“ und wenn der Film ausfällt (studio.js setzt dann media="all").
+   Aus der Bühne wird eine normale Seite: alles untereinander, nichts bewegt sich, alle Inhalte sichtbar.
+   Aufnahmen laufen hier nicht (seite.js): überall steht das Poster.
+   !important, weil studio.css die Bühne absolut anlegt. Hier gewinnt immer die ruhige Fassung. */
+
+*, *::before, *::after { animation: none !important; transition: none !important; }
+
+.lader, .anzeige, .chrom, .vorhang, .karte-0 .karte-vorne, .schirm-striche, .referenz-lauf, .ergebnis::before { display: none !important; }
+
+.film { height: auto !important; }
+.buehne { position: static !important; height: auto !important; overflow: visible !important; }
+
+.szene, .laufband, .karussell-rahmen, .karussell, .blende, .streifen, .streifen-spur, .kennzahlen, .szene-analyse,
+.ergebnis, .ergebnis-kopf, .ergebnis-raum, .ergebnis-text, .werk, .werk-text {
+  position: relative !important; inset: auto !important; left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
+  width: auto !important; opacity: 1 !important; visibility: visible !important;
+  transform: none !important; translate: none !important; clip-path: none !important;
+}
+
+/* Einstieg: Text links, daneben der Bildschirm als stehendes Bild */
+.szene-held {
+  display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: center; justify-items: start;
+  gap: 0 clamp(24px, 4vw, 72px); max-width: none !important; padding: calc(var(--kopf-h) + 56px) var(--rand) 64px !important;
+}
+.szene-held > * { grid-column: 1; }
+.held-bild { display: block !important; grid-column: 2; grid-row: 1 / span 4; align-self: center; justify-self: stretch; }
+.held-bild .geraet-fenster { rotate: 1.5deg; box-shadow: 0 60px 100px -50px rgba(13, 12, 11, .6), 0 0 0 1px rgba(13, 12, 11, .5); }
+.szene-branchen { padding: 72px var(--rand) 32px !important; pointer-events: auto !important; }
+
+.karussell-rahmen { padding: 0 var(--rand) 88px !important; perspective: none !important; }
+.karussell {
+  display: grid !important; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 16px;
+  height: auto !important; transform-style: flat !important;
+}
+.karte {
+  position: relative !important; left: auto !important; top: auto !important; width: auto !important; height: auto !important;
+  aspect-ratio: 1 / 1.36; transform: none !important; opacity: 1 !important; visibility: visible !important; transform-style: flat !important; z-index: auto !important;
+}
+.karte-innen, .karte-0 .karte-hinten { transform: none !important; transform-style: flat !important; }
+
+.blende { padding: 96px var(--rand) !important; }
+.kennzahlen { margin-top: 56px; }
+.kennzahl-handy .geraet-handy { width: min(250px, 58vw) !important; height: auto !important; }
+.kennzahl-handy .geraet-bild { height: auto !important; aspect-ratio: 540 / 1168 !important; }
+.kennzahl, .kennzahl-handy { opacity: 1 !important; translate: none !important; transform: none !important; }
+.kennzahlen { top: auto !important; bottom: auto !important; }
+
+.streifen { background: var(--tinte); padding: 0 var(--rand) 96px !important; }
+.streifen-spur { display: grid !important; gap: 16px; padding: 0 !important; width: auto !important; will-change: auto !important; }
+.tafel { width: auto !important; height: auto !important; }
+.attrappe { translate: none !important; }
+
+/* Ergebnis: die fünf Seiten als ruhige Reihe */
+.ergebnis { display: block !important; overflow: visible !important; background: var(--tinte); padding: 8px var(--rand) 104px !important; }
+.ergebnis-kopf { max-width: none !important; margin-bottom: 48px; }
+.ergebnis-raum { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 56px 40px; perspective: none !important; padding-left: 3%; }
+.werk { z-index: auto !important; }
+.ergebnis-text { margin-top: 64px; }
+.werk-texte { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 28px 24px; height: auto !important; }
+.werk-nr { font-size: 44px !important; }
+.werk-name { font-size: 26px !important; }
+.ergebnis-link { margin-top: 28px !important; }
+
+/* Beispielseiten: Vorschau steht still */
+.referenz-bild { translate: none !important; }
+
+.kopf { background: rgba(242, 237, 228, .86); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+html.dunkel .kopf { background: rgba(13, 12, 11, .8); }
+
+@media (max-width: 900px) {
+  .szene-held { grid-template-columns: minmax(0, 1fr); padding-top: calc(var(--kopf-h) + 32px) !important; }
+  .held-bild { grid-column: 1; grid-row: auto; margin-top: 44px; }
+}
+@media (max-width: 640px) {
+  .kennzahlen { align-items: start; }
+  .kennzahl-handy .geraet-handy { width: 100% !important; }
+  .tafel-unter, .tafel-liste { display: block !important; }
+  .tafel-start .tafel-text { display: block !important; }
+  .handy { transform: rotate(-4deg) scale(.86) !important; transform-origin: top center; }
+  .ergebnis-raum { padding-left: 0; gap: 72px 0; }
+}
