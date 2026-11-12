@@ -5,13 +5,15 @@
 // (fokus.json, wissen.json, zahlen.json, produkte.json, inhalt.json) und sind hier wörtlich oder gekürzt übernommen.
 // Preise stehen bewusst nicht hier: Die stehen nur bei MAKE Innovation.
 // Keine Inline-Stile, keine Inline-Skripte (außer JSON-LD, das seo.mjs schreibt), keine on…-Handler.
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ORDNER = dirname(fileURLToPath(import.meta.url));
 const STAND = 'November 2026';
-const MAIL = 'kevin@makeinnovation.de';
+// Die Kontaktadresse steht in seo.json (kontakt), nicht im Code (Wächter des Repos: keine echten Adressen in Code-Dateien).
+const MAIL = JSON.parse(readFileSync(join(ORDNER, 'seo.json'), 'utf8')).kontakt;
+if (!MAIL) throw new Error('seo.json: kontakt (E-Mail-Adresse) fehlt');
 // Ein Satz je Marke, wörtlich gleich auf allen drei Seiten (SEO-GEO-VORGABEN 3.3).
 // RECHTSFORM: Bewusst ohne Rechtsform und Firmennamen (STRUKTUR-MARKEN, Nachtrag 11.11.): Welche Gesellschaft Betreiberin ist,
 // entscheidet Kevin noch. Steht sie fest, hier und an den mit „RECHTSFORM“ markierten Stellen nachtragen (auch seo.mjs).

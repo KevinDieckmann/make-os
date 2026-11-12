@@ -6,7 +6,9 @@
 (() => {
   'use strict';
   const D = document, W = window, H = D.documentElement;
-  const ZIEL = 'kevin@makeinnovation.de';
+  // Die Kontaktadresse steht nur im HTML (erster mailto-Verweis der Seite), nie im Skript: eine Stelle je Seite, und der
+  // Wächter des Repos lässt keine echten Adressen in Code-Dateien zu.
+  const ZIEL = (() => { const a = D.querySelector('a[href^="mailto:"]'); return a ? decodeURIComponent(a.getAttribute('href').slice(7).split('?')[0]) : ''; })();
 
   const THEMEN = { systemvertrieb: 'Digitaler Systemvertrieb', zeit: 'Vertrieb auf Zeit', workshop: 'Tagesworkshop Vertrieb', netzwerk: 'Netzwerken und Events', offen: 'Noch offen' };
 
