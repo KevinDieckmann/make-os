@@ -91,6 +91,17 @@ Nach dem Film fiel die Seite in ein gleichförmiges Textdokument. Geändert wurd
 - **Film ohne Skript:** statt leerer dunkler Fläche steht das Endbild (`css/film.css`, letzter Block).
 - **Erklärvideos:** Die dunkle Fläche der Bereiche (Startseite und Bereichsseiten) ist die vorbereitete Stelle. Sie sieht ohne Video vollständig aus; ein Video im Format 16:10 kann sie später übernehmen. Leere Player gibt es nicht.
 
+## Markenfamilie 11.11.2026: MAKE Innovation ist das Dach
+Kevin: „Dach plus Innovation“. Verbindlich sind `STRUKTUR-MARKEN.md` und `SEO-GEO-VORGABEN.md` (Arbeitsordner der Sitzung).
+- **Eine Stelle:** `inhalt/fokus.json › familie` hält Adressen, Standardsätze, Anrisse und die Texte der Preisblätter. Bis zu den echten Domains stehen dort die Vorschau-Adressen (MAKE Studios `http://localhost:3022/`, MAKE Revenue `http://localhost:3023/`). Der Prüfer bricht ab, wenn bei `seo.oeffentlich = true` noch `localhost` in einer Datei steht.
+- **Startseite:** Film · Einstieg · „Eine Firma, drei Marken.“ (zwei Karten in Farbe und mit Zeichen der Marke, je ein Link zur Marke und zum Preisblatt) · Innovation als eigener Abschnitt · Situationen · Zahlen · Warum wir · Fragen · Events · Wissen · Schlussakt.
+- **Sichtbarkeit und Vertrieb** sind beim Dach ein knappes Preis- und Leistungsblatt (Preise, Vergleich, Zusatzoptionen bzw. Rechner und Ablauf, Wissen, Fragen) mit der Karte der Marke im Kopf. Problem, Beispiele und Ablauf stehen bei der Marke. Adressen, Angebotsseiten und Preise sind unverändert. Innovation behält die volle Seite.
+- **Verweise:** Karte im Familien-Abschnitt und im Kopf der Preisblätter, ein Hinweis auf jeder Angebots- und Gruppenseite von Sichtbarkeit und Vertrieb, eine Zeile bei Events, im Fuß „Marken: MAKE Studios · MAKE Revenue“. Immer sichtbare Links mit dem Markennamen.
+- **Strukturierte Daten:** Organisation als `Organization` + `ProfessionalService` mit `brand` und `subOrganization` für beide Marken, `WebSite` mit `alternateName`. `llms.txt` hat den Abschnitt „Die Markenfamilie“.
+- **Prüfer:** „MAKE“ ist erlaubt als MAKE Innovation, MAKE Studios, MAKE Revenue. Startseite und Preisblätter müssen zur Marke verweisen.
+- **Zeichen:** MAKE Studios trägt die Irisblende aus deren `zeichen.svg`. MAKE Revenue trägt den Kreis mit der Stufenlinie aus deren `zeichen.svg` (Minze auf dunklem Grund, Tannengrün auf Papier). Beide Zeichen zeichnet `grafiken.mjs › markenZeichen`, die Farben stehen in `css/fokus.css › Markenfamilie`.
+- **Erste Szene des Films:** Titel und Satz stehen ab dem ersten Bild da (ohne Skript, ohne Einblenden aus Deckkraft 0), damit sie als größtes sichtbares Element zählen. Die übrigen Szenen laufen wie bisher.
+
 ## Offen für Kevin
 - Ratgeber lesen: Sie stehen unter Kevins Namen.
 - Porträtfotos von Kevin und Malin würden „Über uns“, den Abend und die Autorenzeile stärken; bis dahin stehen Kürzel.

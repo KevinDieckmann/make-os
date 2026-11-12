@@ -1476,3 +1476,59 @@ html.menue-offen { overflow: hidden; }
       damit es Zeichen und Wortmarke nicht verdeckt (Zeichen reicht bis etwa 84 % der Bildbreite). ── */
 .geraet.handy { right: -6%; width: 20%; border-width: 4px; border-radius: 18px; }
 @media (max-width: 900px) { .geraet.handy { right: -3%; width: 18%; border-width: 3px; border-radius: 12px; } }
+
+/* ══ Markenfamilie (11.11.2026, Kevin: „Dach plus Innovation“) ═══════════════════════════════════════════════════════════════════
+   MAKE Innovation ist das Dach, Sichtbarkeit lebt bei MAKE Studios, Vertrieb bei MAKE Revenue. Die Karten tragen Farbe und Zeichen der
+   Marke (Werte wie auf deren Seiten: MAKE Studios Signal-Orange auf fast Schwarz, MAKE Revenue Grün auf dunklem Grün). Nur hier stehen
+   diese Farben; alles andere bleibt in der Palette des Dachs. */
+.m-studios { --marke: #FF5A1F; --marke-grund: #0D0C0B; --marke-hell: #F2EDE4; }
+.m-revenue { --marke: #4FD1A1; --marke-grund: #0B1512; --marke-hell: #EFF1EA; --marke-papier: #0B6B52; } /* Minze auf dunklem Grund, Tannengrün auf Papier */
+.marken { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rinne); }
+.marke-karte { position: relative; isolation: isolate; display: flex; flex-direction: column; min-width: 0; overflow: hidden; padding: clamp(26px, 3vw, 44px); border-radius: 16px;
+  background: var(--marke-grund); color: rgba(242, 243, 243, .78); color-scheme: dark; box-shadow: 0 34px 64px -40px rgba(17, 19, 22, .6); }
+.marke-karte::before { content: ""; position: absolute; z-index: -1; right: -22%; top: -34%; width: 78%; aspect-ratio: 1; border-radius: 50%; background: var(--marke); opacity: .2; filter: blur(70px); }
+.marke-kopf { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "zeichen name" "zeichen thema"; column-gap: 16px; align-items: center; }
+.marke-zeichen { grid-area: zeichen; width: 56px; height: 56px; flex: none; }
+.mz-grund { fill: var(--marke-grund); }
+.mz-farbe { fill: var(--marke); }
+.marke-karte .mz-grund { fill: rgba(242, 243, 243, .07); }
+.marke-name { grid-area: name; align-self: end; font-size: 1.12rem; font-weight: 700; letter-spacing: .14em; line-height: 1.3; text-transform: uppercase; color: var(--marke-hell); }
+.marke-kopf .etikett { grid-area: thema; align-self: start; color: var(--marke); }
+.marke-paar { margin-top: clamp(36px, 5vw, 76px); font-size: clamp(2.2rem, 4.2vw, 3.7rem); letter-spacing: -.045em; line-height: .98; color: var(--marke-hell); }
+.marke-anriss { margin-top: 20px; max-width: 34rem; font-size: 1.08rem; line-height: 1.6; }
+.marke-themen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.marke-themen li { padding: 6px 14px; border: 1px solid rgba(242, 243, 243, .26); border-radius: 999px; font-size: .92rem; line-height: 1.4; color: var(--marke-hell); }
+.marke-karte .knoepfe { margin-top: auto; padding-top: 32px; }
+.marke-karte .knopf { background: var(--marke); border-color: var(--marke); color: var(--marke-grund); }
+.marke-karte .knopf .pfeil { color: var(--marke-grund); }
+.marke-karte .knopf:hover { background: var(--marke-hell); border-color: var(--marke-hell); }
+.marke-karte .knopf:not(.zweit):hover .pfeil { filter: none; }
+.marke-karte .knopf:not(.zweit)::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .3) 50%, transparent); }
+.marke-karte .textlink { color: var(--marke-hell); }
+.marke-karte .textlink span { text-decoration-color: var(--marke); }
+.marke-karte :focus-visible { outline-color: var(--marke-hell); }
+@media (max-width: 900px) { .marken { grid-template-columns: minmax(0, 1fr); } }
+
+/* Preis- und Leistungsblatt (Sichtbarkeit, Vertrieb): links die Aussage, rechts die Marke */
+.blatt-held .held-raster { grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); }
+.blatt-held .marke-paar { margin-top: clamp(24px, 3vw, 40px); font-size: clamp(1.8rem, 3vw, 2.6rem); }
+.blatt-held + .blick-band .kurz-gesagt { max-width: 60rem; }
+@media (max-width: 900px) { .blatt-held .held-raster { grid-template-columns: minmax(0, 1fr); } }
+
+/* Hinweis auf Angebots- und Gruppenseiten */
+.abschnitt.schmal { padding-bottom: clamp(48px, 5vw, 72px); }
+.marken-hinweis { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 18px 22px; border: 1px solid var(--haar); border-left: 3px solid var(--marke-papier, var(--marke)); border-radius: 0 8px 8px 0; background: var(--papier-hell); color: var(--tinte-text); }
+.marken-hinweis .marke-zeichen { width: 40px; height: 40px; }
+.marken-hinweis > span { flex: 1 1 22rem; }
+.marken-hinweis b { color: var(--tinte); font-weight: 600; }
+.familie-zeile { margin-top: 18px; max-width: 36rem; font-size: .98rem; color: var(--tinte-text); }
+.fuss-familie { margin-top: 14px; }
+.fuss-familie a { display: inline-flex; align-items: center; min-height: 44px; color: var(--hell); text-decoration: underline; text-decoration-color: var(--haar-dunkel); text-underline-offset: .25em; }
+.fuss-familie a:hover { text-decoration-color: var(--akzent); }
+
+/* Innovation als eigener Abschnitt der Startseite */
+.leistung.solo .leistung-kopf > .etikett:first-child { margin-top: 0; }
+.leistung.solo .problem { font-size: var(--t-lead); line-height: 1.5; color: var(--tinte); }
+.leistung.solo .knoepfe { margin-top: 28px; }
+.leistung.solo .leistung-kopf .textlink { margin-top: 0; }
+.leistung.solo + .satz-unter { margin-top: clamp(40px, 5vw, 64px); }

@@ -18,7 +18,7 @@ import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buehne, videoAbschnitt, BILD_JE_GRUPPE } from './problembilder.mjs';
-import { bereichGrafik, teamGrafik, tuerZeichen, belegBahn } from './grafiken.mjs';
+import { bereichGrafik, teamGrafik, tuerZeichen, belegBahn, markenZeichen } from './grafiken.mjs';
 
 export const ORDNER = dirname(fileURLToPath(import.meta.url));
 const REPO = join(ORDNER, '..', '..');
@@ -181,6 +181,18 @@ export const bildName = (pfad) => (pfad === 'index.html' ? 'start' : pfad.replac
 export function seitenBauen(q = quellen()) {
   const { inhalt, seite, blaetter, fokus: F, wissen: W, stufen, katalog, zahlen: Z, vorlagen: VL } = q;
   const K = F.kostenlos;
+  // ── Markenfamilie (Kevin 11.11.2026, „Dach plus Innovation“): MAKE Innovation ist das Dach und behält Innovation; Sichtbarkeit lebt bei
+  // MAKE Studios, Vertrieb bei MAKE Revenue. Adressen und Standardsätze stehen NUR in fokus.json › familie. Verweise sind sichtbare Links
+  // mit dem Markennamen (eigene Seiten, kein nofollow). Preise bleiben beim Dach.
+  const FAM = F.familie;
+  const markeVon = (k) => FAM.marken.find((m) => m.bereich === k) ?? null;
+  const markenBasis = (m) => m.url.replace(/\/$/, '');
+  const markenLink = (m, text = `Zu ${m.name}`, klasse = 'knopf') => `<a class="${klasse} zur-marke" href="${e(m.url)}">${klasse === 'knopf' ? e(text) : `<span>${e(text)}</span>`} ${PFEIL}</a>`;
+  /** Karte einer Marke: Zeichen und Farbe der Marke, ein eigener Anriss, ihre Themen, der Link zur Marke und (auf der Startseite) zum Preisblatt. */
+  const markenKarte = (m, { stufe = 'h3', id = '', preise = true, ort = 'karte' } = {}) => `<article class="marke-karte m-${m.id} erscheint"${id ? ` id="${id}"` : ''}><header class="marke-kopf">${markenZeichen(m.id, `${m.id}-${ort}`)}<p class="marke-name">${e(m.name)}</p><p class="etikett">${e(m.thema)}</p></header><${stufe} class="marke-paar">${e(F.bereiche[m.bereich].paar)}</${stufe}><p class="marke-anriss">${t(m.anriss)}</p><ul class="marke-themen" aria-label="Themen von ${e(m.name)}">${m.themen.map((x) => `<li>${e(x)}</li>`).join('')}</ul><div class="knoepfe">${markenLink(m)}${preise ? `<a class="textlink" href="/${m.bereich}/"><span>${e(m.preise_link)}</span> ${PFEIL}</a>` : ''}</div></article>`;
+  /** Hinweis auf Angebots- und Gruppenseiten: Das Thema hat sein Zuhause bei der Marke, Preis und Umfang stehen hier. */
+  const markenHinweis = (k) => { const m = markeVon(k); return m ? `<section class="abschnitt schmal" aria-label="${e(m.name)}"><div class="w"><p class="marken-hinweis m-${m.id} erscheint">${markenZeichen(m.id, `${m.id}-hinweis`)}<span>${e(F.bereiche[k].name)} ist bei ${e(F.marke.name)} die Marke <b>${e(m.name)}</b>. ${e(m.dort)} zeigt ${e(m.name)}, Preis und Umfang stehen hier.</span>${markenLink(m, `Zu ${m.name}`, 'textlink')}</p></div></section>` : ''; };
+  const familieZeile = () => `<p class="familie-zeile">${e(FAM.events_hinweis)} <a class="unterstrichen" href="${e(markeVon('vertrieb').url)}">Zu ${e(markeVon('vertrieb').name)}</a></p>`;
   // Vorlagen mit Dateien (30.10.: PDF mit Anleitung und Beispiel, dazu teils eine Tabelle für Excel) — ohne gebaute Datei nicht auf der Seite.
   const VORL = vorlagenListe(q);
   // Bausteine (31.10.) — früh, weil Kostenlos und Preise auf sie verweisen; das „Regal“ zeigt Titelseiten aufgefächert.
@@ -390,7 +402,7 @@ ${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Ode
   const fuss = () => `<footer class="fuss"><div class="w">
 <div class="fuss-raster">
 <div class="fuss-marke"><a class="marke" href="/" aria-label="MAKE Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a><p class="claim glanz erscheint">${e(F.marke.claim)}</p>
-<p><a ${anfrageAttr('kontakt', 'Anfrage')}>Nachricht schreiben</a><br><a href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a><br>${seite.kontakt.adresse.map(t).join('<br>')}</p></div>
+<p><a ${anfrageAttr('kontakt', 'Anfrage')}>Nachricht schreiben</a><br><a href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a><br>${seite.kontakt.adresse.map(t).join('<br>')}</p><p class="fuss-familie">Marken: ${FAM.marken.map((m) => `<a href="${e(m.url)}">${e(m.name)}</a>`).join(' · ')}</p></div>
 ${fussSpalte('Leistungen', [...BEREICHE.map((b) => [`/${b}/`, F.bereiche[b].name]), ['/innovations-check/', 'Innovations-Check'], ['/preise/', 'Preise'], ...(BS_LISTE.length ? [['/bausteine/', 'Bausteine']] : [])])}
 ${fussSpalte('Kostenlos', [['/kostenlos/#checks', 'Checks'], ['/kostenlos/#ratgeber', 'Ratgeber'], ...(Z ? [['/kostenlos/zahlen/', 'Zahlen']] : []), ...(VL ? [['/kostenlos/#vorlagen', 'Vorlagen']] : []), ['/fragen/', 'Häufige Fragen'], ['/begriffe/', 'Begriffe']])}
 ${fussSpalte('MAKE Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über uns'], ['/kontakt/', 'Kontakt'], ['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
@@ -408,8 +420,8 @@ ${fussSpalte('MAKE Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über 
   const personId = (p) => `${BASIS}/ueber-uns/#${personAnker(p)}`;
   const [strasse, ort] = seite.kontakt.adresse;
   const organisation = {
-    '@type': 'ProfessionalService', '@id': ORG, name: F.marke.name, legalName: anbieter.name, url: `${BASIS}/`,
-    description: klar(F.marke.beschreibung), slogan: F.marke.claim,
+    '@type': ['Organization', 'ProfessionalService'], '@id': ORG, name: F.marke.name, legalName: anbieter.name, url: `${BASIS}/`,
+    description: klar(FAM.dach_satz), slogan: F.marke.claim,
     logo: { '@type': 'ImageObject', '@id': `${BASIS}/#logo`, url: absolut('/assets/bild/logo.png'), width: 512, height: 512, caption: F.marke.name },
     image: absolut('/assets/bild/og/start.png'),
     email: seite.kontakt.mail,
@@ -418,10 +430,13 @@ ${fussSpalte('MAKE Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über 
     knowsAbout: SEO.wissen_gebiete,
     founder: F.team.map((p) => ({ '@id': personId(p) })),
     contactPoint: { '@type': 'ContactPoint', contactType: 'Anfragen', email: seite.kontakt.mail, availableLanguage: ['de'] },
+    // Die Marken der Familie (schema.org brand und subOrganization; Google nennt beides in seiner Doku nicht: einheitliche Beschreibung, kein Rangversprechen).
+    brand: FAM.marken.map((m) => ({ '@type': 'Brand', '@id': `${markenBasis(m)}/#marke`, name: m.name, url: m.url, description: klar(m.satz) })),
+    subOrganization: FAM.marken.map((m) => ({ '@type': 'Organization', '@id': `${markenBasis(m)}/#organisation`, name: m.name, url: m.url })),
     ...(SEO.same_as.length ? { sameAs: SEO.same_as } : {}),
   };
   const personen = F.team.map((p) => ({ '@type': 'Person', '@id': personId(p), name: p.name, jobTitle: p.rolle, description: klar(p.text), worksFor: { '@id': ORG }, url: personId(p) }));
-  const webseite = { '@type': 'WebSite', '@id': SITE, url: `${BASIS}/`, name: F.marke.name, description: klar(F.marke.beschreibung), inLanguage: 'de-DE', publisher: { '@id': ORG } };
+  const webseite = { '@type': 'WebSite', '@id': SITE, url: `${BASIS}/`, name: F.marke.name, alternateName: [F.domain], description: klar(F.marke.beschreibung), inLanguage: 'de-DE', publisher: { '@id': ORG } };
   /** Preis eines Angebots als Angebot nach schema.org (netto, Euro, monatlich wo „pro Monat“). */
   const angebotDaten = (a) => {
     const url = absolut(produktPfad(a));
@@ -477,7 +492,6 @@ ${suche}<meta name="theme-color" content="${film ? '#0B0C0F' : '#F6F4F0'}">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/assets/bild/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="preload" href="/assets/schriften/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/schriften/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/fokus.css?v=${stempel('css/fokus.css')}">
 ${film ? `<link rel="stylesheet" href="/css/film.css?v=${stempel('css/film.css')}">\n` : ''}<script src="/js/frueh.js?v=${stempel('js/frueh.js')}"></script>
@@ -680,6 +694,20 @@ ${block('durchbruch', fl.durchbruch)}
 <nav class="tueren erscheint" aria-label="Ihr Anliegen">${F.tueren.map((d) => `<a href="${d.pfad ?? `#${d.id}`}">${tuerZeichen(d.id)}<span class="nr">${e(d.etikett)}</span><b>${e(d.titel)}</b><span class="index-satz">${t(d.text)}</span>${PFEIL}</a>`).join('')}</nav>
 </div></section>
 
+<section class="abschnitt" id="familie" aria-labelledby="familie-titel"><div class="w">
+${abKopf({ marke: FAM.marke, h2: FAM.titel, lead: FAM.lead, id: 'familie-titel' })}
+<div class="marken">${FAM.marken.map((m) => markenKarte(m, { id: `bereich-${m.bereich}` })).join('\n')}</div>
+</div></section>
+
+<section class="abschnitt" id="bereich-innovation" aria-labelledby="innovation-titel"><div class="w">
+${abKopf({ marke: FAM.innovation_marke, h2: B.innovation.paar, lead: B.innovation.satz, id: 'innovation-titel' })}
+<div class="leistung solo">
+<div class="leistung-kopf erscheint"><p class="etikett">Woran es oft hakt</p><p class="problem">${t(B.innovation.problem)}</p><div class="knoepfe">${checkKnopf('start_innovation')}${textlink('/innovation/', `Mehr zu ${B.innovation.name}`)}</div></div>
+<div class="leistung-weg">${bereichGrafik('innovation')}<p class="etikett erscheint">Womit anfangen</p><ul class="wl erscheint">${lagenVon('innovation').map(wegZeile).join('')}</ul></div>
+</div>
+<p class="satz-unter erscheint">Nichts dabei? ${textlink(erstLink(), 'Erzählen Sie uns im Erstgespräch, worum es geht')}</p>
+</div></section>
+
 <section class="abschnitt" id="bekannt" aria-labelledby="bekannt-titel"><div class="w">
 ${abKopf({ marke: 'Ihr Alltag', h2: F.bekannt.titel, lead: F.bekannt.lead, id: 'bekannt-titel' })}
 ${(() => {
@@ -700,12 +728,6 @@ ${(() => {
     return liste.length ? belegBand(liste, { h2: F.bekannt.belege_titel ?? 'Was Studien zeigen' }) : '';
   })()}
 
-<section class="abschnitt" id="was-wir-tun" aria-labelledby="leistungen-titel"><div class="w">
-${abKopf({ marke: 'Was wir tun', h2: 'Drei Bereiche.', ruhig: 'Und in jedem arbeiten wir selbst mit.', lead: 'Die drei greifen ineinander. Was die Sichtbarkeit an Anfragen bringt, verfolgt der Vertrieb weiter, und KI nimmt Ihrem Team Routinearbeit ab. Bei unseren Events lernen Sie dazu die passenden Leute kennen.', id: 'leistungen-titel' })}
-${BEREICHE.map(leistung).join('\n')}
-<p class="satz-unter erscheint">Nichts dabei? ${textlink(erstLink(), 'Erzählen Sie uns im Erstgespräch, worum es geht')}</p>
-</div></section>
-
 <section class="abschnitt" id="warum-wir" aria-labelledby="warum-titel"><div class="w">
 ${abKopf({ marke: 'Warum wir', h2: 'Wir sitzen mit in Ihrem Team.', lead: F.warum_lead ?? 'Vier Unterschiede, an denen Sie uns messen können.', id: 'warum-titel' })}
 <div class="warum">${teamGrafik()}
@@ -717,7 +739,7 @@ ${fragen(F.einwaende.filter((x) => /Wer arbeitet|Was kostet|Verkaufsgespräch/.t
 <section class="abschnitt band sand" id="events" aria-labelledby="events-titel"><div class="w">
 <div class="events-buehne">
 <div class="events-text erscheint">${vorzeile(F.events.titel)}<h2 id="events-titel">${e(F.events.start_ruhig)}</h2><p class="lead">${t(F.events.start_text ?? F.events.text)}</p>
-<div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten')}${textlink('/events/', 'Formate und Termine')}</div><p class="leise klein-text" data-mk="termin-naechster" hidden></p></div>
+<div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten')}${textlink('/events/', 'Formate und Termine')}</div><p class="leise klein-text" data-mk="termin-naechster" hidden></p>${familieZeile()}</div>
 <div class="events-bild">${tafel()}</div>
 </div>
 </div></section>
@@ -784,21 +806,41 @@ ${raster(b.felder, 4)}
 
     const liste = produkteIn(k);
     const fuerWen = F.fuer_wen.filter((w) => new RegExp(b.name).test(w.einstieg)).map((w) => w.titel).join(', ');
+    const m = markeVon(k);
+    const blickZeilen = [['Für wen', fuerWen], ['Einstieg', { vertrieb: `Erstgespräch, kostenlos, oder der Tagesworkshop ab ${erster(angebot('tagesworkshop'))}`, sichtbarkeit: 'Erstgespräch, kostenlos, oder direkt die Positionierung S', innovation: 'Innovations-Check, kostenlos, rund 10 Minuten' }[k]], ['Preise', k === 'innovation' ? 'Check kostenlos, Umsetzungsprojekte zum Festpreis nach Absprache' : 'netto, ab-Preis bei jedem Angebot']].filter(([, v]) => v).map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('');
     neu(`${k}/index.html`, {
       seo: k,
       bildVorzeile: `${b.nr} · ${b.name}`,
-      bildTitel: b.held.titel,
+      bildTitel: m ? m.blatt.titel : b.held.titel,
       aktiv: k,
       seitenTyp: 'CollectionPage',
       schema: [{ ...itemListe(`Angebote im Bereich ${b.name}`, [...(k === 'innovation' ? [['/innovations-check/', 'Innovations-Check']] : []), ...liste.map((a) => [produktPfad(a), a.name])]), '@id': `${absolut(`/${k}/`)}#angebote` }],
-      main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
+      // Bereiche mit eigener Marke (Sichtbarkeit, Vertrieb) sind beim Dach ein knappes Preis- und Leistungsblatt mit Verweis zur Marke;
+      // Problem, Beispiele und Ablauf stehen dort. Innovation behält die volle Seite.
+      main: m ? `<section class="held blatt-held" aria-labelledby="held-titel"><div class="w held-raster mitte">
+<div class="erscheint">${brotkrumen([[null, b.name]])}${vorzeile(`${b.name} · Preis- und Leistungsblatt`, b.nr)}<h1 id="held-titel" class="glanz">${e(m.blatt.titel)}</h1><p class="lead">${t(m.blatt.text)}</p><div class="knoepfe">${knopf('#angebote', 'Preise ansehen')}${erstKnopf('zweit')}</div></div>
+${markenKarte(m, { stufe: 'h2', preise: false, ort: 'blatt' })}
+</div></section>
+
+<section class="blick-band" aria-label="Kurz gesagt"><div class="w">${kurzGesagt(b.kurz)}
+<dl class="blick erscheint">${blickZeilen}</dl></div></section>
+
+<section class="abschnitt" id="angebote" aria-labelledby="angebote-titel"><div class="w">${abKopf({ marke: 'Preise', h2: m.blatt.angebote_titel, lead: F.angebote_lead[k], id: 'angebote-titel' })}
+${angeboteHtml}
+${netto}</div></section>
+
+${vergleich}
+${k === 'sichtbarkeit' ? eigenes.replace(arbeitsprobe(), '') : eigenes.startsWith('<section class="abschnitt" aria-labelledby="leiter-titel">') ? eigenes.slice(eigenes.indexOf('\n\n') + 2) : eigenes}
+${wissenAbschnitt(artikelZu((a) => a.bereich === k), `Wissen zu ${b.name}`)}
+${fragen(zuschneiden(faqVon(seite.bereiche[k].faq), k))}
+${schlussakt({ quelle: `${k}_ende`, bereich: k })}` : `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, b.name]])}${vorzeile(b.name, b.nr)}<h1 id="held-titel" class="glanz">${e(b.held.titel)}</h1><p class="lead">${t(b.held.text)}</p><div class="knoepfe">${knoepfe}</div></div>
 <aside class="weg-karte erscheint" aria-label="Der Weg"><p class="etikett">Der Weg mit uns</p>${weg(b.weg, { klasse: 'senkrecht' })}</aside>
 </div></section>
 ${videoAbschnitt(VIDEOS[k])}
 
 <section class="blick-band" aria-label="Kurz gesagt"><div class="w"><div class="kurz-buehne"><div class="kurz-text">${kurzGesagt(b.kurz)}
-<dl class="blick erscheint">${[['Für wen', fuerWen], ['Einstieg', { vertrieb: `Erstgespräch, kostenlos, oder der Tagesworkshop ab ${erster(angebot('tagesworkshop'))}`, sichtbarkeit: 'Erstgespräch, kostenlos, oder direkt die Positionierung S', innovation: 'Innovations-Check, kostenlos, rund 10 Minuten' }[k]], ['Preise', k === 'innovation' ? 'Check kostenlos, Umsetzungsprojekte zum Festpreis nach Absprache' : 'netto, ab-Preis bei jedem Angebot']].filter(([, v]) => v).map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl></div>
+<dl class="blick erscheint">${blickZeilen}</dl></div>
 ${bereichGrafik(k)}</div></div></section>
 ${b.beleg ? belegBand([F.belege[b.beleg]], { h2: F.bekannt.belege_titel ?? 'Was Studien zeigen', id: 'beleg-titel' }) : ''}
 
@@ -841,6 +883,7 @@ ${angebotZeilen(g.liste)}${netto}</div></section>
 ${vergleiche.length ? `<section class="abschnitt" aria-labelledby="vergleich-titel"><div class="w">${abKopf({ marke: 'Vergleich', h2: 'Was in welchem Paket steckt', id: 'vergleich-titel' })}
 ${vergleiche.map(vergleichTabelle).join('\n')}${netto}</div></section>` : ''}
 ${fam?.immer?.length ? `<section class="abschnitt" aria-labelledby="immer-titel"><div class="w">${abKopf({ marke: 'Immer dabei', h2: 'In jedem Paket enthalten', id: 'immer-titel' })}<div class="erscheint">${punkte(fam.immer)}</div></div></section>` : ''}
+${markenHinweis(k)}
 ${fam?.fragen?.length ? fragen(fam.fragen.filter((x) => !x.nur).map((x) => ({ f: x.frage, a: x.antwort })), `Fragen zu ${gs.name}`) : ''}
 ${schlussakt({ quelle: `${gs.pfad}_ende`, bereich: k })}`,
       });
@@ -919,6 +962,7 @@ ${blattHtml}
 ${a.id === 'positionierung' ? musterPositionierung() : ''}
 ${a.gruppe === 'Homepage-Pakete' ? arbeitsprobe() : ''}
 ${zusatz.length ? `<section class="abschnitt" aria-labelledby="zusatz-titel"><div class="w">${abKopf({ marke: 'Zusatzoptionen', h2: 'Dazu buchbar', id: 'zusatz-titel' })}<dl class="daten erscheint">${zusatz.map((z) => `<div><dt>${e(z.name)}<span class="leise">${e(z.name === 'Express' && a.id !== 'homepage-landing' ? 'halbe Lieferzeit' : z.leistung)}</span></dt><dd>${e(zusatzPreis(z))}</dd></div>`).join('')}</dl></div></section>` : ''}
+${markenHinweis(k)}
 ${fragen(fragenListe)}
 ${weitere.length ? `<section class="abschnitt" aria-labelledby="weitere-titel"><div class="w">${abKopf({ marke: geschwister.length ? a.gruppe : b.name, h2: geschwister.length ? `Die anderen ${a.gruppe}` : `Weitere Angebote im Bereich ${b.name}`, id: 'weitere-titel' })}
 ${angebotZeilen(weitere)}</div></section>` : ''}
@@ -966,7 +1010,7 @@ ${schlussakt({ quelle: 'check_seite_ende', h2: 'Bereit?', lead: 'Kurz in rund 10
     aktiv: 'events',
     main: `<section class="held sand" aria-labelledby="held-titel"><div class="w held-raster mitte">
 <div class="erscheint">${brotkrumen([[null, 'Events']])}${vorzeile(F.events.titel)}<h1 id="held-titel" class="glanz">${titel(F.events.start_titel[0], F.events.start_titel.slice(1).join('|'))}</h1><p class="lead" data-mk="text:events.einleitung">${t(F.events.held_text ?? F.events.text)}</p>
-<div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten')}</div><p class="leise klein-text">${e(F.events.kosten)} · <span data-mk="termin-naechster">Termine folgen</span></p></div>
+<div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten')}</div><p class="leise klein-text">${e(F.events.kosten)} · <span data-mk="termin-naechster">Termine folgen</span></p>${familieZeile()}</div>
 <div class="events-tafel">${tafel()}<p class="etikett">Formate</p><ul class="felder-liste erscheint">${F.events.formate.map((f) => `<li>${e(f.titel)}</li>`).join('')}</ul></div>
 </div></section>
 
@@ -1563,7 +1607,8 @@ ${schlussakt({ quelle: 'preise_ende' })}`,
   const mdLink = (n, p) => `[${n}](${absolut(p)})`;
   const angebotMd = (a) => `- ${mdLink(a.name, produktPfad(a))}: ${bald(a) ? 'bald, Anfrage schon jetzt möglich, Preis auf Anfrage' : `ab ${erster(a)} netto${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}`}. ${klar(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? '')}${bald(a) ? ' Startet in Kürze.' : ''}`;
   const faktenMd = [...F.fakten, ['Betreiber', `${anbieter.name}, ${anbieter.adresse.map(klar).join(', ')}`], ['Kontakt', seite.kontakt.mail]].map(([k, v]) => `- ${k}: ${klar(v)}`).join('\n');
-  const leistungenMd = BEREICHE.map((k) => `### ${B[k].name}: ${B[k].paar}\n\n${klar(B[k].kurz)}\n\n${k === 'innovation' ? `- ${mdLink('Innovations-Check', '/innovations-check/')}: kostenlos, rund 10 Minuten. ${klar(F.check.text)}\n` : ''}${produkteIn(k).map(angebotMd).join('\n')}`).join('\n\n');
+  const familieMd = `${klar(FAM.dach_satz)}\n\n${FAM.marken.map((m) => `- [${m.name}](${m.url}): ${klar(m.satz)} Thema: ${m.thema}. Dort stehen ${m.dort}; die Preise stehen bei ${F.marke.name}.`).join('\n')}\n- ${F.marke.name}: KI, Abläufe, Daten, Software und der Innovations-Check, dazu die Preise aller Angebote.`;
+  const leistungenMd = BEREICHE.map((k) => `### ${B[k].name}: ${B[k].paar}\n\n${markeVon(k) ? `Zuhause des Themas ist die Marke [${markeVon(k).name}](${markeVon(k).url}). Hier steht das Preis- und Leistungsblatt.\n\n` : ''}${klar(B[k].kurz)}\n\n${k === 'innovation' ? `- ${mdLink('Innovations-Check', '/innovations-check/')}: kostenlos, rund 10 Minuten. ${klar(F.check.text)}\n` : ''}${produkteIn(k).map(angebotMd).join('\n')}`).join('\n\n');
   seiten.push({
     pfad: 'llms.txt', datei: true,
     html: `# ${F.marke.name}
@@ -1571,6 +1616,10 @@ ${schlussakt({ quelle: 'preise_ende' })}`,
 > ${klar(F.marke.beschreibung)} Claim: „${F.marke.claim}“
 
 ${klar(F.start.lead)} Alle Preise sind fest, netto und auf der Website veröffentlicht.
+
+## Die Markenfamilie
+
+${familieMd}
 
 ## Auf einen Blick
 
@@ -1651,6 +1700,8 @@ ${W.artikel.map(artikelMd).join('\n\n')}
   // Firmierungen sind Rechtsangaben (Impressum, Verkäufer der Bausteine), keine Marke — der Prüfer lässt genau diese Namen zu.
   seiten.firmierungen = Object.values(seite.anbieter ?? {}).map((a) => a.name).filter((n) => n && !istPlatzhalter(n));
   seiten.domain = F.domain;
+  seiten.oeffentlich = SEO.oeffentlich;
+  seiten.familie = FAM.marken.map((m) => ({ name: m.name, url: e(m.url), seiten: ['index.html', `${m.bereich}/index.html`] }));
   seiten.erlaubteMails = [seite.kontakt.mail, seite.anwendung?.mail].filter(Boolean);
   const cent = (txt) => Math.round(Number(String(txt).replace(/[^\d,]/g, '').replace(',', '.')) * 100);
   seiten.startwerte = {
@@ -1676,7 +1727,7 @@ ${W.artikel.map(artikelMd).join('\n\n')}
 
 // ── Prüfen: Regeln der Seite ─────────────────────────────────────────────────────────────────────────────────────────
 const SPERRWOERTER = [
-  [/\bMAKE\b(?!\s+(Innovation|INNOVATION)\b)/, 'MAKE nur als „MAKE Innovation“'], [/Fokus\x20Innovation|FOKUS\x20INNOVATION|fokusinnovation/i, 'alter Markenname „Fokus\u00a0Innovation“'],
+  [/\bMAKE\b(?!\s+(Innovation|INNOVATION|Studios|Revenue)\b)/, 'MAKE nur als „MAKE Innovation“, „MAKE Studios“ oder „MAKE Revenue“'], [/Fokus\x20Innovation|FOKUS\x20INNOVATION|fokusinnovation/i, 'alter Markenname „Fokus\u00a0Innovation“'],
   [/Make Innovation|MAKE Innovations\b/, 'Schreibweise „MAKE Innovation“'], [/KEMARIS/, 'KEMARIS'], [/Make\.One/i, 'Make.One'], [/\bConnect\b/i, 'Connect (nicht erwähnen)'],
   [/MAKE OS|Make OS/i, 'Name der eigenen Software'], [/\b(führend|revolutionär|disruptiv|einzigartig|Gamechanger)\b/i, 'Superlativ'],
   [/Made in Germany|Deutschland first/i, 'Nationalstolz-Vokabular'], [/Investor(en)?-?(zugang|zugänge|kontakte)/i, 'Investoren nur im Gespräch'],
@@ -1696,6 +1747,10 @@ export function pruefen(seiten) {
     for (const [re, was] of SPERRWOERTER) if (re.test(ohneFirmierung)) fehler.push(`${s.pfad}: ${was}`);
     if (/\bZoe\b/.test(sichtbar) && !/KI-Assistentin/.test(sichtbar)) fehler.push(`${s.pfad}: Zoe ohne Kennzeichnung als KI-Assistentin`);
     if (/\{(preis|ab|zusatz):/.test(s.html)) fehler.push(`${s.pfad}: Platzhalter nicht ersetzt`);
+    // Markenfamilie (11.11.): Ist die Seite für Suchmaschinen freigegeben, darf nirgends mehr eine Vorschau-Adresse stehen (Bots sähen tote Links).
+    if (seiten.oeffentlich && /localhost|127\.0\.0\.1/.test(s.html)) fehler.push(`${s.pfad}: Vorschau-Adresse (localhost) in einer freigegebenen Datei, echte Adressen in fokus.json › familie eintragen`);
+    // Startseite und Preisblätter müssen sichtbar zur Marke verweisen.
+    for (const f of seiten.familie ?? []) if (f.seiten.includes(s.pfad) && !s.html.includes(`href="${f.url}"`)) fehler.push(`${s.pfad}: Verweis zu ${f.name} fehlt`);
     if (s.datei) continue;
     if (/\sstyle="/.test(s.html)) fehler.push(`${s.pfad}: Inline-Stil`);
     if (/<script(?![^>]*\ssrc=)(?![^>]*type="application\/ld\+json")[^>]*>/.test(s.html)) fehler.push(`${s.pfad}: Inline-Skript`);

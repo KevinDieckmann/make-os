@@ -598,12 +598,12 @@
         "beschreibung": "Agentur aus Berlin für Gründer, Start-ups und Unternehmer: Wir machen Ihr Produkt sichtbar und bauen den Vertrieb, der daraus Kunden macht. Mit festen Preisen."
       },
       "sichtbarkeit": {
-        "titel": "Positionierung, Homepage, Video und PR · MAKE Innovation",
-        "beschreibung": "Sichtbarkeit mit festen Preisen: Positionierung ab {ab:positionierung}, Homepages ab {preis:homepage-landing}, Erklärvideos ab {preis:erklaervideo}, PR und Kommunikation ab {ab:pr-kommunikation} im Monat."
+        "titel": "Sichtbarkeit: Pakete und Preise · MAKE Innovation",
+        "beschreibung": "Preisblatt Sichtbarkeit: Positionierung ab {ab:positionierung}, Homepages ab {preis:homepage-landing}, Erklärvideos ab {preis:erklaervideo}, alles netto. Beispiele und Ablauf zeigt MAKE Studios."
       },
       "vertrieb": {
-        "titel": "Vertrieb: Tagesworkshop, Head of Sales und CSO · MAKE Innovation",
-        "beschreibung": "Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt: Tagesworkshop für {preis:tagesworkshop}, Head of Sales und Chief Sales Officer auf Zeit für 6 oder 12 Monate."
+        "titel": "Vertrieb: Leistungen und Preise · MAKE Innovation",
+        "beschreibung": "Preisblatt Vertrieb: Tagesworkshop für {preis:tagesworkshop}, Head of Sales und Chief Sales Officer auf Zeit für 6 oder 12 Monate. Vorgehen und Ablauf zeigt MAKE Revenue."
       },
       "innovation": {
         "titel": "Innovation: KI, Automatisierung, Software · MAKE Innovation",
@@ -859,6 +859,61 @@
     "punkte": [
       "In Woche 8 bekommen Sie eine Zwischenbilanz mit Zahlen und Fahrplan.",
       "Was entsteht, dürfen Sie nach Zahlung weiter nutzen."
+    ]
+  },
+  "familie": {
+    "hinweis": "Markenfamilie (Kevin 11.11.2026): MAKE Innovation ist das Dach und behält den Bereich Innovation. Sichtbarkeit lebt bei MAKE Studios, Vertrieb (mit Netzwerken und Events) bei MAKE Revenue. Preise stehen NUR hier beim Dach. Die Adressen der Marken stehen an genau dieser einen Stelle (url); bis zu den echten Domains sind es die lokalen Vorschau-Adressen. Der Prüfer bricht ab, wenn bei seo.oeffentlich = true noch eine Vorschau-Adresse dasteht. Die Sätze unter satz sind die Standardsätze je Marke (Fuß, strukturierte Daten, llms.txt): wörtlich gleich halten wie auf den Seiten der Marken.",
+    "marke": "Die Familie",
+    "titel": "Eine Firma, drei Marken.",
+    "lead": "MAKE Innovation ist das Dach. Sichtbarkeit hat mit MAKE Studios ein eigenes Zuhause, Vertrieb mit MAKE Revenue. Innovation bleibt hier, und die Preise aller Angebote stehen auf dieser Seite.",
+    "dach_satz": "MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue.",
+    "innovation_marke": "Innovation · hier bei MAKE Innovation",
+    "events_hinweis": "Netzwerken und Events gehören zu MAKE Revenue, unserer Marke für Vertrieb. Einladungen laufen weiter über diese Seite.",
+    "marken": [
+      {
+        "id": "studios",
+        "bereich": "sichtbarkeit",
+        "name": "MAKE Studios",
+        "url": "http://localhost:3022/",
+        "thema": "Sichtbarkeit und Video",
+        "satz": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video.",
+        "anriss": "Sichtbarkeit ist bei uns eine eigene Marke. MAKE Studios baut Websites, pflegt das Google-Profil und macht Fotos und Video, damit Kunden Sie finden und schnell verstehen, was Sie machen. Beispiele und Ablauf sehen Sie dort, die Preise stehen hier.",
+        "themen": [
+          "Websites",
+          "Google-Profil",
+          "Fotos",
+          "Video"
+        ],
+        "dort": "Problem, Beispiele und Ablauf",
+        "preise_link": "Pakete und Preise",
+        "blatt": {
+          "titel": "Sichtbarkeit: Pakete und Preise",
+          "text": "Sichtbarkeit ist bei MAKE Innovation eine eigene Marke: MAKE Studios. Auf dieser Seite stehen alle Pakete mit Preis, Umfang und Lieferzeit. Problem, Beispiele und Ablauf zeigt MAKE Studios.",
+          "angebote_titel": "Alle Pakete mit Preis"
+        }
+      },
+      {
+        "id": "revenue",
+        "bereich": "vertrieb",
+        "name": "MAKE Revenue",
+        "url": "http://localhost:3023/",
+        "thema": "Vertrieb",
+        "satz": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.",
+        "anriss": "Vertrieb ist bei uns eine eigene Marke. MAKE Revenue baut den Vertrieb mit System auf, übernimmt die Vertriebsleitung auf Zeit und bringt Sie bei Events mit den passenden Menschen zusammen. Vorgehen und Ablauf sehen Sie dort, die Preise stehen hier.",
+        "themen": [
+          "Vertrieb mit System",
+          "Vertrieb auf Zeit",
+          "Netzwerken und Events",
+          "Vertriebs-Check"
+        ],
+        "dort": "Vorgehen, Ablauf und Events",
+        "preise_link": "Leistungen und Preise",
+        "blatt": {
+          "titel": "Vertrieb: Leistungen und Preise",
+          "text": "Vertrieb ist bei MAKE Innovation eine eigene Marke: MAKE Revenue. Auf dieser Seite stehen Tagesworkshop, Head of Sales und Chief Sales Officer mit Preis, Umfang und Laufzeit. Vorgehen, Ablauf und Events zeigt MAKE Revenue.",
+          "angebote_titel": "Alle Leistungen mit Preis"
+        }
+      }
     ]
   },
   "arbeitsprobe": {

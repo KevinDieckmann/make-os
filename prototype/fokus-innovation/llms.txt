@@ -4,6 +4,14 @@
 
 Wir machen Ihr Angebot mit Positionierung, Website, Videos und PR bekannt und bauen den Vertrieb, der aus Anfragen Kunden macht. Wo KI Arbeit spart, führen wir sie ein. Jedes Angebot hat einen offenen Preis und einen festen Ablauf, und wir setzen selbst mit um. Alle Preise sind fest, netto und auf der Website veröffentlicht.
 
+## Die Markenfamilie
+
+MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue.
+
+- [MAKE Studios](http://localhost:3022/): MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video. Thema: Sichtbarkeit und Video. Dort stehen Problem, Beispiele und Ablauf; die Preise stehen bei MAKE Innovation.
+- [MAKE Revenue](http://localhost:3023/): MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events. Thema: Vertrieb. Dort stehen Vorgehen, Ablauf und Events; die Preise stehen bei MAKE Innovation.
+- MAKE Innovation: KI, Abläufe, Daten, Software und der Innovations-Check, dazu die Preise aller Angebote.
+
 ## Auf einen Blick
 
 - Was wir sind: Eine Agentur für Sichtbarkeit, Vertrieb und Innovation, die selbst mit umsetzt.
@@ -22,6 +30,8 @@ Wir machen Ihr Angebot mit Positionierung, Website, Videos und PR bekannt und ba
 
 ### Sichtbarkeit: Gesehen werden.
 
+Zuhause des Themas ist die Marke [MAKE Studios](http://localhost:3022/). Hier steht das Preis- und Leistungsblatt.
+
 Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab 1.990 €, Websites ab 2.990 € mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab 1.490 € sowie PR und Kommunikation ab 2.990 € im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.
 
 - [Positionierung S, M, L](https://fokusinnovation.de/sichtbarkeit/positionierung/): ab 1.990 € netto (einmalig, KI-gestützt vorbereitet, Workshop mit Kevin). In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.
@@ -34,6 +44,8 @@ Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab 1.990 €, W
 - [Video Serie](https://fokusinnovation.de/sichtbarkeit/video-serie/): ab 1.990 € netto (pro Monat, mindestens 3 Monate). Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.
 
 ### Vertrieb: Verkauft werden.
+
+Zuhause des Themas ist die Marke [MAKE Revenue](http://localhost:3023/). Hier steht das Preis- und Leistungsblatt.
 
 Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop ab 1.900 € netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.
 
