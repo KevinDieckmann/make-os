@@ -1,5 +1,6 @@
 /* ─── MAKE Revenue · Verhalten der Seite ───────────────────────────────────────────────────────────────
-   Menü für schmale Fenster, Fläche unter dem Kopf, Erscheinen beim Scrollen, die Strecke, die sich füllt.
+   Menü für schmale Fenster, Fläche und Farbe des Kopfes, Erscheinen beim Scrollen, Filmplätze (echte Filme erst in Sicht).
+   Der Film-Einstieg der Startseite steht in film.js, die Stücke zum Anfassen in anfassen.js.
    Alles ist Zugabe: Ohne dieses Skript ist die Seite vollständig lesbar und bedienbar.
    Stile nur über Klassen und CSSOM (style.setProperty): kein Inline-Stil, CSP-tauglich. */
 (() => {
@@ -33,11 +34,16 @@
     if (breit.addEventListener) breit.addEventListener('change', () => { if (breit.matches) zu(); });
   }
 
-  // ═══ Kopf: Fläche, sobald Inhalt darunter durchläuft ═══
-  let gescrollt = null;
+  // ═══ Kopf: Fläche, sobald Inhalt darunter durchläuft; dunkel über dem dunklen Einstieg, danach hell ═══
+  // Jede Seite beginnt mit einem dunklen Einstieg ([data-dunkelkopf]: Film oder Seitenkopf). Solange dessen Unterkante
+  // unter der Mitte des Kopfes liegt, bleibt der Kopf dunkel. Das gilt auch, wenn die Bühne des Films am Ende nach oben wegläuft.
+  const kopf = D.querySelector('.kopf'), dunkelTeil = D.querySelector('[data-dunkelkopf]');
+  let gescrollt = null, hell = null;
   const kopfStand = () => {
     const jetzt = W.scrollY > 12;
     if (jetzt !== gescrollt) { gescrollt = jetzt; H.classList.toggle('gescrollt', jetzt); }
+    const h = !dunkelTeil || dunkelTeil.getBoundingClientRect().bottom <= (kopf ? kopf.offsetHeight : 72) / 2;
+    if (h !== hell) { hell = h; H.classList.toggle('kopf-hell', h); }
   };
 
   // ═══ Erscheinen: einmal, wenn ein Baustein ins Bild kommt ═══
@@ -51,33 +57,51 @@
     erscheinende.forEach((el) => el.classList.add('da'));
   }
 
-  // ═══ Die Strecke: füllt sich mit dem Scrollen, die Halte werden nacheinander wach ═══
-  // Am Rechner läuft die Schiene quer: Sie füllt sich, während der Abschnitt durch das Fenster wandert.
-  // Schmal läuft sie von oben nach unten und folgt der Lesehöhe. Bei „Bewegung reduzieren“ bleibt alles gefüllt.
-  const bahnen = Array.from(D.querySelectorAll('[data-bahn]')).map((bahn) => ({
-    bahn, halte: Array.from(bahn.querySelectorAll('.halt')), p: -1,
-  }));
-  const schmal = mq('(max-width: 999px)');
-  function bahnStand() {
-    if (!bahnen.length) return;
-    const vh = W.innerHeight;
-    bahnen.forEach((z) => {
-      const r = z.bahn.getBoundingClientRect();
-      let p;
-      if (schmal.matches) p = (vh * 0.62 - r.top) / Math.max(1, r.height);
-      else p = (vh * 0.86 - r.top) / (vh * 0.5);
-      p = Math.max(0, Math.min(1, p));
-      if (Math.abs(p - z.p) < 0.002) return;
-      z.p = p;
-      z.bahn.style.setProperty('--p', p.toFixed(3));
-      const gesamt = schmal.matches ? z.bahn.offsetHeight : z.bahn.offsetWidth;
-      z.halte.forEach((h) => {
-        const ort = (schmal.matches ? h.offsetTop : h.offsetLeft) / Math.max(1, gesamt);
-        h.classList.toggle('an', p > 0 && p >= ort + 0.02);
+  // ═══ Filmplätze: echte Filme (Symbolbilder) ═══
+  // Im HTML steht nur das Poster. Der Film wird erst geholt, wenn sein Platz in Sicht kommt: stumm, in Schleife, ohne Bedienleiste,
+  // preload="none". Außer Sicht hält er an. Der Knopf hält ihn dauerhaft an. Bei „Bewegung reduzieren“ oder Datensparen bleibt das Poster.
+  const plaetze = Array.from(D.querySelectorAll('[data-filmplatz]'));
+  const sparen = !!(navigator.connection && navigator.connection.saveData);
+  if (plaetze.length && 'IntersectionObserver' in W && !sparen) {
+    const stand = new Map();
+    const ordnen = (z) => {
+      const soll = z.sicht && !z.halt && !ruhig.matches && !D.hidden;
+      if (soll && !z.video) {
+        const v = D.createElement('video');
+        v.muted = true; v.defaultMuted = true; v.playsInline = true; v.loop = true; v.preload = 'none';
+        v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('aria-hidden', 'true'); v.tabIndex = -1;
+        v.disablePictureInPicture = true;
+        v.addEventListener('playing', () => { if (z.video === v) z.el.classList.add('laeuft'); });
+        v.addEventListener('error', () => { if (z.video === v) { z.kaputt = true; z.el.classList.remove('laeuft'); v.remove(); z.video = null; if (z.knopf) z.knopf.hidden = true; } });
+        v.src = z.el.getAttribute('data-filmplatz');
+        const poster = z.flaeche.querySelector('.filmplatz-poster');
+        if (poster) poster.after(v); else z.flaeche.prepend(v);
+        z.video = v;
+        if (z.knopf) z.knopf.hidden = false;
+      }
+      if (!z.video) return;
+      if (soll) { const p = z.video.play(); if (p && p.catch) p.catch(() => {}); } else z.video.pause();
+      if (ruhig.matches) { z.el.classList.remove('laeuft'); if (z.knopf) z.knopf.hidden = true; } else if (z.knopf) z.knopf.hidden = false;
+    };
+    const waechter = new IntersectionObserver((liste) => {
+      liste.forEach((e) => { const z = stand.get(e.target); if (z && !z.kaputt) { z.sicht = e.isIntersecting; ordnen(z); } });
+    }, { rootMargin: '120px 0px', threshold: 0.01 });
+    plaetze.forEach((el) => {
+      const z = { el, flaeche: el.querySelector('.filmplatz-flaeche'), knopf: el.querySelector('.filmplatz-pause'), video: null, sicht: false, halt: false, kaputt: false };
+      if (!z.flaeche) return;
+      stand.set(el, z);
+      if (z.knopf) z.knopf.addEventListener('click', () => {
+        z.halt = !z.halt;
+        z.knopf.setAttribute('aria-pressed', String(z.halt));
+        const wort = z.knopf.querySelector('.vh'); if (wort) wort.textContent = z.halt ? 'Film abspielen' : 'Film anhalten';
+        ordnen(z);
       });
+      waechter.observe(el);
     });
+    const alle = () => stand.forEach(ordnen);
+    D.addEventListener('visibilitychange', alle);
+    if (ruhig.addEventListener) ruhig.addEventListener('change', alle);
   }
-  if (bahnen.length && !ruhig.matches) bahnen.forEach((z) => z.bahn.classList.add('lebt'));
 
   let wartet = false;
   const beimScrollen = () => {
@@ -86,13 +110,11 @@
     W.requestAnimationFrame(() => {
       wartet = false;
       kopfStand();
-      if (!ruhig.matches) bahnStand();
     });
   };
   W.addEventListener('scroll', beimScrollen, { passive: true });
   W.addEventListener('resize', beimScrollen, { passive: true });
   kopfStand();
-  if (!ruhig.matches) bahnStand();
 
   W.MAKE_REVENUE_BEREIT = true;
 })();

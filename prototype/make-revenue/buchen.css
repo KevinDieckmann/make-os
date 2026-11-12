@@ -1,16 +1,16 @@
 /* ─── MAKE Revenue · Erstgespräch vereinbaren ─────────────────────────────────────────────────────────
    Gehört zu buchen.js. Übernommen von der Schwesterseite MAKE Studios (anfrage.css) und auf Vertrieb angepasst:
-   Themenwahl statt Branchen, Tannengrün statt Signal-Orange. Verhalten unverändert: nichts wird gespeichert oder gesendet. */
+   Themenwahl statt Branchen, Tiefblau statt Signal-Orange. Verhalten unverändert: nichts wird gespeichert oder gesendet. */
 
 .buchen {
   width: min(680px, calc(100vw - 32px)); max-width: none; max-height: min(880px, calc(100dvh - 40px));
   padding: 0; border: 0; border-radius: 28px;
   background: var(--papier); color: var(--tinte);
-  box-shadow: 0 50px 140px -40px rgba(11, 21, 18, .6), 0 0 0 1px rgba(11, 21, 18, .06);
+  box-shadow: 0 50px 140px -40px rgba(10, 19, 38, .6), 0 0 0 1px rgba(10, 19, 38, .06);
   overflow: hidden;
 }
 .buchen[open] { display: flex; flex-direction: column; }
-.buchen::backdrop { background: rgba(11, 21, 18, .6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.buchen::backdrop { background: rgba(10, 19, 38, .6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .buchen-form { display: contents; }
 
 .buchen-kopf { flex: none; display: flex; align-items: center; gap: 14px; padding: 18px 18px 16px 28px; }
@@ -22,11 +22,11 @@
   border: 1px solid var(--linie); border-radius: 50%; background: transparent; color: var(--tinte); cursor: pointer;
   transition: background .2s, border-color .2s;
 }
-.buchen-zu:hover { background: rgba(11, 21, 18, .06); border-color: rgba(11, 21, 18, .3); }
+.buchen-zu:hover { background: rgba(10, 19, 38, .06); border-color: rgba(10, 19, 38, .3); }
 .buchen-zu svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 
-.buchen-balken { flex: none; height: 3px; margin: 0 28px; border-radius: 2px; background: rgba(11, 21, 18, .1); overflow: hidden; }
-.buchen-balken i { display: block; height: 100%; background: var(--gruen); transform-origin: 0 50%; transform: scaleX(var(--anteil, 0)); }
+.buchen-balken { flex: none; height: 3px; margin: 0 28px; border-radius: 2px; background: rgba(10, 19, 38, .1); overflow: hidden; }
+.buchen-balken i { display: block; height: 100%; background: var(--blau); transform-origin: 0 50%; transform: scaleX(var(--anteil, 0)); }
 
 .buchen-inhalt { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 30px 28px 26px; }
 .buchen-frage { font-size: clamp(32px, 4.2vw, 46px); line-height: .96; }
@@ -43,13 +43,13 @@
 .wahl input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .wahl span {
   display: inline-flex; align-items: center; min-height: 48px; padding: 0 18px;
-  border: 1px solid rgba(11, 21, 18, .28); border-radius: 999px;
+  border: 1px solid rgba(10, 19, 38, .28); border-radius: 999px;
   font: 500 16px/1.15 "Bricolage", system-ui, sans-serif;
   transition: background .2s, color .2s, border-color .2s;
 }
 .wahl:hover span { border-color: var(--tinte); }
 .wahl input:checked + span { background: var(--tinte); border-color: var(--tinte); color: var(--papier); }
-.wahl input:focus-visible + span { outline: 2px solid var(--gruen); outline-offset: 3px; }
+.wahl input:focus-visible + span { outline: 2px solid var(--blau); outline-offset: 3px; }
 .hat-fehler .wahl span { border-color: var(--warn); }
 
 .wahl-raster { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -59,7 +59,7 @@
   border-radius: 16px; text-align: center;
 }
 .wahl small { font: 500 11.5px/1.15 "Mono", ui-monospace, monospace; letter-spacing: .04em; color: var(--grau); }
-.wahl input:checked + span small { color: rgba(239, 241, 234, .74); }
+.wahl input:checked + span small { color: rgba(238, 241, 246, .74); }
 .buchen-tage { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .wahl-tag span { font-size: 17px; font-weight: 600; }
 .wahl-tag small { letter-spacing: .12em; text-transform: uppercase; }
@@ -71,12 +71,12 @@
 .feld label { display: block; margin-bottom: 8px; font: 600 15px/1.3 "Bricolage", system-ui, sans-serif; }
 .feld input, .feld textarea {
   display: block; width: 100%; min-height: 52px; padding: 13px 16px;
-  border: 1px solid rgba(11, 21, 18, .28); border-radius: 14px; background: var(--weiss); color: var(--tinte);
+  border: 1px solid rgba(10, 19, 38, .28); border-radius: 14px; background: var(--weiss); color: var(--tinte);
   font: 400 17px/1.4 "Bricolage", system-ui, sans-serif;
   transition: border-color .2s, box-shadow .2s;
 }
 .feld textarea { min-height: 104px; resize: vertical; }
-.feld input:focus, .feld textarea:focus { outline: none; border-color: var(--tinte); box-shadow: 0 0 0 3px rgba(11, 107, 82, .32); }
+.feld input:focus, .feld textarea:focus { outline: none; border-color: var(--tinte); box-shadow: 0 0 0 3px rgba(23, 70, 158, .32); }
 .feld [aria-invalid="true"] { border-color: var(--warn); }
 .feld-fehler { margin-top: 8px; font-size: 14px; font-weight: 500; color: var(--warn); }
 .buchen-datenschutz { margin-top: 20px; font-size: 13.5px; line-height: 1.5; color: var(--grau); }
@@ -89,19 +89,19 @@
 .buchen-fuss .knopf { margin-left: auto; }
 .buchen-leise {
   display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px;
-  border: 1px solid rgba(11, 21, 18, .28); border-radius: 999px; background: transparent; color: var(--tinte);
+  border: 1px solid rgba(10, 19, 38, .28); border-radius: 999px; background: transparent; color: var(--tinte);
   font: 600 16px/1 "Bricolage", system-ui, sans-serif; text-decoration: none; cursor: pointer;
   transition: border-color .2s, background .2s;
 }
-.buchen-leise:hover { border-color: var(--tinte); background: rgba(11, 21, 18, .04); }
+.buchen-leise:hover { border-color: var(--tinte); background: rgba(10, 19, 38, .04); }
 
 /* Fertig: die Mail liegt im E-Mail-Programm bereit */
-.buchen-fertig-zeichen { width: 56px; height: 56px; margin-bottom: 26px; fill: var(--gruen); }
+.buchen-fertig-zeichen { width: 56px; height: 56px; margin-bottom: 26px; fill: var(--blau); }
 .buchen-fertig > p { max-width: 46ch; margin-top: 14px; font-size: 17px; line-height: 1.5; color: var(--tinte-weich); }
 .buchen-fertig-aktionen { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
 .buchen-kopie {
   display: block; width: 100%; min-height: 200px; margin-top: 16px; padding: 14px 16px;
-  border: 1px solid rgba(11, 21, 18, .28); border-radius: 14px; background: var(--weiss); color: var(--tinte);
+  border: 1px solid rgba(10, 19, 38, .28); border-radius: 14px; background: var(--weiss); color: var(--tinte);
   font: 400 13.5px/1.55 "Mono", ui-monospace, monospace; resize: vertical;
 }
 .buchen-fertig .buchen-schliessen { margin-top: 26px; }

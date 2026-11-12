@@ -36,6 +36,7 @@
   for (const r of document.querySelectorAll('[data-rechner]')) {
     const felder = [...r.querySelectorAll('[data-feld]')];
     const setze = (n, text) => { for (const el of r.querySelectorAll(`[data-aus="${n}"]`)) el.textContent = text; };
+    let selbst = false;
     const neu = () => {
       const w = Object.fromEntries(felder.map((f) => [f.dataset.feld, lesen(f.value)]));
       const gueltig = felder.every((f) => w[f.dataset.feld] != null) && PROZENT.every((n) => w[n] <= 100) && w.wochen <= 53;
@@ -61,13 +62,24 @@
       setze('quoteAlt', `${zahlDe(w.angebotsquote)} %`);
       setze('hebelQuote', zahlDe(e.hebelQuote, 1));
       setze('hebelAuftrag', zahlDe(e.hebelAuftrag, 1));
+      // Wochenziele für den Wochenreport (anfassen.js): nur, wenn hier wirklich jemand eigene Werte eingetragen hat.
+      // Bleibt im Browser (sessionStorage, damit die Ziele auch auf der Seite „Systemvertrieb“ stehen); gesendet wird nichts.
+      if (selbst) {
+        const ziele = { kontakte: e.kontakteWoche, termine: e.termineWoche, angebote: e.angeboteWoche, abschluesse: e.abschluesse / w.wochen };
+        try { sessionStorage.setItem('make-revenue-ziele', JSON.stringify(ziele)); } catch (_) { /* ohne Speicher gilt nur diese Seite */ }
+        document.dispatchEvent(new CustomEvent('revenue:ziele', { detail: ziele }));
+      }
       // Trichter: Balken im Verhältnis zu den Erstkontakten
       for (const [id, n] of [['kontakte', e.kontakte], ['termine', e.termine], ['angebote', e.angebote], ['abschluesse', e.abschluesse]]) {
         const balken = r.querySelector(`[data-balken="${id}"]`);
-        if (balken) balken.setAttribute('width', String(Math.max(0.5, (100 * n) / e.kontakte).toFixed(2)));
+        if (!balken) continue;
+        // mittig wie der Trichter im Zeichen
+        const breite = Math.max(1, (100 * n) / e.kontakte);
+        balken.setAttribute('width', breite.toFixed(2));
+        balken.setAttribute('x', (50 - breite / 2).toFixed(2));
       }
     };
-    r.addEventListener('input', neu);
+    r.addEventListener('input', () => { selbst = true; neu(); });
     // Beim Verlassen schön schreiben: „2200000“ → „2.200.000“
     r.addEventListener('focusout', (ev) => {
       const f = ev.target.closest?.('[data-feld]');

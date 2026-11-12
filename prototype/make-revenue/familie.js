@@ -1,13 +1,14 @@
 // MAKE Revenue · die Adressen der Familie an genau EINER Stelle.
-// Kevin kauft die Domains erst noch: Bis dahin stehen hier die lokalen Vorschau-Adressen.
-// Für die Freigabe die echten Adressen eintragen (https, Schrägstrich am Ende ist egal) und danach „node seo.mjs“ ausführen:
-// Das Skript schreibt Canonical, Vorschaubild, strukturierte Daten und den Rückfall aller Familien-Links im HTML neu.
+// Seit 12.11.2026 stehen hier die echten Domains (makestudios.de und makerevenue.de liegen bei IONOS, das Dach ist makeinnovation.de).
+// Nach einer Änderung „node seo.mjs“ ausführen: Das Skript schreibt Canonical, Vorschaubild, strukturierte Daten und den
+// Rückfall aller Familien-Links im HTML neu.
 // Links im HTML tragen data-familie="innovation|studios|revenue|check" (dazu wahlweise data-pfad="events/");
 // verweise.js setzt ihr href im Browser aus dieser Datei. Ohne JavaScript gilt der Rückfall im HTML.
+// Auf dem eigenen Rechner führt verweise.js stattdessen zu den lokalen Vorschauen.
 export const FAMILIE = {
-  innovation: 'http://localhost:3019/',
-  studios: 'http://localhost:3022/',
-  revenue: 'http://localhost:3023/',
+  innovation: 'https://makeinnovation.de/',
+  studios: 'https://makestudios.de/',
+  revenue: 'https://makerevenue.de/',
   // Der kostenlose Vertriebs-Check läuft bei MAKE Innovation (Thema „vertrieb“, siehe lib/check/katalog.ts).
-  check: 'http://localhost:3019/check?thema=vertrieb',
+  check: 'https://makeinnovation.de/check?thema=vertrieb',
 };

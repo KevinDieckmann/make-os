@@ -7,6 +7,18 @@
   "studios": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video.",
   "innovation": "MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue."
  },
+ "zeichen": {
+  "wahl": "trichter",
+  "name": "Der Trichter",
+  "alt": "Der Trichter: drei Linien, die schmaler werden, darunter ein Punkt.",
+  "svg": "<rect x=\"12\" y=\"10\" width=\"76\" height=\"13\" rx=\"6.5\"/><rect x=\"24\" y=\"31\" width=\"52\" height=\"13\" rx=\"6.5\"/><rect x=\"36\" y=\"52\" width=\"28\" height=\"13\" rx=\"6.5\"/><circle cx=\"50\" cy=\"81.5\" r=\"8.5\"/>"
+ },
+ "farbe": {
+  "nacht": "#0A1326",
+  "blau": "#17469E",
+  "hell": "#7DB7FF",
+  "papier": "#EEF1F6"
+ },
  "seiten": [
   {
    "pfad": "",

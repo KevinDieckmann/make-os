@@ -1,10 +1,11 @@
 // MAKE Revenue · baut alle Seiten aus gemeinsamen Bausteinen.
-// Aufruf:  node bauen.mjs        (schreibt die HTML-Seiten und seiten.json, danach läuft seo.mjs: Kopf, Dateien, Prüfer)
+// Aufruf:  node bauen.mjs        (schreibt die HTML-Seiten, zeichen.svg und seiten.json, danach läuft seo.mjs: Kopf, Dateien, Prüfer)
+// Zeichen: ZEICHEN_WAHL weiter unten schaltet zwischen „Trichter“ und „Abschluss“ um; danach zusätzlich „node bilder.mjs“ für die Icons.
 // Inhalte: Alle Fakten, Zahlen und Quellen stammen aus den Inhaltsdateien der MAKE-Innovation-Website
 // (fokus.json, wissen.json, zahlen.json, produkte.json, inhalt.json) und sind hier wörtlich oder gekürzt übernommen.
 // Preise stehen bewusst nicht hier: Die stehen nur bei MAKE Innovation.
 // Keine Inline-Stile, keine Inline-Skripte (außer JSON-LD, das seo.mjs schreibt), keine on…-Handler.
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -58,6 +59,183 @@ const THEMEN = [
 const thema = (id) => THEMEN.find((t) => t.id === id);
 const leistung = (id) => { const t = thema(id); return { name: t.titel, art: t.art, kurz: t.kurz, text: t.vorweg }; };
 
+// ─── Das Zeichen: zwei Fassungen, EIN Umschalter ───
+// Kevin schwankt zwischen D „Der Trichter“ und C „Der Abschluss“. Hier umschalten, dann „node bauen.mjs“ (Seiten, zeichen.svg)
+// und „node bilder.mjs“ (favicon.ico, bild/icon-180.png, icon-192.png, logo.png, og.png; braucht Google Chrome).
+const ZEICHEN_WAHL = 'trichter'; // oder 'abschluss'
+const ZEICHEN = {
+  // D: die drei Linien aus dem Zeichen von MAKE Innovation als Vertriebstrichter, unten der gewonnene Kunde.
+  // Nachgezogen: gleiche Abstände (8) auch vor dem Punkt, das Ganze um 4 nach oben in die optische Mitte (10 bis 90).
+  trichter: { name: 'Der Trichter', alt: 'Der Trichter: drei Linien, die schmaler werden, darunter ein Punkt.',
+    svg: '<rect x="12" y="10" width="76" height="13" rx="6.5"/><rect x="24" y="31" width="52" height="13" rx="6.5"/><rect x="36" y="52" width="28" height="13" rx="6.5"/><circle cx="50" cy="81.5" r="8.5"/>' },
+  // C: zwei Ringe, die sich überschneiden. Die gemeinsame Fläche ist der Abschluss.
+  abschluss: { name: 'Der Abschluss', alt: 'Der Abschluss: zwei Ringe, die sich überschneiden, die gemeinsame Fläche ist gefüllt.',
+    svg: '<circle cx="37" cy="50" r="25" fill="none" stroke="currentColor" stroke-width="8"/><circle cx="63" cy="50" r="25" fill="none" stroke="currentColor" stroke-width="8"/><path d="M50 28.65A25 25 0 0 1 50 71.35A25 25 0 0 1 50 28.65Z"/>' },
+};
+const ZEICHNUNG = ZEICHEN[ZEICHEN_WAHL];
+if (!ZEICHNUNG) throw new Error(`ZEICHEN_WAHL „${ZEICHEN_WAHL}“ gibt es nicht (trichter oder abschluss)`);
+const FARBE = { nacht: '#0A1326', blau: '#17469E', hell: '#7DB7FF', papier: '#EEF1F6' }; // wie :root in revenue.css, für zeichen.svg und Kopfangaben
+
+// ─── Echte Filme (medien/): Symbolbilder aus freien Quellen, siehe medien/LIESMICH.md ───
+// Beim Bauen wird geprüft, was da ist: Film und Poster → Poster, Film erst in Sicht; nur Poster → Bild; nichts → gezeichnete Fläche.
+const FILME = {
+  gespraech: { b: 1280, h: 720, alt: 'Symbolbild: zwei Menschen im Gespräch an einem Tisch, vor ihnen ein Laptop.' },
+  arbeit: { b: 1280, h: 674, alt: 'Symbolbild: eine Hand schreibt in ein Notizbuch, daneben steht ein Laptop.' },
+  runde: { b: 1280, h: 674, alt: 'Symbolbild: eine kleine Runde sitzt abends an einem Tisch.' },
+  handschlag: { b: 1280, h: 720, alt: 'Symbolbild: zwei Menschen geben sich die Hand.' },
+};
+function filmplatz(W, name, klasse = '', marke = 'Symbolbild') {
+  const f = FILME[name];
+  const hatPoster = existsSync(join(ORDNER, 'medien', `${name}-poster.webp`)), hatFilm = hatPoster && existsSync(join(ORDNER, 'medien', `${name}.mp4`));
+  if (!hatPoster) return `<div class="filmplatz filmplatz-leer ${klasse}" aria-hidden="true"><div class="filmplatz-flaeche"><svg class="filmplatz-zeichnung" viewBox="0 0 100 100"><use href="#g-zeichen"/></svg></div></div>`;
+  return `<figure class="filmplatz ${klasse}"${hatFilm ? ` data-filmplatz="${W}medien/${name}.mp4"` : ''}>
+      <div class="filmplatz-flaeche">
+        <img class="filmplatz-poster" src="${W}medien/${name}-poster.webp" width="${f.b}" height="${f.h}" alt="${e(f.alt)}" loading="lazy" decoding="async">
+        <span class="filmplatz-marke">${marke}</span>${hatFilm ? `
+        <button class="filmplatz-pause" type="button" aria-pressed="false" hidden><span class="filmplatz-pause-zeichen" aria-hidden="true"></span><span class="vh">Film anhalten</span></button>` : ''}
+      </div>
+    </figure>`;
+}
+
+// ═══════════════════════════════════ Vertrieb zum Anfassen ═══════════════════════════════════
+// Drei Stücke, überall gleich gebaut: das Brett im CRM, der Wochenreport, der Gesprächsleitfaden. Alle Namen und Zahlen sind Beispiele.
+// Ohne JavaScript stehen sie als ruhige Ansicht da; anfassen.js macht sie bedienbar.
+const STUFEN = ['Anfrage', 'Gespräch', 'Angebot', 'Abschluss'];
+// Die Regel je Stufe: Was ist die nächste Aktion, und wie viele Werktage später ist sie fällig? (dieselbe Tabelle steht in anfassen.js)
+const AKTION = [['Erstgespräch vereinbaren', 1], ['Angebot senden, in 24 Stunden', 1], ['Nachfassen, drei Werktage nach dem Angebot', 3], ['Übergabe an die Umsetzung', 1]];
+const BRETT = [
+  { id: 'a', firma: 'Firma A', kontakt: 'Kontakt 1', woher: 'Anfrage über die Website', stufe: 0, tag: 'Di 17.03.' },
+  { id: 'b', firma: 'Firma B', kontakt: 'Kontakt 2', woher: 'Empfehlung', stufe: 0, tag: 'Di 17.03.' },
+  { id: 'c', firma: 'Firma C', kontakt: 'Kontakt 3', woher: 'Kontakt von der Messe', stufe: 0, tag: '' },
+  { id: 'd', firma: 'Firma D', kontakt: 'Kontakt 4', woher: 'Erstgespräch geführt', stufe: 1, tag: 'Di 17.03.' },
+  { id: 'e', firma: 'Firma E', kontakt: 'Kontakt 5', woher: 'Erstgespräch geführt', stufe: 1, tag: 'Mi 18.03.' },
+  { id: 'f', firma: 'Firma F', kontakt: 'Kontakt 6', woher: 'Angebot ist raus', stufe: 2, tag: 'Do 19.03.' },
+  { id: 'g', firma: 'Firma G', kontakt: 'Kontakt 7', woher: 'Angebot ist raus', stufe: 2, tag: 'Fr 20.03.' },
+  { id: 'h', firma: 'Firma H', kontakt: 'Kontakt 8', woher: 'Auftrag erteilt', stufe: 3, tag: 'Di 17.03.' },
+];
+function brett() {
+  const karte = (k) => `<li class="brett-karte${k.tag ? '' : ' brett-karte-offen'}" data-karte="${k.id}" data-firma="${k.firma}" data-kontakt="${k.kontakt}"${k.tag ? '' : ' data-ohne'}>
+              <b class="brett-firma">${k.firma}</b><span class="brett-kontakt" data-stand>${k.kontakt} · ${k.woher}</span>
+              <p class="brett-aktion"><span class="brett-aktion-wort">Nächste Aktion</span><span data-aktion>${k.tag ? AKTION[k.stufe][0] : 'Noch keine. Diese Anfrage würde liegen bleiben.'}</span><span class="brett-tag" data-tag>${k.tag ? 'bis ' + k.tag : ''}</span></p>
+              <button class="brett-weiter" type="button" data-schieben>${k.tag ? (k.stufe < 3 ? 'Eine Stufe weiter' : 'Gewonnen') : 'Nächste Aktion setzen'}</button>
+            </li>`;
+  const offen = BRETT.filter((k) => k.stufe < 3).length, ohne = BRETT.filter((k) => !k.tag).length, gewonnen = BRETT.filter((k) => k.stufe === 3).length;
+  return `<div class="brett" data-brett>
+        <div class="brett-kopf">
+          <p class="stueck-marke">Beispiel · CRM-Ansicht · Montag, 16.03.</p>
+          <dl class="brett-zaehler">
+            <div><dt>Offene Anfragen</dt><dd data-brett-aus="offen">${offen}</dd></div>
+            <div class="brett-zaehler-ohne"><dt>Ohne nächste Aktion</dt><dd data-brett-aus="ohne">${ohne}</dd></div>
+            <div><dt>Gewonnen</dt><dd data-brett-aus="gewonnen">${gewonnen}</dd></div>
+          </dl>
+        </div>
+        <ol class="brett-spalten">
+${STUFEN.map((name, i) => `          <li class="brett-spalte" data-spalte="${i}">
+            <p class="brett-stufe"><span>0${i + 1}</span><b>${name}</b><i data-brett-zahl aria-label="Karten in dieser Stufe">${BRETT.filter((k) => k.stufe === i).length}</i></p>
+            <ul class="brett-karten">
+            ${BRETT.filter((k) => k.stufe === i).map(karte).join('\n            ')}
+            </ul>
+          </li>`).join('\n')}
+        </ol>
+        <div class="brett-fuss">
+          <p class="brett-meldung" data-brett-meldung role="status">Schieben Sie eine Karte eine Stufe weiter: Sie bekommt sofort ihre nächste Aktion mit Datum.</p>
+          <button class="knopf-zart" type="button" data-brett-zurueck hidden>Zurücksetzen</button>
+        </div>
+        <p class="stueck-hinweis">Beispiel mit erfundenen Karten, kein Kunde. Welches CRM Sie nutzen, ist zweitrangig. Wichtig ist, dass alle es gleich nutzen.</p>
+        <noscript><p class="stueck-hinweis">Zum Verschieben der Karten braucht diese Seite JavaScript. Ohne JavaScript sehen Sie das Brett als Bild.</p></noscript>
+      </div>`;
+}
+
+// Der Wochenreport: Ist gegen Ziel. Die Beispielwerte stammen aus fokus.json (Wochenreport, Kalenderwoche 12).
+const REPORT = [['kontakte', 'Erstkontakte', 38, 40], ['termine', 'Termine', 5, 4], ['angebote', 'Angebote', 3, 2], ['abschluesse', 'Abschlüsse', 1, 1]];
+function report(W) {
+  const zeile = ([id, name, ist, ziel]) => {
+    const anteil = Math.round((100 * ist) / ziel), luecke = ziel - ist;
+    return `<tr data-zeile="${id}" data-name="${name}"><th scope="row">${name}</th><td class="report-ist"><b data-ist>${ist}</b></td><td data-ziel>${ziel}</td>
+              <td class="report-stand"><svg class="report-balken" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect class="grund" width="100" height="6" rx="3"/><rect class="wert" width="${Math.min(100, anteil)}" height="6" rx="3" data-balken/></svg><span data-stand>${luecke > 0 ? `${luecke} unter Ziel` : 'Ziel erreicht'}</span></td></tr>`;
+  };
+  return `<div class="report" data-report>
+        <div class="report-kopf"><p class="report-titel">Wochenreport</p><p class="stueck-marke" data-report-marke>Beispiel · Kalenderwoche 12 · Freitag</p></div>
+        <table>
+          <caption class="vh">Wochenreport: Ist gegen Ziel je Stufe</caption>
+          <thead><tr><th scope="col">Stufe</th><th scope="col">Ist</th><th scope="col">Ziel</th><th scope="col">Stand</th></tr></thead>
+          <tbody>
+            ${REPORT.map(zeile).join('\n            ')}
+          </tbody>
+        </table>
+        <p class="report-luecke" data-report-luecke role="status">Größte Lücke: Erstkontakte, 2 unter Ziel.</p>
+        <p class="report-satz"><b>Nächste Woche:</b> Messekontakte nachfassen, die zwei größten offenen Angebote zuerst.</p>
+        <p class="report-hinweis" data-report-hinweis>Beispielwerte, kein Kunde. Die Ziele kommen aus der Rückwärtsrechnung vom Umsatzziel: Wer im <a href="${W}#rechner">Vertriebsrechner</a> eigene Werte einträgt, sieht hier die eigenen Wochenziele.</p>
+        <button class="knopf-zart" type="button" data-report-zurueck hidden>Zurück zu den Beispielzielen</button>
+      </div>`;
+}
+
+// Der Gesprächsleitfaden: Auszüge aus den Inhalten von MAKE Innovation (wissen.json, Bausteine Skriptset und Einwandbibliothek), wörtlich.
+// l(…) setzt eine Lücke zum Ausfüllen in einen Beispielsatz.
+const l = (wort) => `<i class="luecke">${wort}</i>`;
+const LEITFADEN = [
+  { name: 'Einstieg', dauer: 'wenige Sekunden, dann ein Satz zum Anlass',
+    regel: 'Name, Firma, Rahmen. Kein Smalltalk-Zwang, keine Frage nach dem Befinden am Telefon. Dann der Anlass: warum Sie sich gerade jetzt melden. Ohne Anlass kein Gespräch.',
+    saetze: [`„Guten Tag, hier ist ${l('Name')} von ${l('Firma')}.“`, `„Sie hatten nach ${l('Thema')} gefragt.“`] },
+  { name: 'Bedarf', dauer: 'der größte Teil',
+    regel: 'Offene Fragen, zuhören, nachfragen. Ihr Gegenüber redet mehr als Sie. Die Reihenfolge im Gespräch: Bedarf, Zeitpunkt, Entscheidung, Mittel.',
+    saetze: [`„Wie läuft ${l('Aufgabe')} heute bei Ihnen?“`, '„Bis wann?“', '„Wer entscheidet mit?“'],
+    fragen: [
+      ['Bedarf', 'Welches Problem soll gelöst werden, und was kostet es, wenn es bleibt?', 'Der Kunde beschreibt das Problem in eigenen Worten.', '„Wäre schön zu haben“'],
+      ['Zeitpunkt', 'Bis wann muss es gelöst sein, und warum gerade dann?', 'Ein Datum mit Grund: Frist, Projekt, Saison.', '„Irgendwann dieses Jahr“'],
+      ['Entscheidung', 'Wer entscheidet, wer redet mit, und wie läuft eine Entscheidung ab?', 'Die entscheidende Person sitzt im Gespräch.', '„Das entscheidet jemand anders“, ohne Namen'],
+      ['Mittel', 'Gibt es Geld dafür, oder kann es beschafft werden?', 'Ein Rahmen wird genannt oder ist eingeplant.', '„Wir schauen erst mal, was es kostet“ ohne jede Vorstellung'],
+    ] },
+  { name: 'Einwand', dauer: 'vier Schritte',
+    regel: 'Ein Einwand ist kein Nein. Er zeigt, dass Ihr Gegenüber sich mit dem Angebot beschäftigt und an einer Stelle noch nicht überzeugt ist. Wer sofort argumentiert, antwortet oft auf die falsche Frage. Darum kommt die Antwort erst im dritten Schritt.',
+    schritte: [
+      ['Nachfragen', 'Kurz anerkennen, ohne zuzustimmen. Dann eine offene Frage stellen, die den Einwand genauer macht.', '„Verstehe. Zu teuer im Vergleich wozu?“'],
+      ['Verstehen', 'In eigenen Worten wiederholen und prüfen, ob es der einzige Punkt ist.', '„Ist das der einzige Punkt, oder gibt es noch etwas?“'],
+      ['Antworten', 'Auf den eigentlichen Grund antworten, kurz und konkret: mit einer Rechnung, einem Beispiel oder einer Möglichkeit.', '„Lassen Sie uns kurz rechnen …“'],
+      ['Weiterführen', 'Fragen, ob der Punkt geklärt ist, und einen nächsten Schritt mit Datum vorschlagen. Sonst bleibt alles offen.', '„Ist das damit für Sie geklärt?“'],
+    ],
+    zusatz: ['Einwand oder Vorwand? Der Prüfsatz', '„Angenommen, wir finden für den Punkt eine gute Lösung: Wären Sie dann bereit, den nächsten Schritt zu gehen?“ Ein Ja zeigt einen echten Einwand. Kommt stattdessen ein neuer Grund, war der erste ein Vorwand.'] },
+  { name: 'Nächster Schritt', dauer: 'je eine Minute',
+    regel: 'Erst zusammenfassen: in eigenen Worten wiedergeben, was Sie gehört haben, und bestätigen lassen. Dann ein konkreter Schritt mit Datum, oder ein klares Nein. Beides ist besser als „mal sehen“.',
+    saetze: ['„Habe ich richtig verstanden, dass …?“', `„Passt Ihnen ${l('Tag')} um ${l('Uhrzeit')}?“`],
+    danach: 'Danach im CRM: Stufe, nächste Aktion und Datum. Das Angebot geht in 24 Stunden raus, und jedes offene Angebot hat ein Datum zum Nachfassen.' },
+];
+function leitfaden({ voll = false } = {}) {
+  const tafel = (t, i) => `<section class="lf-tafel" data-tafel aria-labelledby="lf-${i + 1}">
+            <h4 class="lf-titel" id="lf-${i + 1}" tabindex="-1"><span>0${i + 1}</span>${t.name}<small>${t.dauer}</small></h4>
+            <p class="lf-regel">${t.regel}</p>
+            ${t.fragen ? `<dl class="lf-fragen">${t.fragen.map(([n, f, gut, warn]) => `<div><dt>${n}</dt><dd>${f}${voll ? `<span class="lf-zeichen"><span><b>Gutes Zeichen:</b> ${gut}</span><span><b>Warnzeichen:</b> ${warn}</span></span>` : ''}</dd></div>`).join('')}</dl>` : ''}
+            ${t.schritte ? `<ol class="lf-schritte">${t.schritte.map(([n, was, satz]) => `<li><b>${n}</b><span>${was}</span><q class="lf-satz">${satz.slice(1, -1)}</q></li>`).join('')}</ol>` : ''}
+            ${t.saetze ? `<div class="lf-saetze"><p class="lf-marke">Beispielsätze</p><ul>${t.saetze.map((s) => `<li><q class="lf-satz">${s.slice(1, -1)}</q></li>`).join('')}</ul></div>` : ''}
+            ${t.zusatz && voll ? `<div class="lf-zusatz"><p class="lf-marke">${t.zusatz[0]}</p><p>${t.zusatz[1]}</p></div>` : ''}
+            ${t.danach ? `<p class="lf-danach">${t.danach}</p>` : ''}
+          </section>`;
+  return `<div class="leitfaden" data-leitfaden>
+        <div class="report-kopf"><p class="report-titel">Gesprächsleitfaden</p><p class="stueck-marke">Entwurf · Auszug · Beispielsätze</p></div>
+        <ol class="lf-wahl" hidden>
+          ${LEITFADEN.map((t, i) => `<li><button type="button" data-lf="${i}"><span>0${i + 1}</span>${t.name}</button></li>`).join('')}
+        </ol>
+        <div class="lf-tafeln">
+          ${LEITFADEN.map(tafel).join('\n          ')}
+        </div>
+        <div class="lf-fuss" hidden>
+          <button class="knopf-zart" type="button" data-lf-zurueck>Zurück</button>
+          <span class="lf-stand" data-lf-stand aria-live="polite">Schritt 1 von 4</span>
+          <button class="knopf-zart knopf-zart-voll" type="button" data-lf-weiter>Weiter</button>
+        </div>
+        <p class="stueck-hinweis">Ein Leitfaden ist kein Text zum Ablesen, sondern ein Geländer. Die Beispielsätze sind Entwürfe: Sie passen sie an Ihr Angebot und Ihre Branche an.</p>
+      </div>`;
+}
+// Ein Stück mit Text links und dem Stück rechts
+const stueck = (nr, titel, text, inhalt, id = '') => `<div class="stueck"${id ? ` id="${id}"` : ''}>
+      <div class="stueck-text">
+        <p class="stueck-nr" aria-hidden="true">${nr}</p>
+        <h3 class="stueck-titel">${titel}</h3>
+        ${text}
+      </div>
+      ${inhalt}
+    </div>`;
+
 // ─── Bausteine ───
 const pfeil = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
 const NAV = [
@@ -70,7 +248,7 @@ const NAV = [
 // Familien-Link: href ist der Rückfall (seo.mjs schreibt ihn aus familie.js), verweise.js setzt ihn im Browser neu
 const fam = (ziel, text, { pfad = '', klasse = 'textlink' } = {}) =>
   `<a${klasse ? ` class="${klasse}"` : ''} href="#" data-familie="${ziel}"${pfad ? ` data-pfad="${pfad}"` : ''}>${text}</a>`;
-const marke = (klasse = '') => `<svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-stufen"/></svg><span class="marke-wort${klasse}"><b>MAKE</b> <span>REVENUE</span></span>`;
+const marke = (klasse = '') => `<svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-zeichen"/></svg><span class="marke-wort${klasse}"><b>MAKE</b> <span>REVENUE</span></span>`;
 
 function fragenListe(liste) {
   return `<div class="fragen-liste">
@@ -195,7 +373,7 @@ function buchenFenster() {
       </section>
 
       <div class="buchen-fertig" hidden>
-        <svg class="buchen-fertig-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-stufen"/></svg>
+        <svg class="buchen-fertig-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-zeichen"/></svg>
         <p class="buchen-frage" tabindex="-1" role="heading" aria-level="2">Fast <em>geschafft.</em></p>
         <p>Ihr E-Mail-Programm hat sich mit der fertigen Anfrage geöffnet. Bitte senden Sie die Nachricht dort ab, wir antworten persönlich.</p>
         <p>Hat sich nichts geöffnet? Kopieren Sie den Text und schicken Sie ihn an ${MAIL}.</p>
@@ -230,7 +408,7 @@ function rahmen({ pfad, aktuell, klasse, inhalt, skripte = [] }) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- seo:anfang -->
 <!-- seo:ende -->
-<meta name="theme-color" content="#EFF1EA">
+<meta name="theme-color" content="${FARBE.nacht}">
 <link rel="icon" href="${W}favicon.ico" sizes="32x32">
 <link rel="icon" href="${W}zeichen.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="${W}bild/icon-180.png">
@@ -246,14 +424,10 @@ ${skripte.map((s) => `<script src="${W}${s}" defer></script>\n`).join('')}<scrip
 </head>
 <body class="${klasse}">
 
-<!-- Das Zeichen: die Stufenlinie in der Scheibe. Vier Stufen wie die Strecke: Anfrage, Gespräch, Angebot, Abschluss. Einmal hier, überall per <use>. -->
+<!-- Das Zeichen (${ZEICHNUNG.name}): einmal hier, überall per <use>. Farbe über currentColor. -->
 <svg class="vorrat" aria-hidden="true" focusable="false">
   <defs>
-    <mask id="m-stufen" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-      <circle cx="50" cy="50" r="46" fill="#fff"/>
-      <path d="M-2 71H29.5V57H50V43H70.5V29H102" fill="none" stroke="#000" stroke-width="6"/>
-    </mask>
-    <g id="g-stufen"><rect width="100" height="100" mask="url(#m-stufen)"/></g>
+    <g id="g-zeichen">${ZEICHNUNG.svg}</g>
   </defs>
 </svg>
 
@@ -328,9 +502,9 @@ ${buchenFenster()}
 }
 
 // Kopf einer Unterseite: Brotkrumen, eine h1, Einleitung, rechts „Das Wichtigste vorweg“
-function seitenKopf(W, { krume, titel, text, aktionen, vorweg, fakten }) {
+function seitenKopf(W, { krume, titel, text, aktionen, vorweg, fakten, film = '', filmMarke }) {
   return `
-<section class="seiten-kopf">
+<section class="seiten-kopf dunkel" data-dunkelkopf>
   <div class="w">
     <nav aria-label="Brotkrumen"><ol class="krume"><li><a href="${W}">Start</a></li><li aria-current="page">${krume}</li></ol></nav>
     <div class="seiten-raster">
@@ -345,6 +519,7 @@ function seitenKopf(W, { krume, titel, text, aktionen, vorweg, fakten }) {
         <dl>${fakten.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
       </aside>
     </div>
+    ${film ? filmplatz(W, film, 'filmplatz-band', filmMarke) : ''}
   </div>
 </section>`;
 }
@@ -376,7 +551,7 @@ const de = (n, stellen = 0) => Number(n).toLocaleString('de-DE', { maximumFracti
 function rechner() {
   const r = rueckwaerts(START);
   const feld = (name, id, wert, einheit) => `<label class="rechner-feld"><span>${name}</span><span class="rechner-eingabe"><input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="${wert}" data-feld="${id}"><span class="einheit">${einheit}</span></span></label>`;
-  const balken = (name, id, n) => `<li><span class="trichter-name">${name}</span><svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect class="grund" x="0" y="0" width="100" height="10" rx="2"/><rect class="wert" x="0" y="0" width="${Math.max(0.5, (100 * n) / r.kontakte).toFixed(2)}" height="10" rx="2" data-balken="${id}"/></svg><b data-aus="${id}">${de(n)}</b></li>`;
+  const balken = (name, id, n) => `<li><span class="trichter-name">${name}</span><svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect class="grund" x="0" y="0" width="100" height="10" rx="1.4" ry="5"/><rect class="wert" x="${(50 - Math.max(1, (100 * n) / r.kontakte) / 2).toFixed(2)}" y="0" width="${Math.max(1, (100 * n) / r.kontakte).toFixed(2)}" height="10" rx="1.4" ry="5" data-balken="${id}"/></svg><b data-aus="${id}">${de(n)}</b></li>`;
   return `<div class="rechner" data-rechner>
       <div class="rechner-eingaben erscheint">
         <p class="etikett">Ihr Ziel</p>
@@ -471,6 +646,31 @@ const BEGRIFFE = [
 ];
 
 // ─────────────── Startseite ───────────────
+// Die Strecke als Trichter: dieselbe Form wie das Zeichen. Sie steht im Film rechts (schmal: oben) und füllt sich Stufe für Stufe.
+// Maße in viewBox 0 0 400 470; die Beschriftung liegt als HTML darüber (film.js rechnet jeden Zustand aus dem Fortschritt).
+const STRECKE = [
+  { name: 'Anfrage', heute: 'liegt im Postfach', system: 'nächste Aktion mit Datum', x: 20, y: 18, b: 360 },
+  { name: 'Gespräch', heute: 'läuft nebenbei', system: 'nach Leitfaden', x: 70, y: 128, b: 260 },
+  { name: 'Angebot', heute: 'bleibt liegen', system: 'raus in 24 Stunden', x: 120, y: 238, b: 160 },
+  { name: 'Abschluss', heute: 'nicht planbar', system: 'Wochenreport freitags', x: 164, y: 348, b: 72 },
+];
+function strecke() {
+  const H = 56;
+  return `<figure class="strecke" data-strecke aria-label="Die Strecke im Vertrieb als Trichter in vier Stufen: Anfrage, Gespräch, Angebot, Abschluss">
+      <div class="strecke-rahmen">
+        <svg class="strecke-bild" viewBox="0 0 400 470" aria-hidden="true">
+          ${STRECKE.slice(0, 3).map((s, i) => `<path class="strecke-faden" d="M200 ${s.y + H}V${STRECKE[i + 1].y}"/><path class="strecke-fluss" data-fluss="${i}" d="M200 ${s.y + H}V${STRECKE[i + 1].y}"/>`).join('\n          ')}
+          ${STRECKE.slice(0, 3).map((s, i) => `<rect class="strecke-grund" data-grund="${i}" x="${s.x}" y="${s.y}" width="${s.b}" height="${H}" rx="${H / 2}"/><rect class="strecke-rand" data-rand="${i}" x="${s.x + 1}" y="${s.y + 1}" width="${s.b - 2}" height="${H - 2}" rx="${H / 2 - 1}"/><rect class="strecke-voll" data-voll="${i}" x="${s.x}" y="${s.y}" width="${s.b}" height="${H}" rx="${H / 2}"/>`).join('\n          ')}
+          <circle class="strecke-ring" data-ring cx="200" cy="384" r="50"/>
+          <circle class="strecke-grund" data-grund="3" cx="200" cy="384" r="36"/><circle class="strecke-rand" data-rand="3" cx="200" cy="384" r="35"/><circle class="strecke-voll strecke-ziel" data-voll="3" cx="200" cy="384" r="36"/>
+        </svg>
+        <ol class="strecke-stufen">
+          ${STRECKE.map((s, i) => `<li class="strecke-stufe strecke-stufe-${i + 1}" data-stufe="${i}"><span class="strecke-name"><i>0${i + 1}</i><b>${s.name}</b></span><span class="strecke-lage"><span class="strecke-heute" data-lage-heute>Heute: ${s.heute}</span><span class="strecke-system" data-lage-system>${s.system}</span></span></li>`).join('\n          ')}
+        </ol>
+      </div>
+    </figure>`;
+}
+
 function start(W) {
   const halte = [
     ['Anfrage', 'Ein Interessent von der Messe hat vor drei Wochen um ein Angebot gebeten. Der Entwurf liegt noch in Ihrem Postfach.', 'Jede Anfrage bekommt eine Stufe, eine nächste Aktion und ein Datum. So geht nichts verloren, und jeder im Team sieht, wo ein Kunde steht.'],
@@ -480,9 +680,17 @@ function start(W) {
   ];
   const themen = THEMEN.map((t) => [t.pfad, t.lage, t.titel, t.kurz, t.klein]);
   return `
-<section class="held" aria-labelledby="held-titel">
-  <div class="w held-raster">
-    <div class="held-links">
+<!-- Der Film-Einstieg: die Strecke von der Anfrage bis zum Abschluss in acht Szenen. Ohne JavaScript und mit „Bewegung reduzieren“
+     stehen dieselben Inhalte ruhig untereinander (das ist der Normalfall im CSS); erst html.film-an macht daraus die Bühne. -->
+<section class="film" id="film" data-film data-dunkelkopf aria-labelledby="held-titel">
+  <div class="buehne dunkel">
+    <div class="film-leiste">
+      <p class="film-kapitel" aria-hidden="true"><b data-film-nr>01</b><span data-film-name>Einstieg</span></p>
+      <span class="film-balken" aria-hidden="true"><i data-film-balken></i></span>
+      <a class="film-weiter" href="#anfassen">Film überspringen</a>
+    </div>
+
+    <div class="szene szene-einstieg" data-szene="einstieg" data-kapitel="Einstieg">
       <p class="ueberzeile">MAKE Revenue · Vertrieb mit System</p>
       <h1 class="held-titel" id="held-titel">Ihr Produkt ist besser, als Ihr Umsatz <em>zeigt.</em> <span class="held-zusatz">Vertrieb mit System für Gründer, Mittelstand und Dienstleister.</span></h1>
       <p class="held-text">MAKE Revenue baut Ihren Vertrieb als System auf: Zielgruppe, Prozess im CRM, Kennzahlen und Nachfassen. Wir machen es vor und üben mit Ihrem Team, bis es selbst abschließt.</p>
@@ -496,64 +704,69 @@ function start(W) {
         <li>Berlin · Deutschland und Europa</li>
       </ul>
     </div>
-    <figure class="treppe" aria-label="Die Strecke im Vertrieb in vier Stufen: Anfrage, Gespräch, Angebot, Abschluss">
-      <svg class="treppe-linie" viewBox="0 0 4 5" preserveAspectRatio="none" aria-hidden="true">
-        <rect class="treppe-saeule treppe-saeule-1" x="0" y="4" width="1" height="1"/>
-        <rect class="treppe-saeule treppe-saeule-2" x="1" y="3" width="1" height="2"/>
-        <rect class="treppe-saeule treppe-saeule-3" x="2" y="2" width="1" height="3"/>
-        <rect class="treppe-saeule treppe-saeule-4" x="3" y="1" width="1" height="4"/>
-        <path class="treppe-boden" d="M0 5H4"/>
-      </svg>
-      <svg class="treppe-linie treppe-zug" viewBox="0 0 4 5" preserveAspectRatio="none" aria-hidden="true">
-        <path class="treppe-weg" d="M0 4H1V3H2V2H3V1H4"/>
-      </svg>
-      <ol class="treppe-stufen">
-        <li class="treppe-stufe treppe-stufe-1"><span>01</span><b>Anfrage</b></li>
-        <li class="treppe-stufe treppe-stufe-2"><span>02</span><b>Gespräch</b><small>Leitfäden geben jedem Gespräch eine Richtung.</small></li>
-        <li class="treppe-stufe treppe-stufe-3"><span>03</span><b>Angebot</b><small>Raus in 24 Stunden, mit Datum zum Nachfassen.</small></li>
-        <li class="treppe-stufe treppe-stufe-4"><span>04</span><b>Abschluss</b><small>Ihr Team schließt selbst ab, planbar.</small></li>
-      </ol>
-      <i class="treppe-ziel" aria-hidden="true"></i>
-    </figure>
+
+    ${strecke()}
+
+    <div class="szene szene-zahl" data-szene="zahl" data-kapitel="Die Lage">
+      <p class="ueberzeile">Die Lage 2026</p>
+      <figure class="grosszahl">
+        <b class="grosszahl-wert">36,3&nbsp;%</b>
+        <figcaption><p class="grosszahl-satz">${e(ZAHL.ifo.satz).replace(/ %/g, '&nbsp;%')}</p>
+        <cite class="zahl-quelle">Quelle: <a href="${e(ZAHL.ifo.link)}" rel="noopener">${e(ZAHL.ifo.quelle)}</a></cite></figcaption>
+      </figure>
+    </div>
+
+    <div class="szene szene-heute" data-szene="heute" data-kapitel="Heute">
+      <p class="ueberzeile">Heute</p>
+      <h2 class="szene-titel">Von der Anfrage zum Abschluss: wo es heute <em>hängt.</em></h2>
+      <p class="szene-text">Vertrieb hängt an der Geschäftsführung, und das meiste läuft über Bauchgefühl. Anfragen gehen verloren, Angebote bleiben liegen, und niemand weiß, wie viele Gespräche es für das Jahresziel braucht.</p>
+    </div>
+
+${halte.map(([name, heute, system], i) => `    <div class="szene szene-stufe" data-szene="stufe-${i + 1}" data-kapitel="${name}">
+      <p class="ueberzeile">Mit System · Stufe 0${i + 1} von 04</p>
+      <h3 class="szene-titel">${name}</h3>
+      <div class="szene-paar">
+        <div class="paar-heute"><p class="paar-marke">Heute</p><p>${heute}</p></div>
+        <div class="paar-system"><p class="paar-marke">Mit System</p><p>${system}</p></div>
+      </div>
+    </div>`).join('\n\n')}
+
+    <div class="szene szene-ende" data-szene="ende" data-kapitel="Abschluss">
+      <p class="ueberzeile">Der Abschluss</p>
+      <h2 class="szene-titel szene-titel-gross">Vertrieb ist kein Talent, sondern ein <em>System.</em></h2>
+      <p class="szene-text">Wer angesprochen wird, was gesagt wird, was gemessen wird: MAKE Revenue baut dieses System mit Ihnen auf, bis Ihr Team selbst abschließt.</p>
+      <div class="held-aktionen">
+        <a class="knopf knopf-gross" href="#erstgespraech" data-buchen>Erstgespräch vereinbaren</a>
+        ${fam('check', 'Vertriebs-Check starten', { klasse: 'knopf knopf-gross knopf-leise' })}
+      </div>
+      <p class="szene-weiter"><a class="link-pfeil" href="systemvertrieb/">So baut MAKE Revenue das System auf</a></p>
+    </div>
+  </div>
+</section>
+
+<section class="abschnitt" id="anfassen" aria-labelledby="anfassen-titel">
+  <div class="w">
+    ${abKopf('Vertrieb zum Anfassen', 'So sieht Vertrieb mit System <em>aus.</em>', 'Drei Stücke aus der Arbeit, zum Ansehen und Ausprobieren: das Brett im CRM, der Wochenreport und ein Gesprächsleitfaden. Alle Namen und Zahlen darin sind Beispiele.', 'anfassen-titel')}
+    ${stueck('01', 'Das Brett im CRM: Keine Anfrage bleibt ohne nächsten Schritt.', `<p>Jede Anfrage bekommt eine Stufe, eine nächste Aktion und ein Datum. So geht nichts verloren, und jeder im Team sieht, wo ein Kunde steht.</p>
+        <p class="stueck-tun"><b>Zum Ausprobieren:</b> Schieben Sie eine Karte eine Stufe weiter und sehen Sie, wie sich nächste Aktion, Datum und die Zähler oben ändern. Eine Karte hat noch keine nächste Aktion.</p>`, brett(), 'brett')}
+    ${stueck('02', 'Der Wochenreport: jeden Freitag Ist gegen Ziel.', `<p>Der Wochenreport ist ein kurzer Bericht jeden Freitag: die Zahlen des Vertriebs und ein Satz dazu, was nächste Woche anders läuft.</p>
+        <p class="stueck-tun"><b>Zum Ausprobieren:</b> Tragen Sie eigene Ist-Zahlen ein. Die Ziele kommen aus dem <a class="textlink" href="#rechner">Vertriebsrechner</a> weiter unten, sobald Sie dort eigene Werte eintragen.</p>`, report(W), 'wochenreport')}
+    ${stueck('03', 'Der Gesprächsleitfaden: vom Einstieg bis zum nächsten Schritt.', `<p>Leitfäden geben jedem Gespräch eine Richtung: Welche Fragen klären Bedarf, Budget, Entscheidung und Zeitpunkt? Dazu gehören gute Antworten auf die häufigsten Einwände.</p>
+        <p class="stueck-tun"><b>Zum Ausprobieren:</b> Klicken Sie sich durch die vier Schritte eines Gesprächs.</p>
+        <p><a class="link-pfeil" href="systemvertrieb/#leitfaden">Den Leitfaden ausführlich ansehen</a></p>`, leitfaden(), 'leitfaden')}
   </div>
 </section>
 
 <section class="abschnitt dunkel" id="zahlen" aria-labelledby="zahlen-titel">
   <div class="w">
     ${abKopf('Zahlen mit Quelle', 'Was Studien 2026 über Vertrieb <em>zeigen.</em>', 'Mehr als jedes dritte Unternehmen in Deutschland meldete im Januar 2026 zu wenig Aufträge. Was hier steht, können wir belegen. Quellen verlinken wir.', 'zahlen-titel')}
-    <div class="zahlen">
-      ${zahl(ZAHL.ifo, 'zahl-gross')}
-      <div class="zahlen-neben">
-        ${zahl(ZAHL.crm)}
-        ${zahl(ZAHL.zeit)}
-        ${zahl(ZAHL.umsatz)}
-        ${zahl(ZAHL.nachfrage)}
-      </div>
+    <div class="zahlen-reihe">
+      ${zahl(ZAHL.crm)}
+      ${zahl(ZAHL.zeit)}
+      ${zahl(ZAHL.umsatz)}
+      ${zahl(ZAHL.nachfrage)}
     </div>
     <p class="zahlen-fuss">Alle Zahlen am Original geprüft am 30.10.2026.</p>
-  </div>
-</section>
-
-<section class="abschnitt" id="strecke" aria-labelledby="strecke-titel">
-  <div class="w">
-    ${abKopf('Die Strecke', 'Von der Anfrage zum Abschluss: wo es heute <em>hängt.</em>', 'Vertrieb hängt an der Geschäftsführung, und das meiste läuft über Bauchgefühl. Anfragen gehen verloren, Angebote bleiben liegen, und niemand weiß, wie viele Gespräche es für das Jahresziel braucht.', 'strecke-titel')}
-    <div class="bahn" data-bahn>
-      <div class="bahn-schiene" aria-hidden="true"><i></i></div>
-      <ol class="bahn-halte">
-${halte.map(([name, heute, system], i) => `        <li class="halt">
-          <span class="halt-punkt" aria-hidden="true">0${i + 1}</span>
-          <h3>${name}</h3>
-          <div class="halt-teile">
-            <div class="halt-teil halt-heute"><p class="halt-marke"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l8 10"/><path d="M19 11v6h-6"/></svg>Heute</p><p>${heute}</p></div>
-            <div class="halt-teil halt-system"><p class="halt-marke"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h17M14 6l6 6-6 6"/></svg>Mit System</p><p>${system}</p></div>
-          </div>
-        </li>`).join('\n')}
-      </ol>
-    </div>
-    <div class="strecke-fuss">
-      <p>Vertrieb ist kein Talent, sondern ein System: wer angesprochen wird, was gesagt wird, was gemessen wird.</p>
-      <a class="link-pfeil" href="systemvertrieb/">So baut MAKE Revenue das System auf</a>
-    </div>
   </div>
 </section>
 
@@ -577,6 +790,7 @@ ${themen.map(([pfad, lage, titel, text, klein], i) => `      <li class="thema er
     ${rechner()}
     <div class="rechner-fuss">
       <p>Ihre eigenen Quoten kennen Sie nach einigen Wochen mit sauberen Zahlen im CRM. Diesen Takt bauen wir als Head of Sales auf Zeit mit Ihnen auf.</p>
+      <a class="link-pfeil" href="#wochenreport">Ihre Wochenziele im Wochenreport ansehen</a>
       <a class="link-pfeil" href="vertrieb-auf-zeit/">Vertrieb auf Zeit ansehen</a>
     </div>
   </div>
@@ -585,7 +799,7 @@ ${themen.map(([pfad, lage, titel, text, klein], i) => `      <li class="thema er
 <section class="abschnitt" id="ablauf" aria-labelledby="ablauf-titel">
   <div class="w">
     ${abKopf('Ablauf', 'So kommen wir <em>zusammen.</em>', `Vom ersten Gespräch bis zum Mandat hat jeder Schritt ein klares Ergebnis. Preise zeigt MAKE Revenue nicht: Sie stehen offen bei ${fam('innovation', 'MAKE Innovation', { pfad: 'preise/' })}.`, 'ablauf-titel')}
-    <ol class="ablauf-liste ablauf-stufen">
+    <ol class="ablauf-liste">
       <li class="erscheint"><h3>Erstgespräch oder Check</h3><p>Kostenlos: 30 Minuten Erstgespräch per Video oder der Vertriebs-Check mit Ergebnis sofort.</p></li>
       <li class="erscheint erscheint-2"><h3>Ihr Vorschlag</h3><p>Wir schlagen Ihnen das passende Angebot vor und nennen Festpreis und Ablauf schriftlich, bevor es losgeht.</p></li>
       <li class="erscheint erscheint-3"><h3>Tagesworkshop</h3><p>Ein Tag, an dem wir die größten Hebel finden und den ersten direkt umsetzen. Beim Start eines Mandats rechnen wir ihn voll an.</p></li>
@@ -595,10 +809,13 @@ ${themen.map(([pfad, lage, titel, text, klein], i) => `      <li class="thema er
 </section>
 
 <section class="satz-band" aria-labelledby="satz-titel">
-  <div class="w">
-    <p class="ueberzeile">Unser Maßstab</p>
-    <h2 class="satz-gross" id="satz-titel">Wir schulden die Leistung, nicht den <em>Umsatz.</em></h2>
-    <p class="satz-unter">Was wir zusagen, liefern wir. Im Mandat als Head of Sales heißt das: In Woche 8 bekommen Sie eine Zwischenbilanz mit Zahlen und Fahrplan. Ab Monat 3 läuft jedes Gespräch nach Prozess im CRM, und jeden Freitag kommt der Wochenreport mit Ihren Zahlen.</p>
+  <div class="w satz-raster">
+    <div>
+      <p class="ueberzeile">Unser Maßstab</p>
+      <h2 class="satz-gross" id="satz-titel">Wir schulden die Leistung, nicht den <em>Umsatz.</em></h2>
+      <p class="satz-unter">Was wir zusagen, liefern wir. Im Mandat als Head of Sales heißt das: In Woche 8 bekommen Sie eine Zwischenbilanz mit Zahlen und Fahrplan. Ab Monat 3 läuft jedes Gespräch nach Prozess im CRM, und jeden Freitag kommt der Wochenreport mit Ihren Zahlen.</p>
+    </div>
+    ${filmplatz(W, 'handschlag')}
   </div>
 </section>
 
@@ -681,9 +898,10 @@ function systemvertrieb(W) {
     aktionen: `<a class="knopf knopf-gross" href="../#erstgespraech" data-buchen="systemvertrieb">Erstgespräch vereinbaren</a>${fam('check', 'Vertriebs-Check, 5 Minuten', { klasse: 'link-pfeil' })}`,
     vorweg: thema('systemvertrieb').vorweg,
     fakten: [['Für wen', 'Gründer und Unternehmer, B2B, Mittelstand und Dienstleister, deren Vertrieb an der Geschäftsführung hängt'], ['Ergebnis', 'Pipeline im CRM, Wochenreport, klare Rollen und ein Sales Playbook, das bleibt'], ['Einstieg', 'Vertriebs-Check oder Erstgespräch, beides kostenlos']],
+    film: 'arbeit',
   })}
 
-<section class="abschnitt ton-2" aria-labelledby="was-titel">
+<section class="abschnitt" aria-labelledby="was-titel">
   <div class="w spalten">
     <div class="spalten-kopf">
       <p class="ueberzeile">Begriff</p>
@@ -710,7 +928,7 @@ function systemvertrieb(W) {
   </div>
 </section>
 
-<section class="abschnitt" id="bausteine" aria-labelledby="bausteine-titel">
+<section class="abschnitt ton-2" id="bausteine" aria-labelledby="bausteine-titel">
   <div class="w">
     ${abKopf('Aufbau', 'Woraus besteht ein Vertrieb mit <em>System?</em>', 'Aus fünf Bausteinen, in dieser Reihenfolge: Fundament, Leadgenerierung, Prozesse, Kennzahlen und ein befähigtes Team. Wer mit einem neuen Werkzeug oder dem ersten Vertriebler anfängt, hat noch nichts, worauf beides aufsetzen kann.', 'bausteine-titel')}
     <ol class="bausteine">
@@ -719,7 +937,7 @@ ${bausteine.map(([name, klein, text]) => `      <li class="baustein erscheint"><
   </div>
 </section>
 
-<section class="abschnitt ton-2" id="prozess" aria-labelledby="prozess-titel">
+<section class="abschnitt" id="prozess" aria-labelledby="prozess-titel">
   <div class="w spalten">
     <div class="spalten-kopf">
       <p class="ueberzeile">Der Prozess</p>
@@ -734,9 +952,29 @@ ${bausteine.map(([name, klein, text]) => `      <li class="baustein erscheint"><
       </div>
     </div>
   </div>
+  <div class="w abstand-gross" id="brett">
+    <div class="stueck-kopf">
+      <p class="ueberzeile">Zum Anfassen</p>
+      <h3 class="stueck-titel">So sieht der Prozess im CRM aus: ein Brett, vier Stufen.</h3>
+      <p>Schieben Sie eine Karte eine Stufe weiter und sehen Sie, wie sich nächste Aktion, Datum und die Zähler ändern. Eine Karte hat noch keine nächste Aktion: Genau solche Anfragen bleiben sonst liegen.</p>
+    </div>
+    ${brett()}
+  </div>
 </section>
 
-<section class="abschnitt" id="kennzahlen" aria-labelledby="kennzahlen-titel">
+<section class="abschnitt" id="leitfaden" aria-labelledby="leitfaden-titel">
+  <div class="w spalten">
+    <div class="spalten-kopf">
+      <p class="ueberzeile">Zum Anfassen</p>
+      <h2 class="abschnitt-titel" id="leitfaden-titel">Wie sieht ein Gesprächsleitfaden <em>aus?</em></h2>
+      <p class="abschnitt-text">Leitfäden geben jedem Gespräch eine Richtung: Welche Fragen klären Bedarf, Budget, Entscheidung und Zeitpunkt? Dazu gehört eine Sammlung der häufigsten Einwände mit guten Antworten. Klicken Sie sich durch die vier Schritte.</p>
+      <p class="abschnitt-text">Neue Vertriebler üben damit im Rollenspiel, bevor sie das erste echte Gespräch führen.</p>
+    </div>
+    ${leitfaden({ voll: true })}
+  </div>
+</section>
+
+<section class="abschnitt ton-2" id="kennzahlen" aria-labelledby="kennzahlen-titel">
   <div class="w">
     ${abKopf('Kennzahlen', 'Wie viele Termine braucht Ihr <em>Umsatzziel?</em>', 'Rechnen Sie vom Umsatzziel rückwärts: Wie viele Abschlüsse brauchen Sie, wie viele Angebote führen dahin, wie viele Termine braucht es dafür? Daraus werden Wochenziele, die jeder versteht.', 'kennzahlen-titel')}
     <div class="kaesten-2">
@@ -755,25 +993,12 @@ ${bausteine.map(([name, klein, text]) => `      <li class="baustein erscheint"><
         <p class="tafel-fuss">Alle Werte sind angenommen. Ihre eigenen Quoten kennen Sie nach einigen Wochen mit sauberen Zahlen im CRM.</p>
         <a class="link-pfeil" href="../#rechner">Mit eigenen Werten rechnen</a>
       </div>
-      <div class="report erscheint erscheint-2">
-        <div class="report-kopf"><h3 class="report-titel">So sieht ein Wochenreport aus</h3><span class="etikett">Kalenderwoche 12</span></div>
-        <table>
-          <thead><tr><th scope="col">Stufe</th><th scope="col">Ist</th><th scope="col">Ziel</th></tr></thead>
-          <tbody>
-            <tr><th scope="row">Erstkontakte</th><td><b>38</b></td><td>40</td></tr>
-            <tr><th scope="row">Termine</th><td><b>5</b></td><td>4</td></tr>
-            <tr><th scope="row">Angebote</th><td><b>3</b></td><td>2</td></tr>
-            <tr><th scope="row">Abschlüsse</th><td><b>1</b></td><td>1</td></tr>
-          </tbody>
-        </table>
-        <p class="report-satz">Nächste Woche: Messekontakte nachfassen, die zwei größten offenen Angebote zuerst.</p>
-        <p class="report-hinweis">Beispielwerte, kein Kunde. Die Ziele kommen aus der Rückwärtsrechnung vom Umsatzziel.</p>
-      </div>
+      ${report(W)}
     </div>
   </div>
 </section>
 
-<section class="abschnitt ton-2" id="zahlen" aria-labelledby="fuenf-titel">
+<section class="abschnitt" id="zahlen" aria-labelledby="fuenf-titel">
   <div class="w">
     ${abKopf('Steuern', 'Welche Vertriebszahlen braucht ein kleines <em>Unternehmen?</em>', 'Fünf Zahlen reichen, um einen kleinen Vertrieb zu steuern. Ein teures Werkzeug braucht es dafür nicht: Eine Tabelle genügt, wenn sie gepflegt und jede Woche besprochen wird.', 'fuenf-titel')}
     <ol class="bausteine">
@@ -782,7 +1007,7 @@ ${fuenf.map(([name, text]) => `      <li class="baustein erscheint"><h3>${name}<
   </div>
 </section>
 
-<section class="abschnitt" id="fehler" aria-labelledby="fehler-titel">
+<section class="abschnitt ton-2" id="fehler" aria-labelledby="fehler-titel">
   <div class="w spalten">
     <div class="spalten-kopf">
       <p class="ueberzeile">Aus der Praxis</p>
@@ -801,7 +1026,7 @@ ${fuenf.map(([name, text]) => `      <li class="baustein erscheint"><h3>${name}<
   </div>
 </section>
 
-<section class="abschnitt ton-2" id="begriffe" aria-labelledby="begriffe-titel">
+<section class="abschnitt" id="begriffe" aria-labelledby="begriffe-titel">
   <div class="w">
     ${abKopf('Begriffe', 'Zehn Begriffe aus dem Vertrieb, kurz <em>erklärt.</em>', '', 'begriffe-titel')}
     <dl class="begriffe">
@@ -810,7 +1035,7 @@ ${BEGRIFFE.map(([n, t]) => `      <div><dt>${n}</dt><dd>${t}</dd></div>`).join('
   </div>
 </section>
 
-<section class="abschnitt" id="fragen" aria-labelledby="fragen-titel">
+<section class="abschnitt ton-2" id="fragen" aria-labelledby="fragen-titel">
   <div class="w">
     ${abKopf('Fragen', 'Häufige Fragen zum <em>Systemvertrieb.</em>', '', 'fragen-titel')}
     ${fragenListe(fr('ersterVertriebler', 'welchesCrm', 'kennzahlen', 'planbar', 'tabelle'))}
@@ -857,6 +1082,7 @@ function vertriebAufZeit(W) {
     aktionen: `<a class="knopf knopf-gross" href="../#erstgespraech" data-buchen="zeit">Erstgespräch vereinbaren</a><a class="link-pfeil" href="#tagesworkshop">Erst testen: der Tagesworkshop</a>`,
     vorweg: thema('zeit').vorweg,
     fakten: [['Laufzeit', '6 oder 12 Monate'], ['Einstieg', 'Tagesworkshop Vertrieb, wird beim Start eines Mandats voll angerechnet'], ['Preise', `stehen offen bei ${fam('innovation', 'MAKE Innovation', { pfad: 'preise/' })}`]],
+    film: 'gespraech',
   })}
 
 <section class="abschnitt ton-2" id="angebote" aria-labelledby="angebote-titel">
@@ -994,6 +1220,7 @@ function netzwerken(W) {
     aktionen: `${fam('innovation', 'Einladung erhalten', { pfad: 'events/', klasse: 'knopf knopf-gross' })}<a class="link-pfeil" href="#vertrieb">Wie daraus Vertrieb wird</a>`,
     vorweg: thema('netzwerken').vorweg,
     fakten: [['Kosten', 'Für Gäste kostenlos'], ['Zugang', 'Auf Einladung, über die Gästeliste'], ['Termine', 'Termine, Orte und Formate stehen in jeder Einladung']],
+    film: 'runde', filmMarke: 'Symbolbild · kein Foto unserer Abende',
   })}
 
 <section class="abschnitt dunkel" id="formate" aria-labelledby="formate-titel">
@@ -1116,7 +1343,7 @@ const FRAGEN_GRUPPEN = [
 ];
 function fragenSeite(W) {
   return `
-<section class="seiten-kopf">
+<section class="seiten-kopf dunkel" data-dunkelkopf>
   <div class="w">
     <nav aria-label="Brotkrumen"><ol class="krume"><li><a href="${W}">Start</a></li><li aria-current="page">Fragen</li></ol></nav>
     <div class="seiten-raster">
@@ -1149,7 +1376,7 @@ ${kontakt(W)}`;
 
 function nichtGefunden() {
   return `
-<section class="seiten-kopf">
+<section class="seiten-kopf dunkel" data-dunkelkopf>
   <div class="w">
     <p class="ueberzeile">Fehler 404</p>
     <h1 class="seiten-titel">Diese Seite gibt es <em>nicht.</em></h1>
@@ -1161,12 +1388,12 @@ function nichtGefunden() {
 
 // ═══════════════════════════════════════ Bauen ═══════════════════════════════════════
 const SEITEN = [
-  { pfad: '', aktuell: '', klasse: 'seite-start', inhalt: start, skripte: ['rechner.js'], name: 'Start',
+  { pfad: '', aktuell: '', klasse: 'seite-start', inhalt: start, skripte: ['film.js', 'rechner.js', 'anfassen.js'], name: 'Start',
     titel: 'MAKE Revenue · Vertrieb mit System für Gründer und Mittelstand',
     beschreibung: 'MAKE Revenue baut Ihren Vertrieb als System auf: Zielgruppe, Prozess im CRM, Kennzahlen und Nachfassen. Einstieg: kostenloser Vertriebs-Check oder Erstgespräch.',
     leistungen: THEMEN.map((t) => ({ name: t.titel, art: t.art, text: t.kurz, pfad: t.pfad })),
     fragen: fr('erstgespraech', 'gespraeche', 'crm', 'preise', 'wer') },
-  { pfad: 'systemvertrieb/', aktuell: 'systemvertrieb', klasse: 'seite-unter', inhalt: systemvertrieb, name: 'Digitaler Systemvertrieb',
+  { pfad: 'systemvertrieb/', aktuell: 'systemvertrieb', klasse: 'seite-unter', inhalt: systemvertrieb, skripte: ['anfassen.js'], name: 'Digitaler Systemvertrieb',
     titel: 'Digitaler Systemvertrieb: Vertrieb mit System · MAKE Revenue',
     beschreibung: 'Vertrieb, der nicht am Gründer hängt: Zielgruppe, Prozess im CRM, Leitfäden, Kennzahlen und Wochenreport. So baut MAKE Revenue Ihr Vertriebssystem auf.',
     leistung: leistung('systemvertrieb'),
@@ -1205,11 +1432,14 @@ writeFileSync(join(ORDNER, '404.html'), rahmen({ pfad: '', aktuell: '', klasse: 
 // Was seo.mjs für Kopf, strukturierte Daten und Prüfer braucht
 writeFileSync(join(ORDNER, 'seiten.json'), JSON.stringify({
   hinweis: 'Von bauen.mjs geschrieben, nicht von Hand ändern. seo.mjs liest daraus Titel, Beschreibung, Leistungen, Fragen und Begriffe.',
-  stand: STAND, mail: MAIL, satz: SATZ,
+  stand: STAND, mail: MAIL, satz: SATZ, zeichen: { wahl: ZEICHEN_WAHL, name: ZEICHNUNG.name, alt: ZEICHNUNG.alt, svg: ZEICHNUNG.svg }, farbe: FARBE,
   seiten: SEITEN.map((s) => ({ pfad: s.pfad, datei: s.pfad + 'index.html', name: s.name, titel: s.titel, beschreibung: s.beschreibung, leistung: s.leistung ? { name: s.leistung.name, art: s.leistung.art, text: s.leistung.text, kurz: s.leistung.kurz } : null, leistungen: s.leistungen || [],
     fragen: (s.fragen || []).map(([f, a]) => ({ f, a: nurText(a) })), begriffe: (s.begriffe || []).map(([name, text]) => ({ name, text })) })),
 }, null, 1) + '\n');
 
-console.log(`gebaut: ${SEITEN.length} Seiten + 404.html + seiten.json`);
+// zeichen.svg (Favicon): das gewählte Zeichen hell auf Nacht, mit runden Ecken
+writeFileSync(join(ORDNER, 'zeichen.svg'), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><title>MAKE Revenue</title><rect width="100" height="100" rx="22" fill="${FARBE.nacht}"/><g transform="translate(50 50) scale(.74) translate(-50 -50)" fill="${FARBE.hell}" color="${FARBE.hell}">${ZEICHNUNG.svg}</g></svg>\n`);
+
+console.log(`gebaut: ${SEITEN.length} Seiten + 404.html + seiten.json + zeichen.svg (Zeichen: ${ZEICHNUNG.name})`);
 const { seo } = await import('./seo.mjs');
 process.exitCode = seo({ nurPruefen: false }) ? 0 : 1;

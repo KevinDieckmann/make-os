@@ -107,7 +107,7 @@ export function seo({ nurPruefen = false } = {}) {
     `<meta property="og:image" content="${BASIS}/bild/og.png">`,
     '<meta property="og:image:width" content="1200">',
     '<meta property="og:image:height" content="630">',
-    '<meta property="og:image:alt" content="MAKE Revenue: Vertrieb mit System. Die Stufenlinie von der Anfrage zum Abschluss.">',
+    '<meta property="og:image:alt" content="MAKE Revenue: Vertrieb mit System. Von der Anfrage zum Abschluss.">',
     '<meta name="twitter:card" content="summary_large_image">',
     `<script type="application/ld+json">${JSON.stringify(graph(s, url, lastmod)).replace(/</g, '\\u003c')}</script>`,
   ].join('\n');
@@ -142,7 +142,7 @@ export function seo({ nurPruefen = false } = {}) {
     'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${fertig.map((f) => `  <url><loc>${att(f.url)}</loc><lastmod>${f.lastmod}</lastmod></url>`).join('\n')}\n</urlset>\n`,
     'llms.txt': `# MAKE Revenue\n\n> ${daten.satz.revenue}\n\n## Leistungen\n${fertig.filter((f) => f.s.leistung).map((f) => `- [${f.s.leistung.name}](${f.url}): ${f.s.leistung.kurz}`).join('\n')}\n\n## Mehr\n${fertig.filter((f) => f.s.pfad && !f.s.leistung).map((f) => `- [${f.s.name}](${f.url}): ${f.s.beschreibung}`).join('\n')}\n\n## Kontakt\n- E-Mail: ${daten.mail}\n- Erstgespräch: kostenlos, 30 Minuten per Video\n\n## Die Familie\n- [MAKE Innovation](${INNOVATION}/): ${daten.satz.innovation} Dort stehen die Preise.\n- [MAKE Studios](${STUDIOS}/): ${daten.satz.studios}\n\nStand: ${daten.stand}\n`,
     [`${einstellung.indexnow}.txt`]: einstellung.indexnow + '\n',
-    'site.webmanifest': JSON.stringify({ name: 'MAKE Revenue', short_name: 'MAKE Revenue', description: daten.satz.revenue, lang: 'de', start_url: '/', display: 'browser', background_color: '#EFF1EA', theme_color: '#0B1512',
+    'site.webmanifest': JSON.stringify({ name: 'MAKE Revenue', short_name: 'MAKE Revenue', description: daten.satz.revenue, lang: 'de', start_url: '/', display: 'browser', background_color: daten.farbe.papier, theme_color: daten.farbe.nacht,
       icons: [{ src: 'bild/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'bild/logo.png', sizes: '512x512', type: 'image/png' }] }, null, 1) + '\n',
   };
   if (!nurPruefen) {

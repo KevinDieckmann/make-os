@@ -7,7 +7,7 @@
 <title>Seite nicht gefunden · MAKE Revenue</title>
 <meta name="robots" content="noindex, nofollow">
 <!-- seo:ende -->
-<meta name="theme-color" content="#EFF1EA">
+<meta name="theme-color" content="#0A1326">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/zeichen.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/bild/icon-180.png">
@@ -23,21 +23,17 @@
 </head>
 <body class="seite-unter">
 
-<!-- Das Zeichen: die Stufenlinie in der Scheibe. Vier Stufen wie die Strecke: Anfrage, Gespräch, Angebot, Abschluss. Einmal hier, überall per <use>. -->
+<!-- Das Zeichen (Der Trichter): einmal hier, überall per <use>. Farbe über currentColor. -->
 <svg class="vorrat" aria-hidden="true" focusable="false">
   <defs>
-    <mask id="m-stufen" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-      <circle cx="50" cy="50" r="46" fill="#fff"/>
-      <path d="M-2 71H29.5V57H50V43H70.5V29H102" fill="none" stroke="#000" stroke-width="6"/>
-    </mask>
-    <g id="g-stufen"><rect width="100" height="100" mask="url(#m-stufen)"/></g>
+    <g id="g-zeichen"><rect x="12" y="10" width="76" height="13" rx="6.5"/><rect x="24" y="31" width="52" height="13" rx="6.5"/><rect x="36" y="52" width="28" height="13" rx="6.5"/><circle cx="50" cy="81.5" r="8.5"/></g>
   </defs>
 </svg>
 
 <a class="springen" href="#inhalt">Zum Inhalt</a>
 
 <header class="kopf">
-  <a class="marke" href="/" aria-label="MAKE Revenue, zur Startseite"><svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-stufen"/></svg><span class="marke-wort"><b>MAKE</b> <span>REVENUE</span></span></a>
+  <a class="marke" href="/" aria-label="MAKE Revenue, zur Startseite"><svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-zeichen"/></svg><span class="marke-wort"><b>MAKE</b> <span>REVENUE</span></span></a>
   <nav class="kopf-nav" aria-label="Hauptmenü">
     <a href="/systemvertrieb/">Systemvertrieb</a>
     <a href="/vertrieb-auf-zeit/">Vertrieb auf Zeit</a>
@@ -54,7 +50,7 @@
 <!-- Menü für schmale Fenster: eigenes Fenster (dialog) mit Fokusfalle und Escape (seite.js) -->
 <dialog class="menue" id="menue" aria-label="Menü">
   <div class="menue-kopf">
-    <span class="marke"><svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-stufen"/></svg><span class="marke-wort"><b>MAKE</b> <span>REVENUE</span></span></span>
+    <span class="marke"><svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-zeichen"/></svg><span class="marke-wort"><b>MAKE</b> <span>REVENUE</span></span></span>
     <button class="menue-zu" type="button" aria-label="Menü schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
   <nav class="menue-nav" aria-label="Hauptmenü">
@@ -72,7 +68,7 @@
 
 <main id="inhalt">
 
-<section class="seiten-kopf">
+<section class="seiten-kopf dunkel" data-dunkelkopf>
   <div class="w">
     <p class="ueberzeile">Fehler 404</p>
     <h1 class="seiten-titel">Diese Seite gibt es <em>nicht.</em></h1>
@@ -86,7 +82,7 @@
   <div class="w">
     <div class="fuss-oben">
       <div>
-        <a class="marke" href="/" aria-label="MAKE Revenue, zur Startseite"><svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-stufen"/></svg><span class="marke-wort"><b>MAKE</b> <span>REVENUE</span></span></a>
+        <a class="marke" href="/" aria-label="MAKE Revenue, zur Startseite"><svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-zeichen"/></svg><span class="marke-wort"><b>MAKE</b> <span>REVENUE</span></span></a>
         <p class="fuss-satz">MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.</p>
       </div>
       <nav aria-label="Themen">
@@ -102,14 +98,14 @@
       <div>
         <p class="fuss-titel">Die Familie</p>
         <ul class="fuss-liste">
-          <li><a href="http://localhost:3019/" data-familie="innovation">MAKE Innovation</a><small>Das Dach: KI, Abläufe und eigene Software</small></li>
-          <li><a href="http://localhost:3022/" data-familie="studios">MAKE Studios</a><small>Websites, Google-Profil, Fotos und Video</small></li>
+          <li><a href="https://makeinnovation.de/" data-familie="innovation">MAKE Innovation</a><small>Das Dach: KI, Abläufe und eigene Software</small></li>
+          <li><a href="https://makestudios.de/" data-familie="studios">MAKE Studios</a><small>Websites, Google-Profil, Fotos und Video</small></li>
         </ul>
       </div>
     </div>
     <div class="fuss-unten">
       <span>MAKE Revenue · eine Marke von MAKE Innovation · Stand: November 2026</span>
-      <nav aria-label="Rechtliches"><a href="http://localhost:3019/impressum/" data-familie="innovation" data-pfad="impressum/">Impressum</a><a href="http://localhost:3019/datenschutz/" data-familie="innovation" data-pfad="datenschutz/">Datenschutz</a><a href="mailto:kevin@makeinnovation.de">Kontakt</a></nav>
+      <nav aria-label="Rechtliches"><a href="https://makeinnovation.de/impressum/" data-familie="innovation" data-pfad="impressum/">Impressum</a><a href="https://makeinnovation.de/datenschutz/" data-familie="innovation" data-pfad="datenschutz/">Datenschutz</a><a href="mailto:kevin@makeinnovation.de">Kontakt</a></nav>
     </div>
   </div>
 </footer>
@@ -203,11 +199,11 @@
             <textarea id="b-nachricht" name="nachricht" rows="4" maxlength="2000"></textarea>
           </div>
         </div>
-        <p class="buchen-datenschutz">Beim Senden öffnet sich Ihr E-Mail-Programm mit dem fertigen Text. Diese Seite speichert und versendet nichts. <a class="textlink" href="http://localhost:3019/datenschutz/" data-familie="innovation" data-pfad="datenschutz/">Datenschutz</a></p>
+        <p class="buchen-datenschutz">Beim Senden öffnet sich Ihr E-Mail-Programm mit dem fertigen Text. Diese Seite speichert und versendet nichts. <a class="textlink" href="https://makeinnovation.de/datenschutz/" data-familie="innovation" data-pfad="datenschutz/">Datenschutz</a></p>
       </section>
 
       <div class="buchen-fertig" hidden>
-        <svg class="buchen-fertig-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-stufen"/></svg>
+        <svg class="buchen-fertig-zeichen" viewBox="0 0 100 100" aria-hidden="true"><use href="#g-zeichen"/></svg>
         <p class="buchen-frage" tabindex="-1" role="heading" aria-level="2">Fast <em>geschafft.</em></p>
         <p>Ihr E-Mail-Programm hat sich mit der fertigen Anfrage geöffnet. Bitte senden Sie die Nachricht dort ab, wir antworten persönlich.</p>
         <p>Hat sich nichts geöffnet? Kopieren Sie den Text und schicken Sie ihn an kevin@makeinnovation.de.</p>
