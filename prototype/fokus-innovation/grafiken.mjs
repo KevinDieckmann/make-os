@@ -96,9 +96,10 @@ export const belegBahn = (anteil) => {
 
 /**
  * Zeichen der Marken der Familie (11.11.2026). MAKE Studios: die Irisblende aus deren zeichen.svg (Maske, Farben über CSS-Klassen).
- * MAKE Revenue: der Kreis mit der Stufenlinie aus deren zeichen.svg (Favicon-Fassung: Minze auf dunkler Kachel, Strich 7).
- * schluessel macht die Masken-Kennung je Stelle eindeutig.
+ * MAKE Revenue (seit 12.11.2026): der Trichter aus deren zeichen.svg (drei Linien, darunter der Punkt; helles Blau auf Nacht).
+ * Wechselt MAKE Revenue auf das Zeichen „Abschluss“ (zwei Kreise), hier die Zeichnung aus deren zeichen.svg nachziehen.
+ * schluessel macht die Masken-Kennung je Stelle eindeutig (nur MAKE Studios braucht eine Maske).
  */
 export const markenZeichen = (id, schluessel = id) => (id === 'studios'
   ? `<svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><defs><mask id="iris-${schluessel}" maskUnits="userSpaceOnUse" x="-10" y="-10" width="120" height="120"><circle cx="50" cy="50" r="46" fill="#fff"/><polygon points="50,70 32.68,60 32.68,40 50,30 67.32,40 67.32,60" fill="#000"/><path d="M50 70L15.36 90M32.68 60L-1.96 40M32.68 40L32.68 0M50 30L84.64 10M67.32 40L101.96 60M67.32 60L67.32 100" stroke="#000" stroke-width="5"/></mask></defs><rect class="mz-grund" width="100" height="100" rx="22"/><g transform="translate(50 50) scale(.76) translate(-50 -50)"><rect class="mz-farbe" x="-10" y="-10" width="120" height="120" mask="url(#iris-${schluessel})"/></g></svg>`
-  : `<svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><defs><mask id="stufe-${schluessel}" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><circle cx="50" cy="50" r="46" fill="#fff"/><path d="M-2 71H29.5V57H50V43H70.5V29H102" fill="none" stroke="#000" stroke-width="7"/></mask></defs><rect class="mz-grund" width="100" height="100" rx="22"/><g transform="translate(50 50) scale(.76) translate(-50 -50)"><rect class="mz-farbe" width="100" height="100" mask="url(#stufe-${schluessel})"/></g></svg>`);
+  : `<svg class="marke-zeichen" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><rect class="mz-grund" width="100" height="100" rx="22"/><g class="mz-farbe" transform="translate(50 50) scale(.74) translate(-50 -50)"><rect x="12" y="10" width="76" height="13" rx="6.5"/><rect x="24" y="31" width="52" height="13" rx="6.5"/><rect x="36" y="52" width="28" height="13" rx="6.5"/><circle cx="50" cy="81.5" r="8.5"/></g></svg>`);

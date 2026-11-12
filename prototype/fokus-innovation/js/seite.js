@@ -5,6 +5,15 @@
   const ruhig = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const beobachten = 'IntersectionObserver' in window;
 
+  // Lokale Vorschau: Auf dem eigenen Rechner führen die Verweise zu den Marken auf deren lokale Vorschauen (sonst unverändert).
+  if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+    const lokal = { 'makestudios.de': 'http://localhost:3022', 'makerevenue.de': 'http://localhost:3023' };
+    document.querySelectorAll('a[href^="https://make"]').forEach((a) => {
+      const u = new URL(a.href);
+      if (lokal[u.hostname]) a.href = lokal[u.hostname] + u.pathname + u.search + u.hash;
+    });
+  }
+
   const erscheint = document.querySelectorAll('.erscheint');
   if (ruhig || !beobachten) erscheint.forEach((el) => el.classList.add('sichtbar'));
   else {

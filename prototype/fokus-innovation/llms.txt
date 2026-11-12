@@ -8,8 +8,8 @@ Wir machen Ihr Angebot mit Positionierung, Website, Videos und PR bekannt und ba
 
 MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue.
 
-- [MAKE Studios](http://localhost:3022/): MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video. Thema: Sichtbarkeit und Video. Dort stehen Problem, Beispiele und Ablauf; die Preise stehen bei MAKE Innovation.
-- [MAKE Revenue](http://localhost:3023/): MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events. Thema: Vertrieb. Dort stehen Vorgehen, Ablauf und Events; die Preise stehen bei MAKE Innovation.
+- [MAKE Studios](https://makestudios.de/): MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video. Thema: Sichtbarkeit und Video. Dort stehen Problem, Beispiele und Ablauf; die Preise stehen bei MAKE Innovation.
+- [MAKE Revenue](https://makerevenue.de/): MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events. Thema: Vertrieb. Dort stehen Vorgehen, Ablauf und Events; die Preise stehen bei MAKE Innovation.
 - MAKE Innovation: KI, Abläufe, Daten, Software und der Innovations-Check, dazu die Preise aller Angebote.
 
 ## Auf einen Blick
@@ -30,61 +30,61 @@ MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Un
 
 ### Sichtbarkeit: Gesehen werden.
 
-Zuhause des Themas ist die Marke [MAKE Studios](http://localhost:3022/). Hier steht das Preis- und Leistungsblatt.
+Zuhause des Themas ist die Marke [MAKE Studios](https://makestudios.de/). Hier steht das Preis- und Leistungsblatt.
 
 Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab 1.990 €, Websites ab 2.990 € mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab 1.490 € sowie PR und Kommunikation ab 2.990 € im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.
 
-- [Positionierung S, M, L](https://fokusinnovation.de/sichtbarkeit/positionierung/): ab 1.990 € netto (einmalig, KI-gestützt vorbereitet, Workshop mit Kevin). In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.
-- [PR und Kommunikation](https://fokusinnovation.de/sichtbarkeit/pr-kommunikation/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation.
-- [Homepage Landing](https://fokusinnovation.de/sichtbarkeit/homepage-landing/): ab 2.990 € netto (einmalig, fertig in 10 Werktagen). Ein One-Pager in Ihrer CI, der Besucher zur Anfrage führt. Fertig in 10 Werktagen.
-- [Homepage Story](https://fokusinnovation.de/sichtbarkeit/homepage-story/): ab 4.990 € netto (einmalig, fertig in 15 Werktagen). Ihre Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.
-- [Homepage Cinematic](https://fokusinnovation.de/sichtbarkeit/homepage-cinematic/): ab 9.990 € netto (einmalig, fertig in 25 Werktagen). Wir entwickeln Ihre Geschichte im Story-Workshop und bauen daraus eine Website mit 3D-Szenen und Erklärvideo. Fertig in 25 Werktagen.
-- [Erklärvideo](https://fokusinnovation.de/sichtbarkeit/erklaervideo/): ab 1.490 € netto (einmalig, fertig in 10 Werktagen). Ihr Angebot in 90 Sekunden verstanden: ein Erklärvideo in Ihrer CI, fertig in 10 Werktagen.
-- [Videostory](https://fokusinnovation.de/sichtbarkeit/videostory/): ab 1.990 € netto (einmalig, fertig in 15 Werktagen). Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich erzählt und in Ihrer CI.
-- [Video Serie](https://fokusinnovation.de/sichtbarkeit/video-serie/): ab 1.990 € netto (pro Monat, mindestens 3 Monate). Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.
+- [Positionierung S, M, L](https://makeinnovation.de/sichtbarkeit/positionierung/): ab 1.990 € netto (einmalig, KI-gestützt vorbereitet, Workshop mit Kevin). In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.
+- [PR und Kommunikation](https://makeinnovation.de/sichtbarkeit/pr-kommunikation/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation.
+- [Homepage Landing](https://makeinnovation.de/sichtbarkeit/homepage-landing/): ab 2.990 € netto (einmalig, fertig in 10 Werktagen). Ein One-Pager in Ihrer CI, der Besucher zur Anfrage führt. Fertig in 10 Werktagen.
+- [Homepage Story](https://makeinnovation.de/sichtbarkeit/homepage-story/): ab 4.990 € netto (einmalig, fertig in 15 Werktagen). Ihre Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.
+- [Homepage Cinematic](https://makeinnovation.de/sichtbarkeit/homepage-cinematic/): ab 9.990 € netto (einmalig, fertig in 25 Werktagen). Wir entwickeln Ihre Geschichte im Story-Workshop und bauen daraus eine Website mit 3D-Szenen und Erklärvideo. Fertig in 25 Werktagen.
+- [Erklärvideo](https://makeinnovation.de/sichtbarkeit/erklaervideo/): ab 1.490 € netto (einmalig, fertig in 10 Werktagen). Ihr Angebot in 90 Sekunden verstanden: ein Erklärvideo in Ihrer CI, fertig in 10 Werktagen.
+- [Videostory](https://makeinnovation.de/sichtbarkeit/videostory/): ab 1.990 € netto (einmalig, fertig in 15 Werktagen). Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich erzählt und in Ihrer CI.
+- [Video Serie](https://makeinnovation.de/sichtbarkeit/video-serie/): ab 1.990 € netto (pro Monat, mindestens 3 Monate). Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.
 
 ### Vertrieb: Verkauft werden.
 
-Zuhause des Themas ist die Marke [MAKE Revenue](http://localhost:3023/). Hier steht das Preis- und Leistungsblatt.
+Zuhause des Themas ist die Marke [MAKE Revenue](https://makerevenue.de/). Hier steht das Preis- und Leistungsblatt.
 
 Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop ab 1.900 € netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.
 
-- [Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit](https://fokusinnovation.de/vertrieb/tagesworkshop/): ab 1.900 € netto (einmalig, wird beim Mandatsstart voll angerechnet). Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
-- [Head of Sales](https://fokusinnovation.de/vertrieb/head-of-sales/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Wir bauen Ihnen einen Vertrieb mit System, den Ihr Team ohne Sie bedienen kann.
-- [Chief Sales Officer (CSO)](https://fokusinnovation.de/vertrieb/cso/): ab 4.990 € netto (pro Monat, 6 oder 12 Monate). Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.
+- [Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit](https://makeinnovation.de/vertrieb/tagesworkshop/): ab 1.900 € netto (einmalig, wird beim Mandatsstart voll angerechnet). Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
+- [Head of Sales](https://makeinnovation.de/vertrieb/head-of-sales/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Wir bauen Ihnen einen Vertrieb mit System, den Ihr Team ohne Sie bedienen kann.
+- [Chief Sales Officer (CSO)](https://makeinnovation.de/vertrieb/cso/): ab 4.990 € netto (pro Monat, 6 oder 12 Monate). Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.
 
 ### Innovation: Im Alltag ankommen.
 
 Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im Erstgespräch die drei wichtigsten Abläufe fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.
 
-- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Die kurze Fassung dauert rund 10 Minuten und zeigt das Ergebnis sofort, die ausführliche rund 25 Minuten, danach kommt der vollständige Bericht per E-Mail.
-- [Umsetzungsprojekte: KI und Software einführen](https://fokusinnovation.de/innovation/umsetzungsprojekte/): bald, Anfrage schon jetzt möglich, Preis auf Anfrage. Wir ordnen zuerst Abläufe und Daten und führen dann KI und Software ein, bis Ihr Team sie im Alltag nutzt. Jedes Projekt bekommt einen Festpreis und einen klaren Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an. Startet in Kürze.
+- [Innovations-Check](https://makeinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Die kurze Fassung dauert rund 10 Minuten und zeigt das Ergebnis sofort, die ausführliche rund 25 Minuten, danach kommt der vollständige Bericht per E-Mail.
+- [Umsetzungsprojekte: KI und Software einführen](https://makeinnovation.de/innovation/umsetzungsprojekte/): bald, Anfrage schon jetzt möglich, Preis auf Anfrage. Wir ordnen zuerst Abläufe und Daten und führen dann KI und Software ein, bis Ihr Team sie im Alltag nutzt. Jedes Projekt bekommt einen Festpreis und einen klaren Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an. Startet in Kürze.
 
 ## Wissen
 
-- [Vertrieb aufbauen: vom Gründer zum System](https://fokusinnovation.de/wissen/vertrieb-aufbauen/): So bauen Sie Vertrieb auf, der ohne den Gründer läuft: Zielgruppe, Ansprache, Prozess im CRM, Kennzahlen und ein trainiertes Team, in dieser Reihenfolge.
-- [Head of Sales auf Zeit: was er macht und wann er sich lohnt](https://fokusinnovation.de/wissen/head-of-sales-auf-zeit/): Was ein Head of Sales auf Zeit in sechs Monaten aufbaut, wann er sich gegenüber einer festen Einstellung lohnt und was das Mandat bei MAKE Innovation kostet.
-- [Positionierung: in fünf Sätzen sagen, was Sie machen](https://fokusinnovation.de/wissen/positionierung-in-fuenf-saetzen/): Fünf Fragen, die eine klare Positionierung beantwortet, ein einfacher Test für Ihre Startseite und die häufigsten Fehler. Für Gründer und Unternehmer.
-- [Homepage: was Besucher in fünf Sekunden verstehen müssen](https://fokusinnovation.de/wissen/homepage-fuenf-sekunden/): Was auf die erste Ansicht einer Unternehmens-Homepage gehört, wie Belege Vertrauen schaffen und warum Handy, Ladezeit und Suche von Anfang an mitgedacht werden.
-- [Erklärvideo für Unternehmen: Aufbau, Länge und Ablauf](https://fokusinnovation.de/wissen/erklaervideo-fuer-unternehmen/): Wann sich ein Erklärvideo lohnt, wie ein gutes in 60 bis 90 Sekunden aufgebaut ist und wie es ohne Dreh vor Ort in zehn Werktagen entsteht.
-- [KI im Mittelstand einführen: erst die Daten, dann die Werkzeuge](https://fokusinnovation.de/wissen/ki-im-mittelstand-einfuehren/): Wo der Mittelstand bei KI steht, warum es so oft an den Daten hakt und wie KI in fünf Schritten im Alltag ankommt. Mit Zahlen von ifo, KfW und Bitkom.
-- [Fünf Vertriebszahlen, die jedes kleine Unternehmen kennen sollte](https://fokusinnovation.de/wissen/fuenf-vertriebszahlen/): Angebote im Monat, Abschlussquote, Zeit bis zum Abschluss, offene Chancen und Nachfassen: was die fünf Zahlen zeigen und wie Sie sie mit einer Tabelle erfassen.
-- [Warum Ihre Website keine Anfragen bringt, und was Sie in einer Woche ändern können](https://fokusinnovation.de/wissen/website-ohne-anfragen/): Warum eine Website keine Anfragen bringt und was Sie in einer Woche ändern: Kernsatz oben, ein nächster Schritt, Belege, ein kurzes Video und eine Seite je Angebot.
-- [Die ersten 30 Tage mit KI im Team](https://fokusinnovation.de/wissen/erste-30-tage-mit-ki/): Die ersten 30 Tage mit KI im Team: einen Ablauf wählen, Firmenlizenz und Regeln klären, messen, was es spart, und danach entscheiden, wie es weitergeht.
-- [Kundenstimmen, die überzeugen: einholen, freigeben, einsetzen](https://fokusinnovation.de/wissen/kundenstimmen-die-ueberzeugen/): Kundenstimmen, die überzeugen: wen Sie wann fragen, welche Fragen Ergebnisse hervorbringen, wie Sie die Freigabe einholen und wo die Stimme wirkt.
-- [KI-Anwendungsfälle finden und bewerten](https://fokusinnovation.de/wissen/ki-anwendungsfaelle-finden/): KI-Anwendungsfälle finden und bewerten: Fragen für die Suche, sechs Kriterien mit Punkten, zwei Regeln vorab und ein Beispiel für die Wahl des ersten Ablaufs.
-- [Vom Gründer-Vertrieb zum Vertriebsteam](https://fokusinnovation.de/wissen/vom-gruender-vertrieb-zum-vertriebsteam/): Vom Gründer, der selbst verkauft, zum Team mit Führung: Phase erkennen, Rollen festlegen, Leute auswählen, einarbeiten, fair bezahlen und führen. Mit Arbeitsheft.
-- [Vertriebskennzahlen je Phase: Start, Aufbau, Wachstum](https://fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/): Welche Vertriebskennzahlen in welcher Phase zählen, wie Sie sie rechnen und erfassen und wie Sie eigene Zielwerte setzen. Mit Wochenbögen und Tabelle zum Ausfüllen.
+- [Vertrieb aufbauen: vom Gründer zum System](https://makeinnovation.de/wissen/vertrieb-aufbauen/): So bauen Sie Vertrieb auf, der ohne den Gründer läuft: Zielgruppe, Ansprache, Prozess im CRM, Kennzahlen und ein trainiertes Team, in dieser Reihenfolge.
+- [Head of Sales auf Zeit: was er macht und wann er sich lohnt](https://makeinnovation.de/wissen/head-of-sales-auf-zeit/): Was ein Head of Sales auf Zeit in sechs Monaten aufbaut, wann er sich gegenüber einer festen Einstellung lohnt und was das Mandat bei MAKE Innovation kostet.
+- [Positionierung: in fünf Sätzen sagen, was Sie machen](https://makeinnovation.de/wissen/positionierung-in-fuenf-saetzen/): Fünf Fragen, die eine klare Positionierung beantwortet, ein einfacher Test für Ihre Startseite und die häufigsten Fehler. Für Gründer und Unternehmer.
+- [Homepage: was Besucher in fünf Sekunden verstehen müssen](https://makeinnovation.de/wissen/homepage-fuenf-sekunden/): Was auf die erste Ansicht einer Unternehmens-Homepage gehört, wie Belege Vertrauen schaffen und warum Handy, Ladezeit und Suche von Anfang an mitgedacht werden.
+- [Erklärvideo für Unternehmen: Aufbau, Länge und Ablauf](https://makeinnovation.de/wissen/erklaervideo-fuer-unternehmen/): Wann sich ein Erklärvideo lohnt, wie ein gutes in 60 bis 90 Sekunden aufgebaut ist und wie es ohne Dreh vor Ort in zehn Werktagen entsteht.
+- [KI im Mittelstand einführen: erst die Daten, dann die Werkzeuge](https://makeinnovation.de/wissen/ki-im-mittelstand-einfuehren/): Wo der Mittelstand bei KI steht, warum es so oft an den Daten hakt und wie KI in fünf Schritten im Alltag ankommt. Mit Zahlen von ifo, KfW und Bitkom.
+- [Fünf Vertriebszahlen, die jedes kleine Unternehmen kennen sollte](https://makeinnovation.de/wissen/fuenf-vertriebszahlen/): Angebote im Monat, Abschlussquote, Zeit bis zum Abschluss, offene Chancen und Nachfassen: was die fünf Zahlen zeigen und wie Sie sie mit einer Tabelle erfassen.
+- [Warum Ihre Website keine Anfragen bringt, und was Sie in einer Woche ändern können](https://makeinnovation.de/wissen/website-ohne-anfragen/): Warum eine Website keine Anfragen bringt und was Sie in einer Woche ändern: Kernsatz oben, ein nächster Schritt, Belege, ein kurzes Video und eine Seite je Angebot.
+- [Die ersten 30 Tage mit KI im Team](https://makeinnovation.de/wissen/erste-30-tage-mit-ki/): Die ersten 30 Tage mit KI im Team: einen Ablauf wählen, Firmenlizenz und Regeln klären, messen, was es spart, und danach entscheiden, wie es weitergeht.
+- [Kundenstimmen, die überzeugen: einholen, freigeben, einsetzen](https://makeinnovation.de/wissen/kundenstimmen-die-ueberzeugen/): Kundenstimmen, die überzeugen: wen Sie wann fragen, welche Fragen Ergebnisse hervorbringen, wie Sie die Freigabe einholen und wo die Stimme wirkt.
+- [KI-Anwendungsfälle finden und bewerten](https://makeinnovation.de/wissen/ki-anwendungsfaelle-finden/): KI-Anwendungsfälle finden und bewerten: Fragen für die Suche, sechs Kriterien mit Punkten, zwei Regeln vorab und ein Beispiel für die Wahl des ersten Ablaufs.
+- [Vom Gründer-Vertrieb zum Vertriebsteam](https://makeinnovation.de/wissen/vom-gruender-vertrieb-zum-vertriebsteam/): Vom Gründer, der selbst verkauft, zum Team mit Führung: Phase erkennen, Rollen festlegen, Leute auswählen, einarbeiten, fair bezahlen und führen. Mit Arbeitsheft.
+- [Vertriebskennzahlen je Phase: Start, Aufbau, Wachstum](https://makeinnovation.de/wissen/vertriebskennzahlen-je-phase/): Welche Vertriebskennzahlen in welcher Phase zählen, wie Sie sie rechnen und erfassen und wie Sie eigene Zielwerte setzen. Mit Wochenbögen und Tabelle zum Ausfüllen.
 
 ## Weitere Seiten
 
-- [Alle Preise](https://fokusinnovation.de/preise/): jedes Angebot mit Preis und Konditionen
-- [Häufige Fragen](https://fokusinnovation.de/fragen/): Check, Vertrieb, Homepages, Videos, Verträge
-- [Begriffe von A bis Z](https://fokusinnovation.de/begriffe/): 25 Begriffe aus Vertrieb, Sichtbarkeit und KI
-- [MAKE Innovation · Events](https://fokusinnovation.de/events/): Kuratiert und auf Einladung: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir planen verschiedene Formate, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.
-- [Über uns](https://fokusinnovation.de/ueber-uns/): Leitidee, Team, Werte
-- [Kontakt](https://fokusinnovation.de/kontakt/): kevin@makeinnovation.de
+- [Alle Preise](https://makeinnovation.de/preise/): jedes Angebot mit Preis und Konditionen
+- [Häufige Fragen](https://makeinnovation.de/fragen/): Check, Vertrieb, Homepages, Videos, Verträge
+- [Begriffe von A bis Z](https://makeinnovation.de/begriffe/): 25 Begriffe aus Vertrieb, Sichtbarkeit und KI
+- [MAKE Innovation · Events](https://makeinnovation.de/events/): Kuratiert und auf Einladung: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir planen verschiedene Formate, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.
+- [Über uns](https://makeinnovation.de/ueber-uns/): Leitidee, Team, Werte
+- [Kontakt](https://makeinnovation.de/kontakt/): kevin@makeinnovation.de
 
 ## Optional
 
-- [Alle Inhalte als Klartext](https://fokusinnovation.de/llms-full.txt)
+- [Alle Inhalte als Klartext](https://makeinnovation.de/llms-full.txt)

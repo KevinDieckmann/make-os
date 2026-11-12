@@ -7,7 +7,7 @@
     "kurz": "Sichtbar, verkauft, verbunden.",
     "beschreibung": "MAKE Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um."
   },
-  "domain": "fokusinnovation.de",
+  "domain": "makeinnovation.de",
   "film": {
     "hinweis": "Die Story der Startseite (Kevin 25.10., geschärft 29.10., neu 30.10. abends nach drei Analysen: Aufmerksamkeit, Kernproblem der Gründer, Story-Psychologie; Einstieg von Kevin gewählt). Bild 1 trifft Sichtbarkeit und Vertrieb zugleich, Bild 2 Sichtbarkeit (entschieden wird vor dem Erstkontakt), Bild 3 Vertrieb (wer anfragt, wartet), Bild 4 die Antwort mit dem Slogan, Bild 5 schließt den Bogen von Bild 1. Keine Zahlen im Film.",
     "marke": "MAKE Innovation · Agentur für Sichtbarkeit, Vertrieb und Innovation",
@@ -874,7 +874,7 @@
         "id": "studios",
         "bereich": "sichtbarkeit",
         "name": "MAKE Studios",
-        "url": "http://localhost:3022/",
+        "url": "https://makestudios.de/",
         "thema": "Sichtbarkeit und Video",
         "satz": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video.",
         "anriss": "Sichtbarkeit ist bei uns eine eigene Marke. MAKE Studios baut Websites, pflegt das Google-Profil und macht Fotos und Video, damit Kunden Sie finden und schnell verstehen, was Sie machen. Beispiele und Ablauf sehen Sie dort, die Preise stehen hier.",
@@ -896,7 +896,7 @@
         "id": "revenue",
         "bereich": "vertrieb",
         "name": "MAKE Revenue",
-        "url": "http://localhost:3023/",
+        "url": "https://makerevenue.de/",
         "thema": "Vertrieb",
         "satz": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.",
         "anriss": "Vertrieb ist bei uns eine eigene Marke. MAKE Revenue baut den Vertrieb mit System auf, übernimmt die Vertriebsleitung auf Zeit und bringt Sie bei Events mit den passenden Menschen zusammen. Vorgehen und Ablauf sehen Sie dort, die Preise stehen hier.",
