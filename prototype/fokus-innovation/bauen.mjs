@@ -409,7 +409,7 @@ ${fussSpalte('Leistungen', [...BEREICHE.map((b) => [`/${b}/`, F.bereiche[b].name
 ${fussSpalte('Kostenlos', [['/kostenlos/#checks', 'Checks'], ['/kostenlos/#ratgeber', 'Ratgeber'], ...(Z ? [['/kostenlos/zahlen/', 'Zahlen']] : []), ...(VL ? [['/kostenlos/#vorlagen', 'Vorlagen']] : []), ['/fragen/', 'Häufige Fragen'], ['/begriffe/', 'Begriffe']])}
 ${fussSpalte('MAKE Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über uns'], ['/kontakt/', 'Kontakt'], ['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
 </div>
-<div class="fuss-unten"><span>© 2026 ${e(anbieter.name)} · ${e(F.marke.name)} ist eine Marke der ${e(anbieter.name)}</span><span>Keine Cookies, kein Tracking. Alle Preise netto zuzüglich Umsatzsteuer, für Unternehmen.</span></div>
+<div class="fuss-unten"><span>© 2026 ${e(anbieter.name)}${anbieter.name.startsWith(F.marke.name) ? '' : ` · ${e(F.marke.name)} ist eine Marke der ${e(anbieter.name)}`}</span><span>Keine Cookies, kein Tracking. Alle Preise netto zuzüglich Umsatzsteuer, für Unternehmen.</span></div>
 </div></footer>`;
 
   // ── Suche: Adressen, Organisation und strukturierte Daten (schema.org, eine @graph je Seite) ──
@@ -1086,7 +1086,7 @@ ${teamGrafik()}
 ${weg(F.einstieg, { etiketten: ['01', '02', '03'], label: 'Drei Schritte bis zum Start' })}</div></section>
 <section class="abschnitt" aria-label="Kontaktdaten"><div class="w"><div class="kontakt-liste erscheint">
 <div><p class="etikett">Nachricht</p><a class="gross-link" ${anfrageAttr('kontakt', 'Anfrage')}>Nachricht schreiben</a><p class="leise klein-text">Oder per E-Mail an <a class="unterstrichen" href="mailto:${e(k.mail)}">${e(k.mail)}</a></p></div>
-<div><p class="etikett">Adresse</p><address>${e(F.marke.name)}<br>${e(anbieter.name)}<br>${k.adresse.map(t).join('<br>')}</address><p class="leise klein-text">${e(F.marke.name)} ist eine Marke der ${e(anbieter.name)}.</p></div>
+<div><p class="etikett">Adresse</p><address>${e(F.marke.name)}<br>${e(anbieter.name)}<br>${k.adresse.map(t).join('<br>')}</address>${anbieter.name.startsWith(F.marke.name) ? '' : `<p class="leise klein-text">${e(F.marke.name)} ist eine Marke der ${e(anbieter.name)}.</p>`}</div>
 <div><p class="etikett">Events</p><p>Für die nächste Einladung genügt eine kurze Nachricht.</p>${anfrageTextlink('events', F.events.betreff, 'Einladung erhalten')}</div>
 </div></div></section>`,
     });
