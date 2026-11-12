@@ -94,13 +94,13 @@
 
   // ─── Zeitplan: Scrollweg je Szene (Gewichte). Daraus entstehen die Grenzen G[name] = [von, bis] als Anteil p. ───
   // Die Gesamtlänge steht in studio.css (.film { height }); hier zählt nur das Verhältnis.
-  const PLAN = [['intro', 30], ['wende', 58], ['branchen', 140], ['blende', 46], ['analyse', 96], ['maerkte', 205], ['ergebnis', 240], ['vorhang', 50], ['kontakt', 35]];
+  const PLAN = [['intro', 30], ['wende', 58], ['branchen', 140], ['blende', 46], ['analyse', 96], ['maerkte', 205], ['ergebnis', 336], ['vorhang', 50], ['kontakt', 35]];
   const G = {};
   (function () { let s = 0; const summe = PLAN.reduce((x, e) => x + e[1], 0); PLAN.forEach(e => { G[e[0]] = [s / summe, (s + e[1]) / summe]; s += e[1]; }); })();
   const stelle = (name, t) => G[name][0] + (G[name][1] - G[name][0]) * t;
-  const KAPITEL = [[0, '01', 'Intro'], [stelle('wende', .55), '02', 'Branchen'], [stelle('blende', .6), '03', 'Analyse'],
+  const KAPITEL = [[0, '01', 'Intro'], [stelle('wende', .55), '02', 'Für wen'], [stelle('blende', .6), '03', 'Analyse'],
     [stelle('maerkte', .12), '04', 'Märkte'], [stelle('ergebnis', .04), '05', 'Ergebnis'], [stelle('vorhang', .6), '06', 'Kontakt']];
-  const SPRUNG = { '#branchen': stelle('branchen', .06), '#film': 0 };
+  const SPRUNG = { '#betriebe': stelle('branchen', .06), '#film': 0 };
 
   // ─── Zustand ───
   const START = performance.now();
@@ -376,7 +376,8 @@
     }
     ad = blendeAn && inHex(24, vh - 20) && inHex(vw - 24, vh - 20) && vorhangOben > vh - 44;
     dunkelSetzen(kd);
-    kopfFlaeche(fr.bottom <= kopfH);
+    // Sobald der Film zu Ende ist und die Bühne nach oben wegläuft, schiebt sich ihr Inhalt unter den Kopf: ab da mit Fläche.
+    kopfFlaeche(fr.bottom < vh - 2);
     if (ad !== anzeigeDunkelAlt) { anzeigeDunkelAlt = ad; anzeige.classList.toggle('auf-dunkel', ad); }
 
     // Anzeige: Kapitel, Balken, Zeitcode

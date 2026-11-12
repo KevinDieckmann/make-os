@@ -56,8 +56,9 @@
       flaechen.set(el, z);
       // Poster fehlt: der alte Seitenstreifen springt ein (dann ohne Aufnahme)
       const rueckfall = el.getAttribute('data-rueckfall');
-      if (z.poster && rueckfall) {
-        const tauschen = () => { if (z.kaputt) return; z.kaputt = true; el.classList.add('streifen-rueckfall'); z.poster.src = rueckfall; };
+      if (z.poster) {
+        // ohne Streifen (neue Beispielseiten, deren Dateien noch fehlen): ruhige Fläche, keine Aufnahme
+        const tauschen = () => { if (z.kaputt) return; z.kaputt = true; if (rueckfall) { el.classList.add('streifen-rueckfall'); z.poster.src = rueckfall; } else el.classList.add('ohne-poster'); };
         if (z.poster.complete && z.poster.naturalWidth === 0 && z.poster.currentSrc) tauschen();
         else z.poster.addEventListener('error', tauschen, { once: true });
       }
@@ -277,10 +278,12 @@
     ziele.forEach((a, z) => spaeher.observe(z));
   }
 
-  // ═══ Entwürfe nach Branche zeigen ═══
-  const filter = D.querySelector('.filter');
-  const entwuerfe = Array.from(D.querySelectorAll('.entwurf[data-branche]'));
-  if (filter && entwuerfe.length) {
+  // ═══ Filter: Entwürfe nach Branche, Beispielseiten nach Art ═══
+  // Ohne JavaScript bleiben die Filter verborgen und alles steht untereinander.
+  D.querySelectorAll('.filter').forEach((filter) => {
+    const galerie = filter.getAttribute('data-filter-fuer') === 'referenzen';
+    const teile = Array.from(D.querySelectorAll(galerie ? '.referenz[data-art]' : '.entwurf[data-branche]'));
+    if (!teile.length) return;
     const knoepfe = Array.from(filter.querySelectorAll('.filter-knopf'));
     filter.hidden = false;
     filter.addEventListener('click', (e) => {
@@ -288,9 +291,9 @@
       if (!knopf) return;
       const wahl = knopf.dataset.filter;
       knoepfe.forEach((k) => k.setAttribute('aria-pressed', String(k === knopf)));
-      entwuerfe.forEach((el) => { el.hidden = wahl !== 'alle' && el.dataset.branche !== wahl; });
+      teile.forEach((el) => { el.hidden = wahl !== 'alle' && (galerie ? el.dataset.art : el.dataset.branche) !== wahl; });
     });
-  }
+  });
 
   if (fein) {
     // Licht folgt der Maus über den Analyse-Karten

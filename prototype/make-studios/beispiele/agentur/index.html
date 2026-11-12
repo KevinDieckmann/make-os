@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beispiel · Passer · MAKE Studios</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Passer, Büro für Marken in Berlin: Strategie, Gestaltung, Sprache und Bewegtbild. Eine Beispielseite mit erfundenem Betrieb.">
+<meta name="theme-color" content="#ECEAE4">
+<link rel="icon" href="../../zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/archivo-variabel.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../leiste.css">
+<link rel="stylesheet" href="seite.css">
+<script type="module" src="seite.js"></script>
+</head>
+<body>
+
+<!-- Zeichenvorrat: Passermarke und Pfeil, überall mit <use> eingesetzt -->
+<svg class="vorrat" width="0" height="0" aria-hidden="true" focusable="false">
+  <symbol id="z-passer" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/><path d="M12 1v22M1 12h22"/></symbol>
+  <symbol id="z-pfeil" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+</svg>
+
+<a class="sprung" href="#inhalt">Zum Inhalt springen</a>
+
+<header class="kopf" data-kopf>
+  <a class="kopf-marke" href="#inhalt" aria-label="Passer, zum Seitenanfang"><svg class="z" width="22" height="22" aria-hidden="true" focusable="false"><use href="#z-passer"/></svg><span>Passer</span></a>
+  <nav class="kopf-nav" id="menue" aria-label="Bereiche">
+    <a href="#arbeiten"><span class="nav-nr" aria-hidden="true">02</span>Arbeiten</a>
+    <a href="#leistungen"><span class="nav-nr" aria-hidden="true">03</span>Leistungen</a>
+    <a href="#ablauf"><span class="nav-nr" aria-hidden="true">04</span>Ablauf</a>
+    <a href="#buero"><span class="nav-nr" aria-hidden="true">05</span>Büro</a>
+    <a class="nur-menue" href="#anfrage"><span class="nav-nr" aria-hidden="true">06</span>Projekt anfragen</a>
+    <p class="menue-fuss">Passer · Büro für Marken<br>Beispielstraße 1 · Berlin</p>
+  </nav>
+  <p class="kopf-bogen" aria-hidden="true">Bogen <span data-bogen-nr>01</span> / 06 · <span data-bogen-name>Auftakt</span></p>
+  <a class="knopf kopf-knopf" href="#anfrage">Projekt anfragen</a>
+  <button class="kopf-menue" type="button" aria-expanded="false" aria-controls="menue"><span class="km-text">Menü</span><span class="km-zeichen" aria-hidden="true"></span></button>
+</header>
+
+<main id="inhalt" tabindex="-1">
+
+  <!-- ═══ Bogen 01 · Auftakt: Wortmarke aus drei Druckfarben, daneben öffnet sich der Werkstattfilm ═══ -->
+  <section class="auftakt" id="auftakt" data-ton="hell" data-bogen="Auftakt" aria-labelledby="leitsatz">
+    <div class="auftakt-halt">
+
+      <div class="blatt" data-blatt>
+        <p class="blatt-kopf">
+          <span>Büro für Marken · Berlin</span>
+          <span class="abweichung" aria-hidden="true"><span class="abw-punkt"></span><span data-abweichung>Abweichung 0,00 mm · sitzt</span></span>
+        </p>
+
+        <p class="wortmarke" role="img" aria-label="Passer" data-wortmarke>
+          <span class="wm wm-c" aria-hidden="true">Passer</span><span class="wm wm-m" aria-hidden="true">Passer</span><span class="wm wm-y" aria-hidden="true">Passer</span>
+        </p>
+
+        <div class="blatt-fuss">
+          <div class="blatt-text">
+            <p class="lexikon"><b>Pas·ser,</b> der. Im Druck das genaue Übereinanderliegen aller Farben. Sitzt er, wird das Bild scharf.</p>
+            <h1 id="leitsatz">Marken, bei denen alles <em>sitzt.</em></h1>
+            <p class="vorspann">Strategie, Gestaltung, Sprache und Film: Wir legen übereinander, was zusammengehört. Für Betriebe, die gute Arbeit machen und auch so aussehen wollen.</p>
+            <p class="aktionen">
+              <a class="knopf" href="#anfrage">Projekt anfragen</a>
+              <a class="pfeil-link" href="#arbeiten">Arbeiten ansehen<svg class="z" width="20" height="20" aria-hidden="true" focusable="false"><use href="#z-pfeil"/></svg></a>
+            </p>
+          </div>
+          <div class="film-platz" data-film-platz aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <!-- Werkstattfilm: vier kurze Einstellungen. Auf breiten Fenstern wächst er beim Scrollen aus dem kleinen Fenster auf volle Größe. -->
+      <div class="reel" id="film" role="group" aria-label="Werkstattfilm in vier Einstellungen" data-reel>
+        <div class="reel-bild" data-reel-bild>
+          <div class="reel-clip aktiv" data-clip>
+            <img class="reel-poster" src="medien/reel-studio.webp" width="1280" height="720" alt="Beispielaufnahme: Eine Frau im orangefarbenen Pullover zeigt dem Team am Tisch ein weißes Modell" fetchpriority="high" decoding="async">
+            <video class="reel-video" src="medien/reel-studio.mp4" data-gross="medien/reel-studio-gross.mp4" muted playsinline loop preload="none" width="1280" height="720" tabindex="-1" aria-hidden="true"></video>
+          </div>
+          <div class="reel-clip" data-clip>
+            <img class="reel-poster" src="medien/reel-team.webp" width="1280" height="720" alt="Beispielaufnahme: Sieben Menschen beugen sich über Entwürfe auf einem Tisch" loading="lazy" decoding="async">
+            <video class="reel-video" src="medien/reel-team.mp4" muted playsinline loop preload="none" width="1280" height="720" tabindex="-1" aria-hidden="true"></video>
+          </div>
+          <div class="reel-clip" data-clip>
+            <img class="reel-poster" src="medien/reel-bildwahl.webp" width="1280" height="720" alt="Beispielaufnahme: Bildauswahl an einem großen Bildschirm, von hinten über die Schulter gesehen" loading="lazy" decoding="async">
+            <video class="reel-video" src="medien/reel-bildwahl.mp4" muted playsinline loop preload="none" width="1280" height="720" tabindex="-1" aria-hidden="true"></video>
+          </div>
+          <div class="reel-clip" data-clip>
+            <img class="reel-poster" src="medien/reel-schnitt.webp" width="1280" height="720" alt="Beispielaufnahme: Filmschnitt im abgedunkelten Raum, Schnittprogramm auf dem Bildschirm" loading="lazy" decoding="async">
+            <video class="reel-video" src="medien/reel-schnitt.mp4" muted playsinline loop preload="none" width="1280" height="720" tabindex="-1" aria-hidden="true"></video>
+          </div>
+        </div>
+        <div class="reel-schleier" aria-hidden="true"></div>
+        <p class="reel-marke" aria-hidden="true">Werkstattfilm</p>
+
+        <div class="reel-text" data-reel-text>
+          <p class="reel-etikett"><svg class="z" width="18" height="18" aria-hidden="true" focusable="false"><use href="#z-passer"/></svg>Werkstattfilm · Blick ins Büro · Beispielaufnahmen</p>
+          <ol class="reel-saetze">
+            <li class="aktiv" data-satz>Wir zeigen früh, was wir denken.</li>
+            <li data-satz>Entwürfe gehören auf den Tisch.</li>
+            <li data-satz>Hundert Bilder ansehen. Eins behalten.</li>
+            <li data-satz>Schneiden, bis nichts übersteht.</li>
+          </ol>
+          <div class="reel-wahl" role="group" aria-label="Einstellung wählen">
+            <button type="button" data-wahl aria-pressed="true"><span class="rw-nr" aria-hidden="true">01</span><span class="rw-name">Zeigen</span><span class="rw-lauf" aria-hidden="true"><i></i></span></button>
+            <button type="button" data-wahl aria-pressed="false"><span class="rw-nr" aria-hidden="true">02</span><span class="rw-name">Entwerfen</span><span class="rw-lauf" aria-hidden="true"><i></i></span></button>
+            <button type="button" data-wahl aria-pressed="false"><span class="rw-nr" aria-hidden="true">03</span><span class="rw-name">Auswählen</span><span class="rw-lauf" aria-hidden="true"><i></i></span></button>
+            <button type="button" data-wahl aria-pressed="false"><span class="rw-nr" aria-hidden="true">04</span><span class="rw-name">Schneiden</span><span class="rw-lauf" aria-hidden="true"><i></i></span></button>
+          </div>
+        </div>
+
+        <button class="film-knopf" type="button" data-film-knopf hidden aria-label="Film anhalten"><span class="fk-zeichen" aria-hidden="true"></span><span class="fk-text" data-film-knopf-text>Film anhalten</span></button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══ Bogen 02 · Arbeiten: drei Beispielprojekte, gestapelt wie Druckbogen ═══ -->
+  <section class="arbeiten abschnitt" id="arbeiten" data-ton="hell" data-bogen="Arbeiten" aria-labelledby="arbeiten-titel">
+    <div class="bogenkopf" data-auf>
+      <p class="bk-marke"><svg class="z" width="18" height="18" aria-hidden="true" focusable="false"><use href="#z-passer"/></svg>Bogen 02 · Arbeiten</p>
+      <p class="bk-hinweis">Beispielprojekte · Auftraggeber, Zeichen und Farben sind frei erfunden</p>
+    </div>
+    <h2 class="titel" id="arbeiten-titel" data-worte>Drei Arbeiten, an denen Sie sehen, <em>wie</em> wir denken.</h2>
+
+    <div class="stapel">
+
+      <article class="projekt" aria-labelledby="p1-titel">
+        <p class="projekt-kopf"><span class="pk-nr">Beispielprojekt 01</span><span class="pk-art">Möbelwerkstatt</span><span class="pk-fach">Markenkern · Zeichen · Geschäftspapiere · Website</span></p>
+        <div class="projekt-raster">
+          <div class="projekt-text">
+            <h3 id="p1-titel">Aus einer Werkstatt wird eine Marke.</h3>
+            <dl class="dreischritt">
+              <div><dt>Ausgangslage</dt><dd>Eine Möbelwerkstatt in zweiter Generation baut Stühle und Tische auf Maß. Die Arbeit ist hervorragend, der Auftritt über Jahre zusammengewachsen: drei Schriften, zwei Logos, kein roter Faden.</dd></div>
+              <div><dt>Idee</dt><dd>Wir haben in der Werkstatt gesucht, nicht im Rechner. Die Schablone, mit der dort jede Rundung entsteht, wurde zum Zeichen: eine Kante, ein Viertel, ein Kreis.</dd></div>
+              <div><dt>Ergebnis</dt><dd>Ein Zeichen, das sich stempeln, fräsen und sticken lässt. Eine Hausfarbe aus der Werkstatt. Ein Auftritt, der vom Lieferschein bis zum Transporter gleich aussieht.</dd></div>
+            </dl>
+          </div>
+          <figure class="projekt-bild">
+            <div class="pb-foto schnittmarken">
+              <img src="medien/skizze-1280.webp" srcset="medien/skizze-720.webp 720w, medien/skizze-1280.webp 1280w" sizes="(min-width: 1100px) 52vw, 92vw" width="1280" height="854" alt="Beispielfoto: Stuhlskizze auf Papier, daneben eine orangefarbene Kreisschablone und ein Lineal" loading="lazy" decoding="async">
+            </div>
+            <div class="pb-bogen pb-bogen-1" role="img" aria-label="Erfundenes Zeichen aus Kante, Viertelkreis und Kreis, dazu drei Hausfarben und ein Schriftmuster">
+              <svg class="pb-zeichen" viewBox="0 0 96 96" aria-hidden="true" focusable="false"><rect class="f-tinte" x="8" y="8" width="17" height="80"/><path class="f-farbe" d="M33 88V39a49 49 0 0 1 49 49z"/><circle class="s-tinte" cx="66" cy="24" r="13.5"/></svg>
+              <div class="pb-muster" aria-hidden="true"><span class="pb-aa">Aa</span><span class="pb-chips"><i></i><i></i><i></i></span></div>
+              <p class="pb-zeile" aria-hidden="true">Zeichen · Hausfarben · Schrift</p>
+            </div>
+            <figcaption>Beispielfoto und frei erfundenes Zeichen</figcaption>
+          </figure>
+        </div>
+      </article>
+
+      <article class="projekt" aria-labelledby="p2-titel">
+        <p class="projekt-kopf"><span class="pk-nr">Beispielprojekt 02</span><span class="pk-art">Architekturbüro</span><span class="pk-fach">Erscheinungsbild · Vorlagen · Website</span></p>
+        <div class="projekt-raster">
+          <div class="projekt-text">
+            <h3 id="p2-titel">Ein Büro, das aussieht wie seine Pläne.</h3>
+            <dl class="dreischritt">
+              <div><dt>Ausgangslage</dt><dd>Ein Architekturbüro plant sorgfältig bis ins Detail. Nur die eigenen Unterlagen erkannte niemand wieder: Jede Mappe und jede Präsentation sah anders aus.</dd></div>
+              <div><dt>Idee</dt><dd>Architekten denken im Raster. Also bekommt das Büro kein Logo zum Aufkleben, sondern ein Raster, aus dem alles entsteht: Zeichen, Pläne, Mappen und die Website.</dd></div>
+              <div><dt>Ergebnis</dt><dd>Ein System aus neun Feldern, einer Schrift und einer Reihe von Grautönen. Das Büro baut seine Unterlagen jetzt selbst, und sie sehen trotzdem aus wie aus einer Hand.</dd></div>
+            </dl>
+          </div>
+          <figure class="projekt-bild">
+            <div class="pb-foto schnittmarken">
+              <img src="medien/zeichentisch-1280.webp" srcset="medien/zeichentisch-720.webp 720w, medien/zeichentisch-1280.webp 1280w" sizes="(min-width: 1100px) 52vw, 92vw" width="1280" height="854" alt="Beispielfoto: Arbeitstisch von oben mit Architekturzeichnungen, Grautonkarte, Brille und Zeichenwerkzeug" loading="lazy" decoding="async">
+            </div>
+            <div class="pb-bogen pb-bogen-2" role="img" aria-label="Erfundenes Zeichen als Raster aus neun Feldern in drei Abwandlungen, dazu fünf Grautöne">
+              <svg class="pb-zeichen pb-zeichen-breit" viewBox="0 0 228 68" aria-hidden="true" focusable="false">
+                <g class="f-tinte"><rect x="0" y="0" width="20" height="20"/><rect x="24" y="0" width="20" height="20"/><rect x="0" y="24" width="20" height="20"/><rect x="0" y="48" width="20" height="20"/><rect x="48" y="48" width="20" height="20"/></g>
+                <g class="s-fein"><rect x="48.5" y=".5" width="19" height="19"/><rect x="24.5" y="24.5" width="19" height="19"/><rect x="48.5" y="24.5" width="19" height="19"/><rect x="24.5" y="48.5" width="19" height="19"/></g>
+                <g class="f-tinte"><rect x="80" y="0" width="20" height="20"/><rect x="104" y="24" width="20" height="20"/><rect x="128" y="48" width="20" height="20"/><rect x="128" y="0" width="20" height="20"/></g>
+                <g class="s-fein"><rect x="104.5" y=".5" width="19" height="19"/><rect x="80.5" y="24.5" width="19" height="19"/><rect x="128.5" y="24.5" width="19" height="19"/><rect x="80.5" y="48.5" width="19" height="19"/><rect x="104.5" y="48.5" width="19" height="19"/></g>
+                <g class="f-tinte"><rect x="160" y="0" width="20" height="20"/><rect x="184" y="0" width="20" height="20"/><rect x="208" y="0" width="20" height="20"/><rect x="208" y="24" width="20" height="20"/><rect x="208" y="48" width="20" height="20"/><rect x="160" y="48" width="20" height="20"/></g>
+                <g class="s-fein"><rect x="160.5" y="24.5" width="19" height="19"/><rect x="184.5" y="24.5" width="19" height="19"/><rect x="184.5" y="48.5" width="19" height="19"/></g>
+              </svg>
+              <div class="pb-muster" aria-hidden="true"><span class="pb-aa">Aa</span><span class="pb-chips"><i></i><i></i><i></i><i></i><i></i></span></div>
+              <p class="pb-zeile" aria-hidden="true">Raster · Grautöne · Schrift</p>
+            </div>
+            <figcaption>Beispielfoto und frei erfundenes Raster</figcaption>
+          </figure>
+        </div>
+      </article>
+
+      <article class="projekt" aria-labelledby="p3-titel">
+        <p class="projekt-kopf"><span class="pk-nr">Beispielprojekt 03</span><span class="pk-art">Kulturhaus</span><span class="pk-fach">Plakatreihe · Vorlagen · Kurzfilme</span></p>
+        <div class="projekt-raster">
+          <div class="projekt-text">
+            <h3 id="p3-titel">Ein Programm, das man von der Straße aus versteht.</h3>
+            <dl class="dreischritt">
+              <div><dt>Ausgangslage</dt><dd>Ein Kulturhaus im Kiez zeigt Theater, Konzerte und Lesungen. Die Plakate waren voll, klein und jedes Mal anders. Wer vorbeiging, nahm nichts davon mit.</dd></div>
+              <div><dt>Idee</dt><dd>Ein Plakat, ein Gedanke. Jede Sparte bekommt eine Form und eine Farbe, groß genug für die andere Straßenseite. Dazu kurze Filme im selben Takt.</dd></div>
+              <div><dt>Ergebnis</dt><dd>Eine Plakatreihe als Baukasten, Vorlagen für das Haus und kurze Filme für die eigenen Kanäle. Neue Termine setzt das Team ohne uns um.</dd></div>
+            </dl>
+          </div>
+          <figure class="projekt-bild">
+            <div class="pb-foto schnittmarken">
+              <img src="medien/drucke-1280.webp" srcset="medien/drucke-720.webp 720w, medien/drucke-1280.webp 1280w" sizes="(min-width: 1100px) 52vw, 92vw" width="1280" height="848" alt="Beispielfoto: Zeichentisch am Fenster mit ausgelegten Drucken und Skizzen vor einer weißen Ziegelwand" loading="lazy" decoding="async">
+            </div>
+            <div class="pb-bogen pb-bogen-3" role="img" aria-label="Drei frei erfundene Plakate: Kreis auf Magenta, Streifen auf Cyan, Balken auf Gelb">
+              <div class="pb-plakate" aria-hidden="true">
+                <svg viewBox="0 0 50 70" focusable="false"><rect class="pl-m" width="50" height="70"/><circle class="pl-y" cx="25" cy="30" r="17"/><rect class="pl-t" x="6" y="58" width="22" height="2.4"/><rect class="pl-t" x="6" y="63" width="14" height="2.4"/></svg>
+                <svg viewBox="0 0 50 70" focusable="false"><rect class="pl-c" width="50" height="70"/><path class="pl-t" d="M6 12h38v5H6zM6 22h38v5H6zM6 32h38v5H6zM6 42h24v5H6z"/><rect class="pl-w" x="6" y="58" width="22" height="2.4"/><rect class="pl-w" x="6" y="63" width="14" height="2.4"/></svg>
+                <svg viewBox="0 0 50 70" focusable="false"><rect class="pl-y" width="50" height="70"/><rect class="pl-t" x="6" y="8" width="13" height="42"/><circle class="pl-m" cx="33" cy="39" r="11"/><rect class="pl-t" x="6" y="58" width="22" height="2.4"/><rect class="pl-t" x="6" y="63" width="14" height="2.4"/></svg>
+              </div>
+              <p class="pb-zeile" aria-hidden="true">Theater · Konzert · Lesung</p>
+            </div>
+            <figcaption>Beispielfoto und frei erfundene Plakate</figcaption>
+          </figure>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ═══ Bogen 03 · Leistungen: vier Druckplatten bauen ein Bild auf ═══ -->
+  <section class="leistungen abschnitt" id="leistungen" data-ton="hell" data-bogen="Leistungen" aria-labelledby="leistungen-titel">
+    <div class="bogenkopf" data-auf>
+      <p class="bk-marke"><svg class="z" width="18" height="18" aria-hidden="true" focusable="false"><use href="#z-passer"/></svg>Bogen 03 · Leistungen</p>
+      <p class="bk-hinweis">Einzeln buchbar · am stärksten zusammen</p>
+    </div>
+    <div class="ls-kopf">
+      <h2 class="titel" id="leistungen-titel" data-worte>Vier Platten, <em>ein</em> Bild.</h2>
+      <p class="ls-vorspann" data-auf>Im Druck entsteht ein Bild aus vier Farben. Bei einer Marke ist es ähnlich: Erst wenn alle Ebenen übereinanderliegen, wird sie scharf. Scrollen Sie und sehen Sie zu, wie das Bild entsteht.</p>
+    </div>
+
+    <div class="ls-raster">
+      <div class="ls-buehne">
+        <figure class="platten" data-platten>
+          <div class="platten-flaeche schnittmarken" data-platten-flaeche>
+            <img class="platten-foto" src="medien/farbfaecher-990.webp" srcset="medien/farbfaecher-560.webp 560w, medien/farbfaecher-990.webp 990w" sizes="(min-width: 900px) 44vw, 92vw" width="990" height="740" alt="Beispielfoto: Ein Mann mit Brille prüft am Tisch einen Farbfächer" loading="lazy" decoding="async">
+          </div>
+          <figcaption><span>Beispielfoto: Farbauswahl am Tisch</span><span class="platten-stand" data-platten-stand>Alle vier Platten</span></figcaption>
+        </figure>
+        <div class="platten-wahl" role="group" aria-label="Platten ein- und ausblenden">
+          <button type="button" data-platte="c" aria-pressed="true"><i class="pw-c" aria-hidden="true"></i>Cyan</button>
+          <button type="button" data-platte="m" aria-pressed="true"><i class="pw-m" aria-hidden="true"></i>Magenta</button>
+          <button type="button" data-platte="y" aria-pressed="true"><i class="pw-y" aria-hidden="true"></i>Gelb</button>
+          <button type="button" data-platte="k" aria-pressed="true"><i class="pw-k" aria-hidden="true"></i>Schwarz</button>
+        </div>
+      </div>
+
+      <ol class="ls-liste">
+        <li class="leistung le-c" data-leistung="c">
+          <p class="le-platte"><i aria-hidden="true"></i>Platte 1 · Cyan</p>
+          <h3>Strategie</h3>
+          <p class="le-text">Wofür stehen Sie, und für wen? Wir klären Kern, Namen und Angebot, bevor der erste Strich entsteht.</p>
+          <ul class="le-umfang"><li>Markenkern</li><li>Positionierung</li><li>Namensfindung</li><li>Markenaufbau</li></ul>
+        </li>
+        <li class="leistung le-m" data-leistung="m">
+          <p class="le-platte"><i aria-hidden="true"></i>Platte 2 · Magenta</p>
+          <h3>Gestaltung</h3>
+          <p class="le-text">Zeichen, Farben, Schrift und Bildwelt. Ein Erscheinungsbild, das überall funktioniert, vom Stempel bis zur Website.</p>
+          <ul class="le-umfang"><li>Logo und Zeichen</li><li>Erscheinungsbild</li><li>Website</li><li>Verpackung</li></ul>
+        </li>
+        <li class="leistung le-y" data-leistung="y">
+          <p class="le-platte"><i aria-hidden="true"></i>Platte 3 · Gelb</p>
+          <h3>Sprache</h3>
+          <p class="le-text">Wie Ihre Marke klingt. Vom Leitsatz bis zur Angebotsmail, in einem Ton, den man wiedererkennt.</p>
+          <ul class="le-umfang"><li>Leitsatz</li><li>Tonalität</li><li>Texte für Website und Kampagne</li><li>Leitfaden fürs Team</li></ul>
+        </li>
+        <li class="leistung le-k" data-leistung="k">
+          <p class="le-platte"><i aria-hidden="true"></i>Platte 4 · Schwarz</p>
+          <h3>Bewegtbild</h3>
+          <p class="le-text">Schwarz gibt dem Bild die Tiefe. Film und Foto aus dem eigenen Studio, geschnitten für den Kanal, auf dem sie laufen.</p>
+          <ul class="le-umfang"><li>Markenfilm</li><li>Kurzfilme</li><li>Fotografie</li><li>Schnitt und Ton</li></ul>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ═══ Bogen 04 · Ablauf ═══ -->
+  <section class="ablauf abschnitt" id="ablauf" data-ton="dunkel" data-bogen="Ablauf" aria-labelledby="ablauf-titel">
+    <div class="bogenkopf" data-auf>
+      <p class="bk-marke"><svg class="z" width="18" height="18" aria-hidden="true" focusable="false"><use href="#z-passer"/></svg>Bogen 04 · Ablauf</p>
+      <p class="bk-hinweis">Umfang und Dauer stehen im Angebot, bevor die Arbeit beginnt</p>
+    </div>
+    <div class="ab-raster">
+      <div class="ab-links">
+        <h2 class="titel" id="ablauf-titel" data-worte>Fünf Schritte, <em>kein</em> Blindflug.</h2>
+        <p class="ab-vorspann" data-auf>Sie wissen an jedem Tag, woran wir arbeiten und was als Nächstes kommt. Entschieden wird am Tisch, nicht im Postfach.</p>
+        <figure class="ab-foto" data-auf>
+          <div class="schnittmarken"><img src="medien/studio-780.webp" srcset="medien/studio-480.webp 480w, medien/studio-780.webp 780w" sizes="(min-width: 900px) 26vw, 70vw" width="780" height="1466" alt="Beispielfoto: Dunkles Studio mit großem Flächenlicht, Mikrofon am Schwenkarm und weißem Tisch" loading="lazy" decoding="async"></div>
+          <figcaption>Beispielfoto: das Studio für Film und Ton</figcaption>
+        </figure>
+      </div>
+      <ol class="schritte">
+        <li class="schritt" data-auf><span class="sr-nr" aria-hidden="true">01</span><div><h3>Kennenlernen</h3><p>Ein Gespräch, in dem vor allem Sie reden. Danach wissen beide Seiten, ob es passt und worum es wirklich geht.</p></div></li>
+        <li class="schritt" data-auf><span class="sr-nr" aria-hidden="true">02</span><div><h3>Kern</h3><p>Ein Arbeitstag mit Ihnen und Ihren Leuten. Am Ende steht auf einer Seite, wofür Ihre Marke steht und wofür nicht.</p></div></li>
+        <li class="schritt" data-auf><span class="sr-nr" aria-hidden="true">03</span><div><h3>Entwurf</h3><p>Zwei Richtungen, beide ernst gemeint. Sie sehen sie an echten Anwendungen: Schild, Website, Angebot.</p></div></li>
+        <li class="schritt" data-auf><span class="sr-nr" aria-hidden="true">04</span><div><h3>Ausarbeitung</h3><p>Aus der gewählten Richtung wird ein System mit Regeln, Vorlagen und Dateien. Jeden Zwischenstand sehen Sie zuerst.</p></div></li>
+        <li class="schritt" data-auf><span class="sr-nr" aria-hidden="true">05</span><div><h3>Übergabe</h3><p>Sie bekommen alles offen und geordnet. Wenn Sie möchten, begleiten wir Ihr Team durch die ersten Monate.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ═══ Bogen 05 · Büro: Team als Platzhalter, Zusagen ═══ -->
+  <section class="buero abschnitt" id="buero" data-ton="hell" data-bogen="Büro" aria-labelledby="buero-titel">
+    <div class="bogenkopf" data-auf>
+      <p class="bk-marke"><svg class="z" width="18" height="18" aria-hidden="true" focusable="false"><use href="#z-passer"/></svg>Bogen 05 · Büro</p>
+      <p class="bk-hinweis">Platzhalter · hier stehen Ihre Köpfe</p>
+    </div>
+    <div class="bu-kopf">
+      <h2 class="titel" id="buero-titel" data-worte>Kleines Büro, <em>kurze</em> Wege.</h2>
+      <p class="bu-vorspann" data-auf>Vier Fächer an einem Tisch. Sie sprechen mit den Menschen, die Ihre Marke auch machen. Niemand reicht Sie weiter.</p>
+    </div>
+    <ul class="koepfe">
+      <li class="kopfkarte kk-c" data-auf><svg class="z" width="28" height="28" aria-hidden="true" focusable="false"><use href="#z-passer"/></svg><p class="kk-fach">Strategie</p><p class="kk-name">Ihr Name</p><p class="kk-hinweis">Hier steht Ihr Foto</p></li>
+      <li class="kopfkarte kk-m" data-auf><svg class="z" width="28" height="28" aria-hidden="true" focusable="false"><use href="#z-passer"/></svg><p class="kk-fach">Gestaltung</p><p class="kk-name">Ihr Name</p><p class="kk-hinweis">Hier steht Ihr Foto</p></li>
+      <li class="kopfkarte kk-y" data-auf><svg class="z" width="28" height="28" aria-hidden="true" focusable="false"><use href="#z-passer"/></svg><p class="kk-fach">Sprache</p><p class="kk-name">Ihr Name</p><p class="kk-hinweis">Hier steht Ihr Foto</p></li>
+      <li class="kopfkarte kk-k" data-auf><svg class="z" width="28" height="28" aria-hidden="true" focusable="false"><use href="#z-passer"/></svg><p class="kk-fach">Bewegtbild</p><p class="kk-name">Ihr Name</p><p class="kk-hinweis">Hier steht Ihr Foto</p></li>
+    </ul>
+    <div class="zusagen">
+      <h3 class="zu-titel" data-auf>Worauf Sie sich verlassen können</h3>
+      <ol class="zu-liste">
+        <li data-auf><span class="zu-nr" aria-hidden="true">A</span>Ein fester Kopf, der Ihr Projekt kennt.</li>
+        <li data-auf><span class="zu-nr" aria-hidden="true">B</span>Zwischenstände statt Überraschungen.</li>
+        <li data-auf><span class="zu-nr" aria-hidden="true">C</span>Ein Angebot, bevor wir anfangen.</li>
+        <li data-auf><span class="zu-nr" aria-hidden="true">D</span>Am Ende gehören alle Dateien Ihnen.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ═══ Bogen 06 · Anfrage: drei Felder, es wird nichts gesendet ═══ -->
+  <section class="anfrage abschnitt" id="anfrage" data-ton="gelb" data-bogen="Anfrage" aria-labelledby="anfrage-titel">
+    <div class="bogenkopf" data-auf>
+      <p class="bk-marke"><svg class="z" width="18" height="18" aria-hidden="true" focusable="false"><use href="#z-passer"/></svg>Bogen 06 · Anfrage</p>
+      <p class="bk-hinweis">Drei Felder · ein erstes Gespräch</p>
+    </div>
+    <div class="an-raster">
+      <div class="an-text">
+        <h2 class="titel titel-gross" id="anfrage-titel" data-worte>Was soll bei Ihnen <em>sitzen?</em></h2>
+        <p class="an-vorspann" data-auf>Schreiben Sie uns in zwei Sätzen, worum es geht. Wir melden uns mit einem Terminvorschlag für ein erstes Gespräch.</p>
+        <dl class="an-kontakt" data-auf>
+          <div><dt>Büro</dt><dd>Passer · Büro für Marken<br>Beispielstraße 1 · Berlin</dd></div>
+          <div><dt>Telefon und E-Mail</dt><dd>Hier stehen Ihre Kontaktdaten.</dd></div>
+        </dl>
+      </div>
+      <form class="formular" method="dialog" novalidate aria-labelledby="formular-titel" data-formular data-auf>
+        <h3 id="formular-titel">Projekt anfragen</h3>
+        <div class="feld">
+          <label for="f-name">Ihr Name</label>
+          <input id="f-name" name="name" type="text" autocomplete="name" required aria-describedby="f-name-fehler">
+          <p class="feld-fehler" id="f-name-fehler" hidden></p>
+        </div>
+        <div class="feld">
+          <label for="f-mail">E-Mail</label>
+          <input id="f-mail" name="email" type="email" autocomplete="email" inputmode="email" required aria-describedby="f-mail-fehler">
+          <p class="feld-fehler" id="f-mail-fehler" hidden></p>
+        </div>
+        <div class="feld">
+          <label for="f-text">Worum geht es?</label>
+          <textarea id="f-text" name="vorhaben" rows="4" required aria-describedby="f-text-fehler"></textarea>
+          <p class="feld-fehler" id="f-text-fehler" hidden></p>
+        </div>
+        <button class="knopf knopf-gross" type="submit">Anfrage absenden<svg class="z" width="22" height="22" aria-hidden="true" focusable="false"><use href="#z-pfeil"/></svg></button>
+        <p class="formular-meldung" role="status" data-meldung></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="fuss" data-ton="dunkel">
+  <p class="fuss-marke" aria-hidden="true">Passer</p>
+  <div class="fuss-raster">
+    <p class="fuss-adresse">Passer · Büro für Marken<br>Beispielstraße 1 · Berlin</p>
+    <nav class="fuss-nav" aria-label="Fußnavigation">
+      <a href="#arbeiten">Arbeiten</a><a href="#leistungen">Leistungen</a><a href="#ablauf">Ablauf</a><a href="#buero">Büro</a><a href="#anfrage">Anfrage</a>
+    </nav>
+    <p class="fuss-hinweis">Dies ist eine Beispielseite. Büro, Projekte und Namen sind erfunden. Impressum und Datenschutz stehen hier.</p>
+  </div>
+  <div class="farbstreifen" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+</footer>
+
+<!-- ═══ Leiste von MAKE Studios: auf jeder Beispielseite, unverändert ═══ -->
+<div class="ms-platz" aria-hidden="true"></div>
+<nav class="ms-leiste" aria-label="MAKE Studios">
+  <a class="ms-marke" href="../../#beispielseiten" aria-label="Zurück zu den Beispielseiten von MAKE Studios"><img src="../../zeichen.svg" alt="" width="24" height="24"><b>MAKE</b><span>STUDIOS</span></a>
+  <span class="ms-hinweis"><b>Beispiel</b><span class="ms-lang"> · Namen erfunden</span></span>
+  <a class="ms-knopf" href="../../#erstgespraech-agentur">Erstgespräch</a>
+</nav>
+
+</body>
+</html>

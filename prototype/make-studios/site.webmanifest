@@ -1,0 +1,13 @@
+{
+  "name": "MAKE Studios",
+  "short_name": "MAKE Studios",
+  "lang": "de",
+  "start_url": "./",
+  "display": "browser",
+  "background_color": "#F2EDE4",
+  "theme_color": "#F2EDE4",
+  "icons": [
+    { "src": "zeichen.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "bild/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

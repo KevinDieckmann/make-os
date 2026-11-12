@@ -1,0 +1,13 @@
+{
+  "marke": "studios",
+  "oeffentlich": false,
+  "indexnow": "{{INDEXNOW-SCHLUESSEL}}",
+  "stand": "November 2026",
+  "firma": {
+    "email": "kevin@makeinnovation.de",
+    "telefon": "{{TELEFON wie beim Dach}}",
+    "strasse": "{{STRASSE HAUSNUMMER wie beim Dach}}",
+    "plz": "{{PLZ wie beim Dach}}",
+    "sameAs": []
+  }
+}

@@ -1,0 +1,11 @@
+/* Nur ohne JavaScript: Das Menü steht offen im Kopf, alles bleibt lesbar und erreichbar. */
+@media (max-width: 959px) {
+  .kopf { position: absolute; height: auto; flex-wrap: wrap; gap: 4px 24px; padding-top: 10px; padding-bottom: 10px; }
+  .menue-knopf { display: none; }
+  .menue { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0 18px; padding: 0; background: none; color: inherit; overflow: visible; visibility: visible; opacity: 1; }
+  .menue-liste { flex-direction: row; flex-wrap: wrap; gap: 0 18px; width: auto; }
+  .menue-liste a { width: auto; min-height: 44px; font: 500 15px/1.2 var(--grotesk); letter-spacing: 0; opacity: 1; transform: none; }
+  .menue .knopf { min-height: 44px; padding: 0 20px; font-size: 15px; background: var(--pflaume); color: var(--hell); }
+  .menue-ort { display: none; }
+  .einstieg { padding-top: 236px; }
+}

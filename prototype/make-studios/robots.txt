@@ -1,0 +1,3 @@
+# Vorschau: nichts freigegeben (seo.json › oeffentlich: false)
+User-agent: *
+Disallow: /

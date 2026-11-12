@@ -56,7 +56,7 @@ em { font-family: "Instrument", Georgia, serif; font-style: italic; font-weight:
 
 /* Anzeige-Schrift: schmal, fett, eng. Die Stimme der Agentur. */
 .held-titel, .szenen-titel, .ziel-titel, .abschnitt-titel, .kontakt-titel, .tafel-titel, .tafel-zahl,
-.kennzahl-wert, .karte-titel, .werk-nr, .werk-name, .mini-gross, .menue-nav a, .laufband-spur,
+.kennzahl-wert, .karte-titel, .werk-nr, .werk-name, .menue-nav a, .laufband-spur, .familie-karte h3,
 .analyse-zahl, .leistung h3, .ablauf-liste h3, .ablauf-liste span, .analyse-gruppe-titel, .analyse-berlin b, .tafel-markt b,
 .entwurf-titel, .satz-gross, .aufruf-text, .mock-gross, .mock-objekt-titel {
   font-family: "Bricolage", system-ui, sans-serif;
@@ -119,8 +119,11 @@ em { font-family: "Instrument", Georgia, serif; font-style: italic; font-weight:
 /* Auftritt des Intros, während sich die Blende öffnet (nur „backwards“: danach gehört alles dem Film) */
 @keyframes auftritt { from { opacity: 0; transform: translateY(40px); } }
 .szene-held .ueberzeile { animation: auftritt .9s var(--kurve) .35s backwards; }
-.held-titel .zeile:first-child { animation: auftritt .9s var(--kurve) .42s backwards; }
-.held-titel .zeile + .zeile { animation: auftritt .9s var(--kurve) .5s backwards; }
+/* Der Titel trägt das größte Bild der ersten Ansicht (LCP): er steht vom ersten Bild an und gleitet nur, statt aus dem Nichts zu erscheinen. */
+@keyframes gleiten { from { transform: translateY(28px); } }
+.held-titel .zeile:first-child { animation: gleiten .9s var(--kurve) .3s backwards; }
+.held-titel .zeile + .zeile { animation: gleiten .9s var(--kurve) .38s backwards; }
+.held-unter { animation: auftritt .9s var(--kurve) .55s backwards; }
 .held-text { animation: auftritt .9s var(--kurve) .6s backwards; }
 .held-aktionen { animation: auftritt .9s var(--kurve) .7s backwards; }
 
@@ -158,6 +161,12 @@ html.dunkel .kopf::before { background: rgba(13, 12, 11, .8); border-bottom-colo
 .kopf-nav a[aria-current] { background: var(--tinte); color: var(--papier); }
 html.dunkel .kopf-nav a[aria-current] { background: var(--papier); color: var(--tinte); }
 .kopf-rechts { display: flex; align-items: center; gap: 10px; }
+/* Formel der Familie neben der Marke: hängt frei rechts am Logo, damit das Menü mittig bleibt; nur wo Platz ist, sonst steht sie im Menü */
+.kopf-links { position: relative; display: flex; align-items: center; }
+.kopf-familie { display: none; position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 16px; padding: 8px 0; font: 500 10.5px/1.35 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; white-space: nowrap; color: inherit; opacity: .62; transition: opacity .2s; }
+.kopf-familie span { display: block; }
+.kopf-familie:hover, .kopf-familie:focus-visible { opacity: 1; }
+@media (min-width: 1360px) { .kopf-familie { display: block; } }
 .menue-knopf {
   display: none; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px; border-radius: 999px;
   border: 1px solid rgba(13, 12, 11, .16); background: rgba(242, 237, 228, .62); color: inherit; cursor: pointer;
@@ -180,7 +189,7 @@ html.dunkel .kopf .knopf { background: var(--papier); color: var(--tinte); }
 html.dunkel .kopf .knopf:hover { background: var(--signal); }
 
 /* ─── Der Film ─── */
-.film { position: relative; height: 1000vh; }
+.film { position: relative; height: 1100vh; }
 .buehne { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; overflow: clip; isolation: isolate; }
 .film:focus, .szene-branchen:focus { outline: none; }
 
@@ -192,6 +201,8 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .held-bild { display: none; margin: 0; }
 .held-titel { margin-top: 18px; font-size: clamp(52px, min(8.8vw, 15.5vh), 156px); line-height: .86; }
 .held-titel .zeile { display: block; }
+/* zweiter Teil der h1: sagt, was es gibt und wo. Gesetzt wie ein Untertitel. */
+.held-unter { display: block; max-width: 30ch; margin-top: clamp(16px, 2.4vh, 26px); font: 600 clamp(18px, 1.55vw, 24px)/1.25 "Bricolage", system-ui, sans-serif; font-stretch: 100%; letter-spacing: 0; }
 .held-titel em { font-size: 1.06em; color: var(--signal-tief); letter-spacing: -.01em; }
 .held-text { margin-top: 28px; max-width: 31ch; font-size: clamp(18px, 1.45vw, 22px); line-height: 1.45; color: var(--tinte-weich); }
 .held-aktionen { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; margin-top: 34px; }
@@ -230,6 +241,8 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .karte-oben { top: 18px; display: flex; justify-content: space-between; font: 500 12px/1 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
 .karte .karte-etikett { top: 44px; left: 16px; max-width: calc(100% - 32px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .karte-unten { bottom: 20px; }
+/* Der Schleier hängt am Textblock selbst: er deckt den Text immer ganz, gleich wie hoch die Karte und wie hell die Aufnahme ist */
+.karte-unten::before { content: ""; position: absolute; inset: -72px -20px -20px; z-index: -1; background: linear-gradient(to top, rgba(13, 12, 11, .96) 0, rgba(13, 12, 11, .93) calc(100% - 72px), rgba(13, 12, 11, 0) 100%); pointer-events: none; }
 .aufnahme { display: inline-flex; align-items: center; gap: 8px; font: 500 12px/1 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
 .aufnahme i { width: 9px; height: 9px; border-radius: 50%; background: var(--signal); animation: puls 1.4s ease-in-out infinite; }
 @keyframes puls { 50% { opacity: .25; } }
@@ -237,18 +250,6 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .karte-satz { margin: 8px 0 14px; font-family: "Instrument", Georgia, serif; font-style: italic; font-size: clamp(19px, 1.5vw, 22px); line-height: 1.2; }
 .karte-liste { list-style: none; padding: 0; font: 500 13px/1.7 "Mono", monospace; letter-spacing: .01em; }
 .karte-liste li::before { content: "+ "; color: var(--signal); }
-
-/* Entwurf für Agenturen (noch keine Beispielseite): kleine Seite aus Schrift und Flächen */
-.karte-entwurf { padding: 84px 18px 0; background: radial-gradient(90% 50% at 100% 0, rgba(124, 58, 237, .5), transparent 70%), #121014; color: var(--papier); }
-.mini-nav { display: flex; align-items: baseline; gap: 10px; font-size: 10px; opacity: .9; }
-.mini-nav b { margin-right: auto; font-size: 12px; font-weight: 700; font-stretch: 85%; }
-.mini-nav span { opacity: .66; }
-.mini-gross { margin: 14px 0 14px; max-width: 8ch; font-size: clamp(34px, 3vw, 46px); line-height: .88; }
-.mini-gross em { color: var(--rosa); }
-.mini-faelle { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px; }
-.mini-faelle i { height: 64px; border-radius: 8px; background: radial-gradient(80% 90% at 80% 20%, var(--rosa), transparent 60%), radial-gradient(90% 90% at 10% 90%, var(--signal), transparent 60%), #2A1752; }
-.mini-faelle i:nth-child(2) { background: linear-gradient(150deg, #F2EDE4, #B9AE9C); }
-.mini-faelle i:nth-child(3) { background: linear-gradient(160deg, #4B3590, #0D0C0B); }
 
 /* Der Bildschirm im Intro: Vorderseite der ersten Karte. Gleiche Höhe wie die Karte (so stimmt die Kante beim Wenden), aber quer. */
 .schirm {
@@ -367,14 +368,6 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .handy-reihe i:nth-child(2) { background: linear-gradient(135deg, #F2D2A9, #A0603A); }
 .handy-reihe i:nth-child(3) { background: linear-gradient(135deg, #8C4A25, #2B160C); }
 
-.browser { width: min(100%, 520px); border-radius: 18px; overflow: hidden; background: var(--tinte); box-shadow: 0 40px 80px -30px rgba(13, 12, 11, .6); transform: rotate(2deg); }
-.browser-leiste { display: flex; align-items: center; gap: 6px; padding: 12px 14px; background: #1E1C1A; }
-.browser-leiste i { width: 10px; height: 10px; border-radius: 50%; background: rgba(242, 237, 228, .26); }
-.browser-leiste span { margin-left: 12px; padding: 5px 14px; border-radius: 999px; background: rgba(242, 237, 228, .1); color: rgba(242, 237, 228, .7); font: 500 11px/1 "Mono", monospace; }
-.browser-bild { position: relative; height: 230px; display: flex; align-items: flex-end; padding: 22px; background: radial-gradient(80% 90% at 80% 20%, var(--rosa), transparent 60%), radial-gradient(90% 90% at 10% 90%, var(--signal), transparent 60%), #2A1752; color: var(--papier); }
-.browser-titel { font: 700 34px/.92 "Bricolage", system-ui, sans-serif; font-stretch: 75%; max-width: 12ch; }
-.browser-chips { display: flex; gap: 8px; padding: 14px; }
-.browser-chips span { padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(242, 237, 228, .24); color: rgba(242, 237, 228, .8); font: 500 11px/1 "Mono", monospace; }
 
 /* 05 Ergebnis: die fertigen Seiten als Bildschirme im Raum. studio.js fährt von einem zum nächsten. */
 .ergebnis { position: absolute; inset: 0; z-index: 10; display: none; overflow: hidden; overflow: clip; color: var(--papier); }
@@ -508,6 +501,19 @@ html.ohne-chrom .chrom {
 .fragen-liste details[open] summary::after { transform: rotate(45deg); }
 .fragen-liste details p { padding: 0 56px 28px 0; max-width: 62ch; color: var(--tinte-weich); }
 
+/* Die Familie: ruhiger Abschnitt mit den zwei anderen Adressen im Haus */
+.abschnitt-familie { background: var(--papier-2); }
+.familie-raster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 2vw, 28px); }
+.familie-karte { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: clamp(24px, 3vw, 40px); border-radius: 28px; background: var(--papier); box-shadow: inset 0 0 0 1px var(--linie); }
+.familie-art { font: 500 12px/1 "Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--signal-text); }
+.familie-karte h3 { font-size: clamp(34px, 3.2vw, 52px); line-height: .94; }
+.familie-karte p:not(.familie-art) { max-width: 46ch; color: var(--tinte-weich); }
+.familie-karte .link-pfeil { margin-top: auto; }
+/* MAKE Revenue: eigenes Zeichen (Minze auf Dunkel) und Tannengrün als Markenfarbe, oben rechts in der Karte */
+.familie-karte { position: relative; }
+.familie-zeichen { position: absolute; top: clamp(20px, 2.6vw, 34px); right: clamp(20px, 2.6vw, 34px); width: clamp(44px, 4vw, 56px); height: auto; border-radius: 22%; }
+.familie-revenue .familie-art { color: #0B6B52; }
+.familie-revenue .link-pfeil { text-decoration-color: #0B6B52; }
 .abschnitt-kontakt { display: flex; flex-direction: column; align-items: center; text-align: center; background: var(--tinte); color: var(--papier); }
 .abschnitt-kontakt .abschnitt-text { color: rgba(242, 237, 228, .74); margin-bottom: 36px; }
 .kontakt-titel { margin-top: 20px; font-size: clamp(56px, 9vw, 168px); line-height: .86; }
@@ -561,6 +567,9 @@ html.menue-offen { overflow: hidden; }
 .menue-fuss .knopf::after { background: var(--tinte); }
 .menue-fuss .knopf:hover { background: var(--papier); }
 .menue-mail { display: grid; place-items: center; min-height: 44px; font: 500 14px/1 "Mono", monospace; color: rgba(242, 237, 228, .8); text-underline-offset: 4px; }
+.menue-mail.menue-familie { font-size: 12px; letter-spacing: .04em; text-decoration: none; color: rgba(242, 237, 228, .62); }
+/* niedrige Handys: das Menü bleibt ohne Rollen bedienbar, die Formel steht dann nur im Fuß der Seite */
+@media (max-height: 720px) { .menue-mail.menue-familie { display: none; } }
 
 /* ─── Entwürfe je Branche: ein Arbeitsbeispiel pro Zielgruppe, klar als Entwurf gekennzeichnet ─── */
 .abschnitt-entwuerfe { padding-bottom: clamp(72px, 9vw, 140px); }
@@ -727,7 +736,6 @@ html.menue-offen { overflow: hidden; }
 
 .referenzen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(48px, 5vw, 72px) clamp(20px, 2.6vw, 40px); }
 .referenz { position: relative; display: flex; flex-direction: column; gap: clamp(20px, 2vw, 28px); }
-.referenz-breit { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(24px, 4vw, 72px); align-items: center; }
 
 .referenz-rahmen {
   position: relative; border-radius: 16px; overflow: hidden; overflow: clip; background: #1E1C1A;
@@ -749,7 +757,6 @@ html.menue-offen { overflow: hidden; }
 
 .referenz-branche { margin: 0; font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--signal); }
 .referenz-name { margin: 12px 0 0; font-family: "Bricolage", system-ui, sans-serif; font-weight: 700; font-stretch: 75%; letter-spacing: -.02em; font-size: clamp(34px, 3.2vw, 54px); line-height: .92; }
-.referenz-breit .referenz-name { font-size: clamp(40px, 4.2vw, 72px); }
 .referenz-link { color: inherit; text-decoration: none; }
 /* Die ganze Karte ist klickbar, der Link bleibt aber ein einziger, gut benannter Link */
 .referenz-link::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: 16px; }
@@ -757,8 +764,21 @@ html.menue-offen { overflow: hidden; }
 .referenz:has(.referenz-link:focus-visible) .referenz-rahmen { outline: 3px solid var(--signal); outline-offset: 5px; }
 .referenz-satz { margin: 14px 0 0; max-width: 46ch; font-size: 17px; line-height: 1.5; color: rgba(242, 237, 228, .72); }
 .referenz-fuss { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px 20px; margin-top: 22px; }
-/* breite Karte: Text steht schmal neben dem Bild, der Knopf bekommt bewusst seine eigene Zeile, links */
-.referenz-breit .referenz-fuss { grid-template-columns: minmax(0, 1fr); justify-items: start; gap: 22px; }
+.referenz[hidden] { display: none; }
+/* Karten einer Reihe sind gleich hoch: der Fuß (Merkmale und Wege) sitzt immer unten, gleich wie lang der Satz ist */
+.referenz-text { flex: 1; display: flex; flex-direction: column; }
+.referenz-text > .referenz-fuss { margin-top: auto; padding-top: 22px; }
+/* zwei Wege: die ganze Karte öffnet die Beispielseite, der kleine Verweis führt zur Erklärung (liegt über der Kartenfläche) */
+.referenz-wege { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 16px; }
+.referenz-mehr { position: relative; z-index: 3; display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 500; color: rgba(242, 237, 228, .8); text-underline-offset: 4px; white-space: nowrap; }
+.referenz-mehr:hover { color: var(--papier); }
+.filter-dunkel { margin: 0 0 clamp(28px, 3.4vw, 48px); }
+.filter-dunkel .filter-knopf { border-color: var(--linie-hell); color: var(--papier); }
+.filter-dunkel .filter-knopf:hover { border-color: var(--papier); }
+.filter-dunkel .filter-knopf[aria-pressed="true"] { background: var(--papier); border-color: var(--papier); color: var(--tinte); }
+.beispiele-hinweis a { color: rgba(242, 237, 228, .86); text-underline-offset: 4px; }
+/* Poster fehlt (Datei noch nicht geliefert): ruhige Fläche statt Bildsymbol */
+.ohne-poster > .aufnahme-poster { visibility: hidden; }
 .referenz-merkmale { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .referenz-merkmale li { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--linie-hell); font: 500 11px/1 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: rgba(242, 237, 228, .8); }
 .referenz-los {
@@ -794,8 +814,6 @@ html.menue-offen { overflow: hidden; }
 .abschnitt-beispiele .aufruf .knopf:hover::after { background: var(--signal); }
 
 @media (max-width: 900px) {
-  .referenz-breit { display: flex; align-items: stretch; }
-  .referenz-breit .referenz-name { font-size: clamp(34px, 3.2vw, 54px); }
 }
 @media (max-width: 860px) {
   .beispiele-kopf { grid-template-columns: minmax(0, 1fr); }
@@ -806,6 +824,7 @@ html.menue-offen { overflow: hidden; }
   .referenz-rahmen { border-radius: 12px; }
   .referenz-leiste { padding: 9px 12px; }
   .referenz-fuss { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+  .referenz-wege { justify-content: flex-start; flex-direction: row-reverse; }
 }
 
 /* Ein Satz, groß: die Haltung zwischen Arbeiten und Zahlen */
@@ -966,7 +985,7 @@ html.menue-offen { overflow: hidden; }
 @media (max-width: 640px) {
   :root { --kopf-h: 62px; --karte-b: min(60vw, 250px); }
   body { font-size: 17px; }
-  .film { height: 920vh; }
+  .film { height: 1010vh; }
   .kopf-nav { display: none; }
   .marke-wort { font-size: 18px; }
   .marke-zeichen { width: 26px; height: 26px; }
@@ -982,9 +1001,6 @@ html.menue-offen { overflow: hidden; }
   .karte-titel { font-size: 27px; }
   .karte-liste { font-size: 12px; }
   .karte .karte-etikett { top: 40px; font-size: 10px; }
-  .karte-entwurf { padding-top: 74px; }
-  .mini-gross { font-size: 30px; }
-  .mini-faelle i { height: 44px; }
   .schirm { --leiste: 32px; border-radius: 13px; }
   .schirm-leiste { padding: 0 11px; gap: 9px; font-size: 10px; }
   .schirm .aufnahme { font-size: 0; gap: 0; }
@@ -1013,9 +1029,6 @@ html.menue-offen { overflow: hidden; }
   .attrappe-handy { align-items: start; }
   .attrappe-handy .geraet-handy { width: min(46vw, 24vh); transform: rotate(-3deg); }
   .attrappe-fenster .geraet-fenster { transform: none; }
-  .browser { transform: none; }
-  .browser-bild { height: 150px; }
-  .browser-titel { font-size: 26px; }
   .ergebnis-kopf { top: calc(var(--kopf-h) + 10px); }
   .ergebnis-hinweis { margin-top: 8px; font-size: 10.5px; }
   .werk { width: 86vw; }
@@ -1035,6 +1048,7 @@ html.menue-offen { overflow: hidden; }
   .anzeige { bottom: 14px; gap: 12px; font-size: 11px; }
   .anzeige-kapitel { min-width: 0; }
   .anzeige-zeit { min-width: 0; }
+  .familie-raster { grid-template-columns: 1fr; }
   .ablauf-liste { grid-template-columns: 1fr; }
   .ablauf-liste li:nth-last-child(-n+2) { padding-bottom: 38px; }
   .ablauf-liste li:last-child { padding-bottom: 0; }

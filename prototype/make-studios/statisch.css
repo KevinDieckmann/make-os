@@ -54,10 +54,10 @@
 /* Ergebnis: die fünf Seiten als ruhige Reihe */
 .ergebnis { display: block !important; overflow: visible !important; background: var(--tinte); padding: 8px var(--rand) 104px !important; }
 .ergebnis-kopf { max-width: none !important; margin-bottom: 48px; }
-.ergebnis-raum { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 56px 40px; perspective: none !important; padding-left: 3%; }
+.ergebnis-raum { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 56px 40px; perspective: none !important; padding-left: 3%; }
 .werk { z-index: auto !important; }
 .ergebnis-text { margin-top: 64px; }
-.werk-texte { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 28px 24px; height: auto !important; }
+.werk-texte { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 28px 24px; height: auto !important; }
 .werk-nr { font-size: 44px !important; }
 .werk-name { font-size: 26px !important; }
 .ergebnis-link { margin-top: 28px !important; }

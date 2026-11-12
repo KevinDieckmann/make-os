@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beispiel · Wortlaut · MAKE Studios</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Wortlaut, Kanzlei für Arbeits- und Wirtschaftsrecht in Berlin. Eine Beispielseite mit erfundenem Betrieb, keine Rechtsberatung.">
+<meta name="theme-color" content="#0A2420">
+<link rel="icon" href="../../zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/newsreader-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="schriften/newsreader-kursiv.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="schriften/hanken-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../leiste.css">
+<link rel="stylesheet" href="seite.css">
+<script type="module" src="seite.js"></script>
+</head>
+<body>
+
+<!-- Zeichenvorrat: feine Linienzeichen, überall mit <use> eingesetzt -->
+<svg class="vorrat" width="0" height="0" aria-hidden="true" focusable="false">
+  <symbol id="z-pfeil" viewBox="0 0 24 24"><path d="M3 12h17M14 6l6 6-6 6"/></symbol>
+  <symbol id="z-pfeil-ab" viewBox="0 0 24 24"><path d="M12 3v17M6 14l6 6 6-6"/></symbol>
+</svg>
+
+<a class="sprung" href="#inhalt">Zum Inhalt springen</a>
+
+<header class="kopf" data-kopf>
+  <a class="marke" href="#oben" aria-label="Wortlaut, zum Seitenanfang"><span class="marke-zeichen" aria-hidden="true">„</span>Wortlaut<span class="marke-zeichen" aria-hidden="true">“</span></a>
+  <nav class="kopf-nav" id="bereiche" aria-label="Bereiche">
+    <a href="#schwerpunkte"><span class="nav-ziffer" aria-hidden="true">I.</span>Schwerpunkte</a>
+    <a href="#anlaesse"><span class="nav-ziffer" aria-hidden="true">II.</span>Anlässe</a>
+    <a href="#klartext"><span class="nav-ziffer" aria-hidden="true">III.</span>Klartext</a>
+    <a href="#ablauf"><span class="nav-ziffer" aria-hidden="true">IV.</span>Ablauf</a>
+    <a href="#kanzlei"><span class="nav-ziffer" aria-hidden="true">V.</span>Kanzlei</a>
+    <a class="nav-nur-menue" href="#erstberatung"><span class="nav-ziffer" aria-hidden="true">VI.</span>Erstberatung</a>
+    <p class="nav-fuss">Wortlaut · Kanzlei für Arbeits- und Wirtschaftsrecht · Beispielstraße 1 · Berlin</p>
+  </nav>
+  <p class="kopf-rn" aria-hidden="true">Rn. <b data-rn-stand>1</b></p>
+  <a class="knopf knopf-hell knopf-klein kopf-knopf" href="#erstberatung">Erstberatung</a>
+  <button class="kopf-menue" type="button" aria-expanded="false" aria-controls="bereiche" aria-label="Menü öffnen"><span aria-hidden="true"></span><span aria-hidden="true"></span></button>
+</header>
+
+<main id="inhalt" tabindex="-1">
+
+  <!-- ═══ Einstieg ═══ -->
+  <section class="einstieg dunkel" id="oben" aria-labelledby="leitsatz">
+    <div class="blatt">
+      <p class="rubrum"><span>Kanzlei für Arbeits- und Wirtschaftsrecht</span><span class="rubrum-mitte">Zwei Partner · ein kleines Team</span><span>Berlin</span></p>
+
+      <div class="einstieg-raster">
+        <div class="einstieg-text">
+          <h1 class="leitsatz" id="leitsatz"><span class="zeile"><span>Wir nehmen</span></span> <span class="zeile"><span>Recht</span></span> <span class="zeile"><span><em>beim Wort.</em></span></span></h1>
+          <p class="einstieg-lauf rn">Wortlaut berät Menschen und Unternehmen im Arbeits- und Wirtschaftsrecht. Wir lesen genau, sagen offen, wo Sie stehen, und erklären es so, dass Sie selbst entscheiden können.</p>
+          <p class="einstieg-knoepfe">
+            <a class="knopf knopf-hell" href="#erstberatung">Erstberatung anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a>
+            <a class="verweis" href="#anlaesse">Was ist Ihr Anlass?<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil-ab"/></svg></a>
+          </p>
+        </div>
+
+        <figure class="einstieg-bild">
+          <div class="film film-einstieg" data-film>
+            <img class="film-poster" src="medien/lesen-1000.webp" srcset="medien/lesen-640.webp 640w, medien/lesen-1000.webp 1000w, medien/lesen-1600.webp 1600w" sizes="(max-width: 899px) 100vw, 46vw" width="1600" height="1070" alt="Beispielfilm: Ein Mann im Anzug liest am Schreibtisch ein Schriftstück, hinter ihm ein Regal voller Bücher" fetchpriority="high" decoding="async">
+            <video class="film-video" src="medien/lesen-720.mp4" data-gross="medien/lesen-1080.mp4" muted playsinline loop preload="none" width="1280" height="856" tabindex="-1" aria-hidden="true"></video>
+            <button class="film-knopf" type="button" hidden aria-label="Film anhalten"><span aria-hidden="true"></span></button>
+          </div>
+          <figcaption class="bildzeile"><b>Beispielfilm</b> Erst lesen, dann raten.</figcaption>
+        </figure>
+      </div>
+
+      <nav class="auftakt" aria-labelledby="auftakt-titel">
+        <p class="auftakt-titel" id="auftakt-titel">Häufig am Anfang</p>
+        <ul class="auftakt-liste">
+          <li><a href="#anlass-kuendigung"><span>Ich habe eine Kündigung erhalten.</span><svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></li>
+          <li><a href="#anlass-aufhebung"><span>Ich soll einen Vertrag unterschreiben.</span><svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></li>
+          <li><a href="#anlass-streit"><span>Unter uns Gesellschaftern gibt es Streit.</span><svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></li>
+        </ul>
+      </nav>
+    </div>
+  </section>
+
+  <!-- ═══ I. Schwerpunkte ═══ -->
+  <section class="schwerpunkte hell" id="schwerpunkte" aria-labelledby="schwerpunkte-titel">
+    <div class="blatt">
+      <header class="abschnitt-kopf zeig">
+        <p class="ziffer"><span aria-hidden="true">I.</span> Schwerpunkte</p>
+        <h2 id="schwerpunkte-titel">Zwei Gebiete. <em>Beide gründlich.</em></h2>
+        <p class="vorspann rn">Wir machen nicht alles. Wir beraten im Arbeitsrecht und im Wirtschaftsrecht, und zwar auf beiden Seiten des Tisches: Angestellte und Führungskräfte ebenso wie Arbeitgeber, Gründerinnen und Gesellschafter.</p>
+      </header>
+
+      <div class="gebiete">
+        <article class="gebiet zeig" aria-labelledby="gebiet-arbeit">
+          <h3 class="gebiet-name rn" id="gebiet-arbeit">Arbeitsrecht</h3>
+          <p class="gebiet-satz">Vom ersten Vertrag bis zur Trennung. Für Angestellte, Führungskräfte und Arbeitgeber.</p>
+          <ol class="themen">
+            <li><b>Kündigung und Kündigungsschutz</b><span>wenn ein Arbeitsverhältnis enden soll oder nicht enden soll</span></li>
+            <li><b>Aufhebungsvertrag und Abfindung</b><span>wenn man sich einigt, statt zu streiten</span></li>
+            <li><b>Arbeitsvertrag und Vergütung</b><span>Gehalt, Bonus, Arbeitszeit, Nebenabreden</span></li>
+            <li><b>Abmahnung und Zeugnis</b><span>was in der Akte steht und was auf dem Papier</span></li>
+            <li><b>Betriebsrat und Mitbestimmung</b><span>für ein Miteinander, das im Alltag trägt</span></li>
+            <li><b>Führungskräfte und Geschäftsführung</b><span>Verträge, Verantwortung, Ausscheiden</span></li>
+          </ol>
+        </article>
+
+        <article class="gebiet zeig" aria-labelledby="gebiet-wirtschaft">
+          <h3 class="gebiet-name rn" id="gebiet-wirtschaft">Wirtschaftsrecht</h3>
+          <p class="gebiet-satz">Vom Gründen bis zum Übergeben. Für Unternehmen, die lieber vorher fragen.</p>
+          <ol class="themen">
+            <li><b>Gründung und Gesellschaftsvertrag</b><span>die Regeln, bevor es losgeht</span></li>
+            <li><b>Verträge mit Kunden und Lieferanten</b><span>entwerfen, prüfen, verhandeln</span></li>
+            <li><b>Allgemeine Geschäftsbedingungen</b><span>das Kleingedruckte, lesbar gemacht</span></li>
+            <li><b>Streit unter Gesellschaftern</b><span>mit Augenmaß und, wenn nötig, vor Gericht</span></li>
+            <li><b>Unternehmenskauf und Nachfolge</b><span>kaufen, verkaufen, übergeben</span></li>
+            <li><b>Forderungen und Haftung</b><span>wenn Geld aussteht oder etwas schiefgeht</span></li>
+          </ol>
+        </article>
+      </div>
+
+      <figure class="breitbild zeig">
+        <div class="bild-rahmen"><img src="medien/buecher-1000.webp" srcset="medien/buecher-640.webp 640w, medien/buecher-1000.webp 1000w, medien/buecher-1600.webp 1600w" sizes="(max-width: 1099px) 92vw, 1160px" width="2200" height="1085" alt="Beispielfoto: Auf einem hellen Schreibtisch liegt ein aufgeschlagenes Buch auf einem Aktenordner, daneben steht eine kleine Justitia aus Bronze" loading="lazy" decoding="async"></div>
+        <figcaption class="bildzeile"><b>Beispielfoto</b> Wir schlagen nach, bevor wir antworten.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ═══ II. Anlässe ═══ -->
+  <section class="anlaesse stein" id="anlaesse" aria-labelledby="anlaesse-titel">
+    <div class="blatt">
+      <header class="abschnitt-kopf zeig">
+        <p class="ziffer"><span aria-hidden="true">II.</span> Anlässe</p>
+        <h2 id="anlaesse-titel">Wann Menschen <em>uns anrufen.</em></h2>
+        <p class="vorspann rn">Kaum jemand sucht nach einem Rechtsgebiet. Man hat ein Schreiben im Briefkasten oder einen Vertrag auf dem Tisch. Wählen Sie, was auf Sie zutrifft.</p>
+      </header>
+
+      <div class="wahl zeig" data-wahl>
+        <div class="wahl-reiter" role="tablist" aria-label="Aus welcher Sicht fragen Sie?">
+          <button type="button" class="reiter" role="tab" id="reiter-angestellt" aria-controls="feld-angestellt" aria-selected="true">Ich bin angestellt</button>
+          <button type="button" class="reiter" role="tab" id="reiter-arbeitgeber" aria-controls="feld-arbeitgeber" aria-selected="false" tabindex="-1">Ich bin Arbeitgeber</button>
+          <button type="button" class="reiter" role="tab" id="reiter-unternehmen" aria-controls="feld-unternehmen" aria-selected="false" tabindex="-1">Ich führe ein Unternehmen</button>
+          <span class="reiter-strich" aria-hidden="true"></span>
+        </div>
+
+        <div class="wahl-feld" id="feld-angestellt" role="tabpanel" aria-labelledby="reiter-angestellt">
+          <h3 class="feld-titel">Ich bin angestellt</h3>
+          <details class="anlass rn" id="anlass-kuendigung" name="anlass-angestellt" data-anlass="Kündigung erhalten">
+            <summary><span class="anlass-satz">Sie haben eine Kündigung erhalten.</span><span class="marke-eilt">Zeit zählt</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Wir lesen das Schreiben und Ihren Vertrag und sagen Ihnen, welche Wege offenstehen. Dann klären wir, was Sie wollen: bleiben, gehen oder verhandeln. Hier kommt es oft auf Tage an. Rufen Sie deshalb früh an.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>Kündigungsschreiben samt Umschlag</li><li>Arbeitsvertrag mit allen Nachträgen</li><li>die letzten Gehaltsabrechnungen</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+          <details class="anlass rn" id="anlass-aufhebung" name="anlass-angestellt" data-anlass="Aufhebungsvertrag liegt vor">
+            <summary><span class="anlass-satz">Ihnen liegt ein Aufhebungsvertrag vor.</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Wir gehen den Entwurf Satz für Satz mit Ihnen durch und erklären, was jede Klausel für Sie bedeutet. Was nachverhandelt werden sollte, verhandeln wir für Sie oder mit Ihnen.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>Entwurf des Vertrags</li><li>Arbeitsvertrag</li><li>Schriftwechsel dazu</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+          <details class="anlass rn" id="anlass-abmahnung" name="anlass-angestellt" data-anlass="Abmahnung bekommen">
+            <summary><span class="anlass-satz">Sie haben eine Abmahnung bekommen.</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Wir ordnen ein, wie ernst die Lage ist, und besprechen, ob und wie Sie reagieren. Manchmal ist ein Brief richtig, manchmal Gelassenheit.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>die Abmahnung</li><li>Arbeitsvertrag</li><li>Ihre Sicht der Dinge in Stichworten</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+          <details class="anlass rn" id="anlass-zeugnis" name="anlass-angestellt" data-anlass="Zeugnis prüfen">
+            <summary><span class="anlass-satz">Ihr Zeugnis klingt freundlich und meint es nicht.</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Zeugnisse haben ihre eigene Sprache. Wir übersetzen Ihnen, was dort steht, und schlagen Formulierungen vor, die zu Ihrer Arbeit passen.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>das Zeugnis</li><li>Stellenbeschreibung oder Aufgabenliste</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="wahl-feld" id="feld-arbeitgeber" role="tabpanel" aria-labelledby="reiter-arbeitgeber">
+          <h3 class="feld-titel">Ich bin Arbeitgeber</h3>
+          <details class="anlass rn" id="anlass-trennung" name="anlass-arbeitgeber" data-anlass="Trennung von einem Mitarbeiter">
+            <summary><span class="anlass-satz">Sie müssen sich von jemandem trennen.</span><span class="marke-eilt">Vorher anrufen</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Wir besprechen die Lage, bevor Sie etwas aussprechen oder unterschreiben, und zeigen Ihnen die Wege: Gespräch, Vereinbarung oder Kündigung. Die Schreiben bereiten wir vor.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>Arbeitsvertrag</li><li>Personalakte in Auszügen</li><li>bisheriger Schriftwechsel</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+          <details class="anlass rn" id="anlass-vertraege" name="anlass-arbeitgeber" data-anlass="Arbeitsverträge für den Betrieb">
+            <summary><span class="anlass-satz">Sie stellen ein und brauchen saubere Verträge.</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Wir schreiben Arbeitsverträge, die zu Ihrem Betrieb passen und die Ihre Mitarbeiter verstehen. Vorhandene Muster prüfen wir und sagen, was bleiben kann.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>bisherige Vertragsmuster</li><li>Stellenprofil</li><li>besondere Absprachen</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+          <details class="anlass rn" id="anlass-betriebsrat" name="anlass-arbeitgeber" data-anlass="Betriebsrat wird gegründet">
+            <summary><span class="anlass-satz">Bei Ihnen wird ein Betriebsrat gegründet.</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Wir erklären Ihnen, was auf Sie zukommt, und begleiten die ersten Gespräche. Ziel ist ein Umgang, mit dem beide Seiten arbeiten können.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>Übersicht über den Betrieb</li><li>bisheriger Schriftwechsel</li><li>Ihre offenen Fragen</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+          <details class="anlass rn" id="anlass-wechsel" name="anlass-arbeitgeber" data-anlass="Mitarbeiter wechselt zur Konkurrenz">
+            <summary><span class="anlass-satz">Ein Mitarbeiter wechselt zur Konkurrenz.</span><span class="marke-eilt">Zeit zählt</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Wir sehen uns an, was vereinbart ist, und besprechen Ihre Möglichkeiten. Dann entscheiden Sie, ob Sie sprechen, schreiben oder es gut sein lassen.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>Arbeitsvertrag</li><li>Vereinbarungen zu Wettbewerb und Verschwiegenheit</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="wahl-feld" id="feld-unternehmen" role="tabpanel" aria-labelledby="reiter-unternehmen">
+          <h3 class="feld-titel">Ich führe ein Unternehmen</h3>
+          <details class="anlass rn" id="anlass-gruendung" name="anlass-unternehmen" data-anlass="Gründung und Gesellschaftsvertrag">
+            <summary><span class="anlass-satz">Sie gründen und brauchen einen Gesellschaftsvertrag.</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Wir fragen zuerst, was Sie gemeinsam vorhaben und was passieren soll, wenn es einmal nicht mehr passt. Daraus entsteht ein Vertrag, den alle Beteiligten verstehen.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>Ihr Vorhaben in wenigen Sätzen</li><li>wer beteiligt ist</li><li>geplante Anteile</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+          <details class="anlass rn" id="anlass-zahlung" name="anlass-unternehmen" data-anlass="Ein Kunde zahlt nicht">
+            <summary><span class="anlass-satz">Ein Kunde zahlt nicht.</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Wir prüfen Vertrag und Rechnung und schlagen den Weg vor, der zu Betrag und Geschäftsbeziehung passt. Oft beginnt er mit einem klaren Brief.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>Vertrag oder Auftrag</li><li>Rechnung</li><li>Mahnungen und Antworten</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+          <details class="anlass rn" id="anlass-streit" name="anlass-unternehmen" data-anlass="Streit unter Gesellschaftern">
+            <summary><span class="anlass-satz">Unter den Gesellschaftern gibt es Streit.</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Wir hören zu, lesen den Gesellschaftsvertrag und trennen, was rechtlich zählt, von dem, was persönlich schmerzt. Dann zeigen wir die Wege, mit und ohne Gericht.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>Gesellschaftsvertrag</li><li>Beschlüsse</li><li>Schriftwechsel</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+          <details class="anlass rn" id="anlass-nachfolge" name="anlass-unternehmen" data-anlass="Unternehmen verkaufen oder übergeben">
+            <summary><span class="anlass-satz">Sie wollen Ihr Unternehmen verkaufen oder übergeben.</span><span class="plus" aria-hidden="true"></span></summary>
+            <div class="anlass-inhalt">
+              <div><h4>So gehen wir vor</h4><p>Wir ordnen mit Ihnen, was zum Unternehmen gehört, bereiten die Unterlagen vor und begleiten die Gespräche bis zur Unterschrift.</p></div>
+              <div><h4>Bitte mitbringen</h4><ul><li>Gesellschaftsvertrag</li><li>die letzten Jahresabschlüsse</li><li>wichtige Verträge</li></ul><a class="verweis" href="#erstberatung" data-anfrage>Mit diesem Anlass anfragen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <p class="anlaesse-rest zeig">Ihr Anlass ist nicht dabei? <a class="verweis" href="#erstberatung">Schildern Sie ihn uns in zwei Sätzen<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></a></p>
+    </div>
+  </section>
+
+  <!-- ═══ III. Klartext ═══ -->
+  <section class="klartext dunkel" id="klartext" aria-labelledby="klartext-titel">
+    <div class="blatt">
+      <header class="abschnitt-kopf zeig">
+        <p class="ziffer"><span aria-hidden="true">III.</span> Arbeitsweise</p>
+        <h2 id="klartext-titel">Aus Juristendeutsch <em>wird Klartext.</em></h2>
+        <p class="vorspann rn">Verträge und Schreiben sind oft so formuliert, dass man sie zweimal lesen muss. Wir lesen sie für Sie. Und sagen dann, was dort steht.</p>
+      </header>
+    </div>
+
+    <div class="klar" data-klar>
+      <div class="klar-buehne">
+        <div class="blatt klar-blatt">
+          <p class="klar-stand" aria-hidden="true"><span data-klar-nr>1</span> von 3</p>
+          <ol class="klar-liste">
+            <li class="paar">
+              <p class="paar-kopf">So steht es da</p>
+              <p class="paar-alt" data-alt>Die Parteien sind sich darüber einig, dass das zwischen ihnen bestehende Arbeitsverhältnis auf Veranlassung des Arbeitgebers mit Ablauf des vereinbarten Beendigungstermins einvernehmlich sein Ende finden wird.</p>
+              <p class="paar-kopf paar-kopf-neu">So sagen wir es</p>
+              <p class="paar-neu" data-neu>Sie und Ihr Arbeitgeber beenden das Arbeitsverhältnis gemeinsam, zu einem festen Datum.</p>
+            </li>
+            <li class="paar">
+              <p class="paar-kopf">So steht es da</p>
+              <p class="paar-alt" data-alt>Der Auftragnehmer haftet, gleich aus welchem Rechtsgrund, ausschließlich nach Maßgabe der nachfolgenden Bestimmungen, soweit dem nicht zwingende gesetzliche Vorschriften entgegenstehen.</p>
+              <p class="paar-kopf paar-kopf-neu">So sagen wir es</p>
+              <p class="paar-neu" data-neu>Hier steht, wofür Ihr Vertragspartner einsteht. Und wofür nicht.</p>
+            </li>
+            <li class="paar">
+              <p class="paar-kopf">So steht es da</p>
+              <p class="paar-alt" data-alt>Scheidet ein Gesellschafter aus der Gesellschaft aus, so wird diese unter den verbleibenden Gesellschaftern fortgesetzt; dem Ausscheidenden steht eine Abfindung nach Maßgabe der folgenden Absätze zu.</p>
+              <p class="paar-kopf paar-kopf-neu">So sagen wir es</p>
+              <p class="paar-neu" data-neu>Geht einer von Ihnen, machen die anderen weiter. Wer geht, wird ausgezahlt.</p>
+            </li>
+          </ol>
+          <p class="klar-fussnote">Frei erfundene Beispielsätze zur Veranschaulichung, stark vereinfacht. Keine Rechtsauskunft.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ IV. Ablauf ═══ -->
+  <section class="ablauf hell" id="ablauf" aria-labelledby="ablauf-titel">
+    <div class="blatt">
+      <header class="abschnitt-kopf zeig">
+        <p class="ziffer"><span aria-hidden="true">IV.</span> Ablauf</p>
+        <h2 id="ablauf-titel">Vom ersten Anruf <em>bis zur Lösung.</em></h2>
+        <p class="vorspann rn">Fünf Schritte. Bei jedem wissen Sie, was als Nächstes kommt und wer sich darum kümmert.</p>
+      </header>
+
+      <div class="ablauf-raster">
+        <figure class="ablauf-bild zeig">
+          <div class="film film-ablauf" data-film>
+            <img class="film-poster" src="medien/schriftstueck-800.webp" srcset="medien/schriftstueck-480.webp 480w, medien/schriftstueck-800.webp 800w" sizes="(max-width: 999px) 92vw, 420px" width="800" height="720" alt="Beispielfilm: Eine Frau am Schreibtisch nimmt ein Blatt entgegen und liest es aufmerksam" loading="lazy" decoding="async">
+            <video class="film-video" src="medien/schriftstueck.mp4" muted playsinline loop preload="none" width="800" height="720" tabindex="-1" aria-hidden="true"></video>
+            <button class="film-knopf" type="button" hidden aria-label="Film anhalten"><span aria-hidden="true"></span></button>
+          </div>
+          <figcaption class="bildzeile"><b>Beispielfilm</b> <span data-schritt-stand>Fünf Schritte, ein Ansprechpartner.</span></figcaption>
+        </figure>
+
+        <ol class="schritte" data-schritte>
+          <li class="schritt rn">
+            <span class="schritt-nr" aria-hidden="true">01</span>
+            <h3>Sie rufen an oder schreiben.</h3>
+            <p>Sie schildern in zwei, drei Sätzen, worum es geht. Wir sagen Ihnen, ob wir die Richtigen sind, und nennen einen Termin.</p>
+          </li>
+          <li class="schritt rn">
+            <span class="schritt-nr" aria-hidden="true">02</span>
+            <h3>Erstberatung.</h3>
+            <p>Ein Gespräch in der Kanzlei, am Telefon oder per Video. Sie erzählen, wir fragen nach und lesen Ihre Unterlagen. Danach wissen Sie, wo Sie stehen.</p>
+          </li>
+          <li class="schritt rn">
+            <span class="schritt-nr" aria-hidden="true">03</span>
+            <h3>Einschätzung in Klartext.</h3>
+            <p>Sie bekommen unsere Einschätzung schriftlich: Lage, Wege, Risiken, nächste Schritte. Auch über die Kosten sprechen wir, bevor sie entstehen.</p>
+          </li>
+          <li class="schritt rn">
+            <span class="schritt-nr" aria-hidden="true">04</span>
+            <h3>Wir übernehmen.</h3>
+            <p>Wir schreiben, verhandeln und vertreten Sie, außergerichtlich und vor Gericht. Sie erfahren jeden Schritt, bevor wir ihn gehen.</p>
+          </li>
+          <li class="schritt rn">
+            <span class="schritt-nr" aria-hidden="true">05</span>
+            <h3>Abschluss.</h3>
+            <p>Eine Einigung, eine Entscheidung oder ein unterschriebener Vertrag. Wir erklären Ihnen das Ergebnis und was daraus folgt.</p>
+          </li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Zwischenbild: Unterschrift ═══ -->
+  <section class="zusage dunkel" aria-labelledby="zusage-satz">
+    <div class="film film-zusage" data-film>
+      <img class="film-poster" src="medien/unterschrift-720.webp" srcset="medien/unterschrift-720.webp 720w, medien/unterschrift-1280.webp 1280w" sizes="100vw" width="1280" height="546" alt="Beispielfilm: Eine Hand im weißen Hemd setzt mit dem Kugelschreiber eine Unterschrift auf ein Blatt" loading="lazy" decoding="async">
+      <video class="film-video" src="medien/unterschrift.mp4" muted playsinline loop preload="none" width="1280" height="546" tabindex="-1" aria-hidden="true"></video>
+      <button class="film-knopf" type="button" hidden aria-label="Film anhalten"><span aria-hidden="true"></span></button>
+    </div>
+    <div class="blatt zusage-blatt">
+      <p class="zusage-satz zeig rn" id="zusage-satz">Sie unterschreiben erst, wenn Sie <em>jeden Satz</em> verstanden haben.</p>
+      <p class="zusage-zusatz zeig">Dafür nehmen wir uns die Zeit. <span class="zusage-art">Beispielfilm</span></p>
+    </div>
+  </section>
+
+  <!-- ═══ V. Kanzlei ═══ -->
+  <section class="kanzlei hell" id="kanzlei" aria-labelledby="kanzlei-titel">
+    <div class="blatt">
+      <header class="abschnitt-kopf zeig">
+        <p class="ziffer"><span aria-hidden="true">V.</span> Kanzlei</p>
+        <h2 id="kanzlei-titel">Zwei Partner, <em>ein kleines Team.</em></h2>
+        <p class="vorspann rn">Bei Wortlaut arbeiten Sie mit den Menschen, deren Namen an der Tür stehen. Ein Partner führt Ihre Sache von Anfang bis Ende, das Team hält ihm den Rücken frei.</p>
+      </header>
+
+      <div class="partner">
+        <article class="partner-karte zeig">
+          <div class="bild-rahmen"><img src="medien/partnerin-480.webp" srcset="medien/partnerin-480.webp 480w, medien/partnerin-800.webp 800w" sizes="(max-width: 699px) 92vw, (max-width: 1099px) 44vw, 400px" width="864" height="1080" alt="Beispielfoto: Eine Frau mit blondem Haar und Brille sitzt am Schreibtisch, hält ein Blatt und blickt aufmerksam auf" loading="lazy" decoding="async"><span class="bild-marke">Beispielfoto</span></div>
+          <p class="partner-rolle">Partnerin · Arbeitsrecht</p>
+          <h3 class="partner-name">Ihr Name</h3>
+          <p>Hier steht in zwei Sätzen, wer Sie sind: was Sie am liebsten bearbeiten und wie man mit Ihnen spricht. Persönlich, knapp, ohne Lebenslauf.</p>
+        </article>
+        <article class="partner-karte partner-karte-zwei zeig">
+          <div class="bild-rahmen"><img src="medien/partner-480.webp" srcset="medien/partner-480.webp 480w, medien/partner-800.webp 800w" sizes="(max-width: 699px) 92vw, (max-width: 1099px) 44vw, 400px" width="864" height="1080" alt="Beispielfoto: Ein Mann mit Brille und Anzug sitzt im Ledersessel und hält ein Schriftstück in den Händen" loading="lazy" decoding="async"><span class="bild-marke">Beispielfoto</span></div>
+          <p class="partner-rolle">Partner · Wirtschaftsrecht</p>
+          <h3 class="partner-name">Ihr Name</h3>
+          <p>Hier steht Ihr zweites Kurzporträt. Ein Satz zur Haltung, ein Satz zu den Mandanten, mit denen Sie am liebsten arbeiten.</p>
+        </article>
+        <div class="partner-team zeig">
+          <h3>Und das Team dahinter</h3>
+          <p>Dazu kommen angestellte Anwältinnen und Anwälte und ein Sekretariat, das Ihre Sache kennt. Sie müssen nichts zweimal erzählen.</p>
+          <figure class="team-bild">
+            <div class="bild-rahmen"><img src="medien/runde-640.webp" srcset="medien/runde-640.webp 640w, medien/runde-1000.webp 1000w, medien/runde-1600.webp 1600w" sizes="(max-width: 1099px) 92vw, 360px" width="2200" height="1467" alt="Beispielfoto: Drei Menschen stehen an einem Schreibtisch und beugen sich gemeinsam über Unterlagen" loading="lazy" decoding="async"></div>
+            <figcaption class="bildzeile"><b>Beispielfoto</b> Besprechung im Team.</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="hausordnung">
+        <div class="hausordnung-text">
+          <h3 class="hausordnung-titel zeig">Unsere Hausordnung</h3>
+          <ol class="regeln">
+            <li class="regel zeig rn"><span class="regel-nr" aria-hidden="true">§ 1</span><div><h4>Ein Ansprechpartner.</h4><p>Ein Partner führt Ihre Sache. Sie haben seine direkte Nummer.</p></div></li>
+            <li class="regel zeig rn"><span class="regel-nr" aria-hidden="true">§ 2</span><div><h4>Klartext.</h4><p>Jedes Schreiben, das Sie von uns bekommen, verstehen Sie beim ersten Lesen.</p></div></li>
+            <li class="regel zeig rn"><span class="regel-nr" aria-hidden="true">§ 3</span><div><h4>Keine Überraschungen.</h4><p>Über Kosten sprechen wir, bevor sie entstehen.</p></div></li>
+            <li class="regel zeig rn"><span class="regel-nr" aria-hidden="true">§ 4</span><div><h4>Ehrliche Einschätzung.</h4><p>Wir sagen Ihnen auch, wenn sich ein Streit nicht lohnt.</p></div></li>
+          </ol>
+        </div>
+        <figure class="hausordnung-bild zeig">
+          <div class="bild-rahmen"><img src="medien/bibliothek-760.webp" srcset="medien/bibliothek-480.webp 480w, medien/bibliothek-760.webp 760w, medien/bibliothek-1200.webp 1200w" sizes="(max-width: 999px) 92vw, 44vw" width="1386" height="1262" alt="Beispielfoto: Dunkle Bibliothek mit Bücherwand und Ledersofa, auf dem grünen Tisch steht eine kleine Justitia" loading="lazy" decoding="async"></div>
+          <figcaption class="bildzeile"><b>Beispielfoto</b> Die Bibliothek.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ VI. Erstberatung ═══ -->
+  <section class="anfrage dunkel" id="erstberatung" aria-labelledby="anfrage-titel">
+    <div class="blatt anfrage-raster">
+      <div class="anfrage-text">
+        <header class="abschnitt-kopf zeig">
+          <p class="ziffer"><span aria-hidden="true">VI.</span> Erstberatung</p>
+          <h2 id="anfrage-titel">Schildern Sie uns <em>Ihren Anlass.</em></h2>
+          <p class="vorspann rn">Zwei, drei Sätze genügen. Wir melden uns, sagen Ihnen, ob wir die Richtigen sind, und schlagen einen Termin für die Erstberatung vor.</p>
+        </header>
+        <dl class="kontakt zeig">
+          <div><dt>Kanzlei</dt><dd>Wortlaut<br>Beispielstraße 1 · Berlin</dd></div>
+          <div><dt>Telefon und E-Mail</dt><dd>Hier stehen Ihre Kontaktdaten.</dd></div>
+          <div><dt>Sprechzeiten</dt><dd>Nach Vereinbarung, auch am frühen Abend.</dd></div>
+        </dl>
+      </div>
+
+      <form class="formular zeig" method="dialog" novalidate data-formular aria-labelledby="anfrage-titel">
+        <p class="formular-kopf"><span>Anfrage zur Erstberatung</span><span>Beispielformular</span></p>
+        <div class="feld">
+          <label for="f-name">Ihr Name</label>
+          <input id="f-name" name="name" type="text" autocomplete="name" required aria-describedby="f-name-fehler">
+          <p class="feld-fehler" id="f-name-fehler" hidden>Bitte nennen Sie Ihren Namen.</p>
+        </div>
+        <div class="feld">
+          <label for="f-kontakt">Telefon oder E-Mail</label>
+          <input id="f-kontakt" name="kontakt" type="text" autocomplete="off" inputmode="email" required aria-describedby="f-kontakt-fehler">
+          <p class="feld-fehler" id="f-kontakt-fehler" hidden>Bitte geben Sie eine Telefonnummer oder eine E-Mail-Adresse an.</p>
+        </div>
+        <div class="feld">
+          <label for="f-anlass">Worum geht es?</label>
+          <select id="f-anlass" name="anlass" required aria-describedby="f-anlass-fehler">
+            <option value="">Bitte wählen</option>
+            <optgroup label="Ich bin angestellt">
+              <option>Kündigung erhalten</option>
+              <option>Aufhebungsvertrag liegt vor</option>
+              <option>Abmahnung bekommen</option>
+              <option>Zeugnis prüfen</option>
+            </optgroup>
+            <optgroup label="Ich bin Arbeitgeber">
+              <option>Trennung von einem Mitarbeiter</option>
+              <option>Arbeitsverträge für den Betrieb</option>
+              <option>Betriebsrat wird gegründet</option>
+              <option>Mitarbeiter wechselt zur Konkurrenz</option>
+            </optgroup>
+            <optgroup label="Ich führe ein Unternehmen">
+              <option>Gründung und Gesellschaftsvertrag</option>
+              <option>Ein Kunde zahlt nicht</option>
+              <option>Streit unter Gesellschaftern</option>
+              <option>Unternehmen verkaufen oder übergeben</option>
+            </optgroup>
+            <option>Etwas anderes</option>
+          </select>
+          <p class="feld-fehler" id="f-anlass-fehler" hidden>Bitte wählen Sie, worum es geht.</p>
+        </div>
+        <div class="feld">
+          <label for="f-text">Kurz geschildert <span class="feld-frei">freiwillig</span></label>
+          <textarea id="f-text" name="text" rows="3"></textarea>
+        </div>
+        <fieldset class="feld feld-wahl">
+          <legend>Wann erreichen wir Sie am besten?</legend>
+          <label class="wahlknopf"><input type="radio" name="zeit" value="vormittags"><span>vormittags</span></label>
+          <label class="wahlknopf"><input type="radio" name="zeit" value="nachmittags"><span>nachmittags</span></label>
+          <label class="wahlknopf"><input type="radio" name="zeit" value="egal" checked><span>jederzeit</span></label>
+        </fieldset>
+        <div class="formular-fuss">
+          <button class="knopf knopf-hell" type="submit">Anfrage absenden<svg class="zeichen" aria-hidden="true"><use href="#z-pfeil"/></svg></button>
+          <p class="formular-hinweis">Beispielformular: Es wird nichts gesendet und nichts gespeichert.</p>
+        </div>
+        <p class="formular-meldung" role="status" aria-live="polite" data-meldung hidden></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="fuss dunkel">
+  <div class="blatt">
+    <p class="fuss-marke" aria-hidden="true"><span class="marke-zeichen">„</span>Wortlaut<span class="marke-zeichen">“</span></p>
+    <div class="fuss-raster">
+      <div>
+        <h2 class="fuss-titel">Kanzlei</h2>
+        <p>Wortlaut<br>Kanzlei für Arbeits- und Wirtschaftsrecht<br>Beispielstraße 1 · Berlin</p>
+      </div>
+      <nav aria-label="Bereiche im Fuß">
+        <h2 class="fuss-titel">Bereiche</h2>
+        <ul>
+          <li><a href="#schwerpunkte">Schwerpunkte</a></li>
+          <li><a href="#anlaesse">Anlässe</a></li>
+          <li><a href="#klartext">Klartext</a></li>
+          <li><a href="#ablauf">Ablauf</a></li>
+          <li><a href="#kanzlei">Kanzlei</a></li>
+          <li><a href="#erstberatung">Erstberatung</a></li>
+        </ul>
+      </nav>
+      <div>
+        <h2 class="fuss-titel">Rechtliches</h2>
+        <p>Impressum und Datenschutzerklärung stehen an dieser Stelle auf Ihrer Seite.</p>
+      </div>
+    </div>
+    <p class="fuss-hinweis">Beispielseite, keine Rechtsberatung. Wortlaut ist ein erfundener Betrieb. Texte, Namen, Filme und Fotos stehen als Beispiel.</p>
+  </div>
+</footer>
+
+<!-- ═══ Leiste von MAKE Studios: auf jeder Beispielseite, unverändert ═══ -->
+<div class="ms-platz" aria-hidden="true"></div>
+<nav class="ms-leiste" aria-label="MAKE Studios">
+  <a class="ms-marke" href="../../#beispielseiten" aria-label="Zurück zu den Beispielseiten von MAKE Studios"><img src="../../zeichen.svg" alt="" width="24" height="24"><b>MAKE</b><span>STUDIOS</span></a>
+  <span class="ms-hinweis"><b>Beispiel</b><span class="ms-lang"> · Namen erfunden</span></span>
+  <a class="ms-knopf" href="../../#erstgespraech-andere">Erstgespräch</a>
+</nav>
+
+</body>
+</html>
