@@ -240,7 +240,10 @@ describe('Fund 4 — Route /api/crm/bestand: Sicht Business bekommt nichts aus P
     });
     route = (await import('@/app/api/crm/bestand/route')) as unknown as typeof route;
   }, 60_000);
-  afterAll(() => { rmSync(ordner, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  // Aufräumen darf den Lauf nie rot machen: Nach den Routen schreiben Protokolle noch kurz in den Ordner, das Löschen verliert dann
+  // gelegentlich den Wettlauf (ENOTEMPTY, bei GitHub am 03.11. und trotz Wiederholung erneut am 12.11.). Der Ordner liegt im
+  // Temp-Verzeichnis; bleibt er einmal stehen, schadet das nicht.
+  afterAll(() => { try { rmSync(ordner, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); } catch { /* Rest bleibt im Temp-Verzeichnis */ } });
   it('GET: das Konto „nur Business“ sieht nichts der Privat-Einheit, der Inhaber alles', async () => {
     const p = await rufe('partner');
     expect(p.status).toBe(200);
