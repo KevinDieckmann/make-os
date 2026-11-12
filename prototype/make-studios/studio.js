@@ -352,6 +352,12 @@
           setze(werkTexte[k], 'visibility', a > 0 ? 'visible' : 'hidden');
         }
         if (eR > .5 && eV < .5) { const f = flWerke[Math.round(fahrt)]; if (f) for (let j = 0; j < f.length; j++) regie.push(f[j]); }
+      } else {
+        // Zurück in „Märkte“ (auch per Sprung): Bildschirme und Texte ausdrücklich verstecken. Sie tragen ein eigenes
+        // „visibility: visible“ und blieben sonst trotz versteckter Szene über den Tafeln stehen.
+        for (let i = 0; i < werke.length; i++) { zeige(werke[i], false); setze(werke[i], 'opacity', '0'); }
+        for (let k = 0; k < werkTexte.length; k++) { setze(werkTexte[k], 'visibility', 'hidden'); setze(werkTexte[k], 'opacity', '0'); }
+        setze(ergKopf, 'opacity', '0'); setze(ergText, 'opacity', '0');
       }
     }
 

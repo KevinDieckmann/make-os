@@ -3,26 +3,26 @@
 > MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video.
 
 ## Leistungen
-- [Website](http://localhost:3022/#leistungen): Schnell, klar, zuerst fürs Handy gebaut. Mit allem, was Ihre Kundschaft vor der Anfrage wissen will.
-- [Sichtbarkeit](http://localhost:3022/#leistungen): Dort auftauchen, wo gesucht wird: bei Google, auf der Karte und in den sozialen Medien.
-- [Video & Foto](http://localhost:3022/#leistungen): Bewegtbild, das zeigt, wie es bei Ihnen wirklich ist. Gedreht vor Ort in Berlin.
-- [Sichtbarkeits-Check](http://localhost:3022/#check): Acht kurze Fragen zu Ihrem Auftritt. Sie sehen sofort, wo Sie stehen und wo Ihr größter Hebel liegt.
+- [Website](https://makestudios.de/#leistungen): Schnell, klar, zuerst fürs Handy gebaut. Mit allem, was Ihre Kundschaft vor der Anfrage wissen will.
+- [Sichtbarkeit](https://makestudios.de/#leistungen): Dort auftauchen, wo gesucht wird: bei Google, auf der Karte und in den sozialen Medien.
+- [Video & Foto](https://makestudios.de/#leistungen): Bewegtbild, das zeigt, wie es bei Ihnen wirklich ist. Gedreht vor Ort in Berlin.
+- [Sichtbarkeits-Check](https://makestudios.de/#check): Acht kurze Fragen zu Ihrem Auftritt. Sie sehen sofort, wo Sie stehen und wo Ihr größter Hebel liegt.
 
 ## Beispielseiten
-- [Übersicht](http://localhost:3022/websites/): Website-Entwürfe für erfundene Betriebe, je Seite erklärt
-- [Website für Café und Rösterei](http://localhost:3022/websites/cafe-roesterei/): Eine Rösterei mit echtem Röstfilm: Beim Scrollen fallen die Bohnen aus der Trommel und drehen im Kühlsieb. Dazu Becher und Tüte in 3D und ein Bondrucker zum Ausprobieren.
-- [Website für Coaching und Beratung](http://localhost:3022/websites/coach/): Coaching für Führungskräfte: eine ruhige Seite mit großer Schrift, auf der aus vielen Gedanken beim Scrollen eine einzige Frage wird. Dazu ein Kennenlernen als Anfrage.
-- [Website für Bauträger und Wohnprojekt](http://localhost:3022/websites/neubau-film/): Ein Bauträger stellt sein Wohnprojekt vor: Beim Scrollen läuft ein Film vom Haus bis in die Räume. Danach folgen die Eckdaten, ein Rundgang in drei Einstellungen und eine Terminanfrage für die Besichtigung.
-- [Website für Agentur und Markenbüro](http://localhost:3022/websites/agentur/): Ein Büro für Marken: Die Wortmarke springt aus drei Druckfarben in den Passer, der Werkstattfilm wächst beim Scrollen auf volle Größe. Dazu drei Beispielprojekte als Bogenstapel.
-- [Website für Frühstückslokal und Bistro](http://localhost:3022/websites/cafe-bistro/): Ein Frühstückslokal mit Film vom Frühstückstisch. Beim Scrollen vergeht im Bogenfenster ein ganzer Tag, von 8 bis 17 Uhr. Dazu eine Karte mit Bild und Filter und eine Tischanfrage.
-- [Website für Dachdecker und Sanierung](http://localhost:3022/websites/dach-sanierung/): Ein Dachdecker, der seine Arbeit erklärt: Sechs Markierungen am Foto folgen dem Wasser vom First bis zum Fallrohr, ein Schnitt zeigt die Sanierung. Dazu ein Dachcheck.
-- [Website für Kanzlei und Anwaltsbüro](http://localhost:3022/websites/kanzlei/): Eine Kanzlei für Arbeits- und Wirtschaftsrecht, gesetzt wie ein guter Schriftsatz: Randnummern, feine Linien, große Serifen. Beim Scrollen wird aus Juristendeutsch Klartext.
-- [Website für Bauunternehmen](http://localhost:3022/websites/bauunternehmen/): Ein Bauunternehmen, das schlüsselfertig baut: Projekte nach Bereichen, ein kurzer Film von der Baustelle und der Ablauf in fünf Schritten bis zur Übergabe. Dazu eine Projektanfrage.
+- [Übersicht](https://makestudios.de/websites/): Website-Entwürfe für erfundene Betriebe, je Seite erklärt
+- [Website für Café und Rösterei](https://makestudios.de/websites/cafe-roesterei/): Eine Rösterei mit echtem Röstfilm: Beim Scrollen fallen die Bohnen aus der Trommel und drehen im Kühlsieb. Dazu Becher und Tüte in 3D und ein Bondrucker zum Ausprobieren.
+- [Website für Coaching und Beratung](https://makestudios.de/websites/coach/): Coaching für Führungskräfte: eine ruhige Seite mit großer Schrift, auf der aus vielen Gedanken beim Scrollen eine einzige Frage wird. Dazu ein Kennenlernen als Anfrage.
+- [Website für Bauträger und Wohnprojekt](https://makestudios.de/websites/neubau-film/): Ein Bauträger stellt sein Wohnprojekt vor: Beim Scrollen läuft ein Film vom Haus bis in die Räume. Danach folgen die Eckdaten, ein Rundgang in drei Einstellungen und eine Terminanfrage für die Besichtigung.
+- [Website für Agentur und Markenbüro](https://makestudios.de/websites/agentur/): Ein Büro für Marken: Die Wortmarke springt aus drei Druckfarben in den Passer, der Werkstattfilm wächst beim Scrollen auf volle Größe. Dazu drei Beispielprojekte als Bogenstapel.
+- [Website für Frühstückslokal und Bistro](https://makestudios.de/websites/cafe-bistro/): Ein Frühstückslokal mit Film vom Frühstückstisch. Beim Scrollen vergeht im Bogenfenster ein ganzer Tag, von 8 bis 17 Uhr. Dazu eine Karte mit Bild und Filter und eine Tischanfrage.
+- [Website für Dachdecker und Sanierung](https://makestudios.de/websites/dach-sanierung/): Ein Dachdecker, der seine Arbeit erklärt: Sechs Markierungen am Foto folgen dem Wasser vom First bis zum Fallrohr, ein Schnitt zeigt die Sanierung. Dazu ein Dachcheck.
+- [Website für Kanzlei und Anwaltsbüro](https://makestudios.de/websites/kanzlei/): Eine Kanzlei für Arbeits- und Wirtschaftsrecht, gesetzt wie ein guter Schriftsatz: Randnummern, feine Linien, große Serifen. Beim Scrollen wird aus Juristendeutsch Klartext.
+- [Website für Bauunternehmen](https://makestudios.de/websites/bauunternehmen/): Ein Bauunternehmen, das schlüsselfertig baut: Projekte nach Bereichen, ein kurzer Film von der Baustelle und der Ablauf in fünf Schritten bis zur Übergabe. Dazu eine Projektanfrage.
 
 ## Kontakt
 - E-Mail: kevin@makeinnovation.de
-- Erstgespräch: http://localhost:3022/#erstgespraech
+- Erstgespräch: https://makestudios.de/#erstgespraech
 
 ## Familie
-- [MAKE Innovation](http://localhost:3019/): MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue.
-- [MAKE Revenue](http://localhost:3023/): MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.
+- [MAKE Innovation](https://makeinnovation.de/): MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue.
+- [MAKE Revenue](https://makerevenue.de/): MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.
