@@ -62,8 +62,11 @@ describe('Ziele: zwei Schreiber, keiner verliert etwas', () => {
     const jetzt = await ladeZiele();
     expect(jetzt.map(z => z.id).sort()).toEqual(['z-basis', 'z-kevin', 'z-zwei']);
     expect(jetzt.find(z => z.id === 'z-basis')!.fortschritt).toBe(40);
-    // Malins Sicht enthält nach der Antwort auch Kevins Ziel (Serverstand + eigene offene Änderungen).
-    expect(b.sicht!.map(z => z.id)).toContain('z-kevin');
+    // Wer als Zweite(r) beim Server ankam, sieht nach der Antwort BEIDE Änderungen (Serverstand + eigene offene Änderungen).
+    // Welche der zwei gleichzeitigen Anfragen zuerst ankommt, ist nicht festgelegt (12.11.: bei GitHub kam Malins zuerst an,
+    // der Test verlangte Kevins Ziel aber fest in Malins Sicht und wurde rot). Geprüft wird deshalb die spätere der beiden.
+    const beides = (sicht: ZZ[]) => sicht.some(z => z.id === 'z-kevin') && sicht.find(z => z.id === 'z-basis')?.fortschritt === 40;
+    expect([a.sicht!, b.sicht!].some(beides)).toBe(true);
   });
 
   it('beide ändern DASSELBE Ziel: der zweite bekommt 409 mit dem aktuellen Stand, nichts überschrieben', async () => {
