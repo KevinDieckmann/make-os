@@ -64,6 +64,7 @@
 
 /* Beispielseiten: Vorschau steht still */
 .referenz-bild { translate: none !important; }
+/* Beispielfilme (Video & Foto, Social Media): laufen hier nie von selbst (seite.js). Ohne JavaScript bleiben die Bedienelemente des Browsers. */
 
 .kopf { background: rgba(242, 237, 228, .86); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 html.dunkel .kopf { background: rgba(13, 12, 11, .8); }
@@ -75,7 +76,7 @@ html.dunkel .kopf { background: rgba(13, 12, 11, .8); }
 @media (max-width: 640px) {
   .kennzahlen { align-items: start; }
   .kennzahl-handy .geraet-handy { width: 100% !important; }
-  .tafel-unter, .tafel-liste { display: block !important; }
+  .tafel-liste { display: block !important; }
   .tafel-start .tafel-text { display: block !important; }
   .handy { transform: rotate(-4deg) scale(.86) !important; transform-origin: top center; }
   .ergebnis-raum { padding-left: 0; gap: 72px 0; }

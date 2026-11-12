@@ -19,7 +19,7 @@ if (!MAIL) throw new Error('seo.json: kontakt (E-Mail-Adresse) fehlt');
 // entscheidet Kevin noch. Steht sie fest, hier und an den mit „RECHTSFORM“ markierten Stellen nachtragen (auch seo.mjs).
 const SATZ = {
   revenue: 'MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.',
-  studios: 'MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video.',
+  studios: 'MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Video, Fotos und Social Media.',
   innovation: 'MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue.',
 };
 
@@ -43,18 +43,18 @@ const zahl = (z, klasse = '') => `<figure class="zahl ${klasse} erscheint">
         <cite class="zahl-quelle">Quelle: <a href="${e(z.link)}" rel="noopener">${e(z.quelle)}</a>${z.zusatz ? ' · ' + e(z.zusatz) : ''}</cite></figcaption>
       </figure>`;
 
-// Die vier Themen: eine Quelle für Startseite, Unterseiten und strukturierte Daten (kurz = Text auf der Startseite, vorweg = Antwort auf der Unterseite)
+// Die vier Themen: eine Quelle für Startseite, Unterseiten und strukturierte Daten (kurz = Text auf der Startseite, vorweg = Antwort im blauen Kasten der Unterseite)
 const THEMEN = [
-  { id: 'systemvertrieb', pfad: 'systemvertrieb/', lage: 'Die ganze Strecke', titel: 'Digitaler Systemvertrieb', art: 'Vertriebsaufbau', klein: 'Der Kern von MAKE Revenue',
+  { id: 'systemvertrieb', pfad: 'systemvertrieb/', titel: 'Digitaler Systemvertrieb', art: 'Vertriebsaufbau', klein: '',
     kurz: 'Zielgruppe, Prozess im CRM, Gesprächsleitfäden, Kennzahlen und Nachfassen. Ein Vertrieb, den Sie steuern können und der nicht an Ihnen hängt.',
-    vorweg: 'Vertrieb wird planbar, wenn fünf Dinge stehen: eine klare Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein Team, das trainiert ist.' },
-  { id: 'zeit', pfad: 'vertrieb-auf-zeit/', lage: 'Wer die Strecke führt', titel: 'Vertrieb auf Zeit', art: 'Vertriebsleitung auf Zeit', klein: 'Auch Interim oder Fractional Head of Sales',
+    vorweg: 'Vertrieb wird planbar, wenn fünf Dinge stehen: die Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein trainiertes Team.' },
+  { id: 'zeit', pfad: 'vertrieb-auf-zeit/', titel: 'Vertrieb auf Zeit', art: 'Vertriebsleitung auf Zeit', klein: 'Auch Interim oder Fractional Head of Sales',
     kurz: 'Head of Sales oder Chief Sales Officer auf Zeit, für 6 oder 12 Monate. Wer erst testen will, startet mit dem Tagesworkshop Vertrieb.',
     vorweg: 'Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt.' },
-  { id: 'netzwerken', pfad: 'netzwerken/', lage: 'Woher Anfragen kommen', titel: 'Netzwerken und Events', art: 'Netzwerk-Events', klein: 'Für Gäste kostenlos',
-    kurz: 'Abende in kleiner Runde, auf Einladung. Dazu der Weg, aus Begegnungen und Empfehlungen Kontakte zu machen, die niemand vergisst.',
+  { id: 'netzwerken', pfad: 'netzwerken/', titel: 'Netzwerken und Events', art: 'Netzwerk-Events', klein: 'Für Gäste kostenlos',
+    kurz: 'Abende in kleiner Runde, auf Einladung. Dazu der Weg, auf dem aus Begegnungen und Empfehlungen Kontakte werden, die nicht liegen bleiben.',
     vorweg: 'Viele gute Verbindungen entstehen erst, wenn man sich einmal gegenübersitzt. Davon soll der Standort etwas haben, nicht nur wir.' },
-  { id: 'check', pfad: 'vertriebs-check/', lage: 'Wo Sie heute stehen', titel: 'Vertriebs-Check', art: 'Vertriebsanalyse', klein: 'Kostenlos · rund 5 Minuten',
+  { id: 'check', pfad: 'vertriebs-check/', titel: 'Vertriebs-Check', art: 'Vertriebsanalyse', klein: 'Kostenlos · rund 5 Minuten',
     kurz: 'Zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, wo Ihr Vertrieb steht.',
     vorweg: 'Der Vertriebs-Check ist kostenlos und dauert rund 5 Minuten. Das Ergebnis sehen Sie sofort auf dem Bildschirm.' },
 ];
@@ -124,7 +124,7 @@ function brett() {
   const offen = BRETT.filter((k) => k.stufe < 3).length, ohne = BRETT.filter((k) => !k.tag).length, gewonnen = BRETT.filter((k) => k.stufe === 3).length;
   return `<div class="brett" data-brett>
         <div class="brett-kopf">
-          <p class="stueck-marke">Beispiel · CRM-Ansicht · Montag, 16.03.</p>
+          <p class="stueck-marke">Beispiel · Montag, 16.03.</p>
           <dl class="brett-zaehler">
             <div><dt>Offene Anfragen</dt><dd data-brett-aus="offen">${offen}</dd></div>
             <div class="brett-zaehler-ohne"><dt>Ohne nächste Aktion</dt><dd data-brett-aus="ohne">${ohne}</dd></div>
@@ -140,11 +140,10 @@ ${STUFEN.map((name, i) => `          <li class="brett-spalte" data-spalte="${i}"
           </li>`).join('\n')}
         </ol>
         <div class="brett-fuss">
-          <p class="brett-meldung" data-brett-meldung role="status">Schieben Sie eine Karte eine Stufe weiter: Sie bekommt sofort ihre nächste Aktion mit Datum.</p>
+          <p class="brett-meldung" data-brett-meldung role="status">Schieben Sie eine Karte weiter. Sie bekommt sofort ihre nächste Aktion mit Datum.</p>
           <button class="knopf-zart" type="button" data-brett-zurueck hidden>Zurücksetzen</button>
         </div>
-        <p class="stueck-hinweis">Beispiel mit erfundenen Karten, kein Kunde. Welches CRM Sie nutzen, ist zweitrangig. Wichtig ist, dass alle es gleich nutzen.</p>
-        <noscript><p class="stueck-hinweis">Zum Verschieben der Karten braucht diese Seite JavaScript. Ohne JavaScript sehen Sie das Brett als Bild.</p></noscript>
+        <noscript><p class="stueck-hinweis">Zum Verschieben der Karten braucht es JavaScript.</p></noscript>
       </div>`;
 }
 
@@ -157,7 +156,7 @@ function report(W) {
               <td class="report-stand"><svg class="report-balken" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect class="grund" width="100" height="6" rx="3"/><rect class="wert" width="${Math.min(100, anteil)}" height="6" rx="3" data-balken/></svg><span data-stand>${luecke > 0 ? `${luecke} unter Ziel` : 'Ziel erreicht'}</span></td></tr>`;
   };
   return `<div class="report" data-report>
-        <div class="report-kopf"><p class="report-titel">Wochenreport</p><p class="stueck-marke" data-report-marke>Beispiel · Kalenderwoche 12 · Freitag</p></div>
+        <div class="report-kopf"><p class="report-titel">Wochenreport</p><p class="stueck-marke" data-report-marke>Beispiel · Kalenderwoche 12</p></div>
         <table>
           <caption class="vh">Wochenreport: Ist gegen Ziel je Stufe</caption>
           <thead><tr><th scope="col">Stufe</th><th scope="col">Ist</th><th scope="col">Ziel</th><th scope="col">Stand</th></tr></thead>
@@ -167,7 +166,7 @@ function report(W) {
         </table>
         <p class="report-luecke" data-report-luecke role="status">Größte Lücke: Erstkontakte, 2 unter Ziel.</p>
         <p class="report-satz"><b>Nächste Woche:</b> Messekontakte nachfassen, die zwei größten offenen Angebote zuerst.</p>
-        <p class="report-hinweis" data-report-hinweis>Beispielwerte, kein Kunde. Die Ziele kommen aus der Rückwärtsrechnung vom Umsatzziel: Wer im <a href="${W}#rechner">Vertriebsrechner</a> eigene Werte einträgt, sieht hier die eigenen Wochenziele.</p>
+        <p class="report-hinweis" data-report-hinweis>Die Ziele kommen aus dem <a href="${W}#rechner">Vertriebsrechner</a>, sobald Sie dort Ihre Werte eintragen.</p>
         <button class="knopf-zart" type="button" data-report-zurueck hidden>Zurück zu den Beispielzielen</button>
       </div>`;
 }
@@ -213,7 +212,7 @@ function leitfaden({ voll = false } = {}) {
             ${t.danach ? `<p class="lf-danach">${t.danach}</p>` : ''}
           </section>`;
   return `<div class="leitfaden" data-leitfaden>
-        <div class="report-kopf"><p class="report-titel">Gesprächsleitfaden</p><p class="stueck-marke">Entwurf · Auszug · Beispielsätze</p></div>
+        <div class="report-kopf"><p class="report-titel">Gesprächsleitfaden</p>${voll ? '' : '<p class="stueck-marke">Auszug</p>'}</div>
         <ol class="lf-wahl" hidden>
           ${LEITFADEN.map((t, i) => `<li><button type="button" data-lf="${i}"><span>0${i + 1}</span>${t.name}</button></li>`).join('')}
         </ol>
@@ -225,7 +224,7 @@ function leitfaden({ voll = false } = {}) {
           <span class="lf-stand" data-lf-stand aria-live="polite">Schritt 1 von 4</span>
           <button class="knopf-zart knopf-zart-voll" type="button" data-lf-weiter>Weiter</button>
         </div>
-        <p class="stueck-hinweis">Ein Leitfaden ist kein Text zum Ablesen, sondern ein Geländer. Die Beispielsätze sind Entwürfe: Sie passen sie an Ihr Angebot und Ihre Branche an.</p>
+        <p class="stueck-hinweis">Abgelesen wird nichts. Die Sätze passen Sie an Ihr Angebot und Ihre Branche an.</p>
       </div>`;
 }
 // Ein Stück mit Text links und dem Stück rechts
@@ -259,23 +258,23 @@ ${liste.map(([f, a]) => `      <details><summary>${e(f)}</summary><div class="fr
 }
 const punkte = (liste, klasse = '') => `<ul class="punkte ${klasse}">${liste.map((p) => `<li>${p}</li>`).join('')}</ul>`;
 
-function kontakt(W, { titel = 'Sprechen wir <em>darüber.</em>', thema = '' } = {}) {
+function kontakt(W, { titel = 'Sprechen wir <em>darüber.</em>', thema = '', schritte = true } = {}) {
   return `
 <section class="abschnitt dunkel kontakt" id="kontakt" aria-labelledby="kontakt-titel">
   <div class="w">
-    <p class="ueberzeile">Der Einstieg</p>
+    <p class="ueberzeile">Kontakt</p>
     <h2 class="kontakt-titel" id="kontakt-titel">${titel}</h2>
-    <p class="abschnitt-text">Im kostenlosen Erstgespräch, 30 Minuten per Video, klären wir, ob und womit wir helfen können. Oder Sie starten mit dem Vertriebs-Check: 5 Minuten, Ergebnis sofort.</p>
+    <p class="abschnitt-text">Das Erstgespräch dauert 30 Minuten, läuft per Video und kostet nichts. Danach wissen Sie, ob und womit wir helfen können. Oder Sie machen zuerst den Vertriebs-Check: 5 Minuten, Ergebnis sofort.</p>
     <div class="kontakt-aktionen" id="erstgespraech">
       <a class="knopf knopf-gross" href="mailto:${MAIL}?subject=Erstgespr%C3%A4ch%20MAKE%20Revenue" data-buchen${thema ? `="${thema}"` : ''}>Erstgespräch vereinbaren</a>
       ${fam('check', 'Vertriebs-Check starten', { klasse: 'knopf knopf-gross knopf-leise' })}
     </div>
-    <a class="kontakt-mail" href="mailto:${MAIL}?subject=Anfrage%20MAKE%20Revenue">${MAIL}</a>
+    <a class="kontakt-mail" href="mailto:${MAIL}?subject=Anfrage%20MAKE%20Revenue">${MAIL}</a>${schritte ? `
     <ol class="kontakt-drei">
-      <li><b>Erstgespräch oder Check</b><span>30 Minuten Erstgespräch per Video oder ein Check mit Ergebnis sofort. Beides kostenlos.</span></li>
-      <li><b>Ihr Vorschlag</b><span>Wir schlagen Ihnen das passende Angebot vor und nennen Festpreis und Ablauf schriftlich, bevor es losgeht.</span></li>
+      <li><b>Erstgespräch</b><span>Sie schildern Ihre Lage, wir fragen nach. Ein Verkaufsgespräch ist es nicht.</span></li>
+      <li><b>Ihr Vorschlag</b><span>Wir schlagen Ihnen ein Angebot vor. Festpreis und Ablauf bekommen Sie schriftlich, bevor es losgeht.</span></li>
       <li><b>Start</b><span>Zum vereinbarten Termin, mit ersten Ergebnissen im ersten Monat.</span></li>
-    </ol>
+    </ol>` : ''}
   </div>
 </section>`;
 }
@@ -371,7 +370,7 @@ function buchenFenster() {
             <textarea id="b-nachricht" name="nachricht" rows="4" maxlength="2000"></textarea>
           </div>
         </div>
-        <p class="buchen-datenschutz">Beim Senden öffnet sich Ihr E-Mail-Programm mit dem fertigen Text. Diese Seite speichert und versendet nichts. ${fam('innovation', 'Datenschutz', { pfad: 'datenschutz/' })}</p>
+        <p class="buchen-datenschutz">Beim Senden öffnet sich Ihr E-Mail-Programm mit dem fertigen Text. ${fam('innovation', 'Datenschutz', { pfad: 'datenschutz/' })}</p>
       </section>
 
       <div class="buchen-fertig" hidden>
@@ -470,7 +469,7 @@ ${inhalt(W)}
     <div class="fuss-oben">
       <div>
         <a class="marke" href="${start}" aria-label="MAKE Revenue, zur Startseite">${marke()}</a>
-        <p class="fuss-satz">${SATZ.revenue}</p>
+        <p class="fuss-satz">Vertrieb mit System, Vertriebsleitung auf Zeit, Netzwerken und Events. Aus Berlin, für Unternehmen in Deutschland und Europa.</p>
       </div>
       <nav aria-label="Themen">
         <p class="fuss-titel">Themen</p>
@@ -483,10 +482,10 @@ ${inhalt(W)}
         </ul>
       </nav>
       <div>
-        <p class="fuss-titel">Die Familie</p>
+        <p class="fuss-titel">Auch von uns</p>
         <ul class="fuss-liste">
-          <li>${fam('innovation', 'MAKE Innovation', { klasse: '' })}<small>Das Dach: KI, Abläufe und eigene Software</small></li>
-          <li>${fam('studios', 'MAKE Studios', { klasse: '' })}<small>Websites, Google-Profil, Fotos und Video</small></li>
+          <li>${fam('innovation', 'MAKE Innovation', { klasse: '' })}<small>KI, bessere Abläufe und eigene Software</small></li>
+          <li>${fam('studios', 'MAKE Studios', { klasse: '' })}<small>Websites, Google-Profil, Video und Social Media</small></li>
         </ul>
       </div>
     </div>
@@ -503,7 +502,7 @@ ${buchenFenster()}
 `;
 }
 
-// Kopf einer Unterseite: Brotkrumen, eine h1, Einleitung, rechts „Das Wichtigste vorweg“
+// Kopf einer Unterseite: Brotkrumen, eine h1, Einleitung, rechts der blaue Kasten mit der Antwort in ein, zwei Sätzen und den Eckdaten
 function seitenKopf(W, { krume, titel, text, aktionen, vorweg, fakten, film = '', filmMarke }) {
   return `
 <section class="seiten-kopf dunkel" data-dunkelkopf>
@@ -515,8 +514,7 @@ function seitenKopf(W, { krume, titel, text, aktionen, vorweg, fakten, film = ''
         <p class="seiten-text">${text}</p>
         <div class="seiten-aktionen">${aktionen}</div>
       </div>
-      <aside class="vorweg" aria-label="Das Wichtigste vorweg">
-        <p class="ueberzeile">Das Wichtigste vorweg</p>
+      <aside class="vorweg" aria-label="Eckdaten">
         <p>${vorweg}</p>
         <dl>${fakten.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
       </aside>
@@ -526,11 +524,11 @@ function seitenKopf(W, { krume, titel, text, aktionen, vorweg, fakten, film = ''
 </section>`;
 }
 const abKopf = (ueber, titel, text = '', id = '') => `<div class="abschnitt-kopf${text ? '' : ' abschnitt-kopf-schmal'}">
-      <p class="ueberzeile">${ueber}</p>
+      ${ueber ? `<p class="ueberzeile">${ueber}</p>` : ''}
       <h2 class="abschnitt-titel"${id ? ` id="${id}"` : ''}>${titel}</h2>
       ${text ? `<p class="abschnitt-text">${text}</p>` : ''}
     </div>`;
-const autor = () => `<p class="stand">Verantwortlich für den Inhalt: Kevin Dieckmann, Vertrieb und Umsetzung · ${fam('innovation', 'Über uns bei MAKE Innovation', { pfad: 'ueber-uns/' })} · Stand: ${STAND}</p>`;
+const autor = () => `<p class="stand">Verantwortlich für den Inhalt: Kevin Dieckmann, Vertrieb und Umsetzung · ${fam('innovation', 'Über uns', { pfad: 'ueber-uns/' })} · Stand: ${STAND}</p>`;
 
 // ─── Rechner: dieselbe Rechnung wie rechner.js, hier für die Startwerte im HTML (ohne JavaScript sichtbar) ───
 const START = { ziel: 240000, auftrag: 8000, kontaktquote: 20, terminquote: 50, angebotsquote: 33, wochen: 45, offen: 4, stunden: 2 };
@@ -567,8 +565,8 @@ function rechner() {
         ${feld('Arbeitswochen im Jahr', 'wochen', START.wochen, 'Wochen')}
         ${feld('Bis ein Angebot entschieden ist', 'offen', START.offen, 'Wochen')}
         ${feld('Zeit je Termin mit Vor- und Nachbereitung', 'stunden', START.stunden, 'Stunden')}
-        <p class="rechner-hinweis">Die Startwerte sind ein Beispiel. Alle Werte sind angenommen.</p>
-        <noscript><p class="rechner-hinweis">Zum Rechnen braucht diese Seite JavaScript. Ohne JavaScript sehen Sie rechts das Beispiel mit den Startwerten.</p></noscript>
+        <p class="rechner-hinweis">Die Startwerte sind ein Beispiel.</p>
+        <noscript><p class="rechner-hinweis">Zum Rechnen braucht es JavaScript. Rechts sehen Sie das Beispiel mit den Startwerten.</p></noscript>
       </div>
       <div class="rechner-rechts erscheint erscheint-2">
         <dl class="rechner-ergebnis" aria-live="polite">
@@ -577,7 +575,7 @@ function rechner() {
           <div><dt>Angebote je Woche</dt><dd data-aus="angeboteWoche">${de(r.angeboteWoche, 1)}</dd></div>
           <div><dt>Umsatz je Monat</dt><dd data-aus="umsatzMonat">${de(r.umsatzMonat)}&nbsp;€</dd></div>
         </dl>
-        <figure class="trichter" aria-label="Die Strecke vom Erstkontakt zum Abschluss, im Jahr"><figcaption class="etikett">Ihre Strecke im Jahr</figcaption>
+        <figure class="trichter" aria-label="Vom Erstkontakt zum Abschluss, im Jahr"><figcaption class="etikett">Im Jahr</figcaption>
           <ol>
             ${balken('Erstkontakte', 'kontakte', r.kontakte)}
             ${balken('Termine', 'termine', r.termine)}
@@ -597,16 +595,16 @@ function rechner() {
 
 // ═══════════════════════════════════════ Seiten ═══════════════════════════════════════
 const FRAGEN = {
-  erstgespraech: ['Ist das Erstgespräch ein Verkaufsgespräch?', 'Nein, es ist ein Gespräch über Ihre Lage, kostenlos und per Video. Am Ende sagen wir Ihnen klar, ob wir helfen können und womit. Und wenn nicht, sagen wir auch das.'],
+  erstgespraech: ['Ist das Erstgespräch ein Verkaufsgespräch?', 'Nein. Wir sprechen über Ihre Lage, kostenlos und per Video. Am Ende sagen wir Ihnen, ob wir helfen können und womit. Wenn nicht, sagen wir auch das.'],
   gespraeche: ['Wer führt die Verkaufsgespräche?', 'Ihr Team. Wir machen vor, trainieren mit Rollenspielen und besprechen echte Calls nach. So bleibt das Wissen bei Ihnen, wenn wir gehen.'],
   crm: ['Brauche ich schon ein CRM?', 'Nein. Wenn Sie keins haben, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stages, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten tragen Sie.'],
-  preise: ['Wo stehen die Preise?', 'MAKE Revenue zeigt keine Preise. Die Preise aller Angebote stehen offen bei MAKE Innovation. Den genauen Festpreis bekommen Sie schriftlich, bevor es losgeht.'],
-  wer: ['Wer steht hinter MAKE Revenue?', 'MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin. Sie arbeiten direkt mit Kevin und Malin und nicht mit wechselnden Projektleitern.'],
+  preise: ['Was kostet das?', `Sie bekommen einen Festpreis, schriftlich und bevor es losgeht. Unsere ${fam('innovation', 'Startpreise', { pfad: 'preise/' })} können Sie vorher ansehen.`],
+  wer: ['Wer steht hinter MAKE Revenue?', 'MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin. Ihre Ansprechpartner sind Kevin und Malin.'],
   projekt: ['Wer arbeitet an meinem Projekt?', 'Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Sie sprechen immer mit uns, und wir stimmen alles Weitere im Team ab.'],
-  erfahrung: ['Welche Erfahrung bringen Sie mit?', 'Wir kommen aus der Vertriebsführung: Teams geführt, Partnernetze aufgebaut, Head of Sales bei einem FinTech. Heute arbeiten wir in laufenden Projekten mit KI, auch im internationalen Umfeld. Namen nennen wir nur, wenn Kunden es freigeben. Vertraulichkeit gehört für uns dazu.'],
+  erfahrung: ['Welche Erfahrung bringen Sie mit?', 'Wir kommen aus der Vertriebsführung: Teams geführt, Partnernetze aufgebaut, Head of Sales bei einem FinTech. Heute arbeiten wir in laufenden Projekten mit KI, auch im internationalen Umfeld. Namen nennen wir nur, wenn Kunden es freigeben.'],
   vorort: ['Arbeiten Sie auch bei uns vor Ort?', 'Ja. Vieles läuft per Video, wichtige Termine machen wir gern bei Ihnen: Workshops, Trainings mit Ihrem Team, Gespräche mit der Geschäftsführung. Termine vor Ort vereinbaren wir vorher, Reisekosten rechnen wir gegen Beleg ab.'],
-  ersterVertriebler: ['Wann sollte ein Start-up den ersten Vertriebler einstellen?', 'Sobald es ein System gibt, in das er einsteigen kann: eine klare Zielgruppe, Leitfäden und einen Prozess im CRM. Ohne dieses Fundament verbringt ein neuer Vertriebler die ersten Monate damit, es selbst zu suchen.'],
-  welchesCrm: ['Welches CRM brauche ich für den Anfang?', 'Eines, das Ihr Team jeden Tag nutzt. Wichtiger als das Werkzeug sind klare Stufen, Pflichtfelder und Wiedervorlagen. Fangen Sie einfach an und erweitern Sie erst, wenn die Grundlagen sitzen.'],
+  ersterVertriebler: ['Wann sollte ein Start-up den ersten Vertriebler einstellen?', 'Sobald es ein System gibt, in das er einsteigen kann: eine Zielgruppe, Leitfäden und einen Prozess im CRM. Ohne dieses Fundament verbringt ein neuer Vertriebler die ersten Monate damit, es selbst zu suchen.'],
+  welchesCrm: ['Welches CRM brauche ich für den Anfang?', 'Eines, das Ihr Team jeden Tag nutzt. Wichtiger als das Werkzeug sind feste Stufen, Pflichtfelder und Wiedervorlagen. Fangen Sie klein an und erweitern Sie erst, wenn die Grundlagen sitzen.'],
   kennzahlen: ['Wie viele Kennzahlen braucht ein kleiner Vertrieb?', 'Wenige: Erstkontakte, Termine, Angebote und Abschlüsse je Woche, dazu die Quoten zwischen den Stufen. Wichtiger als die Zahl der Kennzahlen ist, dass sie jede Woche besprochen werden.'],
   planbar: ['Wie lange dauert es, bis Vertrieb planbar läuft?', 'Das hängt vom Ausgangspunkt ab. In unserem Mandat als Head of Sales läuft ab Monat 3 jedes Gespräch nach Prozess im CRM, und jeden Freitag kommt der Wochenreport. Ziel bis Monat 6 ist, dass Ihr Team ohne den Gründer abschließt. Wir schulden die Leistung, nicht den Umsatz.'],
   richtwerte: ['Gibt es gute Richtwerte für Termin- oder Abschlussquoten?', 'Wir nennen bewusst keine. Quoten hängen von Branche, Preis, Kanal und Kontaktliste ab. Messen Sie vier bis acht Wochen Ihre eigenen Werte und setzen Sie Ziele daraus.'],
@@ -619,14 +617,14 @@ const FRAGEN = {
   csoZeit: ['Wie viel Zeit bringt der Chief Sales Officer ein?', '30 bis 35 Stunden im Monat, fest eingeplant. Dazu kommen der Wochen-Call und ein monatlicher Strategie-Call mit der Geschäftsführung.'],
   einstellen: ['Stellen Sie unsere Vertriebler ein?', 'Wir bauen Rollenmodell, Stellenanzeige, Interviewleitfaden und Probetag und führen die Interviews mit Ihnen. Die Entscheidung und den Arbeitsvertrag machen Sie. Stellenanzeigen und Recruiting-Tools zahlen Sie direkt.'],
   ende: ['Was passiert am Ende eines Mandats?', 'Wir übergeben an Ihre interne Vertriebsleitung, mit Übergabeplan in 4 Schritten und dem Sales Playbook Teil 3.'],
-  workshopNichts: ['Was, wenn der Tagesworkshop nichts bringt?', 'Haben Sie am Abend keine drei Hebel, die Sie umsetzen wollen, zahlen Sie nichts.'],
+  workshopNichts: ['Was bringt mir der Tagesworkshop?', 'Ziel des Tages sind drei Hebel, die Sie sofort umsetzen können.'],
   workshopFokus: ['Strategie oder operativ: Was heißt das beim Tagesworkshop?', 'Mit Fokus Strategie geht es um Zielgruppe, Markteintritt und Positionierung. Mit Fokus operativ um Ablauf, Zahlen und Werkzeuge im Vertrieb. Sie wählen vorab.'],
   nichtPassend: ['Für wen passt ein Head of Sales auf Zeit nicht?', 'Für Firmen ohne fertiges Produkt, Konzerne mit Einkaufsabteilung, reine Kaltakquise-Telefonteams und Network-Marketing.'],
   erstePerson: ['Wann sollte ich die erste Person für den Vertrieb einstellen?', 'Wenn Sie wissen, welche Kunden am besten passen, Ihr Erstgespräch einem aufgeschriebenen Ablauf folgt und genug Kontakte da sind, um eine Person auszulasten. Fehlt eines davon, holen Sie es zuerst nach.'],
   rollen: ['Brauche ich gleich getrennte Rollen im Vertrieb?', 'Nein. In kleinen Teams macht jede Person alles. Trennen Sie Rollen erst, wenn eine Aufgabe eine Person gut auslasten kann, und regeln Sie dann die Übergaben zwischen den Rollen.'],
   fuehren: ['Wer soll den Vertrieb führen, wenn ich es nicht mehr mache?', 'Jemand, der führen will und es gelernt hat oder lernen darf. Das ist nicht immer die Person, die am meisten verkauft. Am Anfang verkauft die Vertriebsleitung oft noch mit, braucht aber feste Zeit für die Führung.'],
   eventKosten: ['Was kosten die Events?', 'Für Gäste sind die Events kostenlos.'],
-  eventEinladung: ['Wie bekomme ich eine Einladung?', 'Tragen Sie sich bei MAKE Innovation auf die Gästeliste ein, dann bekommen Sie die nächste Einladung. Termine, Orte und Formate stehen in jeder Einladung.'],
+  eventEinladung: ['Wie bekomme ich eine Einladung?', `Tragen Sie sich auf die ${fam('innovation', 'Gästeliste', { pfad: 'events/' })} ein, dann bekommen Sie die nächste Einladung. Termin, Ort und Format stehen darin.`],
   eventGaeste: ['Wer kommt zu den Events?', 'Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir laden selbst ein und mischen bewusst, zum Beispiel Start-ups mit Mittelständlern oder Leute aus der Technik mit Leuten aus dem Vertrieb.'],
   checkKosten: ['Was kostet der Vertriebs-Check?', 'Nichts. Der Vertriebs-Check und das Erstgespräch danach sind kostenlos.'],
   checkDauer: ['Wie lange dauert der Vertriebs-Check?', 'Rund 5 Minuten. Es sind zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Das Ergebnis sehen Sie sofort.'],
@@ -637,7 +635,7 @@ const fr = (...ids) => ids.map((i) => FRAGEN[i]);
 const BEGRIFFE = [
   ['Digitaler Systemvertrieb', 'Digitaler Systemvertrieb ist Vertrieb nach einem festen Ablauf im CRM: Jede Anfrage hat eine Stufe, eine nächste Aktion und ein Datum, und wenige Kennzahlen zeigen jede Woche, ob der Plan hält.'],
   ['Vertrieb auf Zeit', 'Vertrieb auf Zeit ist eine Vertriebsleitung für einige Monate, die das System aufbaut, mit Ihrem Team umsetzt und so übergibt, dass der Vertrieb ohne sie läuft. Auch Interim oder Fractional Head of Sales genannt.'],
-  ['Salesprozess', 'Der Salesprozess sind die festen Stufen, die jede Anfrage bis zum Abschluss durchläuft, mit einer klaren nächsten Aktion je Stufe.'],
+  ['Salesprozess', 'Der Salesprozess sind die festen Stufen, die jede Anfrage bis zum Abschluss durchläuft, mit einer festgelegten nächsten Aktion je Stufe.'],
   ['Pipeline', 'Die Pipeline ist die Summe aller offenen Verkaufschancen mit ihrem erwarteten Wert, geordnet nach Stufe vom Erstkontakt bis zum Abschluss.'],
   ['Wiedervorlage', 'Eine Wiedervorlage ist ein fester Termin im CRM, an dem eine offene Anfrage wieder bearbeitet wird. So bleibt keine Anfrage liegen.'],
   ['Abschlussquote', 'Die Abschlussquote ist der Anteil der Angebote, aus denen ein Auftrag wird. Gezählt werden nur Angebote, die entschieden sind, also angenommen oder abgelehnt.'],
@@ -676,11 +674,11 @@ function strecke() {
 function start(W) {
   const halte = [
     ['Anfrage', 'Ein Interessent von der Messe hat vor drei Wochen um ein Angebot gebeten. Der Entwurf liegt noch in Ihrem Postfach.', 'Jede Anfrage bekommt eine Stufe, eine nächste Aktion und ein Datum. So geht nichts verloren, und jeder im Team sieht, wo ein Kunde steht.'],
-    ['Gespräch', 'Viele Gründer und Geschäftsführer verkaufen selbst und nebenbei. Neue Kunden kommen über Empfehlungen, aber nicht planbar.', 'Leitfäden geben jedem Gespräch eine Richtung: Welche Fragen klären Bedarf, Budget, Entscheidung und Zeitpunkt? Dazu gehören gute Antworten auf die häufigsten Einwände.'],
+    ['Gespräch', 'Sie verkaufen selbst, zwischen zwei anderen Terminen. Neue Kunden kommen über Empfehlungen, aber nicht planbar.', 'Leitfäden geben jedem Gespräch eine Richtung: Welche Fragen klären Bedarf, Budget, Entscheidung und Zeitpunkt? Dazu gehören gute Antworten auf die häufigsten Einwände.'],
     ['Angebot', 'Ein Wettbewerber mit dem schwächeren Produkt bekommt den Auftrag, weil er schneller nachgefasst hat.', 'Das Angebot geht in 24 Stunden raus. Jedes offene Angebot hat ein Datum zum Nachfassen, zum Beispiel drei Werktage danach und noch einmal eine Woche später.'],
     ['Abschluss', 'Wie viele neue Kunden nächsten Monat kommen, kann niemand sagen. Es hängt an Empfehlungen und an Ihnen.', 'Vom Umsatzziel rückwärts gerechnet stehen Wochenziele fest. Jeden Freitag zeigt der Wochenreport, ob der Plan hält, und Ihr Team schließt selbst ab.'],
   ];
-  const themen = THEMEN.map((t) => [t.pfad, t.lage, t.titel, t.kurz, t.klein]);
+  const themen = THEMEN.map((t) => [t.pfad, t.titel, t.kurz, t.klein]);
   return `
 <!-- Der Film-Einstieg: die Strecke von der Anfrage bis zum Abschluss in acht Szenen. Ohne JavaScript und mit „Bewegung reduzieren“
      stehen dieselben Inhalte ruhig untereinander (das ist der Normalfall im CSS); erst html.film-an macht daraus die Bühne. -->
@@ -693,24 +691,18 @@ function start(W) {
     </div>
 
     <div class="szene szene-einstieg" data-szene="einstieg" data-kapitel="Einstieg">
-      <p class="ueberzeile">MAKE Revenue · Vertrieb mit System</p>
+      <p class="ueberzeile">MAKE Revenue</p>
       <h1 class="held-titel" id="held-titel">Ihr Produkt ist besser, als Ihr Umsatz <em>zeigt.</em> <span class="held-zusatz">Vertrieb mit System für Gründer, Mittelstand und Dienstleister.</span></h1>
-      <p class="held-text">MAKE Revenue baut Ihren Vertrieb als System auf: Zielgruppe, Prozess im CRM, Kennzahlen und Nachfassen. Wir machen es vor und üben mit Ihrem Team, bis es selbst abschließt.</p>
+      <p class="held-text">Wir bauen Ihren Vertrieb als System auf: Zielgruppe, Prozess im CRM, Kennzahlen und Nachfassen. Dann machen wir es vor und üben mit Ihrem Team, bis es selbst abschließt. Das Erstgespräch ist kostenlos.</p>
       <div class="held-aktionen">
         <a class="knopf knopf-gross" href="#erstgespraech" data-buchen>Erstgespräch vereinbaren</a>
         ${fam('check', 'Vertriebs-Check, 5 Minuten', { klasse: 'link-pfeil' })}
       </div>
-      <ul class="held-fakten" aria-label="Auf einen Blick">
-        <li>B2B · Mittelstand · Dienstleister</li>
-        <li>Erstgespräch kostenlos</li>
-        <li>Berlin · Deutschland und Europa</li>
-      </ul>
     </div>
 
     ${strecke()}
 
     <div class="szene szene-zahl" data-szene="zahl" data-kapitel="Die Lage">
-      <p class="ueberzeile">Die Lage 2026</p>
       <figure class="grosszahl">
         <b class="grosszahl-wert">36,3&nbsp;%</b>
         <figcaption><p class="grosszahl-satz">${e(ZAHL.ifo.satz).replace(/ %/g, '&nbsp;%')}</p>
@@ -720,12 +712,12 @@ function start(W) {
 
     <div class="szene szene-heute" data-szene="heute" data-kapitel="Heute">
       <p class="ueberzeile">Heute</p>
-      <h2 class="szene-titel">Von der Anfrage zum Abschluss: wo es heute <em>hängt.</em></h2>
-      <p class="szene-text">Vertrieb hängt an der Geschäftsführung, und das meiste läuft über Bauchgefühl. Anfragen gehen verloren, Angebote bleiben liegen, und niemand weiß, wie viele Gespräche es für das Jahresziel braucht.</p>
+      <h2 class="szene-titel">Wo es zwischen Anfrage und Abschluss <em>hängt.</em></h2>
+      <p class="szene-text">Der Vertrieb liegt bei der Geschäftsführung und läuft nach Bauchgefühl. Anfragen gehen verloren, Angebote bleiben liegen. Wie viele Gespräche das Jahresziel braucht, weiß niemand.</p>
     </div>
 
 ${halte.map(([name, heute, system], i) => `    <div class="szene szene-stufe" data-szene="stufe-${i + 1}" data-kapitel="${name}">
-      <p class="ueberzeile">Mit System · Stufe 0${i + 1} von 04</p>
+      <p class="ueberzeile">Stufe ${i + 1} von 4</p>
       <h3 class="szene-titel">${name}</h3>
       <div class="szene-paar">
         <div class="paar-heute"><p class="paar-marke">Heute</p><p>${heute}</p></div>
@@ -734,34 +726,31 @@ ${halte.map(([name, heute, system], i) => `    <div class="szene szene-stufe" da
     </div>`).join('\n\n')}
 
     <div class="szene szene-ende" data-szene="ende" data-kapitel="Abschluss">
-      <p class="ueberzeile">Der Abschluss</p>
       <h2 class="szene-titel szene-titel-gross">Vertrieb ist kein Talent, sondern ein <em>System.</em></h2>
-      <p class="szene-text">Wer angesprochen wird, was gesagt wird, was gemessen wird: MAKE Revenue baut dieses System mit Ihnen auf, bis Ihr Team selbst abschließt.</p>
+      <p class="szene-text">Wer angesprochen wird, was gesagt wird, was gemessen wird: Das bauen wir mit Ihnen auf, bis Ihr Team selbst abschließt.</p>
       <div class="held-aktionen">
         <a class="knopf knopf-gross" href="#erstgespraech" data-buchen>Erstgespräch vereinbaren</a>
         ${fam('check', 'Vertriebs-Check starten', { klasse: 'knopf knopf-gross knopf-leise' })}
       </div>
-      <p class="szene-weiter"><a class="link-pfeil" href="systemvertrieb/">So baut MAKE Revenue das System auf</a></p>
+      <p class="szene-weiter"><a class="link-pfeil" href="systemvertrieb/">So bauen wir das System auf</a></p>
     </div>
   </div>
 </section>
 
 <section class="abschnitt" id="anfassen" aria-labelledby="anfassen-titel">
   <div class="w">
-    ${abKopf('Vertrieb zum Anfassen', 'So sieht Vertrieb mit System <em>aus.</em>', 'Drei Stücke aus der Arbeit, zum Ansehen und Ausprobieren: das Brett im CRM, der Wochenreport und ein Gesprächsleitfaden. Alle Namen und Zahlen darin sind Beispiele.', 'anfassen-titel')}
-    ${stueck('01', 'Das Brett im CRM: Keine Anfrage bleibt ohne nächsten Schritt.', `<p>Jede Anfrage bekommt eine Stufe, eine nächste Aktion und ein Datum. So geht nichts verloren, und jeder im Team sieht, wo ein Kunde steht.</p>
-        <p class="stueck-tun"><b>Zum Ausprobieren:</b> Schieben Sie eine Karte eine Stufe weiter und sehen Sie, wie sich nächste Aktion, Datum und die Zähler oben ändern. Eine Karte hat noch keine nächste Aktion.</p>`, brett(), 'brett')}
-    ${stueck('02', 'Der Wochenreport: jeden Freitag Ist gegen Ziel.', `<p>Der Wochenreport ist ein kurzer Bericht jeden Freitag: die Zahlen des Vertriebs und ein Satz dazu, was nächste Woche anders läuft.</p>
-        <p class="stueck-tun"><b>Zum Ausprobieren:</b> Tragen Sie eigene Ist-Zahlen ein. Die Ziele kommen aus dem <a class="textlink" href="#rechner">Vertriebsrechner</a> weiter unten, sobald Sie dort eigene Werte eintragen.</p>`, report(W), 'wochenreport')}
-    ${stueck('03', 'Der Gesprächsleitfaden: vom Einstieg bis zum nächsten Schritt.', `<p>Leitfäden geben jedem Gespräch eine Richtung: Welche Fragen klären Bedarf, Budget, Entscheidung und Zeitpunkt? Dazu gehören gute Antworten auf die häufigsten Einwände.</p>
-        <p class="stueck-tun"><b>Zum Ausprobieren:</b> Klicken Sie sich durch die vier Schritte eines Gesprächs.</p>
-        <p><a class="link-pfeil" href="systemvertrieb/#leitfaden">Den Leitfaden ausführlich ansehen</a></p>`, leitfaden(), 'leitfaden')}
+    ${abKopf('', 'So sieht Vertrieb mit System <em>aus.</em>', '', 'anfassen-titel')}
+    ${stueck('01', 'Keine Anfrage bleibt ohne nächsten Schritt.', `<p>Ein Montag im CRM: acht Karten, jede mit Stufe, nächster Aktion und Datum. Bei einer fehlt die nächste Aktion. Das ist die Anfrage, die sonst liegen bleibt.</p>
+        <p>Welches CRM Sie nutzen, ist zweitrangig. Wichtig ist, dass alle es gleich nutzen.</p>`, brett(), 'brett')}
+    ${stueck('02', 'Jeden Freitag kommt der Wochenreport.', `<p>Vier Zahlen, Ist gegen Ziel, und ein Satz dazu, was nächste Woche anders läuft. Die Ist-Zahlen können Sie überschreiben.</p>`, report(W), 'wochenreport')}
+    ${stueck('03', 'Jedes Gespräch folgt einem Leitfaden.', `<p>Einstieg, Bedarf, Einwand, nächster Schritt. Der Leitfaden gibt die Fragen vor, die Bedarf, Budget, Entscheidung und Zeitpunkt klären, dazu Antworten auf die häufigsten Einwände.</p>
+        <p><a class="link-pfeil" href="systemvertrieb/#leitfaden">Den ganzen Leitfaden ansehen</a></p>`, leitfaden(), 'leitfaden')}
   </div>
 </section>
 
 <section class="abschnitt dunkel" id="zahlen" aria-labelledby="zahlen-titel">
   <div class="w">
-    ${abKopf('Zahlen mit Quelle', 'Was Studien 2026 über Vertrieb <em>zeigen.</em>', 'Mehr als jedes dritte Unternehmen in Deutschland meldete im Januar 2026 zu wenig Aufträge. Was hier steht, können wir belegen. Quellen verlinken wir.', 'zahlen-titel')}
+    ${abKopf('', 'Was Studien 2026 über Vertrieb <em>zeigen.</em>', '', 'zahlen-titel')}
     <div class="zahlen-reihe">
       ${zahl(ZAHL.crm)}
       ${zahl(ZAHL.zeit)}
@@ -774,12 +763,12 @@ ${halte.map(([name, heute, system], i) => `    <div class="szene szene-stufe" da
 
 <section class="abschnitt ton-2" id="themen" aria-labelledby="themen-titel">
   <div class="w">
-    ${abKopf('Leistungen', 'Vier Themen, eine <em>Strecke.</em>', 'MAKE Revenue arbeitet an vier Stellen: am System selbst, an der Führung, an neuen Kontakten und am ehrlichen Blick auf den Stand.', 'themen-titel')}
+    ${abKopf('Leistungen', 'Was wir für Sie <em>tun.</em>', '', 'themen-titel')}
     <ol class="themen-liste">
-${themen.map(([pfad, lage, titel, text, klein], i) => `      <li class="thema erscheint">
+${themen.map(([pfad, titel, text, klein], i) => `      <li class="thema erscheint">
         <span class="thema-nr" aria-hidden="true">0${i + 1}</span>
-        <div><span class="thema-lage">${lage}</span><h3 class="thema-titel"><a href="${pfad}">${titel}</a></h3></div>
-        <p class="thema-text">${text}<small>${klein}</small></p>
+        <div><h3 class="thema-titel"><a href="${pfad}">${titel}</a></h3></div>
+        <p class="thema-text">${text}${klein ? `<small>${klein}</small>` : ''}</p>
         <span class="thema-pfeil" aria-hidden="true">${pfeil}</span>
       </li>`).join('\n')}
     </ol>
@@ -788,10 +777,10 @@ ${themen.map(([pfad, lage, titel, text, klein], i) => `      <li class="thema er
 
 <section class="abschnitt dunkel" id="rechner" aria-labelledby="rechner-titel">
   <div class="w">
-    ${abKopf('Vertriebsrechner', 'Rechnen Sie nach: Wie viele Termine braucht Ihr <em>Ziel?</em>', 'Vom Umsatzziel rückwärts: Abschlüsse, Angebote, Termine und Erstkontakte je Woche. Tragen Sie Ihre Werte ein. Die Rechnung bleibt in Ihrem Browser, nichts wird gesendet.', 'rechner-titel')}
+    ${abKopf('Vertriebsrechner', 'Wie viele Termine braucht Ihr <em>Umsatzziel?</em>', 'Der Rechner geht vom Umsatzziel rückwärts bis zu den Erstkontakten je Woche. Ihre Eingaben bleiben in Ihrem Browser.', 'rechner-titel')}
     ${rechner()}
     <div class="rechner-fuss">
-      <p>Ihre eigenen Quoten kennen Sie nach einigen Wochen mit sauberen Zahlen im CRM. Diesen Takt bauen wir als Head of Sales auf Zeit mit Ihnen auf.</p>
+      <p>Ihre eigenen Quoten kennen Sie, wenn einige Wochen lang jedes Gespräch im CRM steht. Diesen Takt bauen wir als Head of Sales auf Zeit mit Ihnen auf.</p>
       <a class="link-pfeil" href="#wochenreport">Ihre Wochenziele im Wochenreport ansehen</a>
       <a class="link-pfeil" href="vertrieb-auf-zeit/">Vertrieb auf Zeit ansehen</a>
     </div>
@@ -800,20 +789,20 @@ ${themen.map(([pfad, lage, titel, text, klein], i) => `      <li class="thema er
 
 <section class="abschnitt" id="ablauf" aria-labelledby="ablauf-titel">
   <div class="w">
-    ${abKopf('Ablauf', 'So kommen wir <em>zusammen.</em>', `Vom ersten Gespräch bis zum Mandat hat jeder Schritt ein klares Ergebnis. Preise zeigt MAKE Revenue nicht: Sie stehen offen bei ${fam('innovation', 'MAKE Innovation', { pfad: 'preise/' })}.`, 'ablauf-titel')}
+    ${abKopf('Ablauf', 'So kommen wir <em>zusammen.</em>', '', 'ablauf-titel')}
     <ol class="ablauf-liste">
       <li class="erscheint"><h3>Erstgespräch oder Check</h3><p>Kostenlos: 30 Minuten Erstgespräch per Video oder der Vertriebs-Check mit Ergebnis sofort.</p></li>
-      <li class="erscheint erscheint-2"><h3>Ihr Vorschlag</h3><p>Wir schlagen Ihnen das passende Angebot vor und nennen Festpreis und Ablauf schriftlich, bevor es losgeht.</p></li>
+      <li class="erscheint erscheint-2"><h3>Ihr Vorschlag</h3><p>Wir schlagen Ihnen ein Angebot vor. Festpreis und Ablauf bekommen Sie schriftlich, bevor es losgeht.</p></li>
       <li class="erscheint erscheint-3"><h3>Tagesworkshop</h3><p>Ein Tag, an dem wir die größten Hebel finden und den ersten direkt umsetzen. Beim Start eines Mandats rechnen wir ihn voll an.</p></li>
       <li class="erscheint erscheint-4"><h3>Mandat</h3><p>Head of Sales oder Chief Sales Officer auf Zeit, für 6 oder 12 Monate. Erste Ergebnisse im ersten Monat.</p></li>
     </ol>
+    <p class="fragen-fuss">${fam('innovation', 'Preise ansehen', { pfad: 'preise/', klasse: 'link-pfeil link-aussen' })}</p>
   </div>
 </section>
 
 <section class="satz-band" aria-labelledby="satz-titel">
   <div class="w satz-raster">
     <div>
-      <p class="ueberzeile">Unser Maßstab</p>
       <h2 class="satz-gross" id="satz-titel">Wir schulden die Leistung, nicht den <em>Umsatz.</em></h2>
       <p class="satz-unter">Was wir zusagen, liefern wir. Im Mandat als Head of Sales heißt das: In Woche 8 bekommen Sie eine Zwischenbilanz mit Zahlen und Fahrplan. Ab Monat 3 läuft jedes Gespräch nach Prozess im CRM, und jeden Freitag kommt der Wochenreport mit Ihren Zahlen.</p>
     </div>
@@ -823,13 +812,13 @@ ${themen.map(([pfad, lage, titel, text, klein], i) => `      <li class="thema er
 
 <section class="abschnitt" id="wer" aria-labelledby="wer-titel">
   <div class="w">
-    ${abKopf('Wer dahinter steht', 'Wir kommen aus dem <em>Vertrieb.</em>', 'Wir haben selbst Vertriebsziele verantwortet und messen unsere Arbeit an Abschlüssen. Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern.', 'wer-titel')}
+    ${abKopf('Über uns', 'Wir kommen aus dem <em>Vertrieb.</em>', 'Wir haben selbst Vertriebsziele verantwortet und messen unsere Arbeit an Abschlüssen. Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern.', 'wer-titel')}
     <div class="karten-2">
       <article class="karte erscheint">
         <span class="karte-kuerzel" aria-hidden="true">KD</span>
         <p class="karte-rolle">Vertrieb und Umsetzung</p>
         <h3 class="karte-titel">Kevin Dieckmann</h3>
-        <p>Kevin kommt aus der Vertriebsführung: Er hat Vertriebsteams geführt, Partnernetze aufgebaut und war Head of Sales bei einem FinTech. Er verantwortet Vertrieb und Umsetzung, verbindet Vertrieb mit KI und arbeitet selbst in den Projekten mit, auch im internationalen Umfeld.</p>
+        <p>Kevin hat Vertriebsteams geführt, Partnernetze aufgebaut und war Head of Sales bei einem FinTech. Er verantwortet Vertrieb und Umsetzung und arbeitet selbst in den Projekten mit, auch im internationalen Umfeld. Vertrieb verbindet er mit KI.</p>
       </article>
       <article class="karte erscheint erscheint-2">
         <span class="karte-kuerzel" aria-hidden="true">MA</span>
@@ -838,7 +827,7 @@ ${themen.map(([pfad, lage, titel, text, klein], i) => `      <li class="thema er
         <p>Malin ist Mitgründerin und Gastgeberin unserer Events. Sie verantwortet Bühne und Netzwerk und überlegt bei jeder Einladung, wer wen kennenlernen sollte.</p>
       </article>
     </div>
-    <ul class="nicht-liste" aria-label="Was MAKE Revenue nicht ist">
+    <ul class="nicht-liste" aria-label="Was wir nicht sind">
       <li><b>Kein Callcenter</b><span>Ihr Team verkauft selbst, wir machen vor.</span></li>
       <li><b>Keine Folien-Beratung</b><span>Kein Konzept, das in der Schublade landet.</span></li>
       <li><b>Kein Inkubator</b><span>Wir vermitteln kein Kapital und leben nicht von Beteiligungen.</span></li>
@@ -849,18 +838,18 @@ ${themen.map(([pfad, lage, titel, text, klein], i) => `      <li class="thema er
 
 <section class="abschnitt ton-2" id="familie" aria-labelledby="familie-titel">
   <div class="w">
-    ${abKopf('Die Familie', 'Teil von MAKE <em>Innovation.</em>', SATZ.revenue, 'familie-titel')}
+    ${abKopf('Auch von uns', 'Wenn es nicht am Vertrieb <em>liegt.</em>', '', 'familie-titel')}
     <div class="karten-2">
       <article class="karte karte-familie familie-studios erscheint">
         <p class="familie-marke"><i class="familie-punkt" aria-hidden="true"></i><b>MAKE</b> <span>STUDIOS</span></p>
-        <h3 class="karte-titel">Sichtbarkeit bringt Anfragen. Vertrieb macht daraus Kunden.</h3>
-        <p>${SATZ.studios} Wer dort gefunden wird, braucht hier die Strecke, die jede Anfrage weiterverfolgt. Sichtbarkeit macht den Vertrieb leichter.</p>
+        <h3 class="karte-titel">Es kommen zu wenige Anfragen?</h3>
+        <p>Ein Vertriebssystem braucht Anfragen, die es verfolgen kann. Wenn Sie online kaum gefunden werden, hilft MAKE Studios mit Website, Google-Profil, Video und Social Media.</p>
         ${fam('studios', 'Zu MAKE Studios', { klasse: 'link-pfeil link-aussen' })}
       </article>
       <article class="karte karte-familie familie-innovation erscheint erscheint-2">
         <p class="familie-marke"><i class="familie-punkt" aria-hidden="true"></i><b>MAKE</b> <span>INNOVATION</span></p>
-        <h3 class="karte-titel">Das Dach: KI, bessere Abläufe und eigene Software.</h3>
-        <p>${SATZ.innovation} Dort stehen auch die Preise aller Angebote, und dort läuft der kostenlose Vertriebs-Check.</p>
+        <h3 class="karte-titel">Angebote und Protokolle kosten zu viel Zeit?</h3>
+        <p>Protokolle, Angebote und Nachfassen kann KI vorbereiten. MAKE Innovation führt KI, bessere Abläufe und eigene Software in Unternehmen ein.</p>
         ${fam('innovation', 'Zu MAKE Innovation', { klasse: 'link-pfeil link-aussen' })}
       </article>
     </div>
@@ -874,7 +863,7 @@ ${themen.map(([pfad, lage, titel, text, klein], i) => `      <li class="thema er
     <p class="fragen-fuss"><a class="link-pfeil" href="fragen/">Alle Fragen und Antworten</a></p>
   </div>
 </section>
-${kontakt(W)}`;
+${kontakt(W, { schritte: false })}`;
 }
 
 // ─────────────── Digitaler Systemvertrieb ───────────────
@@ -896,17 +885,16 @@ function systemvertrieb(W) {
   return `${seitenKopf(W, {
     krume: 'Digitaler Systemvertrieb',
     titel: 'Digitaler Systemvertrieb: Vertrieb, der nicht an Ihnen <em>hängt.</em>',
-    text: 'Vertrieb ist kein Talent, sondern ein System: wer angesprochen wird, was gesagt wird, was gemessen wird. MAKE Revenue baut dieses System mit Ihnen auf, mit einem festen Ablauf im CRM und wenigen Zahlen, die jede Woche auf dem Tisch liegen.',
+    text: 'Vertrieb ist kein Talent, sondern ein System: wer angesprochen wird, was gesagt wird, was gemessen wird. Wir bauen es mit Ihnen auf, mit einem festen Ablauf im CRM und wenigen Zahlen, die jede Woche auf dem Tisch liegen.',
     aktionen: `<a class="knopf knopf-gross" href="../#erstgespraech" data-buchen="systemvertrieb">Erstgespräch vereinbaren</a>${fam('check', 'Vertriebs-Check, 5 Minuten', { klasse: 'link-pfeil' })}`,
     vorweg: thema('systemvertrieb').vorweg,
-    fakten: [['Für wen', 'Gründer und Unternehmer, B2B, Mittelstand und Dienstleister, deren Vertrieb an der Geschäftsführung hängt'], ['Ergebnis', 'Pipeline im CRM, Wochenreport, klare Rollen und ein Sales Playbook, das bleibt'], ['Einstieg', 'Vertriebs-Check oder Erstgespräch, beides kostenlos']],
+    fakten: [['Für wen', 'Gründer, Mittelstand und Dienstleister im B2B, deren Vertrieb an der Geschäftsführung hängt'], ['Ergebnis', 'Pipeline im CRM, Wochenreport, feste Rollen und ein Sales Playbook, das bleibt'], ['Einstieg', 'Vertriebs-Check oder Erstgespräch, beides kostenlos']],
     film: 'arbeit',
   })}
 
 <section class="abschnitt" aria-labelledby="was-titel">
   <div class="w spalten">
     <div class="spalten-kopf">
-      <p class="ueberzeile">Begriff</p>
       <h2 class="abschnitt-titel" id="was-titel">Was ist digitaler <em>Systemvertrieb?</em></h2>
       <p class="abschnitt-text">Digitaler Systemvertrieb ist Vertrieb nach einem festen Ablauf im CRM statt nach Bauchgefühl. Jede Anfrage hat eine Stufe, eine nächste Aktion und ein Datum, und wenige Kennzahlen zeigen jede Woche, ob der Plan hält.</p>
     </div>
@@ -932,7 +920,7 @@ function systemvertrieb(W) {
 
 <section class="abschnitt ton-2" id="bausteine" aria-labelledby="bausteine-titel">
   <div class="w">
-    ${abKopf('Aufbau', 'Woraus besteht ein Vertrieb mit <em>System?</em>', 'Aus fünf Bausteinen, in dieser Reihenfolge: Fundament, Leadgenerierung, Prozesse, Kennzahlen und ein befähigtes Team. Wer mit einem neuen Werkzeug oder dem ersten Vertriebler anfängt, hat noch nichts, worauf beides aufsetzen kann.', 'bausteine-titel')}
+    ${abKopf('Aufbau', 'Woraus besteht ein Vertrieb mit <em>System?</em>', 'Aus fünf Bausteinen, und die Reihenfolge zählt. Wer mit einem neuen Werkzeug oder dem ersten Vertriebler anfängt, hat noch nichts, worauf beides aufsetzen kann.', 'bausteine-titel')}
     <ol class="bausteine">
 ${bausteine.map(([name, klein, text]) => `      <li class="baustein erscheint"><h3>${name}${klein ? `<small>${klein}</small>` : ''}</h3><p>${text}</p></li>`).join('\n')}
     </ol>
@@ -942,23 +930,21 @@ ${bausteine.map(([name, klein, text]) => `      <li class="baustein erscheint"><
 <section class="abschnitt" id="prozess" aria-labelledby="prozess-titel">
   <div class="w spalten">
     <div class="spalten-kopf">
-      <p class="ueberzeile">Der Prozess</p>
       <h2 class="abschnitt-titel" id="prozess-titel">Was gehört in den Prozess im <em>CRM?</em></h2>
       <p class="abschnitt-text">Jede Anfrage bekommt eine Stufe, eine nächste Aktion und ein Datum. So geht nichts verloren, und jeder im Team sieht, wo ein Kunde steht. Welches CRM Sie nutzen, ist zweitrangig. Wichtig ist, dass alle es gleich nutzen.</p>
     </div>
     <div>
       ${punkte(['Stufen vom Erstkontakt bis zum Abschluss', 'Pflichtfelder für alles, was später ausgewertet wird', 'eine Wiedervorlage für jede offene Anfrage', 'ein fester Standard für Gesprächsnotizen', 'ein Ziel für die Zeit bis zum Angebot, zum Beispiel 24 Stunden'])}
       <div class="fliess abstand-oben">
-        <h3>Nachfassen ist eine Regel, kein Vorsatz</h3>
-        <p>Ein Angebot ohne Nachfrage bleibt liegen, auch wenn der Kunde eigentlich will: Entscheidungen werden verschoben, Postfächer laufen voll. Legen Sie deshalb eine feste Regel fest, zum Beispiel: nachfassen drei Werktage nach dem Angebot und noch einmal eine Woche später.</p>
+        <h3>Nachfassen braucht einen festen Termin</h3>
+        <p>Ein Angebot ohne Nachfrage bleibt liegen, auch wenn der Kunde eigentlich will: Entscheidungen werden verschoben, Postfächer laufen voll. Legen Sie deshalb fest, wann nachgefasst wird, zum Beispiel drei Werktage nach dem Angebot und noch einmal eine Woche später.</p>
       </div>
     </div>
   </div>
   <div class="w abstand-gross" id="brett">
     <div class="stueck-kopf">
-      <p class="ueberzeile">Zum Anfassen</p>
-      <h3 class="stueck-titel">So sieht der Prozess im CRM aus: ein Brett, vier Stufen.</h3>
-      <p>Schieben Sie eine Karte eine Stufe weiter und sehen Sie, wie sich nächste Aktion, Datum und die Zähler ändern. Eine Karte hat noch keine nächste Aktion: Genau solche Anfragen bleiben sonst liegen.</p>
+      <h3 class="stueck-titel">Der Prozess als Brett mit vier Stufen.</h3>
+      <p>Eine der acht Karten hat noch keine nächste Aktion. Solche Anfragen bleiben sonst liegen.</p>
     </div>
     ${brett()}
   </div>
@@ -967,9 +953,8 @@ ${bausteine.map(([name, klein, text]) => `      <li class="baustein erscheint"><
 <section class="abschnitt" id="leitfaden" aria-labelledby="leitfaden-titel">
   <div class="w spalten">
     <div class="spalten-kopf">
-      <p class="ueberzeile">Zum Anfassen</p>
       <h2 class="abschnitt-titel" id="leitfaden-titel">Wie sieht ein Gesprächsleitfaden <em>aus?</em></h2>
-      <p class="abschnitt-text">Leitfäden geben jedem Gespräch eine Richtung: Welche Fragen klären Bedarf, Budget, Entscheidung und Zeitpunkt? Dazu gehört eine Sammlung der häufigsten Einwände mit guten Antworten. Klicken Sie sich durch die vier Schritte.</p>
+      <p class="abschnitt-text">Leitfäden geben jedem Gespräch eine Richtung: Welche Fragen klären Bedarf, Budget, Entscheidung und Zeitpunkt? Dazu gehört eine Sammlung der häufigsten Einwände mit guten Antworten.</p>
       <p class="abschnitt-text">Neue Vertriebler üben damit im Rollenspiel, bevor sie das erste echte Gespräch führen.</p>
     </div>
     ${leitfaden({ voll: true })}
@@ -982,17 +967,17 @@ ${bausteine.map(([name, klein, text]) => `      <li class="baustein erscheint"><
     <div class="kaesten-2">
       <div class="kasten erscheint">
         <table class="tafel tafel-zahl tafel-karten">
-          <caption>Rechenbeispiel mit angenommenen Werten</caption>
+          <caption>Rechenbeispiel</caption>
           <thead><tr><th scope="col">Schritt</th><th scope="col">Rechnung</th><th scope="col">Ergebnis</th></tr></thead>
           <tbody>
-            <tr><th scope="row">Umsatzziel im Jahr</th><td data-spalte="Rechnung">Beispielwert</td><td data-spalte="Ergebnis">240.000&nbsp;€</td></tr>
+            <tr><th scope="row">Umsatzziel im Jahr</th><td data-spalte="Rechnung">angenommen</td><td data-spalte="Ergebnis">240.000&nbsp;€</td></tr>
             <tr><th scope="row">Abschlüsse</th><td data-spalte="Rechnung">240.000&nbsp;€ ÷ 8.000&nbsp;€ je Auftrag</td><td data-spalte="Ergebnis">30</td></tr>
             <tr><th scope="row">Angebote</th><td data-spalte="Rechnung">jedes dritte Angebot wird ein Auftrag</td><td data-spalte="Ergebnis">90</td></tr>
             <tr><th scope="row">Termine</th><td data-spalte="Rechnung">aus jedem zweiten Termin wird ein Angebot</td><td data-spalte="Ergebnis">180</td></tr>
             <tr><th scope="row">Je Woche</th><td data-spalte="Rechnung">180 Termine ÷ 45 Arbeitswochen</td><td data-spalte="Ergebnis">4 Termine</td></tr>
           </tbody>
         </table>
-        <p class="tafel-fuss">Alle Werte sind angenommen. Ihre eigenen Quoten kennen Sie nach einigen Wochen mit sauberen Zahlen im CRM.</p>
+        <p class="tafel-fuss">Ihre eigenen Quoten kennen Sie, wenn einige Wochen lang jedes Gespräch im CRM steht.</p>
         <a class="link-pfeil" href="../#rechner">Mit eigenen Werten rechnen</a>
       </div>
       ${report(W)}
@@ -1002,7 +987,7 @@ ${bausteine.map(([name, klein, text]) => `      <li class="baustein erscheint"><
 
 <section class="abschnitt" id="zahlen" aria-labelledby="fuenf-titel">
   <div class="w">
-    ${abKopf('Steuern', 'Welche Vertriebszahlen braucht ein kleines <em>Unternehmen?</em>', 'Fünf Zahlen reichen, um einen kleinen Vertrieb zu steuern. Ein teures Werkzeug braucht es dafür nicht: Eine Tabelle genügt, wenn sie gepflegt und jede Woche besprochen wird.', 'fuenf-titel')}
+    ${abKopf('', 'Welche Vertriebszahlen braucht ein kleines <em>Unternehmen?</em>', 'Fünf Zahlen reichen, um einen kleinen Vertrieb zu steuern. Ein teures Werkzeug braucht es dafür nicht: Eine Tabelle genügt, wenn sie gepflegt und jede Woche besprochen wird.', 'fuenf-titel')}
     <ol class="bausteine">
 ${fuenf.map(([name, text]) => `      <li class="baustein erscheint"><h3>${name}</h3><p>${text}</p></li>`).join('\n')}
     </ol>
@@ -1012,9 +997,8 @@ ${fuenf.map(([name, text]) => `      <li class="baustein erscheint"><h3>${name}<
 <section class="abschnitt ton-2" id="fehler" aria-labelledby="fehler-titel">
   <div class="w spalten">
     <div class="spalten-kopf">
-      <p class="ueberzeile">Aus der Praxis</p>
       <h2 class="abschnitt-titel" id="fehler-titel">Welche Fehler machen Vertrieb <em>unplanbar?</em></h2>
-      <p class="abschnitt-text">Meist ist es die Reihenfolge: erst das Werkzeug, dann der Prozess. Oder der erste Vertriebler kommt, bevor es ein System gibt, in das er einsteigen kann.</p>
+      <p class="abschnitt-text">Meist liegt es an der Reihenfolge.</p>
     </div>
     <div>
       ${punkte(['Erst das Werkzeug kaufen, dann über den Prozess nachdenken.', 'Den ersten Vertriebler einstellen, bevor es ein System gibt, in das er einsteigen kann.', 'Zwanzig Kennzahlen messen und keine davon besprechen.', 'Alle ansprechen statt der Kontakte, die am besten passen.', 'Angebote ohne Wiedervorlage verschicken und auf eine Antwort warten.'], 'punkte-nicht')}
@@ -1080,16 +1064,16 @@ function vertriebAufZeit(W) {
   return `${seitenKopf(W, {
     krume: 'Vertrieb auf Zeit',
     titel: 'Vertrieb auf Zeit: Head of Sales oder Chief Sales Officer für 6 oder 12 <em>Monate.</em>',
-    text: 'MAKE Revenue übernimmt die Rolle der Vertriebsleitung auf Zeit, auch Interim oder Fractional Head of Sales genannt. Wir bauen das System, setzen es mit Ihrem Team um und übergeben es so, dass es ohne uns weiterläuft.',
+    text: 'Auch Interim oder Fractional Head of Sales genannt. Wir bauen das System, setzen es mit Ihrem Team um und übergeben es so, dass es ohne uns weiterläuft.',
     aktionen: `<a class="knopf knopf-gross" href="../#erstgespraech" data-buchen="zeit">Erstgespräch vereinbaren</a><a class="link-pfeil" href="#tagesworkshop">Erst testen: der Tagesworkshop</a>`,
     vorweg: thema('zeit').vorweg,
-    fakten: [['Laufzeit', '6 oder 12 Monate'], ['Einstieg', 'Tagesworkshop Vertrieb, wird beim Start eines Mandats voll angerechnet'], ['Preise', `stehen offen bei ${fam('innovation', 'MAKE Innovation', { pfad: 'preise/' })}`]],
+    fakten: [['Laufzeit', '6 oder 12 Monate'], ['Einstieg', 'Tagesworkshop Vertrieb, wird beim Start eines Mandats voll angerechnet'], ['Preis', `Festpreis, schriftlich vor dem Start · ${fam('innovation', 'Preise ansehen', { pfad: 'preise/' })}`]],
     film: 'gespraech',
   })}
 
 <section class="abschnitt ton-2" id="angebote" aria-labelledby="angebote-titel">
   <div class="w">
-    ${abKopf('Drei Wege', 'Welcher Vertrieb auf Zeit passt zu <em>Ihnen?</em>', 'Der Tagesworkshop zeigt in einem Tag, wo der größte Hebel liegt. Der Head of Sales baut und führt Ihren Vertrieb. Der Chief Sales Officer verantwortet dazu Strategie, Preise und Teamaufbau.', 'angebote-titel')}
+    ${abKopf('Angebote', 'Welcher Vertrieb auf Zeit passt zu <em>Ihnen?</em>', '', 'angebote-titel')}
     <div class="kaesten-3">
       <article class="kasten erscheint">
         <p class="karte-rolle">Ein Tag</p>
@@ -1118,7 +1102,7 @@ function vertriebAufZeit(W) {
     <div class="spalten-kopf">
       <p class="ueberzeile">Head of Sales auf Zeit</p>
       <h2 class="abschnitt-titel" id="monate-titel">Wie laufen die sechs Monate <em>ab?</em></h2>
-      <p class="abschnitt-text">Jeder Monat hat ein Ergebnis, das Sie sehen können. Ab Monat 3 läuft jedes Gespräch nach Prozess im CRM und ist sauber dokumentiert. Ziel bis Monat 6: Ihr Team erreicht die Terminzahl aus der Rückwärtsrechnung und schließt ohne Sie ab.</p>
+      <p class="abschnitt-text">Jeder Monat hat ein Ergebnis, das Sie sehen können. Ab Monat 3 läuft jedes Gespräch nach Prozess im CRM und ist dokumentiert. Ziel bis Monat 6: Ihr Team erreicht die Terminzahl aus der Rückwärtsrechnung und schließt ohne Sie ab.</p>
     </div>
     <div>
       <ol class="monate">
@@ -1135,7 +1119,7 @@ ${monate.map(([m, was, ergebnis]) => `        <li class="monat erscheint"><span 
 
 <section class="abschnitt ton-2" id="vergleich" aria-labelledby="vergleich-titel">
   <div class="w">
-    ${abKopf('Vergleich', 'Head of Sales oder Chief Sales <em>Officer?</em>', 'Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer macht all das auch und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum Chief Sales Officer wechseln.', 'vergleich-titel')}
+    ${abKopf('', 'Head of Sales oder Chief Sales <em>Officer?</em>', 'Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer macht all das auch und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum Chief Sales Officer wechseln.', 'vergleich-titel')}
     <table class="tafel tafel-karten">
       <caption>Leistungen von Head of Sales und Chief Sales Officer im Vergleich</caption>
       <thead><tr><th scope="col">Leistung</th><th scope="col">Head of Sales</th><th scope="col">Chief Sales Officer</th></tr></thead>
@@ -1149,7 +1133,7 @@ ${vergleich.map(([name, hos]) => `        <tr><th scope="row">${name}</th><td da
 
 <section class="abschnitt" id="fest" aria-labelledby="fest-titel">
   <div class="w">
-    ${abKopf('Entscheidung', 'Auf Zeit oder fest <em>einstellen?</em>', 'Eine feste Vertriebsleitung lohnt sich, wenn das System steht und es vor allem um Führung und Wachstum geht. Jemanden auf Zeit holen Sie, wenn das System erst entstehen muss.', 'fest-titel')}
+    ${abKopf('', 'Auf Zeit oder fest <em>einstellen?</em>', 'Eine feste Vertriebsleitung lohnt sich, wenn das System steht und es vor allem um Führung und Wachstum geht. Jemanden auf Zeit holen Sie, wenn das System erst entstehen muss.', 'fest-titel')}
     <table class="tafel tafel-karten">
       <caption>Head of Sales auf Zeit und feste Vertriebsleitung im Vergleich</caption>
       <thead><tr><th scope="col">Kriterium</th><th scope="col">Head of Sales auf Zeit</th><th scope="col">Feste Vertriebsleitung</th></tr></thead>
@@ -1166,7 +1150,7 @@ ${fest.map(([k, a, b]) => `        <tr><th scope="row">${k}</th><td data-spalte=
         <h3>Ihr Vertriebsleiter kommt nicht in Fahrt?</h3>
         <p>Meist fehlt ihm ein System, nach dem er führen kann. Das bauen wir mit ihm auf, arbeiten ihn ein und übergeben ihm dann den Vertrieb. Danach hängt der Vertrieb nicht mehr an der Geschäftsführung.</p>
         <h3 class="abstand-oben">Was wir von Ihnen brauchen</h3>
-        ${punkte(['Zugänge zu CRM, Kalender und Zahlen innerhalb von 5 Werktagen nach dem Kickoff', 'einen festen Ansprechpartner mit Entscheidungsbefugnis', 'Teilnahme am wöchentlichen Vertriebs-Call (30 Minuten)', 'Ihr Team führt die Gespräche selbst, wir machen vor.'])}
+        ${punkte(['Zugänge zu CRM, Kalender und Zahlen innerhalb von 5 Werktagen nach dem Kick-off', 'einen festen Ansprechpartner mit Entscheidungsbefugnis', 'Teilnahme am wöchentlichen Vertriebs-Call (30 Minuten)', 'Ihr Team führt die Gespräche selbst, wir machen vor.'])}
       </div>
     </div>
   </div>
@@ -1187,7 +1171,7 @@ ${fest.map(([k, a, b]) => `        <tr><th scope="row">${k}</th><td data-spalte=
         <li class="monat"><span class="monat-nr">Nachmittag</span><b>Hebel bewerten</b><span>Nach Aufwand und Wirkung. Einen davon setzen wir direkt gemeinsam um.</span></li>
         <li class="monat"><span class="monat-nr">Danach</span><b>Protokoll und Plan</b><span>Protokoll mit Ihren Top 5 und Ihr 90-Tage-Plan, schriftlich.</span></li>
       </ol>
-      ${punkte(['Haben Sie am Abend keine drei Hebel, die Sie umsetzen wollen, zahlen Sie nichts.', 'Starten Sie danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Workshop voll an.', 'Sie bringen mit: einen Tag Zeit ohne Unterbrechung und Ihre Vertriebszahlen der letzten Monate, soweit vorhanden.'], 'abstand-oben')}
+      ${punkte(['Ziel des Tages sind drei Hebel, die Sie sofort umsetzen können.', 'Starten Sie danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Workshop voll an.', 'Sie bringen mit: einen Tag Zeit ohne Unterbrechung und Ihre Vertriebszahlen der letzten Monate, soweit vorhanden.'], 'abstand-oben')}
     </div>
   </div>
 </section>
@@ -1208,26 +1192,26 @@ function netzwerken(W) {
     ['Gesprächsrunde', 'Ein kleiner Kreis spricht offen über ein Thema, das gerade viele beschäftigt. Was gesagt wird, bleibt im Raum, und jeder kommt zu Wort.'],
     ['Impulsabend', 'Kurze Beiträge aus der Praxis: Wer Neues umgesetzt hat, zeigt, was funktioniert hat und was nicht. Danach ist Zeit für Gespräche.'],
     ['Workshop', 'In wenigen Stunden arbeiten Sie an einem Thema und nehmen ein Ergebnis mit, etwa zu KI im Alltag, zur eigenen Positionierung oder zum Vertrieb.'],
-    ['Treffen im Netzwerk', 'Wir stellen Unternehmen gezielt Menschen aus unserem Netzwerk vor, die zu ihrer Aufgabe passen.'],
+    ['Treffen im Netzwerk', 'Wir stellen Unternehmen Menschen aus unserem Netzwerk vor, die zu ihrer Aufgabe passen.'],
   ];
   const merkmale = [
-    ['Auf Einladung', 'Wir laden selbst ein und mischen bewusst, zum Beispiel Start-ups mit Mittelständlern oder Leute aus der Technik mit Leuten aus dem Vertrieb.'],
-    ['Persönlich', 'Kleine Runden und klare Themen statt Messehalle. So kommen Sie mit den Menschen ins Gespräch, die für Sie zählen.'],
-    ['Verbindend', 'Malin bringt die richtigen Menschen zusammen. Wer zusammenpasst, den verbinden wir nach dem Event gezielt.'],
+    ['Auf Einladung', 'Die Gästeliste stellen wir selbst zusammen: Start-ups neben Mittelständlern, Technik neben Vertrieb.'],
+    ['Persönlich', 'Kleine Runden mit einem Thema statt Messehalle. So kommen Sie mit den Menschen ins Gespräch, die für Sie zählen.'],
+    ['Verbindend', 'Wir achten darauf, wer zu wem passt, und verbinden die Richtigen nach dem Event.'],
   ];
   return `${seitenKopf(W, {
     krume: 'Netzwerken und Events',
-    titel: 'Netzwerken und Events: Aus Begegnungen werden <em>Verbindungen.</em>',
-    text: 'Abende in kleiner Runde, kuratiert und auf Einladung: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Gastgeberin ist Malin. Die Events veranstaltet MAKE Innovation, dort tragen Sie sich auf die Gästeliste ein.',
+    titel: 'Netzwerken und Events in kleiner <em>Runde.</em>',
+    text: 'Abende auf Einladung, mit Gründerinnen und Gründern, Mittelständlern und Machern aus KI und Technik. Gastgeberin ist Malin.',
     aktionen: `${fam('innovation', 'Einladung erhalten', { pfad: 'events/', klasse: 'knopf knopf-gross' })}<a class="link-pfeil" href="#vertrieb">Wie daraus Vertrieb wird</a>`,
     vorweg: thema('netzwerken').vorweg,
-    fakten: [['Kosten', 'Für Gäste kostenlos'], ['Zugang', 'Auf Einladung, über die Gästeliste'], ['Termine', 'Termine, Orte und Formate stehen in jeder Einladung']],
-    film: 'runde', filmMarke: 'Symbolbild · kein Foto unserer Abende',
+    fakten: [['Kosten', 'Für Gäste kostenlos'], ['Zugang', 'Auf Einladung, über die Gästeliste'], ['Termine', 'stehen mit Ort und Format in jeder Einladung']],
+    film: 'runde',
   })}
 
 <section class="abschnitt dunkel" id="formate" aria-labelledby="formate-titel">
   <div class="w">
-    ${abKopf('Formate', 'Welche Formate gibt es bei den <em>Events?</em>', 'Vier Formate, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Diese Formate planen wir. Welches wann stattfindet, steht in der Einladung.', 'formate-titel')}
+    ${abKopf('Formate', 'Welche Formate gibt es bei den <em>Events?</em>', 'Diese vier Formate planen wir. Welches wann stattfindet, steht in der Einladung.', 'formate-titel')}
     <ol class="formate">
 ${formate.map(([n, t], i) => `      <li class="format erscheint${i ? ` erscheint-${i + 1}` : ''}"><h3>${n}</h3><p>${t}</p></li>`).join('\n')}
     </ol>
@@ -1236,7 +1220,7 @@ ${formate.map(([n, t], i) => `      <li class="format erscheint${i ? ` erscheint
 
 <section class="abschnitt" id="art" aria-labelledby="art-titel">
   <div class="w">
-    ${abKopf('So sind die Abende', 'Auf Einladung, persönlich und <em>verbindend.</em>', '', 'art-titel')}
+    ${abKopf('', 'Was Sie an einem Abend <em>erwartet.</em>', '', 'art-titel')}
     <div class="karten-3">
 ${merkmale.map(([n, t], i) => `      <article class="karte erscheint${i ? ` erscheint-${i + 1}` : ''}"><p class="karte-rolle">0${i + 1}</p><h3 class="karte-titel">${n}</h3><p>${t}</p></article>`).join('\n')}
     </div>
@@ -1246,7 +1230,6 @@ ${merkmale.map(([n, t], i) => `      <article class="karte erscheint${i ? ` ersc
 <section class="abschnitt ton-2" id="vertrieb" aria-labelledby="nv-titel">
   <div class="w spalten">
     <div class="spalten-kopf">
-      <p class="ueberzeile">Netzwerken mit System</p>
       <h2 class="abschnitt-titel" id="nv-titel">Wie wird aus Netzwerken <em>Vertrieb?</em></h2>
       <p class="abschnitt-text">Indem jede Begegnung denselben Weg nimmt wie jede andere Anfrage: Sie bekommt eine Stufe, eine nächste Aktion und ein Datum. Neue Kunden kommen oft über Empfehlungen, aber nicht planbar. Das lässt sich ändern.</p>
       <a class="link-pfeil" href="../systemvertrieb/">Digitaler Systemvertrieb</a>
@@ -1255,7 +1238,6 @@ ${merkmale.map(([n, t], i) => `      <article class="karte erscheint${i ? ` ersc
       ${punkte([
         '<b>Kontakte nachfassen.</b> Kontakte von Messe und Event gehören in die Wiedervorlage im CRM, nicht ins Postfach.',
         '<b>Empfehlungen planbar machen.</b> Ein Empfehlungsprogramm gehört zur Leadgenerierung, genauso wie Events.',
-        '<b>Gezielt verbinden.</b> Wir stellen Unternehmen gezielt Menschen aus unserem Netzwerk vor, die zu ihrer Aufgabe passen.',
         '<b>Partnerschaften aufbauen.</b> Im Mandat als Chief Sales Officer gehören strategische Partner und Testmärkte dazu.',
       ])}
       <div class="kasten kasten-dunkel dunkel abstand-oben">${zahl(ZAHL.startup)}</div>
@@ -1266,17 +1248,7 @@ ${merkmale.map(([n, t], i) => `      <article class="karte erscheint${i ? ` ersc
 <section class="abschnitt" id="gastgeberin" aria-labelledby="gast-titel">
   <div class="w">
     ${abKopf('Gastgeberin', 'Malin bringt Menschen <em>zusammen.</em>', 'Malin ist Mitgründerin und Gastgeberin unserer Events. Sie verantwortet Bühne und Netzwerk und überlegt bei jeder Einladung, wer wen kennenlernen sollte.', 'gast-titel')}
-    <div class="kaesten-2">
-      <div class="kasten">
-        <h3>Warum wir Events machen</h3>
-        <p>Viele gute Verbindungen entstehen erst, wenn man sich einmal gegenübersitzt. Davon soll der Standort etwas haben, nicht nur wir.</p>
-      </div>
-      <div class="kasten">
-        <h3>Termine</h3>
-        <p>Termine, Orte und Formate stehen in jeder Einladung. Tragen Sie sich bei MAKE Innovation auf die Gästeliste ein, dann bekommen Sie die nächste.</p>
-        <p>${fam('innovation', 'Zur Gästeliste bei MAKE Innovation', { pfad: 'events/', klasse: 'link-pfeil link-aussen' })}</p>
-      </div>
-    </div>
+    <p class="fragen-fuss">${fam('innovation', 'Auf die Gästeliste', { pfad: 'events/', klasse: 'link-pfeil link-aussen' })}</p>
   </div>
 </section>
 
@@ -1294,16 +1266,16 @@ ${kontakt(W, { thema: 'netzwerk' })}`;
 function vertriebsCheck(W) {
   return `${seitenKopf(W, {
     krume: 'Vertriebs-Check',
-    titel: 'Vertriebs-Check: Wie planbar ist Ihr <em>Vertrieb?</em>',
+    titel: 'Der Vertriebs-Check zeigt, wie planbar Ihr Vertrieb <em>ist.</em>',
     text: 'Zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, wo Ihr Vertrieb steht und welcher Schritt jetzt am meisten bringt.',
     aktionen: `${fam('check', 'Vertriebs-Check starten', { klasse: 'knopf knopf-gross' })}<a class="link-pfeil" href="../#erstgespraech" data-buchen>Lieber gleich sprechen</a>`,
     vorweg: thema('check').vorweg,
-    fakten: [['Dauer', 'rund 5 Minuten'], ['Kosten', 'kostenlos'], ['Wo', 'Der Check läuft bei MAKE Innovation']],
+    fakten: [['Danach', 'auf Wunsch 30 Minuten Erstgespräch per Video, ebenfalls kostenlos']],
   })}
 
 <section class="abschnitt ton-2" id="bereiche" aria-labelledby="bereiche-titel">
   <div class="w">
-    ${abKopf('Drei Bereiche', 'Was fragt der <em>Vertriebs-Check?</em>', 'Er fragt nach drei Bereichen: Organisation, Zahlen und Neukunden. Zum Schluss kommen zwei Fragen in Ihren eigenen Worten.', 'bereiche-titel')}
+    ${abKopf('', 'Was fragt der <em>Vertriebs-Check?</em>', 'Zum Schluss kommen zwei Fragen, die Sie in eigenen Worten beantworten.', 'bereiche-titel')}
     <div class="karten-3">
       <article class="karte erscheint"><p class="karte-rolle">01</p><h3 class="karte-titel">Organisation</h3><p>Gibt es einen festen Ablauf?</p></article>
       <article class="karte erscheint erscheint-2"><p class="karte-rolle">02</p><h3 class="karte-titel">Zahlen</h3><p>Wissen Sie, was im nächsten Quartal kommt?</p></article>
@@ -1314,12 +1286,12 @@ function vertriebsCheck(W) {
 
 <section class="abschnitt" id="danach" aria-labelledby="danach-titel">
   <div class="w">
-    ${abKopf('Ablauf', 'Was passiert nach dem <em>Check?</em>', 'Sie sehen Ihr Ergebnis sofort. Wenn Sie möchten, sprechen wir danach im kostenlosen Erstgespräch darüber.', 'danach-titel')}
+    ${abKopf('Ablauf', 'Was passiert nach dem <em>Check?</em>', '', 'danach-titel')}
     <ol class="ablauf-liste">
       <li class="erscheint"><h3>Vertriebs-Check</h3><p>Zwölf Fragen, fast alles per Klick, dazu zwei in Ihren eigenen Worten. Kostenlos.</p></li>
-      <li class="erscheint erscheint-2"><h3>Ergebnis</h3><p>Sie sehen sofort, wo Ihr Vertrieb steht und welcher Schritt jetzt am meisten bringt.</p></li>
-      <li class="erscheint erscheint-3"><h3>Erstgespräch</h3><p>30 Minuten per Video mit Kevin. Kostenlos und kein Verkaufsgespräch.</p></li>
-      <li class="erscheint erscheint-4"><h3>Ihr Vorschlag</h3><p>Wir schlagen Ihnen das passende Angebot vor und nennen Festpreis und Ablauf schriftlich, bevor es losgeht.</p></li>
+      <li class="erscheint erscheint-2"><h3>Ergebnis</h3><p>Direkt nach der letzten Frage, auf dem Bildschirm.</p></li>
+      <li class="erscheint erscheint-3"><h3>Erstgespräch</h3><p>Wenn Sie möchten: 30 Minuten per Video mit Kevin. Kostenlos und kein Verkaufsgespräch.</p></li>
+      <li class="erscheint erscheint-4"><h3>Ihr Vorschlag</h3><p>Wir schlagen Ihnen ein Angebot vor. Festpreis und Ablauf bekommen Sie schriftlich, bevor es losgeht.</p></li>
     </ol>
   </div>
 </section>
@@ -1331,7 +1303,7 @@ function vertriebsCheck(W) {
     ${autor()}
   </div>
 </section>
-${kontakt(W)}`;
+${kontakt(W, { schritte: false })}`;
 }
 
 // ─────────────── Fragen ───────────────
@@ -1351,12 +1323,10 @@ function fragenSeite(W) {
     <div class="seiten-raster">
       <div>
         <h1 class="seiten-titel">Häufige Fragen zum Vertriebsaufbau mit MAKE <em>Revenue.</em></h1>
-        <p class="seiten-text">Antworten zu Zusammenarbeit, Systemvertrieb, Vertrieb auf Zeit, Teamaufbau, Events und dem Vertriebs-Check. Jede Antwort steht offen auf dieser Seite.</p>
+        <p class="seiten-text">Was Unternehmer wissen wollen, bevor wir zusammenarbeiten.</p>
       </div>
-      <aside class="vorweg" aria-label="Das Wichtigste vorweg">
-        <p class="ueberzeile">Das Wichtigste vorweg</p>
-        <p>Das Erstgespräch ist kostenlos, dauert 30 Minuten und ist kein Verkaufsgespräch. Ihr Team führt die Verkaufsgespräche selbst, wir machen vor.</p>
-        <dl><div><dt>Noch offen?</dt><dd><a class="textlink" href="mailto:${MAIL}?subject=Frage%20an%20MAKE%20Revenue">Schreiben Sie uns</a>, wir antworten persönlich.</dd></div></dl>
+      <aside class="vorweg" aria-label="Ihre Frage fehlt?">
+        <p>Ihre Frage ist nicht dabei? <a class="textlink" href="mailto:${MAIL}?subject=Frage%20an%20MAKE%20Revenue">Schreiben Sie uns</a>, wir antworten persönlich.</p>
       </aside>
     </div>
   </div>
@@ -1382,7 +1352,7 @@ function nichtGefunden() {
   <div class="w">
     <p class="ueberzeile">Fehler 404</p>
     <h1 class="seiten-titel">Diese Seite gibt es <em>nicht.</em></h1>
-    <p class="seiten-text">Vielleicht wurde sie verschoben. Über die Startseite finden Sie alle Themen von MAKE Revenue.</p>
+    <p class="seiten-text">Vielleicht wurde sie verschoben. Von der Startseite aus finden Sie alles Weitere.</p>
     <div class="seiten-aktionen"><a class="knopf knopf-gross" href="/">Zur Startseite</a><a class="link-pfeil" href="/fragen/">Häufige Fragen</a></div>
   </div>
 </section>`;

@@ -1,13 +1,12 @@
 /* ─── MAKE Revenue · Erstgespräch vereinbaren ─────────────────────────────────────────────────────────
-   Übernommen von der Schwesterseite MAKE Studios (anfrage.js), angepasst auf Vertrieb: Themenwahl statt Branchen.
+   Themenwahl, Anliegen, Kontakt: drei Schritte bis zur fertigen E-Mail.
    Verhalten unverändert: Nichts wird gespeichert oder gesendet. Die Anfrage öffnet das E-Mail-Programm mit fertigem Text.
    Ohne JavaScript führen alle Knöpfe zum Kontakt bzw. zur E-Mail.
    Stile nur über Klassen und CSSOM (style.setProperty): kein Inline-Stil, CSP-tauglich. */
 (() => {
   'use strict';
   const D = document, W = window, H = D.documentElement;
-  // Die Kontaktadresse steht nur im HTML (erster mailto-Verweis der Seite), nie im Skript: eine Stelle je Seite, und der
-  // Wächter des Repos lässt keine echten Adressen in Code-Dateien zu.
+  // Die Kontaktadresse steht nur im HTML (erster mailto-Verweis der Seite), nicht im Skript: eine Stelle je Seite.
   const ZIEL = (() => { const a = D.querySelector('a[href^="mailto:"]'); return a ? decodeURIComponent(a.getAttribute('href').slice(7).split('?')[0]) : ''; })();
 
   const THEMEN = { systemvertrieb: 'Digitaler Systemvertrieb', zeit: 'Vertrieb auf Zeit', workshop: 'Tagesworkshop Vertrieb', netzwerk: 'Netzwerken und Events', offen: 'Noch offen' };

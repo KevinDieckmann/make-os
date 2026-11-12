@@ -107,6 +107,7 @@ button { font: inherit; color: inherit; }
 
 /* Wörter im Kopf und im Fuß rollen beim Darüberfahren */
 .us { position: relative; display: inline-block; }
+.us::after { content: ""; position: absolute; inset: -13px -6px; }   /* größere Tippfläche, unsichtbar */
 .us-fenster { position: relative; display: block; clip-path: inset(0); }
 .us-a { display: block; }
 .us-b { position: absolute; inset: 0; display: block; transform: translateY(100%); }

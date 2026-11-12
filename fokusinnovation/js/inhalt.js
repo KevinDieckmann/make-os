@@ -1,11 +1,3 @@
-// MAKE Innovation · Inhalte aus unserer Anwendung (31.10.). Liest GET /api/website/inhalt
-// (öffentlich, nur sichtbare Einträge) und ersetzt markierte Stellen — nur Text, nie HTML:
-//   data-mk="preis:<angebot>"    → angebote[].preisText
-//   data-mk="baustein:<id>"      → bausteine[].preisNetto (Cent) als „1.234 €“
-//   data-mk="text:<schlüssel>"   → texte[schlüssel]
-//   data-mk="events"             → Liste der kommenden Termine (sonst bleibt sie verborgen)
-//   data-mk="termin-naechster"   → „Nächster Termin: …“
-// Ohne Antwort, mit Fehler oder für Einträge, die fehlen, bleibt der gebaute Text stehen — nie etwas leer. Speichert nichts, sendet nichts.
 (() => {
   const stellen = document.querySelectorAll('[data-mk]');
   if (!stellen.length) return;

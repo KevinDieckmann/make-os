@@ -36,7 +36,6 @@ main { padding: 0 var(--rand) clamp(64px, 8vw, 120px); max-width: 1320px; margin
 h1 { margin-top: 16px; font-weight: 700; font-stretch: 75%; letter-spacing: -.02em; font-size: clamp(38px, 5.4vw, 84px); line-height: .94; text-wrap: balance; }
 h2 { font-weight: 700; font-stretch: 75%; letter-spacing: -.02em; font-size: clamp(28px, 2.8vw, 42px); line-height: 1; }
 h3 { font-weight: 700; font-stretch: 78%; letter-spacing: -.01em; font-size: clamp(24px, 2.2vw, 32px); line-height: 1.02; }
-.fall-ehrlich { margin-top: 22px; padding: 14px 18px; border-radius: 16px; border: 1px solid rgba(255, 90, 31, .4); background: rgba(255, 90, 31, .08); font-size: 16px; max-width: 62ch; }
 .fall-satz { margin-top: 20px; max-width: 62ch; font-size: clamp(18px, 1.5vw, 22px); color: var(--tinte-weich); }
 .fall-aktionen { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
 

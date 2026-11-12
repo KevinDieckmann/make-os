@@ -4,7 +4,7 @@
  "mail": "kevin@makeinnovation.de",
  "satz": {
   "revenue": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.",
-  "studios": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video.",
+  "studios": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Video, Fotos und Social Media.",
   "innovation": "MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue."
  },
  "zeichen": {
@@ -43,7 +43,7 @@
     {
      "name": "Netzwerken und Events",
      "art": "Netzwerk-Events",
-     "text": "Abende in kleiner Runde, auf Einladung. Dazu der Weg, aus Begegnungen und Empfehlungen Kontakte zu machen, die niemand vergisst.",
+     "text": "Abende in kleiner Runde, auf Einladung. Dazu der Weg, auf dem aus Begegnungen und Empfehlungen Kontakte werden, die nicht liegen bleiben.",
      "pfad": "netzwerken/"
     },
     {
@@ -56,7 +56,7 @@
    "fragen": [
     {
      "f": "Ist das Erstgespräch ein Verkaufsgespräch?",
-     "a": "Nein, es ist ein Gespräch über Ihre Lage, kostenlos und per Video. Am Ende sagen wir Ihnen klar, ob wir helfen können und womit. Und wenn nicht, sagen wir auch das."
+     "a": "Nein. Wir sprechen über Ihre Lage, kostenlos und per Video. Am Ende sagen wir Ihnen, ob wir helfen können und womit. Wenn nicht, sagen wir auch das."
     },
     {
      "f": "Wer führt die Verkaufsgespräche?",
@@ -67,12 +67,12 @@
      "a": "Nein. Wenn Sie keins haben, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stages, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten tragen Sie."
     },
     {
-     "f": "Wo stehen die Preise?",
-     "a": "MAKE Revenue zeigt keine Preise. Die Preise aller Angebote stehen offen bei MAKE Innovation. Den genauen Festpreis bekommen Sie schriftlich, bevor es losgeht."
+     "f": "Was kostet das?",
+     "a": "Sie bekommen einen Festpreis, schriftlich und bevor es losgeht. Unsere Startpreise können Sie vorher ansehen."
     },
     {
      "f": "Wer steht hinter MAKE Revenue?",
-     "a": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin. Sie arbeiten direkt mit Kevin und Malin und nicht mit wechselnden Projektleitern."
+     "a": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin. Ihre Ansprechpartner sind Kevin und Malin."
     }
    ],
    "begriffe": []
@@ -86,18 +86,18 @@
    "leistung": {
     "name": "Digitaler Systemvertrieb",
     "art": "Vertriebsaufbau",
-    "text": "Vertrieb wird planbar, wenn fünf Dinge stehen: eine klare Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein Team, das trainiert ist.",
+    "text": "Vertrieb wird planbar, wenn fünf Dinge stehen: die Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein trainiertes Team.",
     "kurz": "Zielgruppe, Prozess im CRM, Gesprächsleitfäden, Kennzahlen und Nachfassen. Ein Vertrieb, den Sie steuern können und der nicht an Ihnen hängt."
    },
    "leistungen": [],
    "fragen": [
     {
      "f": "Wann sollte ein Start-up den ersten Vertriebler einstellen?",
-     "a": "Sobald es ein System gibt, in das er einsteigen kann: eine klare Zielgruppe, Leitfäden und einen Prozess im CRM. Ohne dieses Fundament verbringt ein neuer Vertriebler die ersten Monate damit, es selbst zu suchen."
+     "a": "Sobald es ein System gibt, in das er einsteigen kann: eine Zielgruppe, Leitfäden und einen Prozess im CRM. Ohne dieses Fundament verbringt ein neuer Vertriebler die ersten Monate damit, es selbst zu suchen."
     },
     {
      "f": "Welches CRM brauche ich für den Anfang?",
-     "a": "Eines, das Ihr Team jeden Tag nutzt. Wichtiger als das Werkzeug sind klare Stufen, Pflichtfelder und Wiedervorlagen. Fangen Sie einfach an und erweitern Sie erst, wenn die Grundlagen sitzen."
+     "a": "Eines, das Ihr Team jeden Tag nutzt. Wichtiger als das Werkzeug sind feste Stufen, Pflichtfelder und Wiedervorlagen. Fangen Sie klein an und erweitern Sie erst, wenn die Grundlagen sitzen."
     },
     {
      "f": "Wie viele Kennzahlen braucht ein kleiner Vertrieb?",
@@ -123,7 +123,7 @@
     },
     {
      "name": "Salesprozess",
-     "text": "Der Salesprozess sind die festen Stufen, die jede Anfrage bis zum Abschluss durchläuft, mit einer klaren nächsten Aktion je Stufe."
+     "text": "Der Salesprozess sind die festen Stufen, die jede Anfrage bis zum Abschluss durchläuft, mit einer festgelegten nächsten Aktion je Stufe."
     },
     {
      "name": "Pipeline",
@@ -218,7 +218,7 @@
     "name": "Netzwerken und Events",
     "art": "Netzwerk-Events",
     "text": "Viele gute Verbindungen entstehen erst, wenn man sich einmal gegenübersitzt. Davon soll der Standort etwas haben, nicht nur wir.",
-    "kurz": "Abende in kleiner Runde, auf Einladung. Dazu der Weg, aus Begegnungen und Empfehlungen Kontakte zu machen, die niemand vergisst."
+    "kurz": "Abende in kleiner Runde, auf Einladung. Dazu der Weg, auf dem aus Begegnungen und Empfehlungen Kontakte werden, die nicht liegen bleiben."
    },
    "leistungen": [],
    "fragen": [
@@ -228,7 +228,7 @@
     },
     {
      "f": "Wie bekomme ich eine Einladung?",
-     "a": "Tragen Sie sich bei MAKE Innovation auf die Gästeliste ein, dann bekommen Sie die nächste Einladung. Termine, Orte und Formate stehen in jeder Einladung."
+     "a": "Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste Einladung. Termin, Ort und Format stehen darin."
     },
     {
      "f": "Wer kommt zu den Events?",
@@ -277,7 +277,7 @@
    "fragen": [
     {
      "f": "Ist das Erstgespräch ein Verkaufsgespräch?",
-     "a": "Nein, es ist ein Gespräch über Ihre Lage, kostenlos und per Video. Am Ende sagen wir Ihnen klar, ob wir helfen können und womit. Und wenn nicht, sagen wir auch das."
+     "a": "Nein. Wir sprechen über Ihre Lage, kostenlos und per Video. Am Ende sagen wir Ihnen, ob wir helfen können und womit. Wenn nicht, sagen wir auch das."
     },
     {
      "f": "Wer arbeitet an meinem Projekt?",
@@ -285,19 +285,19 @@
     },
     {
      "f": "Welche Erfahrung bringen Sie mit?",
-     "a": "Wir kommen aus der Vertriebsführung: Teams geführt, Partnernetze aufgebaut, Head of Sales bei einem FinTech. Heute arbeiten wir in laufenden Projekten mit KI, auch im internationalen Umfeld. Namen nennen wir nur, wenn Kunden es freigeben. Vertraulichkeit gehört für uns dazu."
+     "a": "Wir kommen aus der Vertriebsführung: Teams geführt, Partnernetze aufgebaut, Head of Sales bei einem FinTech. Heute arbeiten wir in laufenden Projekten mit KI, auch im internationalen Umfeld. Namen nennen wir nur, wenn Kunden es freigeben."
     },
     {
      "f": "Arbeiten Sie auch bei uns vor Ort?",
      "a": "Ja. Vieles läuft per Video, wichtige Termine machen wir gern bei Ihnen: Workshops, Trainings mit Ihrem Team, Gespräche mit der Geschäftsführung. Termine vor Ort vereinbaren wir vorher, Reisekosten rechnen wir gegen Beleg ab."
     },
     {
-     "f": "Wo stehen die Preise?",
-     "a": "MAKE Revenue zeigt keine Preise. Die Preise aller Angebote stehen offen bei MAKE Innovation. Den genauen Festpreis bekommen Sie schriftlich, bevor es losgeht."
+     "f": "Was kostet das?",
+     "a": "Sie bekommen einen Festpreis, schriftlich und bevor es losgeht. Unsere Startpreise können Sie vorher ansehen."
     },
     {
      "f": "Wer steht hinter MAKE Revenue?",
-     "a": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin. Sie arbeiten direkt mit Kevin und Malin und nicht mit wechselnden Projektleitern."
+     "a": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin. Ihre Ansprechpartner sind Kevin und Malin."
     },
     {
      "f": "Wie lange dauert es, bis Vertrieb planbar läuft?",
@@ -309,7 +309,7 @@
     },
     {
      "f": "Welches CRM brauche ich für den Anfang?",
-     "a": "Eines, das Ihr Team jeden Tag nutzt. Wichtiger als das Werkzeug sind klare Stufen, Pflichtfelder und Wiedervorlagen. Fangen Sie einfach an und erweitern Sie erst, wenn die Grundlagen sitzen."
+     "a": "Eines, das Ihr Team jeden Tag nutzt. Wichtiger als das Werkzeug sind feste Stufen, Pflichtfelder und Wiedervorlagen. Fangen Sie klein an und erweitern Sie erst, wenn die Grundlagen sitzen."
     },
     {
      "f": "Reicht eine Tabelle, oder brauche ich ein CRM?",
@@ -364,8 +364,8 @@
      "a": "Für Firmen ohne fertiges Produkt, Konzerne mit Einkaufsabteilung, reine Kaltakquise-Telefonteams und Network-Marketing."
     },
     {
-     "f": "Was, wenn der Tagesworkshop nichts bringt?",
-     "a": "Haben Sie am Abend keine drei Hebel, die Sie umsetzen wollen, zahlen Sie nichts."
+     "f": "Was bringt mir der Tagesworkshop?",
+     "a": "Ziel des Tages sind drei Hebel, die Sie sofort umsetzen können."
     },
     {
      "f": "Strategie oder operativ: Was heißt das beim Tagesworkshop?",
@@ -373,7 +373,7 @@
     },
     {
      "f": "Wann sollte ein Start-up den ersten Vertriebler einstellen?",
-     "a": "Sobald es ein System gibt, in das er einsteigen kann: eine klare Zielgruppe, Leitfäden und einen Prozess im CRM. Ohne dieses Fundament verbringt ein neuer Vertriebler die ersten Monate damit, es selbst zu suchen."
+     "a": "Sobald es ein System gibt, in das er einsteigen kann: eine Zielgruppe, Leitfäden und einen Prozess im CRM. Ohne dieses Fundament verbringt ein neuer Vertriebler die ersten Monate damit, es selbst zu suchen."
     },
     {
      "f": "Wann sollte ich die erste Person für den Vertrieb einstellen?",
@@ -393,7 +393,7 @@
     },
     {
      "f": "Wie bekomme ich eine Einladung?",
-     "a": "Tragen Sie sich bei MAKE Innovation auf die Gästeliste ein, dann bekommen Sie die nächste Einladung. Termine, Orte und Formate stehen in jeder Einladung."
+     "a": "Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste Einladung. Termin, Ort und Format stehen darin."
     },
     {
      "f": "Wer kommt zu den Events?",

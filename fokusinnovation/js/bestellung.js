@@ -1,6 +1,3 @@
-// MAKE Innovation · Baustein auf Rechnung bestellen (31.10.). Spricht mit der App über die Website-Adresse:
-// GET /api/bestellung?id= (an/aus, Formular-Stempel, Bestellbedingungen der Instanz, Bruttopreis), POST /api/bestellung (legt die Bestellung an;
-// Rechnung und Download-Link kommen erst nach Freigabe). Speichert nichts im Browser. Ohne Antwort der App bleibt der Weg per E-Mail.
 (() => {
   const EMAIL_OK = /^[^\s@<>"',;:]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,24}$/i;
   const euro = (cent) => `${(cent / 100).toLocaleString('de-DE', { minimumFractionDigits: cent % 100 ? 2 : 0, maximumFractionDigits: 2 })} €`;
@@ -29,11 +26,9 @@
           bed.replaceChildren(titel, liste);
           bed.hidden = false;
         }
-        // Vertragspartner: die App nennt die Firmierung der Gesellschaft, die wirklich berechnet — sie ersetzt die Vorgabe der Seite.
         const vp = huelle.querySelector('[data-verkaeufer]');
         const vpZeile = j.hinweis && Array.isArray(j.hinweis.zeilen) ? j.hinweis.zeilen.find((z) => typeof z === 'string' && z.startsWith('Vertragspartner und Rechnungssteller:')) : null;
         if (vp && vpZeile) { vp.replaceChildren(document.createTextNode(`${vpZeile} `), ...[...vp.querySelectorAll('a')]); vp.hidden = false; }
-        // Steuersatz und Brutto kommen aus der App (Kleinunternehmer: 0 %), die Seite zeigt sonst die Vorgabe mit 19 %.
         const zeile = form.querySelector('[data-summe]');
         if (zeile && Number.isInteger(j.preis) && Number.isInteger(j.brutto) && Number.isInteger(j.ust)) {
           zeile.textContent = j.ust ? `${euro(j.preis)} netto + ${j.ust} % USt = ${euro(j.brutto)}` : `${euro(j.preis)} (ohne Umsatzsteuer)`;

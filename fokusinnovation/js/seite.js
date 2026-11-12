@@ -1,11 +1,7 @@
-// MAKE Innovation · Seite: Abschnitte erscheinen einmal beim Scrollen, das Menü schließt nach einem Klick und mit Esc,
-// Belegzahlen zählen einmal hoch, die neun Situationen der Startseite lassen sich wählen und antippen.
-// Liest nichts, speichert nichts, sendet nichts.
 (() => {
   const ruhig = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const beobachten = 'IntersectionObserver' in window;
 
-  // Lokale Vorschau: Auf dem eigenen Rechner führen die Verweise zu den Marken auf deren lokale Vorschauen (sonst unverändert).
   if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
     const lokal = { 'makestudios.de': 'http://localhost:3022', 'makerevenue.de': 'http://localhost:3023' };
     document.querySelectorAll('a[href^="https://make"]').forEach((a) => {
@@ -36,7 +32,6 @@
     });
   }
 
-  // Ausklappmenü am Rechner: Esc blendet es aus, bis Maus oder Fokus den Punkt verlassen.
   const punkte = document.querySelectorAll('.nav-punkt');
   document.addEventListener('keydown', (ev) => {
     if (ev.key !== 'Escape') return;
@@ -47,8 +42,6 @@
     p.addEventListener('focusout', (ev) => { if (!p.contains(ev.relatedTarget)) p.classList.remove('zu'); });
   }
 
-  // Belegzahlen (11.11.): die Zahl zählt einmal hoch, ihre Kugel läuft die Bahn mit. Der Endstand steht im HTML; ohne Skript und bei
-  // „Bewegung reduzieren“ bleibt er einfach stehen.
   const belege = [...document.querySelectorAll('[data-beleg]')];
   if (belege.length && !ruhig && beobachten) {
     const laeufe = new Map();
@@ -90,8 +83,6 @@
     for (const el of laeufe.keys()) io.observe(el);
   }
 
-  // Die neun Situationen (11.11.): je Bereich ein Reiter mit drei Karten; jede Karte lässt sich antippen („Kenne ich“), der Stand steht
-  // beim Schluss-Satz. Ohne Skript stehen alle neun untereinander. Nichts davon wird gespeichert oder gesendet.
   const wahl = document.querySelector('[data-wahl]');
   if (wahl) {
     const leiste = wahl.querySelector('[data-wahl-leiste]');

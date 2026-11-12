@@ -1,7 +1,3 @@
-/* MAKE Innovation · der Film der Startseite (nur auf /). Farben und Schrift aus fokus.css.
-   Ruhig heißt: ein Motiv (das Logo), ein flacher dunkler Grund, Worte in der Mitte unten, keine Effekte um ihrer selbst willen. */
-
-/* ── Der Kopf liegt über dem Film und ist dort hell auf dunkel ── */
 .start .kopf { position: fixed; left: 0; right: 0; }
 .kopf.ueber-film { color: var(--hell); border-color: transparent; }
 .kopf.ueber-film::before { opacity: 0; }
@@ -13,10 +9,9 @@
 .kopf.ueber-film .knopf { background: var(--hell); color: var(--nacht); border-color: var(--hell); }
 .kopf.ueber-film .menue summary { border-color: rgba(242, 243, 243, .34); }
 
-/* ── Der Film: eine Bühne, die beim Scrollen steht ── */
 .film { position: relative; height: 280vh; background: var(--nacht); color: var(--hell); }
 .buehne { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; --r: min(15vh, 24vw); --r: min(15dvh, 24vw);
-  /* Lage des Zeichens im Endbild (Handy: oben in der Mitte · Rechner: rechts, Text links). Die Szene liest sie über .ende-anker. */
+
   --ende-x: 50%; --ende-y: 27%; --re: min(10vh, 21vw); --wb: clamp(7rem, calc(var(--re) * 1.45), 10rem); }
 @supports (height: 1dvh) { .buehne { --re: min(10dvh, 21vw); } }
 @media (min-width: 640px) and (min-aspect-ratio: 11/10) {
@@ -37,7 +32,7 @@
 .film-text { position: absolute; left: 50%; bottom: max(8vh, 56px); translate: -50% 0; width: min(54rem, calc(100% - 2 * var(--rand))); text-align: center; }
 .film-titel .zeile { display: block; }
 .film-titel { margin: 0; color: var(--hell); font-size: clamp(2rem, min(5vw, 7.2vh), 4.3rem); font-weight: 600; letter-spacing: -.035em; line-height: 1.05; text-wrap: balance; }
-/* Auffällig, ohne Hintergrund (Kevin 30.10.: kein schwarzes Hinterlegen): ein leiser violetter Schein um die Schlagzeile */
+
 .film-titel { text-shadow: 0 0 34px rgba(167, 139, 250, .3); }
 .film-satz { margin: 18px auto 0; max-width: 34rem; color: rgba(242, 243, 243, .84); font-size: clamp(1rem, 1.2vw, 1.12rem); line-height: 1.5; opacity: 0; transition: opacity 1s var(--ease) .45s; }
 .block.an .film-satz { opacity: 1; }
@@ -50,7 +45,6 @@
 @keyframes strich { 0% { transform: scaleY(0); } 55% { transform: scaleY(1); } 100% { transform: scaleY(1); opacity: 0; } }
 .block[data-block="laerm"] .film-text { bottom: max(11vh, 80px); }
 
-/* Die Aufgaben rund um den Gründer: leise, langsam schwebend, sie ziehen sich zur Mitte und treten zurück */
 .aufgaben { position: absolute; inset: 7vh 0 0 0; pointer-events: none; opacity: 0; transform-origin: 50% 44%; transition: opacity .9s ease; }
 .aufgabe { position: absolute; display: inline-flex; align-items: center; gap: 9px; white-space: nowrap; color: rgba(242, 243, 243, .5); font-size: clamp(.82rem, 1vw, .98rem); font-weight: 500; }
 .aufgabe::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid rgba(242, 243, 243, .42); flex: none; }
@@ -66,8 +60,6 @@
 }
 @keyframes schweben { 0%, 100% { translate: 0 0; } 50% { translate: 6px -8px; } }
 
-/* Das Endbild (10.11.): das Zeichen steht am Anker, darunter die Wortmarke; der Claim groß daneben (Rechner) bzw. darunter (Handy),
-   das letzte Wort in Kern-Violett mit langsamem Glanz; darunter die zwei Knöpfe. */
 .ende-anker { position: absolute; left: var(--ende-x); top: var(--ende-y); width: calc(var(--re) * 2); aspect-ratio: 1; translate: -50% -50%; pointer-events: none; }
 .ende-logo { position: absolute; left: var(--ende-x); top: calc(var(--ende-y) + var(--re) * 1.19 + max(2.2vh, 14px)); translate: -50% 0; display: flex; flex-direction: column; align-items: center; }
 .ende-wort { display: block; width: var(--wb); height: auto; aspect-ratio: 130.6 / 31.4; fill: var(--hell); }
@@ -81,7 +73,7 @@
     animation: emGlanz 7s ease-in-out infinite alternate; }
 }
 @keyframes emGlanz { from { background-position: 0% 0; } to { background-position: 100% 0; } }
-/* Knöpfe im Endbild (31.10.): der erste Bildschirm endet mit einer Handlung, auch im Standbild. */
+
 .ende-knoepfe { margin-top: max(3.2vh, 22px); display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: min(100%, 22rem); background: transparent; }
 .block.an .ende-knoepfe, .ruhig .ende-knoepfe { pointer-events: auto; }
 @media (min-width: 640px) and (min-aspect-ratio: 11/10) {
@@ -90,7 +82,7 @@
   .ende-claim { font-size: clamp(2.1rem, min(4.4vw, 8vh), 4.6rem); }
   .ende-knoepfe { margin-top: max(4.5vh, 28px); flex-direction: row; flex-wrap: wrap; align-items: center; width: auto; }
 }
-/* Erscheinen: erst die Wortmarke, dann der Claim, zuletzt die Knöpfe */
+
 .ende-logo, .ende-text > * { opacity: 0; translate: 0 .5em; transition: opacity .9s var(--ease), translate 1s var(--ease); }
 .ende-logo { translate: -50% .5em; }
 .ende-text > :nth-child(1) { transition-delay: .25s; }
@@ -98,7 +90,6 @@
 .block.an .ende-text > * { opacity: 1; translate: 0 0; }
 .block.an .ende-logo { opacity: 1; translate: -50% 0; }
 
-/* Der Faden: rechts am Rand ein Punkt je Bild, das Licht wächst mit dem Film (nur Rechner) */
 .faden { position: absolute; z-index: 2; right: calc(var(--rand) * .55); top: 50%; translate: 0 -50%; width: 9px; height: min(38vh, 300px); pointer-events: none; opacity: 0; }
 .faden::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: rgba(242, 243, 243, .14); }
 .faden-licht { position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; transform-origin: top; transform: scaleY(var(--fp, 0));
@@ -109,14 +100,12 @@
 .faden-punkt.an { background: var(--akzent); border-color: var(--akzent); box-shadow: 0 0 10px rgba(167, 139, 250, .8); }
 @media (max-width: 899px), (pointer: coarse) { .faden { display: none; } }
 
-/* Übergang vom Film ins Papier: Titel über die ganze Breite, darunter Einleitung und Index */
 .start-held { padding-top: clamp(96px, 10vw, 144px); }
 .start-held .held-raster { align-items: start; row-gap: clamp(36px, 4vw, 56px); }
 .start-held .start-titel { grid-column: 1 / -1; }
 .start-held h1 { font-size: clamp(2.4rem, 5vw, 4.5rem); max-width: 23ch; }
 .start-held .lead { margin-top: 0; }
 
-/* ── Ruhig: „Bewegung reduzieren“ oder kein WebGL → Standbild mit fertigem Logo ── */
 .ruhig .film { height: auto; }
 .ruhig .buehne { position: relative; height: 100vh; height: 100svh; min-height: 560px; }
 .ruhig .szene { opacity: 1; transition: none; }
@@ -137,19 +126,16 @@
   .block[data-block="laerm"] .film-text { bottom: max(12vh, 84px); }
 }
 
-/* Die Agentur ist ab dem ersten Bild erkennbar; „Film überspringen“ führt direkt zum Einstieg (29.10.). */
-
 .ueberspringen { position: absolute; z-index: 3; right: var(--rand); bottom: max(3vh, 18px); display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid rgba(242, 243, 243, .28); border-radius: 999px; color: var(--hell); font-size: .86rem; font-weight: 500; background: rgba(11, 12, 15, .4); transition: background-color .2s ease, border-color .2s ease; }
 .ueberspringen:hover { background: rgba(242, 243, 243, .1); border-color: rgba(242, 243, 243, .5); }
 .ruhig .ueberspringen { display: none; }
 @media (max-width: 760px) {
   .ueberspringen { bottom: 12px; min-height: 40px; font-size: .8rem; }
   .block[data-block="laerm"] .film-text { bottom: max(14vh, 96px); }
-  /* Am Handy steht der Hinweis links unten, der Knopf „Film überspringen“ rechts – sie stoßen nicht aneinander */
+
   .hinweis { left: var(--rand); translate: 0 0; align-items: flex-start; bottom: 6px; }
 }
 
-/* ── Ohne Skript (11.11.): statt 2,8 leerer dunkler Bildschirme steht das Endbild mit Zeichen, Claim und beiden Knöpfen ── */
 html:not(.js) .film { height: auto; }
 html:not(.js) .buehne { position: relative; height: 100vh; height: 100svh; min-height: 560px; }
 html:not(.js) .block, html:not(.js) .aufgaben, html:not(.js) .faden, html:not(.js) .ueberspringen { display: none; }
@@ -158,12 +144,9 @@ html:not(.js) .ersatz { display: block; }
 html:not(.js) .ende-text > * { opacity: 1; translate: none; }
 html:not(.js) .ende-logo { opacity: 1; translate: -50% 0; }
 html:not(.js) .ende-knoepfe { pointer-events: auto; }
-/* Tippziel 44 px auch am Handy */
+
 @media (max-width: 760px) { .ueberspringen { min-height: 44px; } }
 
-/* ── Erste Szene (11.11., größtes sichtbares Element): Titel und Satz der ersten Szene stehen ab dem ersten Bild im Fenster, ohne auf das
-      Skript zu warten und ohne Einblenden aus der Deckkraft 0 (so ein Text zählt für Suchmaschinen nicht als gemalt). Sie heben sich
-      nur leicht. Die übrigen Szenen erscheinen wie bisher Wort für Wort. Bei „Bewegung reduzieren“ gilt das Standbild. ── */
 @media (prefers-reduced-motion: no-preference) {
   .js .block[data-block="laerm"] { opacity: 1; visibility: visible; }
   .js .block[data-block="laerm"] .film-satz { opacity: 1; transition: none; }

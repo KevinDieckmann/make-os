@@ -1,7 +1,3 @@
-// MAKE Innovation · lange Vorlage per E-Mail anfordern (31.10., Kevin: „die größeren brauchen eine E-Mail, damit wir denen das Ganze
-// zuschicken können“). Spricht mit der App über die Website-Adresse: GET /api/unterlage?id= (ist die Anforderung an, Wortlaut des
-// Newsletter-Hakens), POST /api/unterlage (schickt den Link per E-Mail). Speichert nichts im Browser. Ohne Antwort der App bleibt der
-// Weg per E-Mail stehen (data-ersatz). Keine Inline-Stile, kein eval (CSP 'self').
 (() => {
   const EMAIL_OK = /^[^\s@<>"',;:]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,24}$/i;
   for (const form of document.querySelectorAll('form[data-unterlage]')) {

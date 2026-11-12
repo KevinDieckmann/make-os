@@ -140,7 +140,7 @@ export function seo({ nurPruefen = false } = {}) {
       ? `# MAKE Revenue: alles offen, auch für die Such-Bots der KI-Anbieter (SEO-GEO-VORGABEN 2.5 und 2.6)\nUser-agent: *\nAllow: /\n\nSitemap: ${BASIS}/sitemap.xml\n`
       : '# MAKE Revenue · Vorschau: nichts wird eingelesen. Freigabe über seo.json (oeffentlich) und node seo.mjs.\nUser-agent: *\nDisallow: /\n',
     'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${fertig.map((f) => `  <url><loc>${att(f.url)}</loc><lastmod>${f.lastmod}</lastmod></url>`).join('\n')}\n</urlset>\n`,
-    'llms.txt': `# MAKE Revenue\n\n> ${daten.satz.revenue}\n\n## Leistungen\n${fertig.filter((f) => f.s.leistung).map((f) => `- [${f.s.leistung.name}](${f.url}): ${f.s.leistung.kurz}`).join('\n')}\n\n## Mehr\n${fertig.filter((f) => f.s.pfad && !f.s.leistung).map((f) => `- [${f.s.name}](${f.url}): ${f.s.beschreibung}`).join('\n')}\n\n## Kontakt\n- E-Mail: ${daten.mail}\n- Erstgespräch: kostenlos, 30 Minuten per Video\n\n## Die Familie\n- [MAKE Innovation](${INNOVATION}/): ${daten.satz.innovation} Dort stehen die Preise.\n- [MAKE Studios](${STUDIOS}/): ${daten.satz.studios}\n\nStand: ${daten.stand}\n`,
+    'llms.txt': `# MAKE Revenue\n\n> ${daten.satz.revenue}\n\n## Leistungen\n${fertig.filter((f) => f.s.leistung).map((f) => `- [${f.s.leistung.name}](${f.url}): ${f.s.leistung.kurz}`).join('\n')}\n\n## Mehr\n${fertig.filter((f) => f.s.pfad && !f.s.leistung).map((f) => `- [${f.s.name}](${f.url}): ${f.s.beschreibung}`).join('\n')}\n\n## Kontakt\n- E-Mail: ${daten.mail}\n- Erstgespräch: kostenlos, 30 Minuten per Video\n\n## Auch von uns\n- [MAKE Innovation](${INNOVATION}/): ${daten.satz.innovation}\n- [MAKE Studios](${STUDIOS}/): ${daten.satz.studios}\n\nStand: ${daten.stand}\n`,
     [`${einstellung.indexnow}.txt`]: einstellung.indexnow + '\n',
     'site.webmanifest': JSON.stringify({ name: 'MAKE Revenue', short_name: 'MAKE Revenue', description: daten.satz.revenue, lang: 'de', start_url: '/', display: 'browser', background_color: daten.farbe.papier, theme_color: daten.farbe.nacht,
       icons: [{ src: 'bild/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'bild/logo.png', sizes: '512x512', type: 'image/png' }] }, null, 1) + '\n',
@@ -178,7 +178,10 @@ export function seo({ nurPruefen = false } = {}) {
       for (const q of s.fragen) { if (!sicht.includes(q.f)) fehler.push(`${wo}: Frage in den Daten, aber nicht sichtbar: „${q.f}“`); if (!sicht.includes(q.a)) fehler.push(`${wo}: Antwort in den Daten, aber nicht sichtbar: „${q.f}“`); }
       for (const b of s.begriffe) if (!sicht.includes(b.text)) fehler.push(`${wo}: Begriff in den Daten, aber nicht sichtbar: „${b.name}“`);
       for (const l of [...(s.leistungen || []), ...(s.leistung ? [s.leistung] : [])]) if (!sicht.includes(l.text)) fehler.push(`${wo}: Leistungstext in den Daten, aber nicht sichtbar: „${l.name}“`);
-      if (!s.pfad && !sicht.includes(daten.satz.revenue)) fehler.push(`${wo}: Standardsatz der Marke nicht sichtbar`);
+      // Der Standardsatz der Marke steht in den strukturierten Daten und in llms.txt, nicht mehr im sichtbaren Text (Schreibregeln 12.11.2026:
+      // Wer zu wem gehört, sagt sichtbar nur die Fußzeile und die Frage „Wer steht hinter MAKE Revenue?“).
+      if (!s.pfad && !(j['@graph'] || []).some((k) => k['@type'] === 'Organization' && k.description === daten.satz.revenue)) fehler.push(`${wo}: Standardsatz der Marke fehlt in den strukturierten Daten (Organization)`);
+      if (!s.pfad && !/eine Marke von MAKE Innovation/.test(sicht)) fehler.push(`${wo}: Fußzeile „eine Marke von MAKE Innovation“ fehlt`);
     } catch (err) { fehler.push(`${wo}: JSON-LD ungültig (${err.message})`); }
     if (/\{\{|\[\[|TODO|Lorem|Platzhalter/.test(html)) fehler.push(`${wo}: Platzhalter im HTML`);
     if (/\u2014/.test(html)) fehler.push(`${wo}: Gedankenstrich „\u2014“ im HTML`);
@@ -208,6 +211,7 @@ export function seo({ nurPruefen = false } = {}) {
   }
   if (impressumFremd) hinweise.push(`Impressum und Datenschutz verweisen auf die Seiten des Dachs (${impressumFremd} Seiten). So ist es vorgegeben; ein eigenes Impressum je Domain entscheidet Kevin vor der Freigabe.`);
   if (seite404 && !/content="noindex, nofollow"/.test(seite404)) fehler.push('404.html: muss noindex bleiben');
+  if (!dateien['llms.txt'].includes(daten.satz.revenue)) fehler.push('llms.txt: Standardsatz der Marke fehlt');
   for (const bild of ['bild/og.png', 'bild/logo.png', 'bild/icon-192.png', 'bild/icon-180.png', 'favicon.ico', 'zeichen.svg']) if (!existsSync(join(ORDNER, bild))) fehler.push(`${bild} fehlt`);
   if (oeffentlich) {
     for (const [name, inhalt] of Object.entries(dateien)) if (lokal(inhalt)) fehler.push(`${name}: Vorschau-Adresse (localhost) in einer öffentlichen Datei`);

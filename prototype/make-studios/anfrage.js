@@ -6,8 +6,7 @@
 (() => {
   'use strict';
   const D = document, W = window, H = D.documentElement;
-  // Die Kontaktadresse steht nur im HTML (erster mailto-Verweis der Seite), nie im Skript: eine Stelle je Seite, und der
-  // Wächter des Repos lässt keine echten Adressen in Code-Dateien zu.
+  // Die Kontaktadresse steht nur im HTML (erster mailto-Verweis der Seite), nicht im Skript: eine Stelle je Seite.
   const ZIEL = (() => { const a = D.querySelector('a[href^="mailto:"]'); return a ? decodeURIComponent(a.getAttribute('href').slice(7).split('?')[0]) : ''; })();
   const RUHIG = W.matchMedia && W.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -86,7 +85,8 @@
     a.addEventListener('click', (e) => {
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       e.preventDefault();
-      oeffnen(a.dataset.buchen ? { branche: a.dataset.buchen } : null);
+      // data-buchen="<branche>" wählt die Branche vor, data-interesse="<wert>" das Interesse (zum Beispiel „social“)
+      oeffnen(a.dataset.buchen || a.dataset.interesse ? { branche: a.dataset.buchen, interesse: a.dataset.interesse } : null);
     });
   }
 
@@ -276,6 +276,11 @@
         const r = form.querySelector('input[name="branche"][value="' + vorgabe.branche + '"]');
         if (r) r.checked = true;
       }
+      if (vorgabe && /^[a-z]+$/.test(vorgabe.interesse || '')) {
+        const i = form.querySelector('input[name="interesse"][value="' + vorgabe.interesse + '"]');
+        const offen = form.querySelector('input[name="interesse"][value="offen"]');
+        if (i) { i.checked = true; if (offen && offen !== i) offen.checked = false; }
+      }
       if (vorgabe && vorgabe.check && form.elements.check_mit) form.elements.check_mit.checked = true;
       if (abgeschickt) { abgeschickt = false; schritt = 0; }
       H.classList.add('dialog-offen');
@@ -306,7 +311,7 @@
       hebel: 'Profil vervollständigen', tipp: 'Öffnungszeiten, Fotos, Telefon und Website eintragen und aktuell halten.',
       beleg: { zahl: '+70' + P, satz: 'höher ist die Wahrscheinlichkeit eines Besuchs, wenn das Profil vollständig ist.', q: 'google' } },
     { id: 'bewertungen', w: 2, kurz: 'Bewertungen', frage: 'Wie steht es um Ihre Bewertungen bei Google?', a: ['Viele, im Schnitt vier Sterne oder mehr', 'Wenige, oder unter vier Sternen', 'Kaum welche'],
-      hebel: 'Mehr Bewertungen sammeln', tipp: 'Zufriedene Kundschaft gezielt darum bitten und jede Bewertung beantworten.',
+      hebel: 'Mehr Bewertungen sammeln', tipp: 'Zufriedene Kundschaft darum bitten und jede Bewertung beantworten.',
       beleg: { zahl: '68' + P, satz: 'kommen nur für Unternehmen mit mindestens vier Sternen in Frage.', q: 'brightlocal' } },
     { id: 'handy', w: 3, kurz: 'Website am Handy', frage: 'Wie gut funktioniert Ihre Website auf dem Handy?', a: ['Gut: schnell und übersichtlich', 'Es geht, aber nicht gut', 'Schlecht, oder es gibt keine Website'],
       hebel: 'Website fürs Handy bauen', tipp: 'Schnell laden, das Wichtigste oben, Anruf und Anfrage mit einem Tippen.', beleg: null }
@@ -320,15 +325,15 @@
         hebel: 'Online-Reservierung anbieten', tipp: 'Ein Tisch in wenigen Klicks, auch außerhalb Ihrer Öffnungszeiten.',
         beleg: { zahl: '47' + P, satz: 'reservieren am liebsten online.', q: 'bitkomGastro' } },
       { id: 'bilder', w: 2, kurz: 'Fotos', frage: 'Zeigen aktuelle Fotos Ihre Gerichte und Ihren Gastraum?', a: ['Ja, gute und aktuelle', 'Ein paar, eher ältere', 'Kaum welche'],
-        hebel: 'Aktuelle Fotos zeigen', tipp: 'Gerichte, Gastraum und Team, so wie es bei Ihnen wirklich ist.',
+        hebel: 'Aktuelle Fotos zeigen', tipp: 'Gerichte, Gastraum und Team, so wie es bei Ihnen aussieht.',
         beleg: { zahl: '69' + P, satz: 'erwarten Fotos, wenn sie sich ein Café oder Restaurant online ansehen.', q: 'bitkomGastro' } }
     ],
     agentur: [
       { id: 'faelle', w: 3, kurz: 'Fallbeispiele', frage: 'Zeigen Sie Fallbeispiele mit Ergebnis?', a: ['Ja, mehrere und aktuell', 'Ein paar, ohne Ergebnis', 'Keine'],
         hebel: 'Fallbeispiele mit Ergebnis zeigen', tipp: 'Aufgabe, Lösung, Ergebnis: kurz erzählt, mit Bildern aus dem Projekt.',
         beleg: { zahl: '94' + P, satz: 'der B2B-Einkäufer haben ihre Wunschanbieter gereiht, bevor sie zum ersten Mal mit einem sprechen.', q: 'sixsense' } },
-      { id: 'klarheit', w: 2, kurz: 'Klarer Auftritt', frage: 'Versteht man auf Ihrer Seite, was Sie tun und wie die Zusammenarbeit läuft?', a: ['Ja, klar und vollständig', 'Teilweise', 'Eher nicht'],
-        hebel: 'Entscheidung ohne Anruf möglich machen', tipp: 'Leistungen, Ablauf und Ansprechpartner klar auf der Seite.',
+      { id: 'klarheit', w: 2, kurz: 'Klarer Auftritt', frage: 'Versteht man auf Ihrer Seite, was Sie tun und wie die Zusammenarbeit läuft?', a: ['Ja, vollständig', 'Teilweise', 'Eher nicht'],
+        hebel: 'Entscheidung ohne Anruf möglich machen', tipp: 'Leistungen, Ablauf und Ansprechpartner stehen auf Ihrer Seite.',
         beleg: { zahl: '61' + P, satz: 'der B2B-Einkäufer würden am liebsten ganz ohne Vertriebsgespräch entscheiden.', q: 'gartner' } },
       { id: 'einbild', w: 1, kurz: 'Ein Bild', frage: 'Passen Website, LinkedIn und Ihr Auftreten im Gespräch zusammen?', a: ['Ja, aus einem Guss', 'Teilweise', 'Eher nicht'],
         hebel: 'Ein Bild auf allen Kanälen', tipp: 'Website, LinkedIn und Gespräch erzählen dieselbe Geschichte.',
@@ -349,7 +354,7 @@
       { id: 'kontakt', w: 2, kurz: 'Kontakt', frage: 'Kann man Sie auf Ihrer Website mit einem Tippen anrufen oder anfragen?', a: ['Ja, auf jeder Seite', 'Irgendwo schon', 'Nein'],
         hebel: 'Kontakt mit einem Tippen', tipp: 'Telefon und Anfrage gut sichtbar, auf jeder Seite.', beleg: null },
       { id: 'eigenebilder', w: 2, kurz: 'Eigene Bilder', frage: 'Zeigen eigene Fotos oder Videos, wie es bei Ihnen aussieht?', a: ['Ja, gute und aktuelle', 'Ein paar', 'Kaum welche'],
-        hebel: 'Eigene Fotos und Videos', tipp: 'Zeigen, wie es bei Ihnen wirklich aussieht, statt Bilder aus dem Katalog.', beleg: null },
+        hebel: 'Eigene Fotos und Videos', tipp: 'Zeigen, wie es bei Ihnen aussieht, statt Bilder aus dem Katalog.', beleg: null },
       { id: 'social', w: 1, kurz: 'Soziale Medien', frage: 'Zeigen Sie Ihre Arbeit regelmäßig in sozialen Medien?', a: ['Ja, regelmäßig', 'Ab und zu', 'Nein'],
         hebel: 'In sozialen Medien zeigen', tipp: 'Regelmäßig zeigen, woran Sie gerade arbeiten.', beleg: null }
     ]
@@ -359,8 +364,8 @@
   ];
   function stufeVon(p) {
     if (p >= 80) return ['Gut sichtbar', 'Sie sind gut aufgestellt. Jetzt geht es um die Feinheiten, die aus Besuchern Anfragen machen.'];
-    if (p >= 50) return ['Ausbaufähig', 'Die Grundlage steht. Mit den Hebeln unten holen Sie deutlich mehr heraus.'];
-    return ['Viel ungenutzt', 'Hier ist viel Luft nach oben. Schon wenige Schritte machen einen spürbaren Unterschied.'];
+    if (p >= 50) return ['Ausbaufähig', 'Die Grundlage steht. Die Punkte unten bringen Ihnen am meisten.'];
+    return ['Viel ungenutzt', 'Hier liegt noch viel brach. Fangen Sie mit den Punkten unten an.'];
   }
 
   const check = D.querySelector('[data-check]');
@@ -499,7 +504,7 @@
           teile,
           hebel.length ? el('h4', { class: 'check-unter', text: hebel.length === 1 ? 'Ihr größter Hebel' : 'Ihre ' + (hebel.length === 2 ? 'zwei' : 'drei') + ' größten Hebel' }) : null,
           hebel.length ? hebelListe : null,
-          el('p', { class: 'check-klein', text: 'Selbsteinschätzung nach Ihren Antworten, keine Prüfung Ihres Auftritts. Nichts davon wird gespeichert oder gesendet.' }),
+          el('p', { class: 'check-klein', text: 'Selbsteinschätzung nach Ihren Antworten, keine Prüfung Ihres Auftritts. Gespeichert oder gesendet wird nichts.' }),
           el('div', { class: 'check-aktionen' }, [besprechen, neu])
         ])
       );

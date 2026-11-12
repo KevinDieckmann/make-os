@@ -1,4 +1,4 @@
-/* ─── MAKE Studios · Testseite: der Scroll-Film (Prototyp, nicht online) ──────────────────────────────
+/* ─── MAKE Studios · der Scroll-Film ──────────────────────────────────────────────────────────────────
    EIN Fortschritt p (0 … 1) über die Spur .film steuert alles. Der Zeitplan (PLAN) legt fest, wie viel Scrollweg jede
    Szene bekommt: Intro → der Bildschirm wendet sich zur ersten Karte des Karussells → die Blende öffnet sich zur
    Analyse (ein Handy mit einer Beispielseite, daneben zwei Zahlen) → Streifen quer → Ergebnis: die fertigen Seiten als Bildschirme im Raum →
@@ -52,6 +52,7 @@
 
   // Flächen für Aufnahmen: der Film sagt an, welche gerade laufen soll (höchstens zwei), seite.js spielt ab.
   const flSchirm = $('[data-aufnahme]', schirm);
+  const kLinks = karten.map(k => $('.karte-link', k));   // klickbar ist nur die Karte, die vorn steht
   const flKarten = karten.map((k, i) => $((i === 0 ? '.karte-hinten' : '.karte-vorne') + ' [data-aufnahme]', k));
   const flAnalyse = $('[data-aufnahme]', kennH);
   const flTafeln = tafeln.map(t => $('[data-aufnahme]', t));
@@ -197,8 +198,8 @@
   }
 
   // ─── Hell/Dunkel für Kopf und Anzeige ───
-  const SEITE_DUNKEL = $$('.abschnitt-beispiele, .abschnitt-analysen, .abschnitt-kontakt, .fuss');
-  const STATISCH_DUNKEL = $$('.blende, .streifen, .ergebnis, .abschnitt-beispiele, .abschnitt-analysen, .abschnitt-kontakt, .fuss');
+  const SEITE_DUNKEL = $$('.abschnitt-leistungen, .abschnitt-beispiele, .abschnitt-analysen, .abschnitt-kontakt, .fuss');
+  const STATISCH_DUNKEL = $$('.blende, .streifen, .ergebnis, .abschnitt-leistungen, .abschnitt-beispiele, .abschnitt-analysen, .abschnitt-kontakt, .fuss');
   function flaecheDunkel(liste, y) {
     for (let i = 0; i < liste.length; i++) { const r = liste[i].getBoundingClientRect(); if (r.height > 0 && r.top <= y && r.bottom > y) return true; }
     return false;
@@ -264,6 +265,7 @@
         setze(karten[i], 'transform', 'translate3d(' + r1(x) + 'px,' + r1(y) + 'px,' + r1(z) + 'px) rotateY(' + r1(ry) + 'deg) rotateX(' + r1(rx) + 'deg) rotateZ(' + r1(rz) + 'deg) scale(' + r3(s) + ')');
         setze(karten[i], 'opacity', r3(op));
         setze(karten[i], 'z-index', String(10 - Math.round(Math.abs(th) / 26)));
+        if (kLinks[i]) setze(kLinks[i], 'pointer-events', (op > .55 && Math.abs(th) < 30 && (i > 0 || flip > .5)) ? 'auto' : 'none');
       }
       setze(innen0, 'transform', 'rotateY(' + r1(flip * 180) + 'deg)');
       if (flip < .5) { if (eBl <= 0) regie.push(flSchirm); }

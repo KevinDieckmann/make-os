@@ -135,7 +135,7 @@ html.dialog-offen { overflow: hidden; }
 
 /* ═══ Kontakt: Buchen, E-Mail, Check ═══ */
 .kontakt-aktionen { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px 30px; }
-.kontakt-mail { font: 600 clamp(17px, 1.5vw, 21px)/1.2 "Bricolage", system-ui, sans-serif; color: var(--papier); text-underline-offset: 6px; text-decoration-thickness: 1px; }
+.kontakt-mail { display: inline-block; padding: 11px 0; font: 600 clamp(17px, 1.5vw, 21px)/1.2 "Bricolage", system-ui, sans-serif; color: var(--papier); text-underline-offset: 6px; text-decoration-thickness: 1px; }
 .kontakt-check { margin-top: 34px; color: rgba(242, 237, 228, .82); }
 
 /* ═══ Sichtbarkeits-Check ═══ */

@@ -1,17 +1,5 @@
-// MAKE Innovation · die Szene der Startseite: vom Lärm zum Durchbruch (fünfte Fassung 10.11.2026, Kevin: „mehr, alles im Fluss,
-// Durchbruch mit mehr Wucht, Endbild anders“).
-// 1 Lärm: Punkte und Striche treiben in der Tiefe · 2 Fokus: sie schießen als Lichtstriche in den Kern, der aufleuchtet ·
-// 3 Lücke: eine Wand wächst mit leuchtenden Kanten · 4 Momentum: die Spur wird zu Lichtfäden, Licht strömt in den Kern, er nimmt Fahrt auf ·
-// 5 Durchbruch: er drückt gegen die Wand, sie reißt, ein Knall (Blitz, Welle, Splitter), er geht hindurch und kommt im Logo an ·
-// Ende: das fertige Zeichen gleitet an seinen Platz im Endbild und lebt leise weiter (Puls, ein Licht je Schlag die Spur entlang).
-// Eigenes WebGL, keine Bibliothek, keine Bilder. Farben aus den CSS-Variablen; Maße aus dem Logo (Raster 48, Mitte des Zeichens bei
-// 21,7 | 24 = Nullpunkt der Szene). Im Ziel (Kern bei 8,8, ohne Glut und Risse) ist das Bild genau das Logo.
-
 const FLAECHE_VS = 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }';
 
-// Grund, Wand, Spur und Kern. Gerechnet wird in Zeichen-Einheiten (1 = ein Kästchen des Logo-Rasters, y nach oben):
-// Kern r 10,2 · Wand x −3,7 … 3,3, y ±18, Ecken 0,8, Öffnung r 12,8 um den Kern · Spur drei Striche (Stärke 2,6, runde Enden)
-// bei y +5,5 | 0 | −5,5, Länge 8,5 | 10,5 | 6,5, Ende 16 hinter der Mitte des Kerns.
 const FLAECHE_FS = `
 precision highp float;
 uniform vec2 uRes, uC, uKS;
@@ -22,7 +10,6 @@ float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 vec2 hash2(vec2 p) { return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453); }
 float kasten(vec2 p, vec2 b, float r) { vec2 d = abs(p) - b + r; return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r; }
 float strich(vec2 p, vec2 a, vec2 b, float r) { vec2 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0); return length(pa - ba * h) - r; }
-// Risse: Abstand zur nächsten Zellkante eines Voronoi-Netzes (0 = auf dem Riss)
 float risse(vec2 p) {
   vec2 i = floor(p), f = fract(p);
   float d1 = 8.0, d2 = 8.0;
@@ -36,8 +23,6 @@ float risse(vec2 p) {
   }
   return sqrt(d2) - sqrt(d1);
 }
-// Ein Licht, das einen Strich entlang zum Kern läuft: hell an der Spitze, dahinter ein kurzer Schweif
-// Ein Licht läuft die Spur entlang: weicher Kopf, langer Schweif; es fließt links herein und rechts hinaus (kein harter Sprung)
 float lichtLauf(float entlang, float phase) {
   float p = phase * 1.3 - 0.15;
   float d = p - entlang;
@@ -53,7 +38,6 @@ void main() {
   float pw = px / k;
   vec2 w = (q - uC) / k + vec2(uCam, 0.0);
 
-  // Der Knall (nur in den ersten Sekunden nach dem Bruch): eine Stoßwelle läuft von der Bruchstelle aus und verbiegt kurz den Raum
   vec2 stoss = vec2(-3.7, 0.0);
   float welle2 = 0.0, blitz = 0.0;
   if (uKnall >= 0.0 && uKnall < 2.5) {
@@ -75,14 +59,11 @@ void main() {
   vec3 col = uNacht;
   col += uKernF * 0.035 * exp(-lr / (uR * 3.0)) * uKern;
 
-  // Puls des Kerns: ein kurzer Schlag alle 2,8 s, langsames Ausatmen, dazu eine leise Welle; uPuls = 0 im Standbild
   float takt = fract(uZeit / 2.8);
   float schlag = max(smoothstep(0.0, 0.1, takt) * (1.0 - smoothstep(0.1, 0.75, takt)) * uPuls, uImpuls);
   float kernW = 10.2 * uKern * (1.0 + 0.05 * schlag);
   float kernR = kernW * k;
 
-  // Der Raum: ein großer, weicher Farbschein hinter dem Kern, dunkle Ränder, eine dunklere Masse oben links. Im Lärm kühl und
-  // unruhig, mit dem Fokus violett auf den Kern gezogen, beim Durchbruch weit (uWeite).
   vec2 drift = vec2(sin(uZeit * 0.071), cos(uZeit * 0.053)) * uR * 0.55 * (1.0 - 0.8 * uKern);
   vec2 ra = (r - drift) * vec2(0.74, 1.0);
   float weite = uR * 3.1 * uWeite * (1.0 + 0.04 * schlag) * mix(0.3, 1.0, uBluete);
@@ -92,7 +73,6 @@ void main() {
   col += mix(kuehl, violett, uKern) * raum * (0.62 + 0.18 * uKern) * uBluete * (1.0 + 0.22 * uImpuls + 0.35 * uGlut);
   vec2 masse = q - (uC + vec2(-uR * 2.3, uR * 1.3));
   col *= 1.0 - 0.3 * exp(-dot(masse, masse) / (uR * uR * 2.0));
-  // Energie: der Kern strahlt, je mehr Fahrt er hat (nah kräftig, weit leise)
   float aussen = max(lr - kernR, 0.0);
   col += uKernF * (0.05 + 0.09 * schlag + 0.16 * uEnergie) * exp(-aussen / (uR * 0.34)) * uKern;
   col += mix(uKernF, uAkzent, 0.5) * 0.07 * uEnergie * exp(-aussen / (uR * 1.5)) * uKern;
@@ -102,7 +82,6 @@ void main() {
   float welle = exp(-wAbst * wAbst) * pow(1.0 - welleT, 3.0) * step(0.001, welleT) * uKern * uPuls;
   col += mix(uAkzent, vec3(1.0), 0.2) * welle * 0.16;
 
-  // Fahrt: feine Lichtstriche ziehen am Rand vorbei nach links (nur solange Tempo da ist, nicht hinter den Worten unten)
   if (uTempo > 0.01) {
     float zeilen = 44.0;
     float zy = floor(uv.y * zeilen);
@@ -117,12 +96,9 @@ void main() {
     }
   }
 
-  // Schein an der Öffnung, solange sie glüht
   vec2 oeff = (q - (uC + (vec2(-0.2, 0.0) - vec2(uCam, 0.0)) * k)) * vec2(1.0, 0.7);
   col += uKernF * 0.4 * uGlut * exp(-length(oeff) / (uR * 0.6));
 
-  // Die Wand: wächst aus der Mitte mit leuchtenden Kanten, biegt sich, wo der Kern drückt, reißt und bricht auf.
-  // Nach dem Bruch umgibt die Öffnung den Kern (im Ziel 12,8 um ihn, wie im Logo).
   if (uWand > 0.001) {
     float hoehe = 18.0 * uWand;
     vec2 wp = w - vec2(-0.2, 0.0);
@@ -131,35 +107,28 @@ void main() {
     float lochD = length(w - kp) - uLoch;
     float wd = uLoch > 0.0 ? max(wd0, -lochD) : wd0;
     float innen = smoothstep(pw, -pw, wd);
-    // Die Wand steht im Raum: weicher Schatten auf dem Grund
     col *= 1.0 - 0.28 * exp(-max(wd, 0.0) / 2.2) * (1.0 - innen);
-    // Leiser Schein um die Wand, wenn sie unter Druck steht oder glüht
     col += uAkzent * (0.22 * uRiss + 0.45 * uGlut) * exp(-max(wd, 0.0) / 1.8);
-    // Material: oben etwas heller, zum Kern hin violett angestrahlt
     vec3 wf = uHell * (0.84 + 0.16 * smoothstep(-18.0, 18.0, w.y));
     float licht = exp(-max(length(w - kp) - 10.2, 0.0) / 7.0) * uKern;
     wf = mix(wf, mix(uHell, uAkzent, 0.7), 0.26 * licht * uTiefe);
-    // Kanten: zum Kern hin hell und violett angestrahlt, abgewandt etwas dunkler; ein leiser Glanzstreifen
     float nahRand = smoothstep(-1.0, -0.05, abs(wp.x) - 3.5) * smoothstep(-0.2, -1.4, abs(wp.y) - hoehe);
     float links = smoothstep(0.8, -0.8, wp.x);
     wf += mix(vec3(1.0), uAkzent, 0.35 + 0.4 * licht) * nahRand * links * (0.07 + 0.12 * licht) * uTiefe;
     wf *= 1.0 - 0.1 * nahRand * (1.0 - links) * uTiefe;
     float glanzX = (wp.x + 1.3) / 0.8;
     wf += 0.045 * exp(-glanzX * glanzX) * uTiefe;
-    // Fassung um die Öffnung: der Kern sitzt in der Wand
     if (uLoch > 0.0) wf *= 1.0 - 0.16 * exp(-max(lochD, 0.0) / 1.1) * uTiefe;
     if (uRiss > 0.001 && abs(w.x) < 8.0) {
       vec2 rp = w - stoss;
       float rr = length(rp);
       float reich = 3.0 + 20.0 * uRiss;
-      // Strahlen: je Sektor ein gezackter Riss mit eigener Länge
       float a = atan(rp.y, rp.x) / 6.2832 * 13.0;
       float sek = floor(a);
       float zack = sin(rr * 1.3 + sek * 4.1) * 0.16 + sin(rr * 3.9 + sek * 2.3) * 0.06;
       float quer = abs(fract(a + zack) - 0.5) * 6.2832 / 13.0 * rr;
       float lang = reich * (0.45 + 0.55 * hash(vec2(sek, 1.7)));
       float strahl = (1.0 - smoothstep(0.08, 0.2 + 0.1 * uGlut, quer)) * (1.0 - smoothstep(lang * 0.7, lang, rr));
-      // Mitte: zersplittert
       float e = risse(w * 0.75 + vec2(3.0, 1.0));
       float netz = (1.0 - smoothstep(0.0, 0.06, e)) * (1.0 - smoothstep(1.5, 2.5 + 3.5 * uRiss, rr));
       float riss = max(strahl, netz) * uRiss;
@@ -167,15 +136,12 @@ void main() {
       wf += uAkzent * 0.25 * uRiss * exp(-rr / 2.5);
     }
     col = mix(col, wf, innen);
-    // Die Bruchkante glüht
     float rand = exp(-abs(lochD) / 0.7) * smoothstep(0.6, -0.6, wd0) * step(0.001, uLoch);
     col += mix(uAkzent, vec3(1.0), 0.3) * rand * uGlut * 0.9;
-    // Beim Wachsen laufen helle Kanten oben und unten mit
     float front = exp(-abs(abs(w.y) - hoehe) / 0.55) * step(abs(wp.x), 3.6) * (1.0 - smoothstep(0.82, 1.0, uWand));
     col += uAkzent * front * 0.85;
   }
 
-  // Die Spur als Lichtfäden: in Fahrt laufen schnelle Lichter zum Kern (uFaden), im Ziel eins je Schlag – es kommt an, wenn der Kern schlägt
   if (uSpurA > 0.001) {
     float ende = uKX - 16.0;
     float l1 = 8.5 * uStreck, l2 = 10.5 * uStreck, l3 = 6.5 * uStreck;
@@ -190,12 +156,10 @@ void main() {
     float puls = min(1.0, lichtLauf(entlang, phaseF) * uTempo + lichtLauf(entlang, phaseR) * uRuhe * uPuls * 0.85);
     col += uAkzent * (0.16 * uTempo * exp(-max(sd, 0.0) / 1.5) + 0.26 * puls * exp(-max(sd, 0.0) / 0.9)) * uSpurA;
     col = mix(col, mix(uAkzent, vec3(1.0), 0.5 * puls), smoothstep(pw, -pw, sd) * uSpurA);
-    // Kommt das Licht vorn an, leuchtet die Spitze kurz auf
     float an = lichtLauf(1.0, phaseF) * uTempo + lichtLauf(1.0, phaseR) * uRuhe * uPuls * 0.7;
     col += mix(uAkzent, vec3(1.0), 0.35) * min(an, 1.0) * exp(-length(w - vec2(ende, yl)) / 1.3) * 0.32 * uSpurA;
   }
 
-  // Der Kern: Kugel mit Licht von oben links, gestaucht beim Drücken, gestreckt in voller Fahrt
   if (uKern > 0.001) {
     vec2 kd = (w - kp) / (kernW * uKS);
     float kl = length(kd);
@@ -212,7 +176,6 @@ void main() {
     col = mix(col, kf, a);
   }
 
-  // Blitz und Stoßwelle des Knalls
   col += mix(uAkzent, uHell, 0.45) * welle2 * 0.5;
   col += vec3(0.85, 0.8, 1.0) * blitz * (0.22 + 1.1 * exp(-length(w - stoss) / 9.0));
 
@@ -223,8 +186,6 @@ void main() {
   gl_FragColor = vec4(col, 1.0);
 }`;
 
-// Die vielen Punkte: im Lärm treibend (die großen weich wie in der Tiefe), im Fokus schießen sie als Lichtstriche in den Kern,
-// im Momentum strömen sie die drei Bahnen der Spur entlang in den Kern.
 const PUNKTE_VS = `
 attribute vec4 aZufall;
 uniform vec2 uRes, uC;
@@ -236,7 +197,6 @@ void main() {
   vec4 s = aZufall;
   float a = uRes.x / uRes.y;
   vec2 kern = bild(vec2(uKX, 0.0));
-  // Lärm → Fokus: aus dem Feld auf einer Spirale in den Kern
   vec2 p0 = vec2((s.x - 0.5) * a * 1.1, s.y * 1.08 - 0.04);
   p0 += vec2(sin(uZeit * (0.05 + s.z * 0.08) + s.w * 40.0), cos(uZeit * (0.04 + s.w * 0.07) + s.z * 30.0)) * (0.03 + 0.05 * s.z);
   float start = s.z * 0.45;
@@ -250,7 +210,6 @@ void main() {
   float tempoS = clamp(e * (1.0 - e) * 4.0, 0.0, 1.0) * 0.85;
   float unten = mix(0.28, 1.0, smoothstep(0.08, 0.46, p0.y));
   float aS = (0.2 + 0.3 * s.w) * mix(unten, 1.0, e) * (1.0 - smoothstep(0.75, 1.0, e));
-  // Momentum: drei Bahnen hinter dem Kern, das Licht strömt bis an den Anfang seiner Linie und geht dort in sie über (nie über die Linie)
   float bahn = floor(s.z * 3.0);
   float by = 5.5 - 5.5 * bahn + (s.y - 0.5) * 1.8;
   float lang = (bahn < 0.5 ? 8.5 : (bahn < 1.5 ? 10.5 : 6.5)) * uStreck;
@@ -294,7 +253,6 @@ void main() {
   gl_FragColor = vec4(f * a, a);
 }`;
 
-// Die Splitter des Knalls: Stücke der Wand (drehend) und violette Funken (Striche in Flugrichtung), nach rechts weg, gebremst, sinkend.
 const SPLITTER_VS = `
 attribute vec4 aZufall;
 uniform vec2 uRes, uC;
@@ -336,7 +294,6 @@ void main() {
     vec2 dd = abs(rc) - vec2(0.26, 0.13);
     float sd = length(max(dd, 0.0)) + min(max(dd.x, dd.y), 0.0);
     a = 1.0 - smoothstep(-0.03, 0.03, sd);
-    // Glühendes Bruchstück: heller Kern, violett glühende Kante, weicher Schein drumherum
     float kante = smoothstep(-0.09, 0.0, sd);
     f = mix(mix(uHell, vec3(1.0), 0.45) * (0.85 + 0.15 * rc.y / 0.13), mix(uAkzent, vec3(1.0), 0.35), kante * 0.85);
     float schein = exp(-max(sd, 0.0) * 14.0) * 0.55 * (1.0 - a);
@@ -371,7 +328,6 @@ function programm(gl, vs, fs) {
   return p;
 }
 const orte = (gl, p, namen) => Object.fromEntries(namen.map((n) => [n, gl.getUniformLocation(p, n)]));
-/** CSS-Farbe (#rrggbb) → [r, g, b] in 0..1 */
 function farbe(hex) {
   const h = hex.trim().replace('#', '');
   return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
@@ -385,11 +341,8 @@ function zufallsPuffer(gl, anzahl) {
   return puffer;
 }
 
-/** Lage des Zeichens im Film: Mitte bei 44 % von oben; R (= 16 Zeichen-Einheiten) höchstens 15 % der Höhe oder 24 % der Breite.
- *  Im Endbild steht es dort, wo `.ende-anker` liegt (film.css: --ende-x, --ende-y, --re). */
 export const LAGE = { mitteY: 0.56, rHoehe: 0.15, rBreite: 0.24 };
 
-/** Startet die Szene. null, wenn es kein WebGL gibt (dann zeigt die Seite das Zeichen als Bild). */
 export function szeneStarten(canvas, { handy = false, anker = null } = {}) {
   const gl = canvas.getContext('webgl', { antialias: false, alpha: false, depth: false, stencil: false, premultipliedAlpha: false, powerPreference: 'default' });
   if (!gl) return null;
@@ -424,7 +377,6 @@ export function szeneStarten(canvas, { handy = false, anker = null } = {}) {
     hell: farbe(stil.getPropertyValue('--hell')), nacht: farbe(stil.getPropertyValue('--nacht')),
   };
 
-  // Zustand, den der Film setzt (siehe geschichte); faden, fahrt und stromP zählt der Film mit der Uhr hoch, knall = Sekunden seit dem Bruch
   const z = {
     sammeln: 0, kern: 0, kx: KERN_START, cam: KERN_START, wand: 0, spurA: 0, streck: 1, punkteSichtbar: 1, puls: 1, weite: 1.5, bluete: 1, impuls: 0,
     energie: 0, riss: 0, beule: 0, glut: 0, loch: 0, knall: -1, tempo: 0, faden: 0, fahrt: 0, stromP: 0, strom: 0, ruhe: 0, tiefe: 1, ks: [1, 1],
@@ -433,7 +385,6 @@ export function szeneStarten(canvas, { handy = false, anker = null } = {}) {
   let dpr = 1;
 
   function groesse() {
-    // Der Schein ist weich: mehr als 1,25 (Rechner) bzw. 1,5 (Handy) Pixeldichte kostet nur Grafikleistung.
     dpr = Math.min(window.devicePixelRatio || 1, handy ? 1.5 : 1.25);
     const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
     const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
@@ -443,7 +394,6 @@ export function szeneStarten(canvas, { handy = false, anker = null } = {}) {
     const g = { R0: Math.min(LAGE.rHoehe, aspekt * LAGE.rBreite), C0: [0, LAGE.mitteY] };
     g.Re = g.R0;
     g.Ce = g.C0;
-    // Das Endbild: das Zeichen steht genau auf dem Anker (Mitte = Mitte des Zeichens, Breite = 2 R)
     if (anker) {
       const a = anker.getBoundingClientRect();
       const c = canvas.getBoundingClientRect();
@@ -547,9 +497,6 @@ export function szeneStarten(canvas, { handy = false, anker = null } = {}) {
   return { zustand: z, groesse, malen };
 }
 
-// Die Geschichte als reine Rechnung: Fortschritt der Schritte → Zustand der Szene (auch für das Standbild).
-// Weg des Kerns in Zeichen-Einheiten (Mitte des Zeichens = 0): er entsteht in der Bildmitte (der Blick folgt ihm, cam), die Wand
-// wächst rechts von ihm, er nimmt Anlauf, drückt gegen die Wand (Kontakt bei −13,9), bricht durch und kommt an seinem Platz im Logo an.
 const KERN_START = -22;
 const KERN_ANLAUF = -16;
 const KONTAKT = -13.9;
@@ -557,20 +504,16 @@ const KERN_DURCH = 2.5;
 const KERN_ZIEL = 8.8;
 const BLICK_LUECKE = -10;
 const BLICK_ANLAUF = -7;
-// Der Durchbruch in drei Takten (Anteile am Schritt): andrücken bis 0,32 · durchbrechen bis 0,46 · ankommen bis 1
 const DRUCK_BIS = 0.32;
 const BRUCH_BIS = 0.46;
-/** Ab hier (Anteil am Durchbruch) ist die Wand gebrochen: der Film löst den Knall aus (Blitz, Welle, Splitter, Stoß). */
 export const BRUCH = 0.36;
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 const glatt = (t) => t * t * (3 - 2 * t);
 const aus3 = (t) => 1 - (1 - t) ** 3;
 
-/** fokus, luecke, momentum, durchbruch, ende je 0..1 → Kern, Wand, Spur, Licht und Blick */
 export function geschichte(z, { fokus, luecke = 1, momentum, durchbruch, ende = 0 }) {
   z.sammeln = fokus;
   z.kern = glatt(clamp01((fokus - 0.4) / 0.6));
-  // Raum: breit im Lärm (1,5), eng im Fokus (0,85), weiter beim Durchbruch (1,2)
   z.weite = 1.5 - 0.65 * glatt(fokus) + 0.35 * glatt(clamp01(durchbruch));
   const w = glatt(clamp01(luecke));
   const m = glatt(clamp01(momentum));
@@ -582,7 +525,6 @@ export function geschichte(z, { fokus, luecke = 1, momentum, durchbruch, ende = 
 
   if (db > 0) {
     if (bruch <= 0) {
-      // heran bis zum Kontakt, dann langsam hineindrücken
       z.kx = KERN_ANLAUF + (KONTAKT - KERN_ANLAUF) * glatt(clamp01(druck / 0.35)) + 0.8 * aus3(clamp01((druck - 0.35) / 0.65));
     } else if (an <= 0) {
       z.kx = KONTAKT + 0.8 + (KERN_DURCH - KONTAKT - 0.8) * bruch * bruch;
@@ -598,7 +540,6 @@ export function geschichte(z, { fokus, luecke = 1, momentum, durchbruch, ende = 
     z.cam = KERN_START + (BLICK_LUECKE - KERN_START) * w;
   }
 
-  // Druck auf die Wand: Risse wachsen, die Wand biegt sich; nach dem Bruch glüht die Kante und alles heilt zum Logo
   const rissDruck = glatt(clamp01((druck - 0.35) / 0.65));
   z.riss = rissDruck * (1 - glatt(clamp01(an / 0.55)));
   z.beule = 1.2 * rissDruck * (1 - bruch);
@@ -606,7 +547,6 @@ export function geschichte(z, { fokus, luecke = 1, momentum, durchbruch, ende = 
   const kontakt = z.kx - KONTAKT;
   z.loch = kontakt > 0 ? 10.2 + 2.6 * glatt(clamp01(kontakt / 12)) : 0;
 
-  // Tempo (Lichtstriche, Strom, schnelle Lichter), Energie (Schein des Kerns), Länge der Spur
   if (db <= 0) {
     z.tempo = 0.7 * m;
     z.energie = 0.35 * z.kern + 0.35 * m;
@@ -630,13 +570,10 @@ export function geschichte(z, { fokus, luecke = 1, momentum, durchbruch, ende = 
   z.strom = db > 0 ? 1 - 0.65 * glatt(an) : glatt(clamp01((momentum - 0.1) / 0.6));
   z.ruhe = glatt(clamp01((an - 0.4) / 0.6));
   z.tiefe = 1 - 0.4 * glatt(an);
-  // Blick: in Fahrt etwas näher, beim Drücken noch näher, beim Ankommen zurück
   z.zoom = db > 0 ? 1 + (0.08 + 0.1 * glatt(druck)) * (1 - glatt(an)) : 1 + 0.08 * m;
-  // Form des Kerns: gestaucht beim Drücken, gestreckt in voller Fahrt
   const v = db > 0 ? (bruch > 0 ? (an > 0 ? (1 - an) ** 3 : 1) : 0.2 * (1 - glatt(druck))) : 0.2 * m;
   const rp = rissDruck * (1 - bruch);
   z.ks = [(1 - 0.08 * rp) * (1 + 0.32 * v), (1 + 0.05 * rp) / Math.sqrt(1 + 0.32 * v)];
   z.ende = glatt(clamp01(ende));
-  // Im Endbild strömt nur noch wenig Licht nach (das Zeichen steht neben dem Text)
   z.strom *= 1 - 0.92 * z.ende;
 }

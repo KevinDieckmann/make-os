@@ -1,5 +1,4 @@
-/* MAKE Studios · die Adressen der Familie an genau EINER Stelle (Vorgabe STRUKTUR-MARKEN.md).
-   Seit 12.11.2026 stehen hier die echten Domains (makestudios.de und makerevenue.de liegen bei IONOS). Ohne Schrägstrich am Ende.
+/* MAKE Studios · die Adressen von MAKE Innovation und MAKE Revenue an genau EINER Stelle. Ohne Schrägstrich am Ende.
    Links im HTML tragen data-familie="innovation|studios|revenue|check" (optional data-pfad="/impressum/") und bekommen ihr
    href von hier. Im HTML steht derselbe Wert als Rückfall; seo.mjs schreibt ihn bei jedem Bau neu aus dieser Datei.
    seo.mjs liest die Zeilen der Liste FAMILIE (je Adresse eine Zeile); die lokale Liste steht deshalb in EINER Zeile. */

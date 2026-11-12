@@ -125,8 +125,8 @@
         z.ziel = eigen && Number.isFinite(ziele[z.id]) && ziele[z.id] > 0 ? ziele[z.id] : z.beispielZiel;
         z.zielEl.textContent = zahlDe(z.ziel, 1);
       }
-      if (marke) marke.textContent = eigen ? 'Ihre Wochenziele · Ist-Zahlen als Beispiel' : markeText;
-      if (hinweis) { if (eigen) hinweis.textContent = 'Die Ziele stammen aus Ihren Werten im Vertriebsrechner. Sie bleiben in Ihrem Browser, gesendet wird nichts. Die Ist-Zahlen sind ein Beispiel: Tragen Sie Ihre eigenen ein.'; else hinweis.innerHTML = hinweisHtml; }
+      if (marke) marke.textContent = eigen ? 'Ihre Wochenziele' : markeText;
+      if (hinweis) { if (eigen) hinweis.textContent = 'Die Ziele stammen aus Ihren Werten im Vertriebsrechner. Die Ist-Zahlen sind noch das Beispiel.'; else hinweis.innerHTML = hinweisHtml; }
       if (zurueck) zurueck.hidden = !eigen;
       neu();
     }

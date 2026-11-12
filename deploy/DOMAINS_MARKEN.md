@@ -72,7 +72,7 @@ docker compose exec caddy caddy reload --config /etc/caddy-aurelia/Caddyfile --a
 - Die Seite ist mit der neuen Adresse gebaut (`prototype/fokus-innovation/inhalt/fokus.json › domain` und `› familie`, Branch
   `make-website`). In den gebauten Ordner kommt sie ohne Generatoren, Inhalte, Notizen und **ohne die Kauf-Unterlagen** in
   `dateien/` (die liefert nur die Anwendung aus):
-  `rsync -a --delete --exclude '*.mjs' --exclude inhalt/ --exclude '*.md' --exclude dateien/ --exclude werkzeug/ --exclude assets/logo-vorschlaege/ <make-website>/prototype/fokus-innovation/ fokusinnovation/`
+  `node <make-website>/prototype/fokus-innovation/ausliefern.mjs <website-upload>/fokusinnovation` (kopiert wie bisher mit rsync und nimmt die Kommentare aus den ausgelieferten Stil- und Skriptdateien; nie mehr nur rsync)
 - **Nach dem Hochladen in der Software umstellen (macht Kevin):** Überall, wo die Adresse der Website eingetragen ist
   (Newsletter-Einstellungen, Check, Unterlagen, Bausteine), `https://makeinnovation.de` statt der alten Adresse eintragen. Bis
   dahin funktionieren die Links in Mails weiter, weil die alte Adresse umleitet.

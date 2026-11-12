@@ -11,6 +11,8 @@
   const mq = (q) => (W.matchMedia ? W.matchMedia(q) : { matches: false });
   const ruhig = mq('(prefers-reduced-motion: reduce)');
   const fein = mq('(hover: hover) and (pointer: fine)').matches;
+  const netz = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+  const sparen = () => !!(netz && (netz.saveData || /(^|-)2g$/.test(netz.effectiveType || ''))) || mq('(prefers-reduced-data: reduce)').matches;
 
   // ═══ Anhalten: ein Zustand für alles, was sich von selbst bewegt ═══
   M.halt = (() => {
@@ -35,8 +37,6 @@
     const HOECHSTENS = 2;
     const pfad = (name) => 'referenzen/' + name + '.mp4';
     const posterPfad = (name) => 'referenzen/' + name + '-poster.webp';
-    const netz = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
-    const sparen = () => !!(netz && (netz.saveData || /(^|-)2g$/.test(netz.effectiveType || ''))) || mq('(prefers-reduced-data: reduce)').matches;
     const erlaubt = () => !ruhig.matches && !sparen() && !M.halt.ist() && !D.hidden;
     const flaechen = new Map();
     let rang = 0;
@@ -234,6 +234,62 @@
     if (ruhig.addEventListener) ruhig.addEventListener('change', () => { if (ruhig.matches) flaechen.forEach((z) => anhalten(z, true)); ordnen(); });
 
     return { spiele };
+  })();
+
+  // ═══ Beispielfilme (Video & Foto, Social Media) ═══
+  // Im HTML steht <video controls preload="none"> mit Poster: ohne JavaScript bedient man den Film mit den Knöpfen des Browsers.
+  // Hier übernimmt ein eigener Knopf. Die Datei lädt erst, wenn die Kachel im Bild ist oder jemand auf Abspielen drückt.
+  // Von selbst laufen höchstens zwei Filme, außerhalb des Bilds ist Pause. Bei „Bewegung reduzieren“, im Datensparmodus
+  // oder wenn die Bewegung angehalten ist, läuft keiner von selbst; der Knopf geht immer.
+  (() => {
+    const HOECHSTENS = 2;
+    const kacheln = Array.from(D.querySelectorAll('.film-flaeche')).map((el) => ({
+      el, video: el.querySelector('video'), knopf: el.querySelector('.film-knopf'), name: el.getAttribute('data-film') || '', imBild: false, hand: '', rang: 0,
+    })).filter((k) => k.video && k.knopf);
+    if (!kacheln.length || !('IntersectionObserver' in W)) return;
+    let rang = 0;
+    const vonSelbst = () => !ruhig.matches && !sparen() && !M.halt.ist() && !D.hidden;
+    const beschriften = (k, laeuft) => {
+      k.el.classList.toggle('laeuft', laeuft);
+      k.knopf.setAttribute('aria-label', (laeuft ? 'Anhalten: ' : 'Abspielen: ') + 'Beispielfilm ' + k.name);
+    };
+    function ordnen() {
+      const frei = vonSelbst();
+      const wunsch = kacheln.filter((k) => k.imBild && k.hand !== 'aus' && (k.hand === 'an' || frei));
+      wunsch.sort((a, b) => b.rang - a.rang);                 // von Hand gestartete zuerst, sonst in der Reihenfolge der Seite
+      kacheln.forEach((k) => {
+        const i = wunsch.indexOf(k);
+        if (i > -1 && i < HOECHSTENS) {
+          if (k.video.paused) { const v = k.video.play(); if (v && v.catch) v.catch(() => { /* Poster bleibt */ }); }
+        } else if (!k.video.paused) k.video.pause();
+      });
+    }
+    const sicht = new IntersectionObserver((liste) => {
+      liste.forEach((e) => {
+        const k = kacheln.find((x) => x.el === e.target);
+        if (!k) return;
+        k.imBild = e.isIntersecting && e.intersectionRatio >= .5;
+        if (!k.imBild && k.hand === 'an') { k.hand = ''; k.rang = 0; }
+      });
+      ordnen();
+    }, { threshold: [0, .5] });
+    kacheln.forEach((k) => {
+      k.video.controls = false;
+      k.video.muted = true;
+      k.video.tabIndex = -1;
+      k.knopf.hidden = false;
+      beschriften(k, false);
+      k.video.addEventListener('playing', () => beschriften(k, true));
+      k.video.addEventListener('pause', () => beschriften(k, false));
+      k.knopf.addEventListener('click', () => {
+        if (k.video.paused) { k.hand = 'an'; k.rang = ++rang; k.imBild = true; } else { k.hand = 'aus'; k.rang = 0; }
+        ordnen();
+      });
+      sicht.observe(k.el);
+    });
+    M.halt.hoeren((an) => { if (an) kacheln.forEach((k) => { if (k.hand === 'an') { k.hand = ''; k.rang = 0; } }); ordnen(); });
+    D.addEventListener('visibilitychange', ordnen);
+    if (ruhig.addEventListener) ruhig.addEventListener('change', ordnen);
   })();
 
   // ═══ Menü für schmale Fenster ═══

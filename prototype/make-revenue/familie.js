@@ -1,5 +1,4 @@
-// MAKE Revenue · die Adressen der Familie an genau EINER Stelle.
-// Seit 12.11.2026 stehen hier die echten Domains (makestudios.de und makerevenue.de liegen bei IONOS, das Dach ist makeinnovation.de).
+// MAKE Revenue · die Adressen von MAKE Innovation und MAKE Studios an genau EINER Stelle.
 // Nach einer Änderung „node seo.mjs“ ausführen: Das Skript schreibt Canonical, Vorschaubild, strukturierte Daten und den
 // Rückfall aller Familien-Links im HTML neu.
 // Links im HTML tragen data-familie="innovation|studios|revenue|check" (dazu wahlweise data-pfad="events/");

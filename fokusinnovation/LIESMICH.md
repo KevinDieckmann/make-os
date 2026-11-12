@@ -6,8 +6,10 @@ Dieser Ordner ist **gebaut**, nicht von Hand geschrieben. Quelle und Generator l
 So kommt eine neue Fassung hierher:
 1. Dort bauen: `node prototype/fokus-innovation/bauen.mjs` (prüft die Regeln gleich mit). Neue Seiten oder geänderte Titel: vorher
    `node prototype/fokus-innovation/bilder.mjs` (Vorschaubilder und Icons, braucht Chrome).
-2. Hierher kopieren, ohne Generatoren, Inhalte und Notizen:
-   `rsync -a --delete --exclude '*.mjs' --exclude inhalt/ --exclude '*.md' --exclude dateien/ --exclude werkzeug/ --exclude assets/logo-vorschlaege/ prototype/fokus-innovation/ fokusinnovation/`
+2. Hierher ausliefern, ohne Generatoren, Inhalte und Notizen:
+   `node prototype/fokus-innovation/ausliefern.mjs <dieser Ordner>`
+   Das Skript kopiert wie bisher (rsync, ohne `dateien/`, `werkzeug/`, Logo-Vorschläge) und nimmt danach alle Kommentare aus den
+   ausgelieferten Stil- und Skriptdateien. Die Quelle behält ihre Arbeitsnotizen, im Netz stehen sie nicht. Nie mehr nur rsync.
 3. Auf `main` bringen. Caddy liefert den Ordner unter makeinnovation.de aus; fokusinnovation.de leitet dorthin (`deploy/caddy/Caddyfile`, Mount in `compose.yml`).
 
 Für Suchmaschinen und KI-Suchen (27.10.) trägt jede Seite Titel, Beschreibung, Canonical, Vorschaubild (`assets/bild/og/`) und

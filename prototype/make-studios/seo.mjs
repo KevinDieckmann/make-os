@@ -30,8 +30,9 @@ for (const k of ['innovation', 'studios', 'revenue']) if (!FAMILIE[k]) throw new
 const BASIS = FAMILIE.studios;
 const daten = JSON.parse(lies('websites/daten.json'));
 const HEUTE = new Date().toISOString().slice(0, 10);
-const STANDARDSATZ = 'MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video.';
-// Standardsätze der beiden anderen Marken: wörtlich gleich auf allen drei Seiten (Abschnitt „Teil von MAKE Innovation“, llms.txt, JSON-LD)
+const STANDARDSATZ = 'MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Video, Fotos und Social Media.';
+// Standardsätze der beiden anderen Marken: wörtlich gleich auf allen drei Seiten, aber nur in llms.txt und JSON-LD.
+// Im sichtbaren Text steht die Zugehörigkeit genau einmal: in der Fußzeile (Schreibregeln 12.11., Abschnitt 2).
 const SATZ_REVENUE = 'MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.';
 const SATZ_DACH = 'MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue.';
 const VORSCHAUBILD = '/bild/og-start.png';
@@ -73,7 +74,7 @@ function seoBlock({ pfad, titel, beschreibung, graph, noindex, typ = 'website' }
     '<meta property="og:image" content="' + BASIS + VORSCHAUBILD + '">',
     '<meta property="og:image:width" content="1200">',
     '<meta property="og:image:height" content="630">',
-    '<meta property="og:image:alt" content="MAKE Studios: Websites, Google-Profil und Video für Betriebe in Berlin">',
+    '<meta property="og:image:alt" content="MAKE Studios: Websites, Google-Profil, Video und Social Media für Betriebe in Berlin">',
     '<meta name="twitter:card" content="summary_large_image">',
   ];
   if (graph) z.push('<script type="application/ld+json">' + JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c') + '</script>');
@@ -100,14 +101,17 @@ const beschrStart = (/<meta name="description" content="([^"]*)"/.exec(start) ||
 const fragen = Array.from(start.matchAll(/<details><summary>([\s\S]*?)<\/summary><p>([\s\S]*?)<\/p><\/details>/g)).map((m) => [text(m[1]), text(m[2])]);
 const leistungen = Array.from(start.matchAll(/<article class="leistung">[\s\S]*?<h3>([\s\S]*?)<\/h3>\s*<p>([\s\S]*?)<\/p>/g)).map((m) => [text(m[1]), text(m[2])]);
 const checkText = text((/id="check-titel">[\s\S]*?<p class="abschnitt-text">([\s\S]*?)<\/p>/.exec(start) || [])[1] || '');
-const ART = { 'Website': 'Webdesign', 'Sichtbarkeit': 'Google-Unternehmensprofil und lokale Sichtbarkeit', 'Video & Foto': 'Videoproduktion und Unternehmensfotografie' };
+const ART = { 'Website': 'Webdesign', 'Sichtbarkeit bei Google': 'Google-Unternehmensprofil und lokale Sichtbarkeit', 'Video & Foto': 'Videoproduktion und Unternehmensfotografie', 'Social Media': 'Betreuung von Social-Media-Kanälen' };
+// Wo die Leistung auf der Startseite ausführlich steht
+const ANKER = { 'Website': '#websites', 'Video & Foto': '#video', 'Social Media': '#social' };
+const ankerVon = (name) => BASIS + '/' + (ANKER[name] || '#leistungen');
 const f = seo.firma || {};
 // Angaben, die in seo.json noch als {{…}} stehen, fehlen in den Daten für Suchmaschinen ganz (statt als Platzhalter zu erscheinen).
 const echt = (w) => (w && !PLATZHALTER.test(w) ? w : undefined);
 const organisation = { '@type': 'Organization', '@id': ORG_ID, name: 'MAKE Studios', url: BASIS + '/', description: STANDARDSATZ,
   logo: { '@type': 'ImageObject', url: BASIS + '/bild/logo.png', width: 512, height: 512 }, email: f.email, telephone: echt(f.telefon),
   address: { '@type': 'PostalAddress', streetAddress: echt(f.strasse), postalCode: echt(f.plz), addressLocality: 'Berlin', addressRegion: 'BE', addressCountry: 'DE' },
-  areaServed: { '@type': 'City', name: 'Berlin' }, knowsAbout: ['Webdesign', 'Google-Unternehmensprofil', 'Unternehmensfotografie', 'Videoproduktion'],
+  areaServed: { '@type': 'City', name: 'Berlin' }, knowsAbout: ['Webdesign', 'Google-Unternehmensprofil', 'Videoproduktion', 'Erklärvideos', 'Unternehmensfotografie', 'Social Media'],
   brand: { '@type': 'Brand', '@id': BASIS + '/#marke', name: 'MAKE Studios' },
   parentOrganization: { '@type': 'Organization', '@id': FAMILIE.innovation + '/#organisation', name: 'MAKE Innovation', description: SATZ_DACH, url: FAMILIE.innovation + '/' } };
 if (f.sameAs && f.sameAs.length) organisation.sameAs = f.sameAs;
@@ -115,7 +119,7 @@ const graphStart = [organisation,
   { '@type': 'WebSite', '@id': BASIS + '/#website', url: BASIS + '/', name: 'MAKE Studios', inLanguage: 'de-DE', publisher: { '@id': ORG_ID } },
   webseite('/', titelStart, beschrStart),
   ...leistungen.map(([name, beschr], i) => ({ '@type': 'Service', '@id': BASIS + '/#leistung-' + (i + 1), name: name + ' für Betriebe und Dienstleister', serviceType: ART[name] || name, description: beschr,
-    provider: { '@id': ORG_ID }, areaServed: { '@type': 'City', name: 'Berlin' }, audience: { '@type': 'BusinessAudience', audienceType: 'Lokale Betriebe und Dienstleister' }, url: BASIS + '/#leistungen' })),
+    provider: { '@id': ORG_ID }, areaServed: { '@type': 'City', name: 'Berlin' }, audience: { '@type': 'BusinessAudience', audienceType: 'Lokale Betriebe und Dienstleister' }, url: ankerVon(name) })),
   { '@type': 'Service', '@id': BASIS + '/#leistung-check', name: 'Sichtbarkeits-Check', serviceType: 'Analyse der Online-Sichtbarkeit', description: checkText, provider: { '@id': ORG_ID }, areaServed: { '@type': 'City', name: 'Berlin' }, url: BASIS + '/#check' },
   { '@type': 'FAQPage', '@id': BASIS + '/#fragen', inLanguage: 'de-DE', mainEntity: fragen.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) }];
 start = familieLinks(zwischen(start, seoBlock({ pfad: '/', titel: titelStart, beschreibung: beschrStart, graph: graphStart })));
@@ -173,29 +177,28 @@ for (const s of seiten) {
   const inhalt = `<nav class="krumen" aria-label="Sie sind hier"><a href="../../">Start</a> <span aria-hidden="true">›</span> <a href="../">Beispielseiten</a> <span aria-hidden="true">›</span> <span>${esc(s.thema)}</span></nav>
 <article class="fall">
   <header class="fall-kopf">
-    <p class="ueberzeile">Beispielseite · ${esc(s.branche)}</p>
+    <p class="ueberzeile">Beispiel · erfundener Betrieb</p>
     <h1>Website für ${esc(s.thema)}: die Beispielseite ${esc(s.name)}</h1>
-    <p class="fall-ehrlich">Beispiel von MAKE Studios. Den Betrieb „${esc(s.name)}“ gibt es nicht; die Seite ist vollständig gebaut und zum Durchklicken.</p>
     <p class="fall-satz">${esc(s.satz)}</p>
     <p class="fall-aktionen"><a class="knopf knopf-signal" href="../../beispiele/${s.slug}/">Beispielseite öffnen</a><a class="knopf" href="../../#erstgespraech-${s.buchen}">Erstgespräch buchen</a></p>
   </header>
   <div class="fall-medien">
     <figure class="fenster">
       <video controls muted loop playsinline preload="none" width="960" height="600" poster="../../referenzen/${s.slug}-poster.webp" aria-label="Bildschirmaufnahme der Beispielseite ${esc(s.name)}, ohne Ton"><source src="../../referenzen/${s.slug}.mp4" type="video/mp4"></video>
-      <figcaption>Bildschirmaufnahme der Beispielseite am Rechner, ohne Ton.</figcaption>
+      <figcaption>Am Rechner, Aufnahme ohne Ton</figcaption>
     </figure>
     <figure class="handy">
       <img src="../../referenzen/${s.slug}-hoch-poster.webp" alt="Die Beispielseite ${esc(s.name)} auf dem Handy" width="540" height="1168" loading="lazy" decoding="async">
-      <figcaption>Dieselbe Seite auf dem Handy.</figcaption>
+      <figcaption>Auf dem Handy</figcaption>
     </figure>
   </div>
   <section aria-labelledby="f-aufgabe"><h2 id="f-aufgabe">Welche Aufgabe löst die Seite?</h2><p>${esc(s.aufgabe)}</p></section>
-  <section aria-labelledby="f-bausteine"><h2 id="f-bausteine">Welche Bausteine hat die Beispielseite?</h2><ul class="bausteine">${s.merkmale.map((m) => '<li>' + esc(m) + '</li>').join('')}</ul>${s.aufbau ? '<p>' + esc(s.aufbau) + '</p>' : ''}<p>Dazu kommt, was MAKE Studios bei jeder Seite einbaut: zuerst für das Handy gestaltet, kurze Ladezeit und ein klarer Weg zur Anfrage.</p></section>
+  <section aria-labelledby="f-bausteine"><h2 id="f-bausteine">Was enthält die Seite?</h2><ul class="bausteine">${s.merkmale.map((m) => '<li>' + esc(m) + '</li>').join('')}</ul>${s.aufbau ? '<p>' + esc(s.aufbau) + '</p>' : ''}<p>Wie jede unserer Seiten ist sie zuerst für das Handy gestaltet und lädt schnell.</p></section>
   <section aria-labelledby="f-passt"><h2 id="f-passt">Für wen passt so eine Seite?</h2><p>${esc(s.passt)}</p></section>
-  <section aria-labelledby="f-weiter"><h2 id="f-weiter">Wie entsteht Ihre eigene Seite?</h2><p>MAKE Studios baut Ihre Seite in sechs Schritten: Briefing, Design, Feedback, Umsetzung, Abnahme, Live. Sie sehen den Entwurf, bevor gebaut wird. <a href="../../#ablauf">Zum Ablauf</a></p>
+  <section aria-labelledby="f-weiter"><h2 id="f-weiter">Wie entsteht Ihre eigene Seite?</h2><p>In sechs Schritten: Briefing, Design, Feedback, Umsetzung, Abnahme, Live. Sie sehen den Entwurf, bevor wir bauen, und online geht die Seite erst mit Ihrem Okay. <a href="../../#ablauf">Zum Ablauf</a></p>
     <p class="fall-aktionen"><a class="knopf knopf-signal" href="../../#erstgespraech-${s.buchen}">Erstgespräch buchen</a><a class="knopf" href="../../#check">Sichtbarkeits-Check machen</a></p></section>
   <aside aria-labelledby="f-andere"><h2 id="f-andere">Weitere Beispielseiten</h2><ul class="andere">${andere}</ul></aside>
-  <p class="stand">Stand: ${esc(seo.stand)}. Betrieb, Namen und Adressen der Beispielseite sind erfunden.</p>
+  <p class="stand">Stand: ${esc(seo.stand)}</p>
 </article>`;
   schreibe('websites/' + s.slug + '/index.html', huelle({ tiefe: 2, titel, beschreibung, inhalt, block: seoBlock({ pfad, titel, beschreibung, graph, noindex: s.offen, typ: 'article' }) }));
   gebaut.push({ pfad, datei: 'websites/' + s.slug + '/index.html', titel, beschreibung, offen: s.offen, bild: '/referenzen/' + s.slug + '-poster.webp' });
@@ -218,10 +221,10 @@ for (const s of seiten) {
   }).join('\n');
   const inhalt = `<nav class="krumen" aria-label="Sie sind hier"><a href="../">Start</a> <span aria-hidden="true">›</span> <span>Beispielseiten</span></nav>
 <header class="fall-kopf"><p class="ueberzeile">Beispielseiten</p><h1>Beispielseiten: Website-Entwürfe für Betriebe und Dienstleister</h1>
-  <p class="fall-satz">MAKE Studios hat acht vollständige Websites für erfundene Betriebe gebaut. Jede zeigt, wie ein Auftritt für eine bestimmte Art von Betrieb aussehen kann. Hier steht zu jeder Seite, welche Aufgabe sie löst, welche Bausteine sie hat und für wen sie passt.</p>
+  <p class="fall-satz">Acht vollständige Websites für erfundene Betriebe. Zu jeder lesen Sie, welche Aufgabe sie löst, was sie enthält und für wen sie passt.</p>
   <p class="filter-links" aria-label="Nach Art springen">${Object.entries(daten.arten).map(([art, name]) => `<a href="#art-${art}">${esc(name)}</a>`).join('')}</p></header>
 ${gruppen}
-<p class="stand">Stand: ${esc(seo.stand)}. Alle Betriebe, Namen und Adressen der Beispielseiten sind erfunden.</p>`;
+<p class="stand">Stand: ${esc(seo.stand)}</p>`;
   schreibe('websites/index.html', huelle({ tiefe: 1, titel, beschreibung, inhalt, block: seoBlock({ pfad, titel, beschreibung, graph }) }));
   gebaut.push({ pfad, datei: 'websites/index.html', titel, beschreibung, offen: false });
 }
@@ -251,10 +254,10 @@ schreibe('seo-stand.json', JSON.stringify(stand, null, 1) + '\n');
 schreibe('sitemap.xml', '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n'
   + inSitemap.map((e) => '  <url><loc>' + BASIS + e.pfad + '</loc><lastmod>' + ((stand[e.pfad] || {}).datum || HEUTE) + '</lastmod>' + (e.bild ? '<image:image><image:loc>' + BASIS + e.bild + '</image:loc></image:image>' : '') + '</url>').join('\n') + '\n</urlset>\n');
 schreibe('llms.txt', '# MAKE Studios\n\n> ' + STANDARDSATZ + '\n\n## Leistungen\n'
-  + leistungen.map(([n, b]) => '- [' + n + '](' + BASIS + '/#leistungen): ' + b).join('\n') + '\n- [Sichtbarkeits-Check](' + BASIS + '/#check): ' + checkText
+  + leistungen.map(([n, b]) => '- [' + n + '](' + ankerVon(n) + '): ' + b).join('\n') + '\n- [Sichtbarkeits-Check](' + BASIS + '/#check): ' + checkText
   + '\n\n## Beispielseiten\n- [Übersicht](' + BASIS + '/websites/): Website-Entwürfe für erfundene Betriebe, je Seite erklärt\n'
   + seiten.filter((s) => !s.offen).map((s) => '- [Website für ' + s.thema + '](' + BASIS + '/websites/' + s.slug + '/): ' + s.satz).join('\n')
-  + '\n\n## Kontakt\n- E-Mail: ' + (f.email || '') + '\n- Erstgespräch: ' + BASIS + '/#erstgespraech\n\n## Familie\n- [MAKE Innovation](' + FAMILIE.innovation + '/): ' + SATZ_DACH + '\n- [MAKE Revenue](' + FAMILIE.revenue + '/): ' + SATZ_REVENUE + '\n');
+  + '\n\n## Kontakt\n- E-Mail: ' + (f.email || '') + '\n- Erstgespräch: ' + BASIS + '/#erstgespraech\n\n## Weitere Angebote\n- [MAKE Innovation](' + FAMILIE.innovation + '/): ' + SATZ_DACH + '\n- [MAKE Revenue](' + FAMILIE.revenue + '/): ' + SATZ_REVENUE + '\n');
 if (!NUR_PRUEFEN) {
   if (OEFFENTLICH) { if (gibts('.vorschau')) unlinkSync(join(ORT, '.vorschau')); }
   else writeFileSync(join(ORT, '.vorschau'), 'Vorschau: nicht freigegeben. Der Server setzt X-Robots-Tag noindex, solange diese Datei liegt.\n');
@@ -303,8 +306,18 @@ for (const d of dateien) {
 { const html = gibts('index.html') ? lies('index.html') : ''; const sicht = text(html.replace(/<script[\s\S]*?<\/script>/g, ''));
   for (const [q] of fragen) if (!sicht.includes(q)) melde(true, 'index.html: Frage in den Daten, aber nicht sichtbar: ' + q);
   if (fragen.length < 5) melde(true, 'index.html: weniger als fünf Fragen gefunden');
-  if (leistungen.length !== 3) melde(true, 'index.html: Leistungen nicht gefunden (' + leistungen.length + ')');
-  for (const [n, s] of [['MAKE Studios', STANDARDSATZ], ['MAKE Revenue', SATZ_REVENUE], ['MAKE Innovation', SATZ_DACH]]) if (!sicht.includes(s)) melde(true, 'index.html: Standardsatz von ' + n + ' steht nicht wörtlich auf der Seite'); }
+  if (leistungen.length !== 4) melde(true, 'index.html: nicht genau vier Leistungen gefunden (' + leistungen.length + ')');
+  for (const [n] of leistungen) if (!ART[n]) melde(true, 'index.html: Leistung ohne Art in den Daten: ' + n);
+  // Standardsätze: wörtlich in den Daten für Suchmaschinen (JSON-LD) und in llms.txt. Sichtbar steht die Zugehörigkeit nur in der Fußzeile.
+  const ld = (/<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html) || [])[1] || '', llms = gibts('llms.txt') ? lies('llms.txt') : '';
+  for (const [n, s] of [['MAKE Studios', STANDARDSATZ], ['MAKE Innovation', SATZ_DACH]]) if (!ld.includes(JSON.stringify(s).slice(1, -1))) melde(true, 'index.html: Standardsatz von ' + n + ' fehlt in den strukturierten Daten');
+  for (const [n, s] of [['MAKE Studios', STANDARDSATZ], ['MAKE Revenue', SATZ_REVENUE], ['MAKE Innovation', SATZ_DACH]]) if (!llms.includes(s)) melde(true, 'llms.txt: Standardsatz von ' + n + ' fehlt');
+  const fuss = text((/<footer class="fuss">([\s\S]*?)<\/footer>/.exec(html) || [])[1] || '');
+  if (!fuss.includes('MAKE Studios · eine Marke von MAKE Innovation')) melde(true, 'index.html: Fußzeile „MAKE Studios · eine Marke von MAKE Innovation“ fehlt'); }
+// Innensicht: Wörter über unsere Aufteilung und Sätze über die Seite selbst stehen nicht im sichtbaren Text (Schreibregeln 12.11., Abschnitt 2)
+{ const INNEN = /Familie|Das Dach|Zuhause|im selben Haus|weitere Adressen|auf dieser Seite|eigene Marke|Platzhalter/;
+  for (const d of dateien) { const sicht = text(lies(d).replace(/<script[\s\S]*?<\/script>/g, '').replace(/<head>[\s\S]*?<\/head>/, '')); const m = INNEN.exec(sicht);
+    if (m) melde(true, d + ': Innensicht im sichtbaren Text („' + m[0] + '“)'); } }
 if (!gibts('bild/og-start.png')) melde(true, 'Vorschaubild bild/og-start.png fehlt');
 if (!gibts('bild/logo.png')) melde(true, 'Logo bild/logo.png fehlt');
 if (gibts('sitemap.xml')) { const sm = lies('sitemap.xml'); for (const s of seiten) if (s.offen && sm.includes('/websites/' + s.slug + '/')) melde(true, 'Sitemap enthält noindex-Seite ' + s.slug);

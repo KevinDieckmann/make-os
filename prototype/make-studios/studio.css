@@ -1,4 +1,4 @@
-/* ─── MAKE Studios · Testseite (Prototyp, nicht online) ───────────────────────────────────────────────
+/* ─── MAKE Studios · Stile ─────────────────────────────────────────────────────────────────────────────
    Gestaltung: Blende als Zeichen („gesehen werden“), Papier · Tinte · Signal, Rhythmus hell → dunkel → hell.
    Der Film läuft über EINEN Fortschritt p (studio.js). Diese Datei legt die Bühne für den Film an;
    die Aufnahmen der Beispielseiten (referenzen/*.mp4) steuert seite.js;
@@ -161,12 +161,7 @@ html.dunkel .kopf::before { background: rgba(13, 12, 11, .8); border-bottom-colo
 .kopf-nav a[aria-current] { background: var(--tinte); color: var(--papier); }
 html.dunkel .kopf-nav a[aria-current] { background: var(--papier); color: var(--tinte); }
 .kopf-rechts { display: flex; align-items: center; gap: 10px; }
-/* Formel der Familie neben der Marke: hängt frei rechts am Logo, damit das Menü mittig bleibt; nur wo Platz ist, sonst steht sie im Menü */
 .kopf-links { position: relative; display: flex; align-items: center; }
-.kopf-familie { display: none; position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 16px; padding: 8px 0; font: 500 10.5px/1.35 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; white-space: nowrap; color: inherit; opacity: .62; transition: opacity .2s; }
-.kopf-familie span { display: block; }
-.kopf-familie:hover, .kopf-familie:focus-visible { opacity: 1; }
-@media (min-width: 1360px) { .kopf-familie { display: block; } }
 .menue-knopf {
   display: none; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px; border-radius: 999px;
   border: 1px solid rgba(13, 12, 11, .16); background: rgba(242, 237, 228, .62); color: inherit; cursor: pointer;
@@ -250,6 +245,12 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .karte-satz { margin: 8px 0 14px; font-family: "Instrument", Georgia, serif; font-style: italic; font-size: clamp(19px, 1.5vw, 22px); line-height: 1.2; }
 .karte-liste { list-style: none; padding: 0; font: 500 13px/1.7 "Mono", monospace; letter-spacing: .01em; }
 .karte-liste li::before { content: "+ "; color: var(--signal); }
+/* Die ganze Karte führt zur Beispielseite. Der Link liegt über der Karte; der Film schaltet ihn nur für die vordere Karte frei. */
+.karte-auf { margin-top: 14px; white-space: nowrap; font: 500 12px/1 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--signal); }
+.karte-auf::after { content: " \2197"; }
+.karte-link { position: absolute; inset: 0; z-index: 3; border-radius: inherit; pointer-events: auto; }
+.karte-link:focus-visible { outline: 2px solid var(--signal); outline-offset: -5px; }
+@media (hover: hover) { .karte-seite:has(.karte-link:hover) .karte-auf { text-decoration: underline; text-underline-offset: 4px; } }
 
 /* Der Bildschirm im Intro: Vorderseite der ersten Karte. Gleiche Höhe wie die Karte (so stimmt die Kante beim Wenden), aber quer. */
 .schirm {
@@ -344,8 +345,7 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .tafel-markt p { padding-top: 12px; border-top: 1px solid var(--linie-hell); font: 500 11px/1.4 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: rgba(242, 237, 228, .7); }
 .tafel-markt b { display: block; margin-bottom: 8px; font-size: clamp(30px, 3vw, 46px); line-height: .9; letter-spacing: -.02em; text-transform: none; color: var(--signal); font-variant-numeric: tabular-nums; }
 .tafel-quelle { margin-top: 12px; font: 500 12px/1.45 "Mono", monospace; letter-spacing: .03em; opacity: .72; }
-.tafel-unter { margin-top: 28px; font: 600 12px/1 "Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
-.tafel-liste { list-style: none; padding: 0; margin-top: 12px; }
+.tafel-liste { list-style: none; padding: 0; margin-top: 28px; }
 .tafel-liste li { padding: 9px 0; border-top: 1px solid currentColor; border-color: rgba(13, 12, 11, .2); font-size: 17px; }
 .tafel:nth-child(3) .tafel-liste li { border-color: rgba(242, 237, 228, .28); }
 .tafel:nth-child(2) .ueberzeile::before { background: var(--tinte); }
@@ -474,14 +474,26 @@ html.ohne-chrom .chrom {
 .analyse-quelle a { color: rgba(242, 237, 228, .86); text-underline-offset: 3px; }
 .analysen-fuss { margin-top: 28px; font: 500 12px/1.5 "Mono", monospace; letter-spacing: .04em; color: rgba(242, 237, 228, .56); }
 
-.leistungen-raster { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 2vw, 28px); }
-.leistung { padding-top: 22px; border-top: 2px solid var(--tinte); }
-.leistung-nr { font: 500 12px/1 "Mono", monospace; letter-spacing: .14em; color: var(--signal-text); }
-.leistung h3 { margin-top: 18px; font-size: clamp(38px, 3.4vw, 58px); line-height: .92; }
-.leistung p { margin-top: 14px; max-width: 34ch; color: var(--tinte-weich); }
-.leistung ul { list-style: none; padding: 0; margin-top: 22px; }
-.leistung li { padding: 11px 0; border-top: 1px solid var(--linie); font-size: 17px; }
-.leistung li::before { content: "+"; display: inline-block; width: 22px; color: var(--signal-tief); font-weight: 700; }
+/* Leistungen: die vier Teile des Auftritts, dunkel abgesetzt direkt nach dem Film */
+.abschnitt-leistungen {
+  isolation: isolate; overflow: clip;
+  margin: 0 clamp(8px, 1.2vw, 18px); border-radius: clamp(28px, 3.4vw, 48px);
+  background: var(--tinte); color: var(--papier);
+}
+.abschnitt-leistungen::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(46% 40% at 6% 0%, rgba(255, 90, 31, .2), transparent 70%), radial-gradient(40% 36% at 100% 72%, rgba(124, 58, 237, .16), transparent 72%);
+}
+.abschnitt-leistungen .abschnitt-titel em { color: var(--signal); }
+.abschnitt-leistungen .abschnitt-text { color: rgba(242, 237, 228, .74); }
+.leistungen-kopf, .video-kopf, .social-kopf { max-width: none; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 20px clamp(24px, 4vw, 64px); align-items: end; }
+.leistungen-kopf .abschnitt-text, .video-kopf .abschnitt-text, .social-kopf .abschnitt-text { margin-top: 0; padding-bottom: 8px; }
+.leistungen-raster { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(16px, 2vw, 28px); }
+.leistung { display: flex; flex-direction: column; align-items: flex-start; padding-top: 22px; border-top: 2px solid var(--papier); }
+.leistung-nr { font: 500 12px/1.3 "Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--signal); }
+.leistung h3 { display: flex; align-items: flex-end; min-height: 1.84em; margin-top: 14px; font-size: clamp(32px, 2.7vw, 46px); line-height: .92; }
+.leistung p { margin-top: 14px; max-width: 34ch; color: rgba(242, 237, 228, .74); }
+.leistung-weiter { margin-top: auto; padding-top: 12px; }
 
 .abschnitt-ablauf { background: var(--signal); color: var(--tinte); }
 .abschnitt-ablauf .abschnitt-titel em { color: var(--tinte); }
@@ -501,18 +513,16 @@ html.ohne-chrom .chrom {
 .fragen-liste details[open] summary::after { transform: rotate(45deg); }
 .fragen-liste details p { padding: 0 56px 28px 0; max-width: 62ch; color: var(--tinte-weich); }
 
-/* Die Familie: ruhiger Abschnitt mit den zwei anderen Adressen im Haus */
+/* Verweise zu MAKE Revenue und MAKE Innovation: ruhiger Abschnitt, je Karte Anlass, Lösung, Link */
 .abschnitt-familie { background: var(--papier-2); }
 .familie-raster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 2vw, 28px); }
 .familie-karte { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: clamp(24px, 3vw, 40px); border-radius: 28px; background: var(--papier); box-shadow: inset 0 0 0 1px var(--linie); }
-.familie-art { font: 500 12px/1 "Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--signal-text); }
 .familie-karte h3 { font-size: clamp(34px, 3.2vw, 52px); line-height: .94; }
-.familie-karte p:not(.familie-art) { max-width: 46ch; color: var(--tinte-weich); }
+.familie-karte p { max-width: 46ch; color: var(--tinte-weich); }
 .familie-karte .link-pfeil { margin-top: auto; }
-/* MAKE Revenue: eigenes Zeichen (helles Blau auf Nacht) und Tiefblau als Markenfarbe, oben rechts in der Karte (seit 12.11.) */
+/* MAKE Revenue: eigenes Zeichen (helles Blau auf Nacht) und Tiefblau als Markenfarbe, oben rechts in der Karte */
 .familie-karte { position: relative; }
 .familie-zeichen { position: absolute; top: clamp(20px, 2.6vw, 34px); right: clamp(20px, 2.6vw, 34px); width: clamp(44px, 4vw, 56px); height: auto; border-radius: 22%; }
-.familie-revenue .familie-art { color: #17469E; }
 .familie-revenue .link-pfeil { text-decoration-color: #17469E; }
 .abschnitt-kontakt { display: flex; flex-direction: column; align-items: center; text-align: center; background: var(--tinte); color: var(--papier); }
 .abschnitt-kontakt .abschnitt-text { color: rgba(242, 237, 228, .74); margin-bottom: 36px; }
@@ -567,9 +577,6 @@ html.menue-offen { overflow: hidden; }
 .menue-fuss .knopf::after { background: var(--tinte); }
 .menue-fuss .knopf:hover { background: var(--papier); }
 .menue-mail { display: grid; place-items: center; min-height: 44px; font: 500 14px/1 "Mono", monospace; color: rgba(242, 237, 228, .8); text-underline-offset: 4px; }
-.menue-mail.menue-familie { font-size: 12px; letter-spacing: .04em; text-decoration: none; color: rgba(242, 237, 228, .62); }
-/* niedrige Handys: das Menü bleibt ohne Rollen bedienbar, die Formel steht dann nur im Fuß der Seite */
-@media (max-height: 720px) { .menue-mail.menue-familie { display: none; } }
 
 /* ─── Entwürfe je Branche: ein Arbeitsbeispiel pro Zielgruppe, klar als Entwurf gekennzeichnet ─── */
 .abschnitt-entwuerfe { padding-bottom: clamp(72px, 9vw, 140px); }
@@ -680,10 +687,8 @@ html.menue-offen { overflow: hidden; }
 .entwurf-titel { margin-top: 18px; font-size: clamp(38px, 3.8vw, 64px); line-height: .92; }
 .entwurf-titel em { color: var(--signal-tief); font-size: 1.05em; }
 .entwurf-punkte { margin: 28px 0 0; }
-.entwurf-punkte div { padding: 16px 0; border-top: 1px solid var(--linie); }
-.entwurf-punkte div:last-child { border-bottom: 1px solid var(--linie); }
-.entwurf-punkte dt { font: 500 11px/1.4 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-weich); }
-.entwurf-punkte dd { margin: 6px 0 0; max-width: 46ch; font-size: 17px; line-height: 1.5; }
+.entwurf-punkte p { padding: 16px max(0px, calc(100% - 46ch)) 16px 0; border-top: 1px solid var(--linie); font-size: 17px; line-height: 1.5; }
+.entwurf-punkte p:last-child { border-bottom: 1px solid var(--linie); }
 
 /* Aufruf nach den Arbeitsbeispielen */
 .aufruf {
@@ -845,15 +850,178 @@ html.menue-offen { overflow: hidden; }
 .analyse-vergleich .analyse-balken { margin-top: 0; }
 
 /* Leistungen je Branche */
-.leistung-branchen { margin: 24px 0 0; }
-.leistung-branchen div { padding: 13px 0; border-top: 1px solid var(--linie); }
-.leistung-branchen dt { font: 500 11px/1.4 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--signal-text); }
-.leistung-branchen dd { margin: 5px 0 0; font-size: 17px; line-height: 1.45; }
-.leistung .leistung-immer { max-width: none; margin-top: 0; padding-top: 13px; border-top: 1px solid var(--linie); font-size: 15px; color: var(--tinte-weich); }
+.leistung-branchen { align-self: stretch; margin: 24px 0 0; }
+.leistung-branchen div { padding: 13px 0; border-top: 1px solid var(--linie-hell); }
+.leistung-branchen dt { font: 500 11px/1.4 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--signal); }
+.leistung-branchen dd { min-height: 2.9em; margin: 5px 0 0; font-size: 17px; line-height: 1.45; }
+.leistung .leistung-immer { align-self: stretch; max-width: none; margin-top: 0; padding: 13px 0 6px; border-top: 1px solid var(--linie-hell); font-size: 15px; color: rgba(242, 237, 228, .64); }
 
 /* Ablauf: wer was tut */
 .ablauf-liste p b { display: inline-block; min-width: 3.6em; margin-right: 8px; padding: 5px 0; border-radius: 999px; background: var(--tinte); color: var(--signal); font: 600 10.5px/1 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; text-align: center; vertical-align: 2px; }
 .ablauf-liste p + p { margin-top: 8px; }
+
+/* ─── Video & Foto: zwei Wege. Oben der Dreh vor Ort mit Beispielfilmen, darunter die Videos ohne Kamera ─── */
+.weg-titel, .format-name, .bausteine h3 { font-family: "Bricolage", system-ui, sans-serif; font-weight: 700; font-stretch: 75%; letter-spacing: -.02em; }
+.anker { position: absolute; top: 0; left: 0; }
+.weg { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 4.5vw, 80px); align-items: start; }
+.weg-text { display: flex; flex-direction: column; align-items: flex-start; }
+.weg-nr { font: 500 12px/1 "Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--signal-text); }
+.weg-titel { margin-top: 18px; font-size: clamp(38px, 3.8vw, 64px); line-height: .92; }
+.weg-text > p:not(.weg-nr) { margin-top: 18px; max-width: 44ch; font-size: 17px; line-height: 1.5; color: var(--tinte-weich); }
+.weg-liste { align-self: stretch; list-style: none; padding: 0; margin-top: 26px; }
+.weg-liste li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 13px 0; border-top: 1px solid var(--linie); font-size: 17px; line-height: 1.4; }
+.weg-liste li:last-child { border-bottom: 1px solid var(--linie); }
+.weg-liste b { font-weight: 600; }
+.weg-liste span { font-size: 15px; color: var(--tinte-weich); }
+
+/* Beispielfilme: Poster steht, der Film lädt erst, wenn die Kachel im Bild ist oder jemand auf Abspielen drückt (seite.js).
+   Ohne JavaScript bleiben die Bedienelemente des Browsers. */
+.filme { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(14px, 1.6vw, 22px) clamp(12px, 1.4vw, 20px); }
+.film-kachel { margin: 0; }
+.film-flaeche { position: relative; overflow: hidden; background: var(--tinte-2); }
+.film-kachel .film-flaeche { aspect-ratio: 16 / 9; border-radius: 16px; box-shadow: 0 0 0 1px rgba(13, 12, 11, .1), 0 30px 50px -34px rgba(13, 12, 11, .6); }
+.film-flaeche video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.film-kachel figcaption { margin-top: 10px; font: 500 11.5px/1.4 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau); }
+.film-knopf {
+  position: absolute; right: 10px; bottom: 10px; z-index: 3; display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
+  border: 0; border-radius: 50%; background: rgba(13, 12, 11, .72); color: var(--papier); cursor: pointer;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); transition: background .2s, color .2s;
+}
+.film-knopf[hidden] { display: none; }
+.film-knopf::before { content: ""; margin-left: 3px; border-left: 12px solid currentColor; border-block: 8px solid transparent; }
+.laeuft > .film-knopf::before { width: 12px; height: 14px; margin-left: 0; border: 0; border-inline: 4px solid currentColor; }
+.film-knopf:hover { background: var(--signal); color: var(--tinte); }
+.filme-hinweis { margin-top: 16px; font: 500 11.5px/1.5 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); }
+
+/* Ohne Kamera: dunkle Tafel. Links der Weg, rechts die drei Schritte als Zeichnung und die drei Formate. */
+.weg-ohne {
+  position: relative; isolation: isolate; overflow: hidden; overflow: clip; margin-top: clamp(56px, 7vw, 112px);
+  padding: clamp(28px, 4vw, 64px); border-radius: 32px; background: var(--tinte); color: var(--papier);
+}
+.weg-ohne::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(44% 60% at 0% 100%, rgba(124, 58, 237, .22), transparent 72%), radial-gradient(36% 50% at 100% 0%, rgba(255, 90, 31, .16), transparent 70%);
+}
+.weg-ohne .weg-nr { color: var(--signal); }
+.weg-ohne .weg-text > p:not(.weg-nr) { color: rgba(242, 237, 228, .74); }
+.weg-ohne .link-pfeil { margin-top: 22px; }
+.film-ohne { margin: 0 0 clamp(20px, 2.4vw, 32px); }
+.film-ohne .film-flaeche { box-shadow: 0 0 0 1px var(--linie-hell), 0 40px 70px -40px #000; }
+.film-ohne figcaption { color: rgba(242, 237, 228, .62); }
+.video-schritte { align-self: stretch; list-style: none; padding: 0; margin-top: 28px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.video-schritte li { font-size: 15px; line-height: 1.4; color: rgba(242, 237, 228, .74); }
+.video-schritte b { display: block; margin: 12px 0 5px; font: 500 11px/1.2 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--papier); }
+.vs-bild { position: relative; display: grid; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--tinte-2); border: 1px solid var(--linie-hell); }
+/* Skript: Textzeilen und ein Haken für die Freigabe */
+.vs-skript { align-content: center; gap: 9%; padding: 0 16%; }
+.vs-skript i { height: 5px; border-radius: 3px; background: rgba(242, 237, 228, .34); }
+.vs-skript i:nth-child(1) { width: 58%; background: var(--papier); }
+.vs-skript i:nth-child(3) { width: 84%; }
+.vs-skript i:nth-child(4) { width: 46%; }
+.vs-skript::after { content: "✓"; position: absolute; right: 9px; bottom: 8px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--signal); color: var(--tinte); font: 700 13px/1 "Bricolage", system-ui, sans-serif; }
+/* Bilder: vier Szenen wie auf einem Storyboard */
+.vs-szenen { grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px; }
+.vs-szenen i { border-radius: 6px; background: linear-gradient(135deg, var(--violett), #241048); }
+.vs-szenen i:nth-child(2) { background: linear-gradient(135deg, var(--signal), #C2380A); }
+.vs-szenen i:nth-child(3) { background: linear-gradient(135deg, var(--rosa), var(--signal)); }
+.vs-szenen i:nth-child(4) { background: linear-gradient(135deg, var(--papier-3), var(--grau)); }
+/* Video: die drei Formate als Umrisse */
+.vs-formate { display: flex; align-items: center; justify-content: center; gap: 8%; }
+.vs-formate i { border: 1.5px solid var(--papier); border-radius: 4px; }
+.vs-formate i:nth-child(1) { width: 40%; aspect-ratio: 16 / 9; background: var(--signal); border-color: var(--signal); }
+.vs-formate i:nth-child(2) { width: 13%; aspect-ratio: 9 / 16; }
+.vs-formate i:nth-child(3) { width: 18%; aspect-ratio: 1; }
+.formate { border-bottom: 1px solid var(--linie-hell); }
+.format { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: baseline; gap: 6px 24px; padding: 22px 0; border-top: 1px solid var(--linie-hell); }
+.format-name { margin: 0; font-size: clamp(28px, 2.4vw, 38px); line-height: 1; }
+.format p { font-size: 17px; line-height: 1.45; color: rgba(242, 237, 228, .88); }
+.format .format-frist { grid-column: 2; font: 500 11px/1.3 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--signal); }
+.video-immer { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }
+.video-immer li { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--linie-hell); font: 500 11px/1 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: rgba(242, 237, 228, .8); }
+
+/* ─── Social Media (auf Anfrage): drei Bausteine, daneben ein gezeichnetes Beispiel ─── */
+.abschnitt-social { background: var(--papier-2); }
+.social { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 4.5vw, 80px); align-items: center; }
+.bausteine { list-style: none; padding: 0; }
+.bausteine li { display: grid; grid-template-columns: 44px minmax(0, 1fr); padding: 22px 0; border-top: 1px solid var(--linie); }
+.bausteine li:last-child { border-bottom: 1px solid var(--linie); }
+.bausteine span { grid-row: 1 / span 2; padding-top: 7px; font: 500 12px/1 "Mono", monospace; letter-spacing: .14em; color: var(--signal-text); }
+.bausteine h3 { font-size: clamp(28px, 2.4vw, 38px); line-height: 1; }
+.bausteine p { margin-top: 8px; max-width: 40ch; font-size: 17px; line-height: 1.5; color: var(--tinte-weich); }
+.social-knopf { margin-top: 30px; }
+.social-buehne {
+  position: relative; isolation: isolate; overflow: hidden; overflow: clip;
+  display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); grid-template-areas: "handy plan" "handy post" "handy antwort"; align-items: center;
+  gap: 14px clamp(16px, 2.4vw, 32px); padding: clamp(60px, 5vw, 76px) clamp(20px, 3.4vw, 52px) clamp(28px, 3.4vw, 52px); border-radius: 32px;
+  background: radial-gradient(55% 65% at 12% 10%, rgba(255, 143, 184, .45), transparent 62%), radial-gradient(75% 80% at 100% 100%, #241048, transparent 70%), var(--violett);
+}
+.social-buehne::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: linear-gradient(rgba(255, 255, 255, .13) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .13) 1px, transparent 1px);
+  background-size: 44px 44px; background-position: center;
+  -webkit-mask: radial-gradient(75% 75% at 50% 50%, #000 20%, transparent 100%); mask: radial-gradient(75% 75% at 50% 50%, #000 20%, transparent 100%);
+}
+.social-buehne > .etikett { top: 20px; left: 20px; }
+.social-handy { grid-area: handy; justify-self: center; width: min(100%, 330px); rotate: -2deg; box-shadow: 0 0 0 1px rgba(242, 237, 228, .2), 0 50px 90px -30px rgba(8, 3, 20, .9); }
+.social-handy .geraet-bild { aspect-ratio: 9 / 16; }
+.social-art { font: 500 11px/1.2 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau); }
+.social-handy .social-art { position: absolute; top: 20px; left: 20px; z-index: 2; padding: 6px 10px; border-radius: 999px; background: rgba(13, 12, 11, .72); color: var(--papier); }
+.social-karte { padding: 14px 16px 16px; border-radius: 18px; background: var(--papier); color: var(--tinte); box-shadow: 0 30px 50px -30px rgba(13, 12, 11, .7); }
+.social-plan { grid-area: plan; }
+.social-post { grid-area: post; rotate: 1.5deg; }
+.social-antwort { grid-area: antwort; }
+.social-plan ul { list-style: none; padding: 0; margin-top: 10px; }
+.social-plan li { display: grid; grid-template-columns: 68px minmax(0, 1fr); padding: 8px 0 0; margin-top: 8px; border-top: 1px solid var(--linie); font-size: 14px; line-height: 1.35; }
+.social-plan b { font: 500 11px/1.75 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--signal-text); }
+.social-post img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; margin-top: 10px; border-radius: 10px; }
+.social-zeile { margin-top: 10px; font-size: 15px; line-height: 1.4; }
+.blase { width: fit-content; max-width: 88%; margin-top: 10px; padding: 9px 13px; border-radius: 16px 16px 16px 4px; background: var(--papier-3); font-size: 14px; line-height: 1.35; }
+.blase-wir { margin-left: auto; border-radius: 16px 16px 4px 16px; background: var(--tinte); color: var(--papier); }
+
+/* Ablauf: was nach dem Freischalten weiterläuft */
+.ablauf-danach { margin-top: clamp(28px, 3vw, 44px); padding-top: 18px; border-top: 2px solid var(--tinte); font-size: 17px; font-weight: 600; }
+
+@media (max-width: 1180px) {
+  .leistungen-raster { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px clamp(16px, 2vw, 28px); }
+  .leistung h3, .leistung-branchen dd { min-height: 0; }
+}
+@media (max-width: 1100px) {
+  .weg-ohne { grid-template-columns: minmax(0, 1fr); }
+  .social { grid-template-columns: minmax(0, 1fr); }
+  .social-buehne { justify-self: center; width: min(100%, 760px); }
+}
+@media (max-width: 900px) {
+  .leistungen-kopf, .video-kopf, .social-kopf { grid-template-columns: minmax(0, 1fr); }
+  .weg, .social { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .abschnitt-leistungen { margin: 0 6px; border-radius: 26px; }
+  .leistungen-raster { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .leistung-branchen { display: none; }   /* Handy: Titel, Satz und Verweis reichen für den Überblick */
+  .leistung .leistung-immer { margin-top: 14px; }
+  .filme { grid-template-columns: minmax(0, 1fr); }
+  .film-kachel .film-flaeche { border-radius: 12px; }
+  .weg-ohne { margin-inline: calc(var(--rand) * -1 + 6px); padding: 28px 18px; border-radius: 26px; }
+  .video-schritte { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .video-schritte li { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-content: center; align-items: start; column-gap: 14px; }
+  .video-schritte .vs-bild { grid-row: 1 / span 2; }
+  .video-schritte b { margin: 2px 0 5px; }
+  .format { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .format .format-frist { grid-column: 1; }
+  .bausteine li { grid-template-columns: 36px minmax(0, 1fr); }
+  .social-knopf { width: 100%; }
+  .social-buehne { grid-template-columns: minmax(0, 1fr); grid-template-areas: "handy" "post" "antwort"; gap: 14px; padding: 58px 14px 18px; border-radius: 24px; }
+  .social-plan { display: none; }
+  .social-handy { width: min(100%, 250px); margin-bottom: 8px; padding: 5px; border-radius: 22px; rotate: -1.5deg; }
+  .social-post { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 4px 12px; align-items: center; rotate: none; }
+  .social-post .social-art { grid-column: 1 / -1; }
+  .social-post img { aspect-ratio: 1; margin-top: 6px; }
+  .social-post .social-zeile { margin-top: 6px; }
+  .social-handy .geraet-bild { border-radius: 17px; }
+  .social-handy .social-art { top: 14px; left: 14px; }
+  .social-karte { padding: 12px 12px 14px; border-radius: 16px; }
+  .social-zeile { font-size: 14px; }
+}
 
 /* Tiefe beim Zeigen: nur mit Maus */
 @media (hover: hover) and (pointer: fine) {
@@ -871,7 +1039,8 @@ html.menue-offen { overflow: hidden; }
 /* Auftauchen beim Scrollen (nur wo der Browser es kann und Bewegung erwünscht ist; sonst ist alles sofort da) */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
-    .abschnitt-kopf, .entwurf-buehne, .entwurf-text, .aufruf, .analyse, .leistung, .ablauf-liste li, .fragen-liste {
+    .abschnitt-kopf, .entwurf-buehne, .entwurf-text, .aufruf, .analyse, .leistung, .ablauf-liste li, .fragen-liste,
+    .weg-text, .filme-rahmen, .weg-inhalt, .bausteine li, .social-buehne {
       animation: auftauchen linear both; animation-timeline: view(); animation-range: entry 0% entry 70%;
     }
     .entwurf-text { animation-range: entry 10% entry 85%; }
@@ -889,7 +1058,6 @@ html.menue-offen { overflow: hidden; }
 @media (max-width: 1024px) {
   .held-titel { font-size: clamp(48px, min(11vw, 13vh), 120px); }
   .held-text { max-width: 42ch; }
-  .leistungen-raster { grid-template-columns: 1fr; gap: 44px; }
   .ablauf-liste { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ablauf-liste li:nth-last-child(-n+3) { padding-bottom: 38px; }
   .ablauf-liste li:nth-last-child(-n+2) { padding-bottom: 0; }
@@ -969,12 +1137,25 @@ html.menue-offen { overflow: hidden; }
   .tafel-titel { font-size: clamp(36px, 8.5vh, 84px); }
   .tafel-text { margin-top: 14px; }
   .tafel-zahl { font-size: clamp(54px, 12vh, 132px); margin-top: 12px; }
-  .tafel-unter, .tafel-liste { display: none; }
+  .tafel-liste { display: none; }
   .tafel-markt { margin-top: 18px; }
   .werk-texte { height: 170px; }
   .werk-nr { font-size: clamp(56px, 11vh, 108px); }
   .ergebnis-text { bottom: 68px; }
   .ziel-titel { font-size: clamp(48px, min(8.2vw, 14vh), 150px); }
+  /* Niedrige Fenster: Die Karten richten sich nach der Höhe, sonst rutschen sie in die Überschrift */
+  :root { --karte-b: min(clamp(230px, 22vw, 400px), calc((100vh - 300px) / 1.36)); }
+  .szenen-titel { font-size: clamp(26px, 5.4vh, 66px); }
+  .karussell { top: 60%; }
+}
+@media (min-width: 641px) and (max-height: 640px) {
+  .karte-liste { display: none; }
+  .karte-titel { font-size: 22px; }
+  .karte-satz { font-size: 15px; margin-bottom: 0; }
+  .karte-oben { font-size: 10px; top: 14px; left: 14px; right: 14px; }
+  .karte .karte-etikett { top: 34px; left: 12px; font-size: 9px; max-width: calc(100% - 24px); }
+  .karte-unten { left: 14px; right: 14px; bottom: 14px; }
+  .karte-auf { margin-top: 10px; font-size: 10px; }
 }
 @media (min-width: 641px) and (max-height: 520px) {
   .held-text, .laufband { display: none; }
@@ -999,8 +1180,12 @@ html.menue-offen { overflow: hidden; }
   .karussell-rahmen { perspective: 1100px; perspective-origin: 50% 60%; }
   .karussell { top: 60%; }
   .karte-titel { font-size: 27px; }
-  .karte-liste { font-size: 12px; }
+  .karte-liste { display: none; }   /* Handy: Titel und Satz reichen, so bleibt oben Platz für das Seitenbild */
   .karte .karte-etikett { top: 40px; font-size: 10px; }
+  /* Handy: Hinter Kopfzeile und Text deckt Tinte voll, damit die Schrift der Aufnahme nicht durch den Kartentext scheint.
+     Dazwischen bleibt das Seitenbild frei. */
+  .karte-seite::before { height: 78px; background: linear-gradient(to bottom, rgba(13, 12, 11, .95) 0, rgba(13, 12, 11, .92) 74%, rgba(13, 12, 11, 0) 100%); }
+  .karte-unten::before { inset: -30px -20px -20px; background: linear-gradient(to top, rgb(13, 12, 11) 0, rgb(13, 12, 11) calc(100% - 30px), rgba(13, 12, 11, 0) 100%); }
   .schirm { --leiste: 32px; border-radius: 13px; }
   .schirm-leiste { padding: 0 11px; gap: 9px; font-size: 10px; }
   .schirm .aufnahme { font-size: 0; gap: 0; }
@@ -1017,17 +1202,19 @@ html.menue-offen { overflow: hidden; }
   .kennzahl-satz { min-height: 0; font-size: 15px; margin-top: 10px; padding-top: 10px; }
   .kennzahl-quelle { min-height: 0; font-size: 11px; margin-top: 6px; }
   .kennzahl-handy .etikett span { display: none; }
-  .streifen-spur { gap: 12px; padding: 0 16px; bottom: 52px; }
+  .streifen-spur { gap: 16px; padding: 0 16px; bottom: 52px; }   /* Abstand = Rand: die nächste Tafel schaut nicht als Streifen herein */
   .tafel { width: calc(100vw - 32px); grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); align-items: start; gap: 12px; padding: 24px 22px; border-radius: 26px; }
   .tafel-start { width: calc(100vw - 32px); }
   .tafel-titel { font-size: 46px; }
   .tafel-zahl { font-size: 64px; margin-top: 14px; }
   .tafel-satz { font-size: 17px; }
-  .tafel-unter, .tafel-liste { display: none; }
+  .tafel-liste { display: none; }
   .attrappe { align-self: stretch; overflow: hidden; }
   .handy { transform: rotate(-4deg) scale(.7); transform-origin: top center; }
   .attrappe-handy { align-items: start; }
   .attrappe-handy .geraet-handy { width: min(46vw, 24vh); transform: rotate(-3deg); }
+  /* Handy: Etikett klein und einzeilig unten im Gerät, damit es den Kopf der Beispielseite nicht verdeckt */
+  .attrappe-handy .etikett { top: auto; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 5px 8px; font-size: 9px; letter-spacing: .08em; white-space: nowrap; }
   .attrappe-fenster .geraet-fenster { transform: none; }
   .ergebnis-kopf { top: calc(var(--kopf-h) + 10px); }
   .ergebnis-hinweis { margin-top: 8px; font-size: 10.5px; }
@@ -1076,7 +1263,7 @@ html.menue-offen { overflow: hidden; }
   .mock-objekt { grid-template-columns: 1fr; gap: 12px; }
   .mock-haus { height: 128px; }
   .entwurf-titel { font-size: clamp(34px, 10vw, 44px); }
-  .entwurf-punkte dd { font-size: 16px; }
+  .entwurf-punkte p { font-size: 16px; }
   .aufruf { border-radius: 24px; padding: 28px 22px; }
   .aufruf .knopf { width: 100%; }
   .satz-gross { font-size: clamp(40px, 12.5vw, 64px); }
