@@ -10,16 +10,16 @@
   "mail": "kevin@makeinnovation.de",
   "telefon": "",
   "adresse": [
-   "Kurfürstendamm 96",
-   "10709 Berlin"
+   "Attilastraße 18",
+   "12529 Schönefeld"
   ]
  },
- "anbieter_aktiv": "kdv",
+ "anbieter_aktiv": "make",
  "anwendung": {
   "anbieter": "make",
   "mail": "hello@makeinnovation.de"
  },
- "anbieter_hinweis": "Bis 08.11.2026 KD Ventures UG, ab 09.11.2026 MAKE Innovation GmbH: anbieter_aktiv auf \"make\" stellen und node makeinnovation/bauen.mjs ausführen. Kevin 31.10.: Die GmbH ist noch nicht im Handelsregister eingetragen — umstellen erst nach der Eintragung, wenn Anschrift, Geschäftsführer und HRB unten ohne Platzhalter stehen (sonst stünden Platzhalter im Impressum).",
+ "anbieter_hinweis": "Bis 08.11.2026 KD Ventures UG, ab 09.11.2026 MAKE Innovation GmbH: anbieter_aktiv auf \"make\" stellen und node makeinnovation/bauen.mjs ausführen. Kevin 31.10.: Die GmbH ist noch nicht im Handelsregister eingetragen — umstellen erst nach der Eintragung, wenn Anschrift, Geschäftsführer und HRB unten ohne Platzhalter stehen (sonst stünden Platzhalter im Impressum). Umgestellt am 12.11.2026 auf Kevins Wort (Claude, Thread AGB): GmbH eingetragen, AG Cottbus HRB 19873 CB, GF Kevin Dieckmann; Vertragspartner = GmbH.",
  "anbieter": {
   "kdv": {
    "name": "KD Ventures UG (haftungsbeschränkt)",
@@ -34,17 +34,17 @@
   "make": {
    "name": "MAKE Innovation GmbH",
    "adresse": [
-    "Atillastrasse 18",
+    "Attilastraße 18",
     "12529 Schönefeld"
    ],
-   "vertreten": "[[KEVIN: Geschäftsführer der MAKE Innovation GmbH]]",
-   "register": "[[KEVIN: Registergericht und HRB-Nummer nach Eintragung]]",
+   "vertreten": "Kevin Dieckmann",
+   "register": "Amtsgericht Cottbus, HRB 19873 CB",
    "ustid": ""
   }
  },
  "vertragspartner": {
   "hinweis": "Kevin 25.10.: Betreiber der Website ist der Anbieter oben (§ 5 DDG); Verträge über die Leistungen schließt laut Produktblättern bis zur Umschreibung der Kunden das Einzelunternehmen. Leeren (name: \"\"), sobald Betreiber und Vertragspartner dieselbe Firma sind (z. B. nach der Umschreibung auf die GmbH).",
-  "name": "Kevin Dieckmann (Einzelunternehmen)",
+  "name": "",
   "adresse": [
    "Kurfürstendamm 96",
    "10709 Berlin"

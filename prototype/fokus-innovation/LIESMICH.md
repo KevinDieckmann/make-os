@@ -68,7 +68,7 @@ Mit `--pruefen` wird nur geprüft. Danach `bilder.mjs`, wenn der Prüfer ein feh
 2. In den Deploy-Ordner kopieren:
 
 ```bash
-rsync -a --delete --exclude '*.mjs' --exclude inhalt/ --exclude '*.md' --exclude 'assets/logo-vorschlaege/' --exclude dateien/ --exclude werkzeug/ prototype/fokus-innovation/ <main-checkout>/fokusinnovation/
+node prototype/fokus-innovation/ausliefern.mjs <main-checkout>/fokusinnovation   # rsync wie bisher + Kommentare aus ausgelieferten Stil- und Skriptdateien (seit 12.11., nie mehr nur rsync)
 rsync -a --delete unterlagen/ <main-checkout>/unterlagen/   # lange Vorlagen (nur per E-Mail), aus dem Repo-Ordner unterlagen/
 ```
 

@@ -128,7 +128,7 @@
       "nr": "01",
       "name": "Sichtbarkeit",
       "paar": "Gesehen werden.",
-      "satz": "Positionierung, Homepages, Videos sowie PR und Kommunikation, damit Kunden Sie finden und schnell verstehen, was Sie machen.",
+      "satz": "Positionierung, Homepages, Videos, PR und Kommunikation, auf Anfrage auch Social Media. Damit Kunden Sie finden und schnell verstehen, was Sie machen.",
       "problem": "Besucher verstehen in fünf Sekunden nicht, was Sie machen und warum sie Sie anrufen sollten. In Medien und auf Bühnen Ihrer Branche kommen andere zu Wort, und Anfragen bleiben aus.",
       "weg": [
         "Unklare Botschaft, kaum bekannt, kaum Anfragen",
@@ -161,12 +161,19 @@
         "titel": "Netzwerk und Events",
         "text": "Manche Kunden lernt man am besten persönlich kennen. Wir laden Sie zu unseren Events ein und stellen Kontakte her, wo es passt. Was Sie dafür brauchen, besprechen wir im Gespräch."
       },
-      "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo} sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns."
+      "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo} sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.",
+      "auf_anfrage": [
+        {
+          "name": "Social Media",
+          "leistung": "Redaktionsplan und Beiträge, Reels und Kurzvideos, Kommentare und Nachrichten beantworten. Den Umfang legen wir im Erstgespräch fest.",
+          "preis": "auf Anfrage"
+        }
+      ]
     },
     "vertrieb": {
       "nr": "02",
       "name": "Vertrieb",
-      "paar": "Verkauft werden.",
+      "paar": "Planbar verkaufen.",
       "satz": "Zielgruppe, Prozess, Kennzahlen und ein Team, das selbst abschließt.",
       "problem": "Vertrieb hängt an der Geschäftsführung, und das meiste läuft über Bauchgefühl. Anfragen gehen verloren, Angebote bleiben liegen, und niemand weiß, wie viele Gespräche es für das Jahresziel braucht.",
       "weg": [
@@ -862,13 +869,13 @@
     ]
   },
   "familie": {
-    "hinweis": "Markenfamilie (Kevin 11.11.2026): MAKE Innovation ist das Dach und behält den Bereich Innovation. Sichtbarkeit lebt bei MAKE Studios, Vertrieb (mit Netzwerken und Events) bei MAKE Revenue. Preise stehen NUR hier beim Dach. Die Adressen der Marken stehen an genau dieser einen Stelle (url); bis zu den echten Domains sind es die lokalen Vorschau-Adressen. Der Prüfer bricht ab, wenn bei seo.oeffentlich = true noch eine Vorschau-Adresse dasteht. Die Sätze unter satz sind die Standardsätze je Marke (Fuß, strukturierte Daten, llms.txt): wörtlich gleich halten wie auf den Seiten der Marken.",
-    "marke": "Die Familie",
-    "titel": "Eine Firma, drei Marken.",
-    "lead": "MAKE Innovation ist das Dach. Sichtbarkeit hat mit MAKE Studios ein eigenes Zuhause, Vertrieb mit MAKE Revenue. Innovation bleibt hier, und die Preise aller Angebote stehen auf dieser Seite.",
+    "hinweis": "Marken (Kevin 11.11.2026, Wortlaut 12.11.: aus Kundensicht, keine Innensicht wie „Familie“, „Dach“, „die Preise stehen hier“). Sichtbarkeit liefert MAKE Studios, Vertrieb (mit Netzwerken und Events) MAKE Revenue, Innovation bleibt bei MAKE Innovation; Preise stehen nur bei MAKE Innovation. Die Adressen der Marken stehen an genau dieser einen Stelle (url). Die Sätze unter satz und dach_satz sind die Standardsätze für Suchmaschinen (JSON-LD, llms.txt), sie stehen nicht im sichtbaren Fließtext.",
+    "marke": "Leistungen",
+    "titel": "Was Sie von uns bekommen.",
+    "lead": "",
     "dach_satz": "MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue.",
-    "innovation_marke": "Innovation · hier bei MAKE Innovation",
-    "events_hinweis": "Netzwerken und Events gehören zu MAKE Revenue, unserer Marke für Vertrieb. Einladungen laufen weiter über diese Seite.",
+    "innovation_marke": "Innovation",
+    "events_hinweis": "Mehr zu Netzwerken und Events bei MAKE Revenue",
     "marken": [
       {
         "id": "studios",
@@ -876,21 +883,23 @@
         "name": "MAKE Studios",
         "url": "https://makestudios.de/",
         "thema": "Sichtbarkeit und Video",
-        "satz": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video.",
-        "anriss": "Sichtbarkeit ist bei uns eine eigene Marke. MAKE Studios baut Websites, pflegt das Google-Profil und macht Fotos und Video, damit Kunden Sie finden und schnell verstehen, was Sie machen. Beispiele und Ablauf sehen Sie dort, die Preise stehen hier.",
+        "satz": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Video, Fotos und Social Media.",
+        "anriss": "MAKE Studios baut Ihre Website, pflegt Ihr Google-Profil und macht Video und Fotos. Auf Anfrage betreuen wir auch Ihre sozialen Medien. Damit Kunden Sie finden und schnell verstehen, was Sie machen.",
         "themen": [
           "Websites",
           "Google-Profil",
-          "Fotos",
-          "Video"
+          "Video und Foto",
+          "Social Media"
         ],
         "dort": "Problem, Beispiele und Ablauf",
         "preise_link": "Pakete und Preise",
         "blatt": {
           "titel": "Sichtbarkeit: Pakete und Preise",
-          "text": "Sichtbarkeit ist bei MAKE Innovation eine eigene Marke: MAKE Studios. Auf dieser Seite stehen alle Pakete mit Preis, Umfang und Lieferzeit. Problem, Beispiele und Ablauf zeigt MAKE Studios.",
+          "text": "Alle Pakete mit Preis, Umfang und Lieferzeit. Fertige Beispielseiten und den Ablauf sehen Sie bei MAKE Studios.",
           "angebote_titel": "Alle Pakete mit Preis"
-        }
+        },
+        "link_text": "Beispiele ansehen",
+        "hinweis_text": "Fertige Beispielseiten und den Ablauf sehen Sie bei MAKE Studios."
       },
       {
         "id": "revenue",
@@ -899,7 +908,7 @@
         "url": "https://makerevenue.de/",
         "thema": "Vertrieb",
         "satz": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.",
-        "anriss": "Vertrieb ist bei uns eine eigene Marke. MAKE Revenue baut den Vertrieb mit System auf, übernimmt die Vertriebsleitung auf Zeit und bringt Sie bei Events mit den passenden Menschen zusammen. Vorgehen und Ablauf sehen Sie dort, die Preise stehen hier.",
+        "anriss": "MAKE Revenue baut Ihren Vertrieb so auf, dass er nicht mehr an Ihnen hängt: fester Ablauf im CRM, Leitfäden für die Gespräche, jeden Freitag ein Wochenreport. Wenn Sie möchten, übernehmen wir die Vertriebsleitung auf Zeit. Dazu kommen Abende in kleiner Runde für neue Kontakte.",
         "themen": [
           "Vertrieb mit System",
           "Vertrieb auf Zeit",
@@ -910,9 +919,11 @@
         "preise_link": "Leistungen und Preise",
         "blatt": {
           "titel": "Vertrieb: Leistungen und Preise",
-          "text": "Vertrieb ist bei MAKE Innovation eine eigene Marke: MAKE Revenue. Auf dieser Seite stehen Tagesworkshop, Head of Sales und Chief Sales Officer mit Preis, Umfang und Laufzeit. Vorgehen, Ablauf und Events zeigt MAKE Revenue.",
+          "text": "Tagesworkshop, Head of Sales und Chief Sales Officer mit Preis, Umfang und Laufzeit. Wie wir dabei vorgehen, sehen Sie bei MAKE Revenue.",
           "angebote_titel": "Alle Leistungen mit Preis"
-        }
+        },
+        "link_text": "So gehen wir vor",
+        "hinweis_text": "Wie wir im Vertrieb vorgehen, sehen Sie bei MAKE Revenue."
       }
     ]
   },
@@ -1247,7 +1258,7 @@
     },
     "tagesworkshop": {
       "punkte": [
-        "Haben Sie am Abend keine drei Hebel, die Sie umsetzen wollen, zahlen Sie nichts.",
+        "Ziel des Tages sind drei Hebel, die Sie sofort umsetzen können.",
         "Starten Sie danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Workshop voll an."
       ]
     },
@@ -1329,8 +1340,8 @@
           "Rechnung nach Vertragsunterzeichnung, zahlbar in 14 Tagen"
         ],
         [
-          "Ihr Risiko",
-          "Haben Sie am Abend keine drei Hebel, die Sie umsetzen wollen, zahlen Sie nichts."
+          "Ergebnis",
+          "Ziel des Tages sind drei Hebel, die Sie sofort umsetzen können."
         ]
       ],
       "mitwirkung": [
@@ -1344,8 +1355,8 @@
           "antwort": "Ja. Starten Sie danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Tagesworkshop voll an."
         },
         {
-          "frage": "Was, wenn der Tag nichts bringt?",
-          "antwort": "Haben Sie am Abend keine drei Hebel, die Sie umsetzen wollen, zahlen Sie nichts."
+          "frage": "Was bringt mir der Tag?",
+          "antwort": "Ziel des Tages sind drei Hebel, die Sie sofort umsetzen können."
         },
         {
           "frage": "Strategie oder operativ: Was heißt das?",

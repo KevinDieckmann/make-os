@@ -136,6 +136,8 @@ table { border-collapse: collapse; }
 .wortbild .wort { fill: currentColor; }
 .wortbild .wb-zusatz { fill: var(--grau-papier); }
 @media (max-width: 420px) { .marke { gap: 10px; } .marke .zeichen { width: 30px; height: 30px; } .wortbild { width: 150px; height: 9.5px; } }
+/* Sehr schmale Handys (320 px): Marke und Menü-Knopf passen sonst nicht nebeneinander */
+@media (max-width: 345px) { .kopf-innen { gap: 10px; } .wortbild { width: 128px; height: 8.1px; } .menue summary { padding: 0 10px; gap: 8px; } }
 .haupt-nav { display: flex; align-items: center; gap: 2px; }
 .haupt-nav > a, .nav-punkt > a, .kopf-kontakt { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; font-size: .95rem; font-weight: 500; color: var(--tinte-text); transition: color .2s ease, background-color .2s ease; }
 .haupt-nav > a:hover, .nav-punkt > a:hover, .kopf-kontakt:hover { color: var(--tinte); background: rgba(17, 19, 22, .05); }
