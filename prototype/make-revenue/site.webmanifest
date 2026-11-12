@@ -1,0 +1,22 @@
+{
+ "name": "MAKE Revenue",
+ "short_name": "MAKE Revenue",
+ "description": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.",
+ "lang": "de",
+ "start_url": "/",
+ "display": "browser",
+ "background_color": "#EFF1EA",
+ "theme_color": "#0B1512",
+ "icons": [
+  {
+   "src": "bild/icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "bild/logo.png",
+   "sizes": "512x512",
+   "type": "image/png"
+  }
+ ]
+}

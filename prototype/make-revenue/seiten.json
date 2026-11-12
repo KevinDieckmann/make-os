@@ -1,0 +1,406 @@
+{
+ "hinweis": "Von bauen.mjs geschrieben, nicht von Hand ändern. seo.mjs liest daraus Titel, Beschreibung, Leistungen, Fragen und Begriffe.",
+ "stand": "November 2026",
+ "mail": "kevin@makeinnovation.de",
+ "satz": {
+  "revenue": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.",
+  "studios": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Fotos und Video.",
+  "innovation": "MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue."
+ },
+ "seiten": [
+  {
+   "pfad": "",
+   "datei": "index.html",
+   "name": "Start",
+   "titel": "MAKE Revenue · Vertrieb mit System für Gründer und Mittelstand",
+   "beschreibung": "MAKE Revenue baut Ihren Vertrieb als System auf: Zielgruppe, Prozess im CRM, Kennzahlen und Nachfassen. Einstieg: kostenloser Vertriebs-Check oder Erstgespräch.",
+   "leistung": null,
+   "leistungen": [
+    {
+     "name": "Digitaler Systemvertrieb",
+     "art": "Vertriebsaufbau",
+     "text": "Zielgruppe, Prozess im CRM, Gesprächsleitfäden, Kennzahlen und Nachfassen. Ein Vertrieb, den Sie steuern können und der nicht an Ihnen hängt.",
+     "pfad": "systemvertrieb/"
+    },
+    {
+     "name": "Vertrieb auf Zeit",
+     "art": "Vertriebsleitung auf Zeit",
+     "text": "Head of Sales oder Chief Sales Officer auf Zeit, für 6 oder 12 Monate. Wer erst testen will, startet mit dem Tagesworkshop Vertrieb.",
+     "pfad": "vertrieb-auf-zeit/"
+    },
+    {
+     "name": "Netzwerken und Events",
+     "art": "Netzwerk-Events",
+     "text": "Abende in kleiner Runde, auf Einladung. Dazu der Weg, aus Begegnungen und Empfehlungen Kontakte zu machen, die niemand vergisst.",
+     "pfad": "netzwerken/"
+    },
+    {
+     "name": "Vertriebs-Check",
+     "art": "Vertriebsanalyse",
+     "text": "Zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, wo Ihr Vertrieb steht.",
+     "pfad": "vertriebs-check/"
+    }
+   ],
+   "fragen": [
+    {
+     "f": "Ist das Erstgespräch ein Verkaufsgespräch?",
+     "a": "Nein, es ist ein Gespräch über Ihre Lage, kostenlos und per Video. Am Ende sagen wir Ihnen klar, ob wir helfen können und womit. Und wenn nicht, sagen wir auch das."
+    },
+    {
+     "f": "Wer führt die Verkaufsgespräche?",
+     "a": "Ihr Team. Wir machen vor, trainieren mit Rollenspielen und besprechen echte Calls nach. So bleibt das Wissen bei Ihnen, wenn wir gehen."
+    },
+    {
+     "f": "Brauche ich schon ein CRM?",
+     "a": "Nein. Wenn Sie keins haben, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stages, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten tragen Sie."
+    },
+    {
+     "f": "Wo stehen die Preise?",
+     "a": "MAKE Revenue zeigt keine Preise. Die Preise aller Angebote stehen offen bei MAKE Innovation. Den genauen Festpreis bekommen Sie schriftlich, bevor es losgeht."
+    },
+    {
+     "f": "Wer steht hinter MAKE Revenue?",
+     "a": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin. Sie arbeiten direkt mit Kevin und Malin und nicht mit wechselnden Projektleitern."
+    }
+   ],
+   "begriffe": []
+  },
+  {
+   "pfad": "systemvertrieb/",
+   "datei": "systemvertrieb/index.html",
+   "name": "Digitaler Systemvertrieb",
+   "titel": "Digitaler Systemvertrieb: Vertrieb mit System · MAKE Revenue",
+   "beschreibung": "Vertrieb, der nicht am Gründer hängt: Zielgruppe, Prozess im CRM, Leitfäden, Kennzahlen und Wochenreport. So baut MAKE Revenue Ihr Vertriebssystem auf.",
+   "leistung": {
+    "name": "Digitaler Systemvertrieb",
+    "art": "Vertriebsaufbau",
+    "text": "Vertrieb wird planbar, wenn fünf Dinge stehen: eine klare Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein Team, das trainiert ist.",
+    "kurz": "Zielgruppe, Prozess im CRM, Gesprächsleitfäden, Kennzahlen und Nachfassen. Ein Vertrieb, den Sie steuern können und der nicht an Ihnen hängt."
+   },
+   "leistungen": [],
+   "fragen": [
+    {
+     "f": "Wann sollte ein Start-up den ersten Vertriebler einstellen?",
+     "a": "Sobald es ein System gibt, in das er einsteigen kann: eine klare Zielgruppe, Leitfäden und einen Prozess im CRM. Ohne dieses Fundament verbringt ein neuer Vertriebler die ersten Monate damit, es selbst zu suchen."
+    },
+    {
+     "f": "Welches CRM brauche ich für den Anfang?",
+     "a": "Eines, das Ihr Team jeden Tag nutzt. Wichtiger als das Werkzeug sind klare Stufen, Pflichtfelder und Wiedervorlagen. Fangen Sie einfach an und erweitern Sie erst, wenn die Grundlagen sitzen."
+    },
+    {
+     "f": "Wie viele Kennzahlen braucht ein kleiner Vertrieb?",
+     "a": "Wenige: Erstkontakte, Termine, Angebote und Abschlüsse je Woche, dazu die Quoten zwischen den Stufen. Wichtiger als die Zahl der Kennzahlen ist, dass sie jede Woche besprochen werden."
+    },
+    {
+     "f": "Wie lange dauert es, bis Vertrieb planbar läuft?",
+     "a": "Das hängt vom Ausgangspunkt ab. In unserem Mandat als Head of Sales läuft ab Monat 3 jedes Gespräch nach Prozess im CRM, und jeden Freitag kommt der Wochenreport. Ziel bis Monat 6 ist, dass Ihr Team ohne den Gründer abschließt. Wir schulden die Leistung, nicht den Umsatz."
+    },
+    {
+     "f": "Reicht eine Tabelle, oder brauche ich ein CRM?",
+     "a": "Am Start reicht eine Tabelle. Sobald mehrere Personen verkaufen und Sie Zahlen je Person und je Stufe brauchen, wird ein CRM mit Pflichtfeldern deutlich einfacher."
+    }
+   ],
+   "begriffe": [
+    {
+     "name": "Digitaler Systemvertrieb",
+     "text": "Digitaler Systemvertrieb ist Vertrieb nach einem festen Ablauf im CRM: Jede Anfrage hat eine Stufe, eine nächste Aktion und ein Datum, und wenige Kennzahlen zeigen jede Woche, ob der Plan hält."
+    },
+    {
+     "name": "Vertrieb auf Zeit",
+     "text": "Vertrieb auf Zeit ist eine Vertriebsleitung für einige Monate, die das System aufbaut, mit Ihrem Team umsetzt und so übergibt, dass der Vertrieb ohne sie läuft. Auch Interim oder Fractional Head of Sales genannt."
+    },
+    {
+     "name": "Salesprozess",
+     "text": "Der Salesprozess sind die festen Stufen, die jede Anfrage bis zum Abschluss durchläuft, mit einer klaren nächsten Aktion je Stufe."
+    },
+    {
+     "name": "Pipeline",
+     "text": "Die Pipeline ist die Summe aller offenen Verkaufschancen mit ihrem erwarteten Wert, geordnet nach Stufe vom Erstkontakt bis zum Abschluss."
+    },
+    {
+     "name": "Wiedervorlage",
+     "text": "Eine Wiedervorlage ist ein fester Termin im CRM, an dem eine offene Anfrage wieder bearbeitet wird. So bleibt keine Anfrage liegen."
+    },
+    {
+     "name": "Abschlussquote",
+     "text": "Die Abschlussquote ist der Anteil der Angebote, aus denen ein Auftrag wird. Gezählt werden nur Angebote, die entschieden sind, also angenommen oder abgelehnt."
+    },
+    {
+     "name": "Rückwärtsrechnung",
+     "text": "Die Rückwärtsrechnung führt vom Umsatzziel zurück zu den nötigen Abschlüssen, Angeboten und Terminen je Woche."
+    },
+    {
+     "name": "Wochenreport",
+     "text": "Der Wochenreport ist ein kurzer Bericht jeden Freitag: die Zahlen des Vertriebs und ein Satz dazu, was nächste Woche anders läuft."
+    },
+    {
+     "name": "Lead-Scoring",
+     "text": "Lead-Scoring ist die Einteilung der Kontakte danach, wie gut sie passen, zum Beispiel in A, B und C. A-Kontakte bekommen zuerst Zeit."
+    },
+    {
+     "name": "Sales Playbook",
+     "text": "Das Sales Playbook ist das Nachschlagewerk des Vertriebs: Zielgruppe, Botschaft, Prozess, Leitfäden, Antworten auf Einwände und Kennzahlen an einem Ort."
+    }
+   ]
+  },
+  {
+   "pfad": "vertrieb-auf-zeit/",
+   "datei": "vertrieb-auf-zeit/index.html",
+   "name": "Vertrieb auf Zeit",
+   "titel": "Vertrieb auf Zeit: Head of Sales und CSO · MAKE Revenue",
+   "beschreibung": "Vertriebsleitung auf Zeit für 6 oder 12 Monate: Head of Sales oder Chief Sales Officer bauen das System auf und übergeben es. Einstieg über den Tagesworkshop.",
+   "leistung": {
+    "name": "Vertrieb auf Zeit",
+    "art": "Vertriebsleitung auf Zeit",
+    "text": "Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt.",
+    "kurz": "Head of Sales oder Chief Sales Officer auf Zeit, für 6 oder 12 Monate. Wer erst testen will, startet mit dem Tagesworkshop Vertrieb."
+   },
+   "leistungen": [],
+   "fragen": [
+    {
+     "f": "Wer führt die Verkaufsgespräche?",
+     "a": "Ihr Team. Wir machen vor, trainieren mit Rollenspielen und besprechen echte Calls nach. So bleibt das Wissen bei Ihnen, wenn wir gehen."
+    },
+    {
+     "f": "Brauche ich schon ein CRM?",
+     "a": "Nein. Wenn Sie keins haben, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stages, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten tragen Sie."
+    },
+    {
+     "f": "Wie viel Zeit kostet mich ein Mandat?",
+     "a": "Rund 3 bis 4 Stunden für das Sales Playbook Teil 1 im ersten Monat, danach 30 Minuten Wochen-Call und kurze Freigaben. Ihr Team braucht Zeit für Training und Gespräche."
+    },
+    {
+     "f": "Gehören Skripte und Playbooks danach mir?",
+     "a": "Ja. Nach Zahlung dürfen Sie alle Vorlagen, Skripte und Playbooks in Ihrem Unternehmen zeitlich unbegrenzt nutzen."
+    },
+    {
+     "f": "Wie lange laufen die Verträge?",
+     "a": "Head of Sales und Chief Sales Officer laufen 6 oder 12 Monate. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis."
+    },
+    {
+     "f": "Wie viel Zeit bringt der Chief Sales Officer ein?",
+     "a": "30 bis 35 Stunden im Monat, fest eingeplant. Dazu kommen der Wochen-Call und ein monatlicher Strategie-Call mit der Geschäftsführung."
+    },
+    {
+     "f": "Stellen Sie unsere Vertriebler ein?",
+     "a": "Wir bauen Rollenmodell, Stellenanzeige, Interviewleitfaden und Probetag und führen die Interviews mit Ihnen. Die Entscheidung und den Arbeitsvertrag machen Sie. Stellenanzeigen und Recruiting-Tools zahlen Sie direkt."
+    },
+    {
+     "f": "Was passiert am Ende eines Mandats?",
+     "a": "Wir übergeben an Ihre interne Vertriebsleitung, mit Übergabeplan in 4 Schritten und dem Sales Playbook Teil 3."
+    },
+    {
+     "f": "Für wen passt ein Head of Sales auf Zeit nicht?",
+     "a": "Für Firmen ohne fertiges Produkt, Konzerne mit Einkaufsabteilung, reine Kaltakquise-Telefonteams und Network-Marketing."
+    }
+   ],
+   "begriffe": []
+  },
+  {
+   "pfad": "netzwerken/",
+   "datei": "netzwerken/index.html",
+   "name": "Netzwerken und Events",
+   "titel": "Netzwerken und Events in kleiner Runde · MAKE Revenue",
+   "beschreibung": "Abende in kleiner Runde, kuratiert und auf Einladung: Gesprächsrunde, Impulsabend, Workshop und Treffen im Netzwerk. Für Gäste kostenlos, Gastgeberin ist Malin.",
+   "leistung": {
+    "name": "Netzwerken und Events",
+    "art": "Netzwerk-Events",
+    "text": "Viele gute Verbindungen entstehen erst, wenn man sich einmal gegenübersitzt. Davon soll der Standort etwas haben, nicht nur wir.",
+    "kurz": "Abende in kleiner Runde, auf Einladung. Dazu der Weg, aus Begegnungen und Empfehlungen Kontakte zu machen, die niemand vergisst."
+   },
+   "leistungen": [],
+   "fragen": [
+    {
+     "f": "Was kosten die Events?",
+     "a": "Für Gäste sind die Events kostenlos."
+    },
+    {
+     "f": "Wie bekomme ich eine Einladung?",
+     "a": "Tragen Sie sich bei MAKE Innovation auf die Gästeliste ein, dann bekommen Sie die nächste Einladung. Termine, Orte und Formate stehen in jeder Einladung."
+    },
+    {
+     "f": "Wer kommt zu den Events?",
+     "a": "Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir laden selbst ein und mischen bewusst, zum Beispiel Start-ups mit Mittelständlern oder Leute aus der Technik mit Leuten aus dem Vertrieb."
+    }
+   ],
+   "begriffe": []
+  },
+  {
+   "pfad": "vertriebs-check/",
+   "datei": "vertriebs-check/index.html",
+   "name": "Vertriebs-Check",
+   "titel": "Vertriebs-Check: Wie planbar ist Ihr Vertrieb? · MAKE Revenue",
+   "beschreibung": "Der kostenlose Vertriebs-Check: zwölf Fragen zu Organisation, Zahlen und Neukunden in rund 5 Minuten. Sie sehen sofort, wo Ihr Vertrieb steht.",
+   "leistung": {
+    "name": "Vertriebs-Check",
+    "art": "Vertriebsanalyse",
+    "text": "Der Vertriebs-Check ist kostenlos und dauert rund 5 Minuten. Das Ergebnis sehen Sie sofort auf dem Bildschirm.",
+    "kurz": "Zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, wo Ihr Vertrieb steht."
+   },
+   "leistungen": [],
+   "fragen": [
+    {
+     "f": "Was kostet der Vertriebs-Check?",
+     "a": "Nichts. Der Vertriebs-Check und das Erstgespräch danach sind kostenlos."
+    },
+    {
+     "f": "Wie lange dauert der Vertriebs-Check?",
+     "a": "Rund 5 Minuten. Es sind zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Das Ergebnis sehen Sie sofort."
+    },
+    {
+     "f": "Was passiert nach dem Vertriebs-Check?",
+     "a": "Sie sehen sofort, wo Ihr Vertrieb steht und welcher Schritt jetzt am meisten bringt. Wenn Sie möchten, sprechen wir im kostenlosen Erstgespräch darüber: 30 Minuten per Video."
+    }
+   ],
+   "begriffe": []
+  },
+  {
+   "pfad": "fragen/",
+   "datei": "fragen/index.html",
+   "name": "Fragen",
+   "titel": "Häufige Fragen zum Vertriebsaufbau · MAKE Revenue",
+   "beschreibung": "Antworten auf häufige Fragen zu Systemvertrieb, Head of Sales und Chief Sales Officer auf Zeit, Tagesworkshop, Events und dem kostenlosen Vertriebs-Check.",
+   "leistung": null,
+   "leistungen": [],
+   "fragen": [
+    {
+     "f": "Ist das Erstgespräch ein Verkaufsgespräch?",
+     "a": "Nein, es ist ein Gespräch über Ihre Lage, kostenlos und per Video. Am Ende sagen wir Ihnen klar, ob wir helfen können und womit. Und wenn nicht, sagen wir auch das."
+    },
+    {
+     "f": "Wer arbeitet an meinem Projekt?",
+     "a": "Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Sie sprechen immer mit uns, und wir stimmen alles Weitere im Team ab."
+    },
+    {
+     "f": "Welche Erfahrung bringen Sie mit?",
+     "a": "Wir kommen aus der Vertriebsführung: Teams geführt, Partnernetze aufgebaut, Head of Sales bei einem FinTech. Heute arbeiten wir in laufenden Projekten mit KI, auch im internationalen Umfeld. Namen nennen wir nur, wenn Kunden es freigeben. Vertraulichkeit gehört für uns dazu."
+    },
+    {
+     "f": "Arbeiten Sie auch bei uns vor Ort?",
+     "a": "Ja. Vieles läuft per Video, wichtige Termine machen wir gern bei Ihnen: Workshops, Trainings mit Ihrem Team, Gespräche mit der Geschäftsführung. Termine vor Ort vereinbaren wir vorher, Reisekosten rechnen wir gegen Beleg ab."
+    },
+    {
+     "f": "Wo stehen die Preise?",
+     "a": "MAKE Revenue zeigt keine Preise. Die Preise aller Angebote stehen offen bei MAKE Innovation. Den genauen Festpreis bekommen Sie schriftlich, bevor es losgeht."
+    },
+    {
+     "f": "Wer steht hinter MAKE Revenue?",
+     "a": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin. Sie arbeiten direkt mit Kevin und Malin und nicht mit wechselnden Projektleitern."
+    },
+    {
+     "f": "Wie lange dauert es, bis Vertrieb planbar läuft?",
+     "a": "Das hängt vom Ausgangspunkt ab. In unserem Mandat als Head of Sales läuft ab Monat 3 jedes Gespräch nach Prozess im CRM, und jeden Freitag kommt der Wochenreport. Ziel bis Monat 6 ist, dass Ihr Team ohne den Gründer abschließt. Wir schulden die Leistung, nicht den Umsatz."
+    },
+    {
+     "f": "Brauche ich schon ein CRM?",
+     "a": "Nein. Wenn Sie keins haben, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stages, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten tragen Sie."
+    },
+    {
+     "f": "Welches CRM brauche ich für den Anfang?",
+     "a": "Eines, das Ihr Team jeden Tag nutzt. Wichtiger als das Werkzeug sind klare Stufen, Pflichtfelder und Wiedervorlagen. Fangen Sie einfach an und erweitern Sie erst, wenn die Grundlagen sitzen."
+    },
+    {
+     "f": "Reicht eine Tabelle, oder brauche ich ein CRM?",
+     "a": "Am Start reicht eine Tabelle. Sobald mehrere Personen verkaufen und Sie Zahlen je Person und je Stufe brauchen, wird ein CRM mit Pflichtfeldern deutlich einfacher."
+    },
+    {
+     "f": "Wie viele Kennzahlen braucht ein kleiner Vertrieb?",
+     "a": "Wenige: Erstkontakte, Termine, Angebote und Abschlüsse je Woche, dazu die Quoten zwischen den Stufen. Wichtiger als die Zahl der Kennzahlen ist, dass sie jede Woche besprochen werden."
+    },
+    {
+     "f": "Gibt es gute Richtwerte für Termin- oder Abschlussquoten?",
+     "a": "Wir nennen bewusst keine. Quoten hängen von Branche, Preis, Kanal und Kontaktliste ab. Messen Sie vier bis acht Wochen Ihre eigenen Werte und setzen Sie Ziele daraus."
+    },
+    {
+     "f": "Wer trägt die Zahlen ein?",
+     "a": "Jede Person ihre eigenen, am selben Tag. Eine Person achtet darauf, dass alles vollständig ist, und bringt die Zahlen zur Wochenrunde mit."
+    },
+    {
+     "f": "Was ist der Unterschied zwischen Head of Sales und Chief Sales Officer?",
+     "a": "Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer macht all das auch und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum Chief Sales Officer wechseln."
+    },
+    {
+     "f": "Wie lange laufen die Verträge?",
+     "a": "Head of Sales und Chief Sales Officer laufen 6 oder 12 Monate. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis."
+    },
+    {
+     "f": "Wer führt die Verkaufsgespräche?",
+     "a": "Ihr Team. Wir machen vor, trainieren mit Rollenspielen und besprechen echte Calls nach. So bleibt das Wissen bei Ihnen, wenn wir gehen."
+    },
+    {
+     "f": "Wie viel Zeit kostet mich ein Mandat?",
+     "a": "Rund 3 bis 4 Stunden für das Sales Playbook Teil 1 im ersten Monat, danach 30 Minuten Wochen-Call und kurze Freigaben. Ihr Team braucht Zeit für Training und Gespräche."
+    },
+    {
+     "f": "Gehören Skripte und Playbooks danach mir?",
+     "a": "Ja. Nach Zahlung dürfen Sie alle Vorlagen, Skripte und Playbooks in Ihrem Unternehmen zeitlich unbegrenzt nutzen."
+    },
+    {
+     "f": "Wie viel Zeit bringt der Chief Sales Officer ein?",
+     "a": "30 bis 35 Stunden im Monat, fest eingeplant. Dazu kommen der Wochen-Call und ein monatlicher Strategie-Call mit der Geschäftsführung."
+    },
+    {
+     "f": "Stellen Sie unsere Vertriebler ein?",
+     "a": "Wir bauen Rollenmodell, Stellenanzeige, Interviewleitfaden und Probetag und führen die Interviews mit Ihnen. Die Entscheidung und den Arbeitsvertrag machen Sie. Stellenanzeigen und Recruiting-Tools zahlen Sie direkt."
+    },
+    {
+     "f": "Was passiert am Ende eines Mandats?",
+     "a": "Wir übergeben an Ihre interne Vertriebsleitung, mit Übergabeplan in 4 Schritten und dem Sales Playbook Teil 3."
+    },
+    {
+     "f": "Für wen passt ein Head of Sales auf Zeit nicht?",
+     "a": "Für Firmen ohne fertiges Produkt, Konzerne mit Einkaufsabteilung, reine Kaltakquise-Telefonteams und Network-Marketing."
+    },
+    {
+     "f": "Was, wenn der Tagesworkshop nichts bringt?",
+     "a": "Haben Sie am Abend keine drei Hebel, die Sie umsetzen wollen, zahlen Sie nichts."
+    },
+    {
+     "f": "Strategie oder operativ: Was heißt das beim Tagesworkshop?",
+     "a": "Mit Fokus Strategie geht es um Zielgruppe, Markteintritt und Positionierung. Mit Fokus operativ um Ablauf, Zahlen und Werkzeuge im Vertrieb. Sie wählen vorab."
+    },
+    {
+     "f": "Wann sollte ein Start-up den ersten Vertriebler einstellen?",
+     "a": "Sobald es ein System gibt, in das er einsteigen kann: eine klare Zielgruppe, Leitfäden und einen Prozess im CRM. Ohne dieses Fundament verbringt ein neuer Vertriebler die ersten Monate damit, es selbst zu suchen."
+    },
+    {
+     "f": "Wann sollte ich die erste Person für den Vertrieb einstellen?",
+     "a": "Wenn Sie wissen, welche Kunden am besten passen, Ihr Erstgespräch einem aufgeschriebenen Ablauf folgt und genug Kontakte da sind, um eine Person auszulasten. Fehlt eines davon, holen Sie es zuerst nach."
+    },
+    {
+     "f": "Brauche ich gleich getrennte Rollen im Vertrieb?",
+     "a": "Nein. In kleinen Teams macht jede Person alles. Trennen Sie Rollen erst, wenn eine Aufgabe eine Person gut auslasten kann, und regeln Sie dann die Übergaben zwischen den Rollen."
+    },
+    {
+     "f": "Wer soll den Vertrieb führen, wenn ich es nicht mehr mache?",
+     "a": "Jemand, der führen will und es gelernt hat oder lernen darf. Das ist nicht immer die Person, die am meisten verkauft. Am Anfang verkauft die Vertriebsleitung oft noch mit, braucht aber feste Zeit für die Führung."
+    },
+    {
+     "f": "Was kosten die Events?",
+     "a": "Für Gäste sind die Events kostenlos."
+    },
+    {
+     "f": "Wie bekomme ich eine Einladung?",
+     "a": "Tragen Sie sich bei MAKE Innovation auf die Gästeliste ein, dann bekommen Sie die nächste Einladung. Termine, Orte und Formate stehen in jeder Einladung."
+    },
+    {
+     "f": "Wer kommt zu den Events?",
+     "a": "Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir laden selbst ein und mischen bewusst, zum Beispiel Start-ups mit Mittelständlern oder Leute aus der Technik mit Leuten aus dem Vertrieb."
+    },
+    {
+     "f": "Was kostet der Vertriebs-Check?",
+     "a": "Nichts. Der Vertriebs-Check und das Erstgespräch danach sind kostenlos."
+    },
+    {
+     "f": "Wie lange dauert der Vertriebs-Check?",
+     "a": "Rund 5 Minuten. Es sind zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Das Ergebnis sehen Sie sofort."
+    },
+    {
+     "f": "Was passiert nach dem Vertriebs-Check?",
+     "a": "Sie sehen sofort, wo Ihr Vertrieb steht und welcher Schritt jetzt am meisten bringt. Wenn Sie möchten, sprechen wir im kostenlosen Erstgespräch darüber: 30 Minuten per Video."
+    }
+   ],
+   "begriffe": []
+  }
+ ]
+}

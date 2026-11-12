@@ -1,0 +1,3 @@
+# MAKE Revenue · Vorschau: nichts wird eingelesen. Freigabe über seo.json (oeffentlich) und node seo.mjs.
+User-agent: *
+Disallow: /

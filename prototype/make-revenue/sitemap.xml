@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>http://localhost:3023/</loc><lastmod>2026-11-11</lastmod></url>
+  <url><loc>http://localhost:3023/systemvertrieb/</loc><lastmod>2026-11-11</lastmod></url>
+  <url><loc>http://localhost:3023/vertrieb-auf-zeit/</loc><lastmod>2026-11-11</lastmod></url>
+  <url><loc>http://localhost:3023/netzwerken/</loc><lastmod>2026-11-11</lastmod></url>
+  <url><loc>http://localhost:3023/vertriebs-check/</loc><lastmod>2026-11-11</lastmod></url>
+  <url><loc>http://localhost:3023/fragen/</loc><lastmod>2026-11-11</lastmod></url>
+</urlset>
