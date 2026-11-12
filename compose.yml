@@ -122,6 +122,10 @@ services:
       - ./fokus:/srv/fokus:ro
       # Website von Fokus Innovation (26.10.): gebaute statische Seite aus fokusinnovation/ — nur lesen, wie website/.
       - ./fokusinnovation:/srv/fokusinnovation:ro
+      # MAKE Studios und MAKE Revenue (12.11.): statische Seiten direkt aus den Prototyp-Ordnern (Quelle = Auslieferung), nur lesen.
+      # Arbeitsdateien darin (Generatoren, Notizen, Einstellungen) sperrt die Caddyfile (@intern).
+      - ./prototype/make-studios:/srv/makestudios:ro
+      - ./prototype/make-revenue:/srv/makerevenue:ro
       - caddy_daten:/data
       - caddy_konfig:/config
     depends_on: [app]

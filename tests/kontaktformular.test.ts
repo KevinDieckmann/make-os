@@ -169,7 +169,7 @@ describe('Middleware, Caddy, Köpfe, Register', () => {
   });
   it('Caddy: eigener Block mit genau /anfrage und /api/anfrage; next.config: strenge Köpfe', () => {
     const caddy = readFileSync('deploy/caddy/Caddyfile', 'utf8');
-    const block = caddy.slice(caddy.search(/^fokusinnovation\.de \{/m));
+    const block = caddy.slice(caddy.search(/^makeinnovation\.de \{/m));
     const pfade = /^\s*@kontaktformular path (.+)$/m.exec(block)?.[1].split(/\s+/) ?? [];
     expect(pfade.sort()).toEqual(['/anfrage', '/api/anfrage']);
     expect(block).toMatch(/handle @kontaktformular \{[\s\S]*?Referrer-Policy no-referrer[\s\S]*?reverse_proxy app:3000/);

@@ -66,14 +66,7 @@
 # ─── OFFLINE (Kevin 08.10.: „beide Seiten offline nehmen“) ────────────────────────────────────────────────────
 # makeinnovation.de liefert nichts aus (503), bis Kevin sie wieder freigibt. Die App läuft unter {$MAKE_OS_DOMAIN}.
 # fokusinnovation.de ist seit 26.10. wieder da (Abschnitt unten).
-makeinnovation.de, www.makeinnovation.de {
-	header {
-		Strict-Transport-Security "max-age=31536000"
-		X-Robots-Tag "noindex, nofollow"
-		-Server
-	}
-	respond 503
-}
+# (12.11.: Der OFFLINE-Block ist entfernt. makeinnovation.de liefert jetzt die Website von MAKE Innovation aus, siehe Abschnitt unten.)
 
 # ▼ FREIGABE-FASSUNG (auskommentiert — OFFLINE seit 08.10., Kevin; zum Wiedereinschalten „# “ entfernen und den OFFLINE-Block löschen)
 # (landingpage_koepfe) {
@@ -121,7 +114,8 @@ makeinnovation.de, www.makeinnovation.de {
 # }
 # ▲ FREIGABE-FASSUNG
 
-# ─── fokusinnovation.de + www — die Website von Fokus Innovation (Ordner fokusinnovation/, Kevin 26.10.: „online bringen“) ───
+# ─── makeinnovation.de + www — die Website von MAKE Innovation, das Dach der Marken (Ordner fokusinnovation/) ───
+# Umzug 12.11. (Kevin: Dach nach makeinnovation.de): bis dahin lief dieselbe Seite als Vorschau unter fokusinnovation.de.
 # VORSCHAU (Kevin 26.10.: „erst Vorschau“, „nur für intern gerade“): erreichbar für jeden mit Link, aber Suchmaschinen bekommen
 # `X-Robots-Tag: noindex, nofollow`, jede Seite trägt <meta name="robots" content="noindex"> und robots.txt sperrt alles.
 # Freischalten: die X-Robots-Tag-Zeile unten entfernen und im Generator (prototype/fokus-innovation/bauen.mjs) noindex und robots.txt öffnen.
@@ -143,18 +137,23 @@ makeinnovation.de, www.makeinnovation.de {
 		-Server
 	}
 }
-www.fokusinnovation.de {
+# Die frühere Vorschau-Adresse leitet seit 12.11. samt Pfad auf makeinnovation.de (Links aus alten Mails bleiben gültig).
+fokusinnovation.de, www.fokusinnovation.de {
 	header -Server
-	redir https://fokusinnovation.de{uri} 301
+	redir https://makeinnovation.de{uri} 301
 }
-fokusinnovation.de {
+www.makeinnovation.de {
+	header -Server
+	redir https://makeinnovation.de{uri} 301
+}
+makeinnovation.de {
 	# Vorschau-Kennwort (Kevin 31.10.: „ein Kennwort, damit nicht alle direkt draufgucken können“): die GANZE Seite samt Check, Buchung,
 	# Newsletter und Unterlagen-Links fragt Benutzer „Besucher“ + Kennwort ab (HTTP Basic, nur über HTTPS). Hier steht nur der bcrypt-Hash
 	# (base64, wie `caddy hash-password` früher ausgab — liest Caddy alt und neu), nie das Kennwort. Ändern: neuen Hash erzeugen
 	# (`caddy hash-password` bzw. `htpasswd -nbBC 12 Besucher '<kennwort>'`, $2y$ → $2a$, base64) und hier ersetzen.
 	# Öffnen für alle: den Block `basic_auth` löschen. Weiterleitungen (redir) laufen vorher und brauchen kein Kennwort.
-	basic_auth bcrypt "Fokus Innovation" {
-		Besucher JDJhJDEyJC92TXljV0h2ckpBaGtrWFpDVnFDQWVxZVZpZ1JuQUFXQVYvLkxpc2lMYU9ZN1cyWGhEeXlX
+	basic_auth bcrypt "MAKE Innovation" {
+		Besucher JDJhJDEyJDNua3RxUEZYdmo1d0k0SDRnUFBQNC5WblNFaElhc3o3U2lBNE9KSm1OVTVJZHh6Qm15SDZD
 	}
 	encode zstd gzip
 	# Wie im App-Block: den internen Next-Kopf nie annehmen, Marke „kam über den Vorbau“ setzen (lib/zugang/intern.ts).
@@ -244,6 +243,98 @@ fokusinnovation.de {
 		handle {
 			root * /srv/fokusinnovation
 			import fokus_koepfe
+			rewrite * /404.html
+			file_server
+		}
+	}
+}
+
+# ─── makestudios.de und makerevenue.de (+ www) — die zwei Marken von MAKE Innovation (Kevin 12.11.: Domains gekauft, liegen bei IONOS) ───
+# VORSCHAU wie fokusinnovation.de: erreichbar nur mit Benutzer „Besucher“ und demselben Vorschau-Kennwort (hier steht nur der bcrypt-Hash),
+# dazu dreifach für Suchmaschinen gesperrt (X-Robots-Tag hier, <meta name="robots" content="noindex"> und robots.txt aus dem Bau).
+# Quelle = Auslieferung: Die Seiten sind statisch und liegen in prototype/make-studios/ und prototype/make-revenue/ (Mounts in compose.yml).
+# Arbeitsdateien (Generatoren, Notizen, Einstellungen, Entwürfe) werden nie ausgeliefert (@intern).
+# Freischalten erst auf Kevins Wort: in seo.json „oeffentlich“: true, node seo.mjs, hier X-Robots-Tag und basic_auth entfernen.
+# CSP: Filme werden als blob: geladen (seite.js), die Rösterei-Beispielseite lädt 3D-Modelle (Worker als blob:, WebAssembly).
+# HSTS ohne includeSubDomains (Mail des Domain-Anbieters).
+(marke_koepfe) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Robots-Tag "noindex, nofollow"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self'; script-src 'self' 'wasm-unsafe-eval'; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+		X-Frame-Options DENY
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Resource-Policy same-origin
+		-Server
+	}
+}
+(marke_dateien) {
+	import marke_koepfe
+	@intern path *.md *.mjs /seo.json /seo-stand.json /seiten.json /websites/daten.json /.vorschau /logo-entwuerfe/* /beispiele/_vorlage/*
+	respond @intern 404
+	# Caching: Seiten, Stile und Skripte immer frisch nachfragen (sie tragen keinen Versionsstempel), Schriften lange, Bilder und Filme einen Tag.
+	@frisch path / */ *.html *.js *.css *.json *.xml *.txt *.webmanifest
+	header @frisch Cache-Control "no-cache"
+	@schriften path *.woff2
+	header @schriften Cache-Control "public, max-age=2592000, immutable"
+	@medien path *.mp4 *.webp *.jpg *.jpeg *.png *.avif *.svg *.glb *.ico
+	header @medien Cache-Control "public, max-age=86400"
+	file_server {
+		hide *.md *.mjs .vorschau
+	}
+}
+www.makestudios.de {
+	header -Server
+	redir https://makestudios.de{uri} 301
+}
+makestudios.de {
+	basic_auth bcrypt "MAKE Studios" {
+		Besucher JDJhJDEyJDNua3RxUEZYdmo1d0k0SDRnUFBQNC5WblNFaElhc3o3U2lBNE9KSm1OVTVJZHh6Qm15SDZD
+	}
+	encode zstd gzip
+	handle {
+		root * /srv/makestudios
+		import marke_dateien
+	}
+	handle_errors {
+		@ohne_kennwort expression `{err.status_code} == 401`
+		handle @ohne_kennwort {
+			import marke_koepfe
+			respond "Diese Seite ist noch nicht öffentlich. Bitte mit Benutzername und Kennwort anmelden." 401
+		}
+		handle {
+			root * /srv/makestudios
+			import marke_koepfe
+			rewrite * /404.html
+			file_server
+		}
+	}
+}
+www.makerevenue.de {
+	header -Server
+	redir https://makerevenue.de{uri} 301
+}
+makerevenue.de {
+	basic_auth bcrypt "MAKE Revenue" {
+		Besucher JDJhJDEyJDNua3RxUEZYdmo1d0k0SDRnUFBQNC5WblNFaElhc3o3U2lBNE9KSm1OVTVJZHh6Qm15SDZD
+	}
+	encode zstd gzip
+	handle {
+		root * /srv/makerevenue
+		import marke_dateien
+	}
+	handle_errors {
+		@ohne_kennwort expression `{err.status_code} == 401`
+		handle @ohne_kennwort {
+			import marke_koepfe
+			respond "Diese Seite ist noch nicht öffentlich. Bitte mit Benutzername und Kennwort anmelden." 401
+		}
+		handle {
+			root * /srv/makerevenue
+			import marke_koepfe
 			rewrite * /404.html
 			file_server
 		}

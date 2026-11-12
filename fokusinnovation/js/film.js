@@ -47,6 +47,8 @@ const FADEN_STELLEN = [0, 0.13, 0.29, 0.43, 0.60, 0.85];
 const zaehler = new Map();
 document.querySelectorAll('[data-woerter]').forEach((el) => {
   const block = el.closest('.block');
+  // Die erste Szene steht schon im ersten Bild da (css/film.css › Erste Szene): ihre Wörter werden nicht zerlegt und nicht eingeblendet.
+  if (block?.dataset.block === 'laerm') return;
   const woerter = el.textContent.trim().split(/\s+/);
   el.textContent = '';
   woerter.forEach((w, i) => {
@@ -64,8 +66,13 @@ document.querySelectorAll('[data-woerter]').forEach((el) => {
 // Kopf: über dem Film hell auf dunkel, danach wie überall
 const kopfHoehe = () => kopf.getBoundingClientRect().height;
 function kopfSetzen() {
-  const ueber = film.getBoundingClientRect().bottom > kopfHoehe() * 0.6;
+  const unten = film.getBoundingClientRect().bottom;
+  const ueber = unten > kopfHoehe() * 0.6;
   if (ueber !== kopf.classList.contains('ueber-film')) kopf.classList.toggle('ueber-film', ueber);
+  // Der Film ist zu Ende und das Endbild läuft nach oben weg: Der Kopf bekommt eine dunkle Fläche, damit Wortmarke und Knöpfe
+  // des Endbilds nicht durch Logo und Menü hindurchscheinen.
+  const geht = ueber && unten < innerHeight - 2;
+  if (geht !== kopf.classList.contains('film-geht')) kopf.classList.toggle('film-geht', geht);
 }
 addEventListener('scroll', kopfSetzen, { passive: true });
 kopfSetzen();
@@ -130,11 +137,13 @@ function anwenden(p, bereit) {
   }
   fadenSetzen(p, bereit);
   for (const b of BLOECKE) {
-    const ein = b.von === undefined ? (bereit ? 1 : 0) : span(p, [b.von, b.von + BLENDE]);
+    const ein = b.von === undefined ? 1 : span(p, [b.von, b.von + BLENDE]);
     const aus = b.bis === undefined ? 0 : span(p, [b.bis - BLENDE, b.bis]);
     const wert = ein * (1 - aus);
     const da = wert > 0.001;
-    if (da !== b.da) { b.el.classList.toggle('da', da); b.da = da; }
+    // Beim Ausblenden die Deckkraft ausdrücklich auf 0 setzen: Nach einem schnellen Wisch bliebe sonst der letzte Zwischenwert stehen
+    // (bei der ersten Szene sichtbar, weil sie ohne die Klasse „da“ nicht versteckt wird).
+    if (da !== b.da) { b.el.classList.toggle('da', da); b.da = da; if (!da) b.el.style.opacity = '0'; }
     if (!da) { if (b.an) { b.el.classList.remove('an'); b.an = false; } continue; }
     b.el.style.opacity = wert.toFixed(3);
     const an = wert > 0.5 || (b.an && wert > 0.05);

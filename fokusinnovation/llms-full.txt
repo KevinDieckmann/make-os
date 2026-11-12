@@ -1,6 +1,6 @@
 # MAKE Innovation: alle Inhalte als Klartext
 
-Stand: 2026-11-10. Website: https://fokusinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
+Stand: 2026-11-12. Website: https://makeinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
 
 ## Wer wir sind
 
@@ -28,31 +28,35 @@ Was wir nicht sind: Keine reine Werbe- oder PR-Agentur (Keine Kampagne und keine
 
 ### Sichtbarkeit: Gesehen werden.
 
+Zuhause des Themas ist die Marke [MAKE Studios](https://makestudios.de/). Hier steht das Preis- und Leistungsblatt.
+
 Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab 1.990 €, Websites ab 2.990 € mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab 1.490 € sowie PR und Kommunikation ab 2.990 € im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.
 
-- [Positionierung S, M, L](https://fokusinnovation.de/sichtbarkeit/positionierung/): ab 1.990 € netto (einmalig, KI-gestützt vorbereitet, Workshop mit Kevin). In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.
-- [PR und Kommunikation](https://fokusinnovation.de/sichtbarkeit/pr-kommunikation/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation.
-- [Homepage Landing](https://fokusinnovation.de/sichtbarkeit/homepage-landing/): ab 2.990 € netto (einmalig, fertig in 10 Werktagen). Ein One-Pager in Ihrer CI, der Besucher zur Anfrage führt. Fertig in 10 Werktagen.
-- [Homepage Story](https://fokusinnovation.de/sichtbarkeit/homepage-story/): ab 4.990 € netto (einmalig, fertig in 15 Werktagen). Ihre Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.
-- [Homepage Cinematic](https://fokusinnovation.de/sichtbarkeit/homepage-cinematic/): ab 9.990 € netto (einmalig, fertig in 25 Werktagen). Wir entwickeln Ihre Geschichte im Story-Workshop und bauen daraus eine Website mit 3D-Szenen und Erklärvideo. Fertig in 25 Werktagen.
-- [Erklärvideo](https://fokusinnovation.de/sichtbarkeit/erklaervideo/): ab 1.490 € netto (einmalig, fertig in 10 Werktagen). Ihr Angebot in 90 Sekunden verstanden: ein Erklärvideo in Ihrer CI, fertig in 10 Werktagen.
-- [Videostory](https://fokusinnovation.de/sichtbarkeit/videostory/): ab 1.990 € netto (einmalig, fertig in 15 Werktagen). Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich erzählt und in Ihrer CI.
-- [Video Serie](https://fokusinnovation.de/sichtbarkeit/video-serie/): ab 1.990 € netto (pro Monat, mindestens 3 Monate). Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.
+- [Positionierung S, M, L](https://makeinnovation.de/sichtbarkeit/positionierung/): ab 1.990 € netto (einmalig, KI-gestützt vorbereitet, Workshop mit Kevin). In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.
+- [PR und Kommunikation](https://makeinnovation.de/sichtbarkeit/pr-kommunikation/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation.
+- [Homepage Landing](https://makeinnovation.de/sichtbarkeit/homepage-landing/): ab 2.990 € netto (einmalig, fertig in 10 Werktagen). Ein One-Pager in Ihrer CI, der Besucher zur Anfrage führt. Fertig in 10 Werktagen.
+- [Homepage Story](https://makeinnovation.de/sichtbarkeit/homepage-story/): ab 4.990 € netto (einmalig, fertig in 15 Werktagen). Ihre Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.
+- [Homepage Cinematic](https://makeinnovation.de/sichtbarkeit/homepage-cinematic/): ab 9.990 € netto (einmalig, fertig in 25 Werktagen). Wir entwickeln Ihre Geschichte im Story-Workshop und bauen daraus eine Website mit 3D-Szenen und Erklärvideo. Fertig in 25 Werktagen.
+- [Erklärvideo](https://makeinnovation.de/sichtbarkeit/erklaervideo/): ab 1.490 € netto (einmalig, fertig in 10 Werktagen). Ihr Angebot in 90 Sekunden verstanden: ein Erklärvideo in Ihrer CI, fertig in 10 Werktagen.
+- [Videostory](https://makeinnovation.de/sichtbarkeit/videostory/): ab 1.990 € netto (einmalig, fertig in 15 Werktagen). Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich erzählt und in Ihrer CI.
+- [Video Serie](https://makeinnovation.de/sichtbarkeit/video-serie/): ab 1.990 € netto (pro Monat, mindestens 3 Monate). Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.
 
 ### Vertrieb: Verkauft werden.
 
+Zuhause des Themas ist die Marke [MAKE Revenue](https://makerevenue.de/). Hier steht das Preis- und Leistungsblatt.
+
 Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop ab 1.900 € netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.
 
-- [Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit](https://fokusinnovation.de/vertrieb/tagesworkshop/): ab 1.900 € netto (einmalig, wird beim Mandatsstart voll angerechnet). Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
-- [Head of Sales](https://fokusinnovation.de/vertrieb/head-of-sales/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Wir bauen Ihnen einen Vertrieb mit System, den Ihr Team ohne Sie bedienen kann.
-- [Chief Sales Officer (CSO)](https://fokusinnovation.de/vertrieb/cso/): ab 4.990 € netto (pro Monat, 6 oder 12 Monate). Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.
+- [Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit](https://makeinnovation.de/vertrieb/tagesworkshop/): ab 1.900 € netto (einmalig, wird beim Mandatsstart voll angerechnet). Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
+- [Head of Sales](https://makeinnovation.de/vertrieb/head-of-sales/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Wir bauen Ihnen einen Vertrieb mit System, den Ihr Team ohne Sie bedienen kann.
+- [Chief Sales Officer (CSO)](https://makeinnovation.de/vertrieb/cso/): ab 4.990 € netto (pro Monat, 6 oder 12 Monate). Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.
 
 ### Innovation: Im Alltag ankommen.
 
 Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im Erstgespräch die drei wichtigsten Abläufe fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.
 
-- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Die kurze Fassung dauert rund 10 Minuten und zeigt das Ergebnis sofort, die ausführliche rund 25 Minuten, danach kommt der vollständige Bericht per E-Mail.
-- [Umsetzungsprojekte: KI und Software einführen](https://fokusinnovation.de/innovation/umsetzungsprojekte/): bald, Anfrage schon jetzt möglich, Preis auf Anfrage. Wir ordnen zuerst Abläufe und Daten und führen dann KI und Software ein, bis Ihr Team sie im Alltag nutzt. Jedes Projekt bekommt einen Festpreis und einen klaren Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an. Startet in Kürze.
+- [Innovations-Check](https://makeinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Die kurze Fassung dauert rund 10 Minuten und zeigt das Ergebnis sofort, die ausführliche rund 25 Minuten, danach kommt der vollständige Bericht per E-Mail.
+- [Umsetzungsprojekte: KI und Software einführen](https://makeinnovation.de/innovation/umsetzungsprojekte/): bald, Anfrage schon jetzt möglich, Preis auf Anfrage. Wir ordnen zuerst Abläufe und Daten und führen dann KI und Software ein, bis Ihr Team sie im Alltag nutzt. Jedes Projekt bekommt einen Festpreis und einen klaren Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an. Startet in Kürze.
 
 Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sales, CSO sowie PR und Kommunikation: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen; Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, zahlbar in 14 Tagen; wir starten nach Zahlungseingang; Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung.
 
@@ -126,7 +130,7 @@ Antwort: Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich a
 
 ## Vertrieb aufbauen: vom Gründer zum System
 
-Quelle: https://fokusinnovation.de/wissen/vertrieb-aufbauen/ · Kevin Dieckmann · 2026-10-27
+Quelle: https://makeinnovation.de/wissen/vertrieb-aufbauen/ · Kevin Dieckmann · 2026-10-27
 
 Kurz gesagt: Vertrieb wird planbar, wenn fünf Dinge stehen: eine klare Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein Team, das trainiert ist. Halten Sie diese Reihenfolge ein. Wer mit einem neuen Werkzeug oder dem ersten Vertriebler anfängt, hat noch nichts, worauf beides aufsetzen kann.
 
@@ -207,7 +211,7 @@ Antwort: Das hängt vom Ausgangspunkt ab. In unserem Mandat als Head of Sales l�
 
 ## Head of Sales auf Zeit: was er macht und wann er sich lohnt
 
-Quelle: https://fokusinnovation.de/wissen/head-of-sales-auf-zeit/ · Kevin Dieckmann · 2026-10-27
+Quelle: https://makeinnovation.de/wissen/head-of-sales-auf-zeit/ · Kevin Dieckmann · 2026-10-27
 
 Kurz gesagt: Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Er baut das System, setzt es mit Ihrem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Bei MAKE Innovation kostet das Mandat ab 2.990 € netto im Monat, bei 6 oder 12 Monaten Laufzeit.
 
@@ -277,7 +281,7 @@ Antwort: Für Firmen ohne fertiges Produkt, Konzerne mit Einkaufsabteilung, rein
 
 ## Positionierung: in fünf Sätzen sagen, was Sie machen
 
-Quelle: https://fokusinnovation.de/wissen/positionierung-in-fuenf-saetzen/ · Kevin Dieckmann · 2026-10-27
+Quelle: https://makeinnovation.de/wissen/positionierung-in-fuenf-saetzen/ · Kevin Dieckmann · 2026-10-27
 
 Kurz gesagt: Eine klare Positionierung sagt in fünf Sätzen, für wen Sie da sind, welches Problem Sie lösen, wie Sie es lösen, was Sie unterscheidet und woran man sieht, dass es stimmt. Wenn diese Sätze stehen, werden Website, Präsentation und Verkaufsgespräch leichter, weil alle dieselbe Geschichte erzählen.
 
@@ -331,7 +335,7 @@ Antwort: Die Positionierung beschreibt, für wen Sie was lösen und warum man Si
 
 ## Homepage: was Besucher in fünf Sekunden verstehen müssen
 
-Quelle: https://fokusinnovation.de/wissen/homepage-fuenf-sekunden/ · Kevin Dieckmann · 2026-10-27
+Quelle: https://makeinnovation.de/wissen/homepage-fuenf-sekunden/ · Kevin Dieckmann · 2026-10-27
 
 Kurz gesagt: Eine Homepage muss in fünf Sekunden drei Fragen beantworten: Was machen Sie? Für wen? Was soll ich als Nächstes tun? Danach kommt es auf Belege an, die man prüfen kann, auf eine ruhige Gestaltung, die auch auf dem Handy funktioniert, und auf eine kurze Ladezeit. Ans Design gehen Sie erst, wenn die Botschaft steht.
 
@@ -384,7 +388,7 @@ Antwort: Ja, innerhalb von 3 Monaten nach Abnahme. Sie zahlen nur die Differenz.
 
 ## Erklärvideo für Unternehmen: Aufbau, Länge und Ablauf
 
-Quelle: https://fokusinnovation.de/wissen/erklaervideo-fuer-unternehmen/ · Kevin Dieckmann · 2026-10-27
+Quelle: https://makeinnovation.de/wissen/erklaervideo-fuer-unternehmen/ · Kevin Dieckmann · 2026-10-27
 
 Kurz gesagt: Ein Erklärvideo lohnt sich, wenn man Ihr Angebot in 90 Sekunden besser versteht als in drei Absätzen Text. Ein gutes folgt einem einfachen Bogen: Problem, Lösung, Ablauf, nächster Schritt. Einen Dreh vor Ort braucht es nicht, bei uns entsteht es aus KI-Szenen, Ihrem Material und einer KI-Stimme oder Untertiteln, in zehn Werktagen ab vollständigem Formular und Zahlungseingang.
 
@@ -437,7 +441,7 @@ Antwort: Die Videos entstehen aus KI-Szenen und Ihrem eigenen Material. Wo es n�
 
 ## KI im Mittelstand einführen: erst die Daten, dann die Werkzeuge
 
-Quelle: https://fokusinnovation.de/wissen/ki-im-mittelstand-einfuehren/ · Kevin Dieckmann · 2026-10-27
+Quelle: https://makeinnovation.de/wissen/ki-im-mittelstand-einfuehren/ · Kevin Dieckmann · 2026-10-27
 
 Kurz gesagt: Damit KI im Alltag ankommt, brauchen Sie einen Anwendungsfall, dessen Nutzen Sie messen können, Daten, auf die das Werkzeug zugreifen kann, und ein Team, das damit arbeitet. Wir gehen dafür in fünf Schritten vor: Stand messen, drei Hebel wählen, Daten ordnen, im Ablauf einführen, Team befähigen und messen.
 
@@ -497,7 +501,7 @@ Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Au
 
 ## Fünf Vertriebszahlen, die jedes kleine Unternehmen kennen sollte
 
-Quelle: https://fokusinnovation.de/wissen/fuenf-vertriebszahlen/ · Kevin Dieckmann · 2026-10-30
+Quelle: https://makeinnovation.de/wissen/fuenf-vertriebszahlen/ · Kevin Dieckmann · 2026-10-30
 
 Kurz gesagt: Fünf Zahlen reichen, um einen kleinen Vertrieb zu steuern: wie viele Angebote im Monat rausgehen, wie viele davon zum Auftrag werden, wie lange es vom ersten Gespräch bis zum Abschluss dauert, welche Chancen offen sind und mit welchem Wert, und ob jedes offene Angebot ein Datum zum Nachfassen hat. Ein teures Werkzeug braucht es dafür nicht. Eine Tabelle genügt, wenn sie gepflegt und jede Woche besprochen wird.
 
@@ -586,7 +590,7 @@ Antwort: Wer eine Chance führt, trägt sie ein und hält sie aktuell. Eine Pers
 
 ## Warum Ihre Website keine Anfragen bringt, und was Sie in einer Woche ändern können
 
-Quelle: https://fokusinnovation.de/wissen/website-ohne-anfragen/ · Kevin Dieckmann · 2026-10-30
+Quelle: https://makeinnovation.de/wissen/website-ohne-anfragen/ · Kevin Dieckmann · 2026-10-30
 
 Kurz gesagt: Eine Website bringt kaum Anfragen, wenn Besucher nicht schnell verstehen, was Sie machen, und nicht wissen, was sie als Nächstes tun sollen. Fünf Änderungen schaffen Sie in einer Woche: ein Kernsatz ganz oben, ein klarer nächster Schritt, Belege statt Behauptungen, ein kurzes Video und eine eigene Seite je Angebot. Neu bauen müssen Sie die Seite dafür meist nicht.
 
@@ -682,7 +686,7 @@ Antwort: Landing in 10, Story in 15, Cinematic in 25 Werktagen. Die Zeit läuft 
 
 ## Die ersten 30 Tage mit KI im Team
 
-Quelle: https://fokusinnovation.de/wissen/erste-30-tage-mit-ki/ · Kevin Dieckmann · 2026-10-30
+Quelle: https://makeinnovation.de/wissen/erste-30-tage-mit-ki/ · Kevin Dieckmann · 2026-10-30
 
 Kurz gesagt: Fangen Sie in den ersten 30 Tagen klein an: mit einem einzigen Ablauf, einer Firmenlizenz, die das Unternehmen verwaltet, wenigen schriftlichen Regeln und einer Messung vorher und nachher. Am Tag 30 entscheiden Sie anhand der Zahlen, ob Sie ausweiten, anpassen oder aufhören.
 
@@ -786,7 +790,7 @@ Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Au
 
 ## Kundenstimmen, die überzeugen: einholen, freigeben, einsetzen
 
-Quelle: https://fokusinnovation.de/wissen/kundenstimmen-die-ueberzeugen/ · Kevin Dieckmann · 2026-10-30
+Quelle: https://makeinnovation.de/wissen/kundenstimmen-die-ueberzeugen/ · Kevin Dieckmann · 2026-10-30
 
 Kurz gesagt: Eine Kundenstimme überzeugt, wenn sie ein Ergebnis nennt, von einer echten Person mit Namen und Firma stammt und schriftlich freigegeben ist. Fragen Sie kurz nach einem sichtbaren Erfolg, führen Sie ein Gespräch statt einen Fragebogen zu schicken, schreiben Sie den Text selbst und lassen Sie ihn freigeben. Dann setzen Sie die Stimme dort ein, wo Interessenten entscheiden.
 
@@ -887,7 +891,7 @@ Antwort: Landing in 10, Story in 15, Cinematic in 25 Werktagen. Die Zeit läuft 
 
 ## KI-Anwendungsfälle finden und bewerten
 
-Quelle: https://fokusinnovation.de/wissen/ki-anwendungsfaelle-finden/ · Kevin Dieckmann · 2026-10-30
+Quelle: https://makeinnovation.de/wissen/ki-anwendungsfaelle-finden/ · Kevin Dieckmann · 2026-10-30
 
 Kurz gesagt: Den ersten Anwendungsfall für KI finden Sie, indem Sie Ideen sammeln, jeden Kandidaten in einem kurzen Steckbrief beschreiben und nach sechs Kriterien bewerten: Zeit heute, weiterer Nutzen, gleiche Form, Datenlage, Fehlerfolgen und Aufwand. Zwei Regeln gelten vor der Punktzahl: kein Ablauf mit hohen Fehlerfolgen zuerst und keiner ohne greifbare Daten. Dann wählen Sie einen einzigen Ablauf für 30 Tage.
 
@@ -999,7 +1003,7 @@ Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Au
 
 ## Vom Gründer-Vertrieb zum Vertriebsteam
 
-Quelle: https://fokusinnovation.de/wissen/vom-gruender-vertrieb-zum-vertriebsteam/ · Kevin Dieckmann · 2026-10-30
+Quelle: https://makeinnovation.de/wissen/vom-gruender-vertrieb-zum-vertriebsteam/ · Kevin Dieckmann · 2026-10-30
 
 Kurz gesagt: Ein Vertrieb wächst in drei Phasen. Am Start verkauft der Gründer selbst, im Aufbau kommen die ersten Vertriebler dazu, im Wachstum führt jemand ein Team mit mehreren Rollen. Jede Phase braucht etwas anderes zuerst, und die Übergänge zwischen ihnen sind die schwierigsten Momente. Dieser Leitfaden zeigt, woran Sie Ihre Phase erkennen, welche Rollen es gibt, wie Sie gute Leute auswählen, einarbeiten, fair und rechtlich sauber bezahlen und mit einem festen Rhythmus führen. Alle Bögen dazu stehen im kostenlosen Arbeitsheft.
 
@@ -1204,7 +1208,7 @@ Antwort: Jemand, der führen will und es gelernt hat oder lernen darf. Das ist n
 
 ## Vertriebskennzahlen je Phase: Start, Aufbau, Wachstum
 
-Quelle: https://fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/ · Kevin Dieckmann · 2026-10-30
+Quelle: https://makeinnovation.de/wissen/vertriebskennzahlen-je-phase/ · Kevin Dieckmann · 2026-10-30
 
 Kurz gesagt: Welche Kennzahlen ein Vertrieb braucht, hängt von seiner Phase ab. Am Start, wenn der Gründer selbst verkauft, zählen seine Zeit, Erstgespräche, Angebote und die Abschlussquote. Im Aufbau mit den ersten Vertrieblern kommen Zahlen je Person und je Stufe dazu. Im Wachstum, mit Team und Führung, zählen Prognose, Abdeckung der Pipeline, Kosten je Neukunde und Einarbeitungszeit. Zielwerte setzen Sie aus eigenen Messungen, nicht aus fremden Durchschnitten.
 

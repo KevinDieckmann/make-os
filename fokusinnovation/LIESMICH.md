@@ -1,4 +1,4 @@
-# fokusinnovation.de · gebaute Website (Vorschau seit 26.10.2026)
+# makeinnovation.de · gebaute Website von MAKE Innovation (Vorschau seit 26.10.2026; bis 12.11. unter fokusinnovation.de)
 
 Dieser Ordner ist **gebaut**, nicht von Hand geschrieben. Quelle und Generator liegen im Prototyp
 `prototype/fokus-innovation/` auf dem Zweig `innovations-check` (Texte in `inhalt/fokus.json`, Angebote aus `makeinnovation/inhalt/*.json`).
@@ -7,8 +7,8 @@ So kommt eine neue Fassung hierher:
 1. Dort bauen: `node prototype/fokus-innovation/bauen.mjs` (prüft die Regeln gleich mit). Neue Seiten oder geänderte Titel: vorher
    `node prototype/fokus-innovation/bilder.mjs` (Vorschaubilder und Icons, braucht Chrome).
 2. Hierher kopieren, ohne Generatoren, Inhalte und Notizen:
-   `rsync -a --delete --exclude '*.mjs' --exclude inhalt/ --exclude '*.md' prototype/fokus-innovation/ fokusinnovation/`
-3. Auf `main` bringen. Caddy liefert den Ordner unter fokusinnovation.de aus (`deploy/caddy/Caddyfile`, Mount in `compose.yml`).
+   `rsync -a --delete --exclude '*.mjs' --exclude inhalt/ --exclude '*.md' --exclude dateien/ --exclude werkzeug/ --exclude assets/logo-vorschlaege/ prototype/fokus-innovation/ fokusinnovation/`
+3. Auf `main` bringen. Caddy liefert den Ordner unter makeinnovation.de aus; fokusinnovation.de leitet dorthin (`deploy/caddy/Caddyfile`, Mount in `compose.yml`).
 
 Für Suchmaschinen und KI-Suchen (27.10.) trägt jede Seite Titel, Beschreibung, Canonical, Vorschaubild (`assets/bild/og/`) und
 strukturierte Daten (JSON-LD); dazu `sitemap.xml`, `llms.txt`, `llms-full.txt`, `site.webmanifest` und die IndexNow-Datei (`<schlüssel>.txt`).

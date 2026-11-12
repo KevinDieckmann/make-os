@@ -324,9 +324,9 @@ describe('Middleware: nur GET/POST /api/unterlage und GET /api/unterlage/laden s
       expect(offen(r), `${m} ${p}`).toBe(false);
     }
   });
-  it('Caddy leitet im Block fokusinnovation.de genau /api/unterlage und /api/unterlage/* an die App; strenge Köpfe in next.config', () => {
+  it('Caddy leitet im Block makeinnovation.de genau /api/unterlage und /api/unterlage/* an die App; strenge Köpfe in next.config', () => {
     const caddy = readFileSync('deploy/caddy/Caddyfile', 'utf8');
-    const block = caddy.slice(caddy.indexOf('\nfokusinnovation.de {'));
+    const block = caddy.slice(caddy.indexOf('\nmakeinnovation.de {'));
     expect(/@app path [^\n]*\/api\/unterlage \/api\/unterlage\/\*/.test(block)).toBe(true);
     const cfg = readFileSync('next.config.mjs', 'utf8');
     expect(cfg).toContain("{ source: '/api/unterlage', headers: buchung }");

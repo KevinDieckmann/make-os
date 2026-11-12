@@ -451,9 +451,9 @@ describe('Middleware, Caddy, Köpfe', () => {
       expect(offen(r), `${m} ${p}`).toBe(false);
     }
   });
-  it('Caddy leitet im Block fokusinnovation.de genau /api/bestellung und /api/baustein/laden an die App; strenge Köpfe in next.config', () => {
+  it('Caddy leitet im Block makeinnovation.de genau /api/bestellung und /api/baustein/laden an die App; strenge Köpfe in next.config', () => {
     const caddy = readFileSync('deploy/caddy/Caddyfile', 'utf8');
-    const block = caddy.slice(caddy.indexOf('\nfokusinnovation.de {'));
+    const block = caddy.slice(caddy.indexOf('\nmakeinnovation.de {'));
     expect(block).toMatch(/^\t@bausteine path \/api\/bestellung \/api\/baustein\/laden$/m);
     expect(block.indexOf('basic_auth')).toBeLessThan(block.indexOf('@bausteine'));
     const cfg = readFileSync('next.config.mjs', 'utf8');

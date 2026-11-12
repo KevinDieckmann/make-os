@@ -94,7 +94,14 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
   });
 
   it('Hauptdomain: VORERST 302 auf die Anmeldung — oder die Freigabe-Fassung, dann nur mit grüner Prüfung', () => {
-    if (!freigabeAktiv) {
+    const dach = aktiv.get('makeinnovation.de');
+    if (dach && /^root \* \/srv\/fokusinnovation$/m.test(dach)) {
+      // Seit 12.11. (Kevin: Dach nach makeinnovation.de): die Hauptdomain liefert die Website von MAKE Innovation aus, als Vorschau mit
+      // Kennwort; die Einzelheiten prüft der nächste Test. HSTS weiter ohne includeSubDomains (Mail des Domain-Anbieters).
+      expect(dach).toMatch(/^basic_auth bcrypt "MAKE Innovation" \{$/m);
+      expect(aktiv.get('(fokus_koepfe)') ?? '').toMatch(/^Strict-Transport-Security "max-age=31536000"$/m);
+      expect(aktiv.get('www.makeinnovation.de')).toMatch(/^redir https:\/\/makeinnovation\.de\{uri\} 301$/m);
+    } else if (!freigabeAktiv) {
       // VORERST: Umleitung auf die Anmeldung — oder OFFLINE (Kevin 08.10.): 503 ohne Inhalt.
       const vorerst = Array.from(aktiv.entries()).find(([k]) => k.split(',').map(a => a.trim()).includes('makeinnovation.de'))?.[1];
       expect(vorerst, 'Umleitungs- oder Offline-Block').toBeDefined();
@@ -113,7 +120,7 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     }
   });
 
-  it('fokusinnovation.de (26.10., Welle 3 29.10.): www → 301, gebaute Website read-only aus /srv/fokusinnovation mit strengen Köpfen, Vorschau mit noindex + robots.txt, nur Check, Newsletter-Anmeldung und Buchung an die App', () => {
+  it('makeinnovation.de (Dach seit 12.11., vorher fokusinnovation.de; 26.10., Welle 3 29.10.): www → 301, gebaute Website read-only aus /srv/fokusinnovation mit strengen Köpfen, Vorschau mit noindex + robots.txt, nur Check, Newsletter-Anmeldung und Buchung an die App', () => {
     // OFFLINE (Kevin 08.10.): beide Adressen im Offline-Block mit 503, nichts ausgeliefert.
     const offline = Array.from(aktiv.entries()).find(([k]) => k.split(',').map(a => a.trim()).includes('fokusinnovation.de'));
     if (offline && /^respond 503$/m.test(offline[1])) {
@@ -122,9 +129,13 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
       expect(offline[1]).toMatch(/^X-Robots-Tag "noindex, nofollow"$/m);
       return;
     }
-    const www = aktiv.get('www.fokusinnovation.de');
-    expect(www).toMatch(/^redir https:\/\/fokusinnovation\.de\{uri\} 301$/m);
-    const seite = aktiv.get('fokusinnovation.de') ?? '';
+    // Seit 12.11.: Die frühere Vorschau-Adresse (mit und ohne www) leitet samt Pfad auf makeinnovation.de; dort liegt die Seite.
+    const alt = aktiv.get('fokusinnovation.de, www.fokusinnovation.de') ?? '';
+    expect(alt).toMatch(/^redir https:\/\/makeinnovation\.de\{uri\} 301$/m);
+    expect(alt).not.toMatch(/file_server|root |reverse_proxy|basic_auth/);
+    const www = aktiv.get('www.makeinnovation.de');
+    expect(www).toMatch(/^redir https:\/\/makeinnovation\.de\{uri\} 301$/m);
+    const seite = aktiv.get('makeinnovation.de') ?? '';
     expect(seite).toMatch(/^root \* \/srv\/fokusinnovation$/m);
     expect(seite).toMatch(/^import fokus_koepfe$/m);
     // Arbeitsdateien (LIESMICH.md u. a.) antworten 404 — auch in Unterordnern.
@@ -172,7 +183,7 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
       expect(html, datei).not.toMatch(/\sstyle="/);
       for (const [, ld] of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) expect(() => JSON.parse(ld), datei).not.toThrow();
     }
-    expect(readFileSync(join(ordner, 'sitemap.xml'), 'utf8')).toMatch(/<loc>https:\/\/fokusinnovation\.de\/<\/loc>/);
+    expect(readFileSync(join(ordner, 'sitemap.xml'), 'utf8')).toMatch(/<loc>https:\/\/makeinnovation\.de\/<\/loc>/);
     expect(readFileSync(join(process.cwd(), 'compose.yml'), 'utf8')).toMatch(/^\s+- \.\/fokusinnovation:\/srv\/fokusinnovation:ro$/m);
   });
 
