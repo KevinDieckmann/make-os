@@ -65,7 +65,7 @@ const anleitungKz = {
     [],
     [t('Richtwerte', 'kopf'), t('', 'kopf'), t('', 'kopf')],
     [t('Bewusst keine', 'fett'), t('Quoten hängen von Branche, Preis, Kanal und Kontaktliste ab. Setzen Sie Ziele aus Ihren eigenen Werten. Zeit bis zum Abschluss und Herkunft der Aufträge rechnet die Vorlage „Vertriebs-Pipeline“.')],
-    [t('Mehr dazu', 'fett'), t('Ratgeber: makeinnovation.de/wissen/vertriebskennzahlen-je-phase/ · Vertriebscheck: makeinnovation.de/check?thema=vertrieb')],
+    [t('Mehr dazu', 'fett'), t('Ratgeber: makeinnovation.de/wissen/vertriebskennzahlen-je-phase/ · Check: makeinnovation.de/check?thema=sichtbarkeit-vertrieb')],
   ],
 };
 

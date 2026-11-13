@@ -505,7 +505,7 @@
     "vertrieb": {
       "gibt-es-rabatt": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen.",
       "wie-lange-laufen-die-vertraege": "Head of Sales und CSO laufen 6 oder 12 Monate. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis.",
-      "was-kostet-der-tagesworkshop-und-was": "{preis:tagesworkshop} netto. Sie bekommen ein Protokoll mit den Top 5 nach Aufwand und Wirkung und einen 90-Tage-Plan, eine Sache setzen wir am Tag direkt um. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
+      "was-kostet-der-tagesworkshop-und-was": "{preis:tagesworkshop} netto. Sie bekommen ein Protokoll mit Ihren fünf größten Hebeln nach Aufwand und Wirkung und einen 90-Tage-Plan. Einen Hebel setzen wir am Tag gemeinsam um. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
     }
   },
   "produkt_anpassung": {
@@ -550,7 +550,7 @@
     ],
     [
       "Sitz",
-      "Berlin"
+      "Schönefeld bei Berlin"
     ],
     [
       "Für wen",
@@ -872,7 +872,7 @@
     "hinweis": "Marken (Kevin 11.11.2026, Wortlaut 12.11.: aus Kundensicht, keine Innensicht wie „Familie“, „Dach“, „die Preise stehen hier“). Sichtbarkeit liefert MAKE Studios, Vertrieb (mit Netzwerken und Events) MAKE Revenue, Innovation bleibt bei MAKE Innovation; Preise stehen nur bei MAKE Innovation. Die Adressen der Marken stehen an genau dieser einen Stelle (url). Die Sätze unter satz und dach_satz sind die Standardsätze für Suchmaschinen (JSON-LD, llms.txt), sie stehen nicht im sichtbaren Fließtext.",
     "marke": "Leistungen",
     "titel": "Was Sie von uns bekommen.",
-    "lead": "",
+    "lead": "Aus guten Angeboten soll Umsatz werden: MAKE Studios macht Sie sichtbar, MAKE Revenue macht aus Anfragen Aufträge, und MAKE Innovation führt KI und bessere Abläufe ein.",
     "dach_satz": "MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue.",
     "innovation_marke": "Innovation",
     "events_hinweis": "Mehr zu Netzwerken und Events bei MAKE Revenue",
@@ -912,8 +912,7 @@
         "themen": [
           "Vertrieb mit System",
           "Vertrieb auf Zeit",
-          "Netzwerken und Events",
-          "Vertriebs-Check"
+          "Netzwerken und Events"
         ],
         "dort": "Vorgehen, Ablauf und Events",
         "preise_link": "Leistungen und Preise",
@@ -973,8 +972,8 @@
     "zeilen": [
       [
         "Erstkontakte",
-        "38",
-        "40"
+        "18",
+        "20"
       ],
       [
         "Termine",
@@ -1018,7 +1017,7 @@
     "cso": "30 bis 35 Stunden im Monat, fest eingeplant"
   },
   "kostenlos": {
-    "hinweis": "Bereich „Kostenlos“ (Kevin 30.10.): Checks, Ratgeber, Zahlen, Vorlagen, Newsletter. Der Innovations-Check bleibt der große, die zwei kleinen Checks laufen leise daneben.",
+    "hinweis": "Bereich „Kostenlos“ (Kevin 30.10.): Checks, Ratgeber, Zahlen, Vorlagen, Newsletter. Seit 13.11.2026 zwei Checks (Kevin): der Innovations-Check und der Sichtbarkeits- und Vertriebs-Check. Feld bereiche = zu welchen Bereichen der Check gehört.",
     "titel": "Kostenlos.",
     "ruhig": "Zum Mitnehmen.",
     "lead": "Checks, Leitfäden, Ratgeber, Zahlen und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Alles mit Anleitung, Beispiel und Bogen zum Ausfüllen. Das meiste bekommen Sie sofort und ohne Anmeldung, ausführliche Arbeitshefte und den vollständigen Check-Bericht schicken wir Ihnen per E-Mail.",
@@ -1032,18 +1031,15 @@
         "haupt": true
       },
       {
-        "id": "vertrieb",
-        "name": "Vertriebs-Check",
-        "minuten": 5,
-        "text": "Zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, wo Ihr Vertrieb steht.",
-        "thema": "vertrieb"
-      },
-      {
-        "id": "sichtbarkeit",
-        "name": "Sichtbarkeits-Check",
-        "minuten": 5,
-        "text": "Zwölf Fragen zu Botschaft, Website und Reichweite, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, ob man Sie versteht und findet.",
-        "thema": "sichtbarkeit"
+        "id": "sichtbarkeit-vertrieb",
+        "name": "Sichtbarkeits- und Vertriebs-Check",
+        "minuten": 7,
+        "text": "Fünfzehn Fragen zu Sichtbarkeit und Vertrieb, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, ob es eher an der Sichtbarkeit oder am Vertrieb liegt und welcher Schritt jetzt am meisten bringt.",
+        "thema": "sichtbarkeit-vertrieb",
+        "bereiche": [
+          "sichtbarkeit",
+          "vertrieb"
+        ]
       }
     ],
     "phasen_titel": "Wo steht Ihr Unternehmen?",
@@ -1197,14 +1193,10 @@
       "checks": [
         [
           "sichtbarkeit",
-          "Sichtbarkeits-Check starten"
-        ],
-        [
-          "vertrieb",
-          "Vertriebs-Check starten"
+          "Check starten"
         ]
       ],
-      "check_satz": "Zwei kurze Checks zeigen Ihnen in rund sechs Minuten, wo Sie bei Sichtbarkeit und Vertrieb stehen und welcher Schritt jetzt am meisten bringt."
+      "check_satz": "Der Sichtbarkeits- und Vertriebs-Check zeigt Ihnen in rund sieben Minuten, wo Sie bei Sichtbarkeit und Vertrieb stehen und welcher Schritt jetzt am meisten bringt."
     },
     "unternehmen": {
       "titel": "KI im Alltag nutzen.",
@@ -1258,7 +1250,7 @@
     },
     "tagesworkshop": {
       "punkte": [
-        "Ziel des Tages sind drei Hebel, die Sie sofort umsetzen können.",
+        "Am Abend kennen Sie Ihre fünf größten Hebel. Drei davon können Sie sofort umsetzen.",
         "Starten Sie danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Workshop voll an."
       ]
     },
@@ -1296,14 +1288,14 @@
           ],
           [
             "Danach",
-            "Protokoll mit Ihren Top 5 und Ihr 90-Tage-Plan, schriftlich."
+            "Protokoll mit Ihren fünf Hebeln und Ihr 90-Tage-Plan, schriftlich."
           ]
         ]
       },
       "ergebnis": [
         "Am Abend kennen Sie Ihre fünf größten Hebel, bewertet nach Aufwand und Wirkung.",
         "Sie haben einen 90-Tage-Plan und wissen, ob Sie ein Markt- oder ein Produktproblem haben.",
-        "Ein Hebel ist schon umgesetzt."
+        "Drei Hebel können Sie sofort umsetzen, einen haben wir schon gemeinsam umgesetzt."
       ],
       "eckdaten": [
         [
@@ -1316,12 +1308,12 @@
         ],
         [
           "Ergebnis",
-          "Protokoll mit Top 5 und 90-Tage-Plan"
+          "Protokoll mit fünf Hebeln und 90-Tage-Plan"
         ]
       ],
       "immer": [
         "Ein Tag zu Vertrieb, Markteintritt und Sichtbarkeit",
-        "Protokoll mit den Top 5 nach Aufwand und Wirkung",
+        "Protokoll mit Ihren fünf Hebeln nach Aufwand und Wirkung",
         "90-Tage-Plan",
         "Einordnung: Markt- oder Produktproblem",
         "Eine Sache setzen wir am Tag direkt um"
@@ -1341,7 +1333,7 @@
         ],
         [
           "Ergebnis",
-          "Ziel des Tages sind drei Hebel, die Sie sofort umsetzen können."
+          "Am Abend kennen Sie Ihre fünf größten Hebel. Drei davon können Sie sofort umsetzen."
         ]
       ],
       "mitwirkung": [
@@ -1356,7 +1348,7 @@
         },
         {
           "frage": "Was bringt mir der Tag?",
-          "antwort": "Ziel des Tages sind drei Hebel, die Sie sofort umsetzen können."
+          "antwort": "Am Abend kennen Sie Ihre fünf größten Hebel. Drei davon können Sie sofort umsetzen."
         },
         {
           "frage": "Strategie oder operativ: Was heißt das?",
