@@ -252,8 +252,11 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .zahl-balken svg { display: block; width: 100%; height: 100%; }
 .zahl-balken-wert { fill: var(--blau-hell); transform-box: fill-box; transform-origin: 0 50%; }
 .zahl-satz { margin-top: 18px; font-size: 17px; line-height: 1.45; color: rgba(238, 241, 246, .86); }
-.zahl-quelle { display: block; margin-top: 12px; font: 500 11.5px/1.5 "Mono", ui-monospace, monospace; letter-spacing: .04em; color: var(--grau-hell); }
+.zahl-quelle { display: block; margin-top: 12px; font: 500 13px/1.5 "Mono", ui-monospace, monospace; letter-spacing: .04em; color: var(--grau-hell); }
 .zahl-quelle a { color: inherit; text-underline-offset: 3px; }
+/* Verweise im Text: 44 px hohe Tippfläche über Innenabstand; die Zeile selbst bleibt, wie sie ist */
+.zahl-quelle a, .report-hinweis a, .stand a, .textlink { padding-block: 14px; }
+.zahl-quelle a:focus-visible, .report-hinweis a:focus-visible, .stand a:focus-visible, .textlink:focus-visible { outline-offset: -11px; }
 .zahl-quelle a:hover { color: var(--papier); }
 .zahl-gross { padding: clamp(24px, 3vw, 44px); border: 1px solid var(--linie-hell); border-radius: 28px; background: var(--tinte-2); }
 .zahl-gross .zahl-wert { font-size: clamp(88px, 12.5vw, 216px); line-height: .82; letter-spacing: -.04em; color: var(--blau-hell); }
@@ -276,12 +279,12 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .thema:hover, .thema:focus-within { background: rgba(23, 70, 158, .07); }
 .thema-nr { font: 500 13px/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--blau-text); }
 .thema-titel { font-size: clamp(28px, 3.3vw, 54px); line-height: .98; }
-.thema-titel a { text-decoration: none; }
+.thema-titel a { display: inline-block; padding-block: 9px; margin-block: -9px; text-decoration: none; }
 .thema-titel a::after { content: ""; position: absolute; inset: 0; }
 .thema-titel a:focus-visible { outline: none; }
 .thema:focus-within { outline: 2px solid var(--blau); outline-offset: 2px; border-radius: 6px; }
 .thema-text { font-size: 17px; line-height: 1.5; color: var(--tinte-weich); }
-.thema-text small { display: block; margin-top: 10px; font: 500 11.5px/1.5 "Mono", ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--grau); }
+.thema-text small { display: block; margin-top: 10px; font: 500 12px/1.5 "Mono", ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--grau); }
 .thema-pfeil {
   justify-self: end; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%;
   border: 1px solid rgba(10, 19, 38, .3); transition: background .3s, border-color .3s, color .3s, transform .4s var(--kurve);
@@ -292,7 +295,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 /* ─── Rechner ─── */
 .rechner { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 3vw, 56px); align-items: start; }
 .rechner-eingaben { padding: clamp(22px, 2.4vw, 34px); border: 1px solid var(--linie-hell); border-radius: 24px; background: var(--tinte-2); }
-.etikett { font: 500 11.5px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--grau-hell); }
+.etikett { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--grau-hell); }
 .rechner-eingaben .etikett { margin: 26px 0 4px; }
 .rechner-eingaben .etikett:first-child { margin-top: 0; }
 .rechner-feld { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--linie-hell); font-size: 16px; line-height: 1.3; }
@@ -308,10 +311,14 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .rechner-eingabe input[aria-invalid="true"] { border-color: var(--warn-hell); }
 .einheit { min-width: 4.9em; font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .06em; color: var(--grau-hell); }
 .rechner-hinweis { margin-top: 18px; font-size: 14px; line-height: 1.5; color: var(--grau-hell); }
+.rechner-meldung { margin-top: 16px; padding: 10px 14px; border: 1px solid var(--warn-hell); border-radius: 12px; font-size: 15px; font-weight: 500; line-height: 1.4; color: var(--warn-hell); }
+/* Leer bleibt die Meldung im Baum (Vorleseprogramme melden sie sonst nicht), nimmt aber keinen Platz ein */
+.rechner-meldung:empty { margin-top: 0; padding: 0; border: 0; }
+.rechner-meldung + .rechner-hinweis { margin-top: 14px; }
 
 .rechner-ergebnis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 clamp(16px, 2vw, 32px); }
 .rechner-ergebnis > div { padding: 16px 0; border-top: 1px solid var(--linie-hell); }
-.rechner-ergebnis dt { font: 500 11.5px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau-hell); }
+.rechner-ergebnis dt { font: 500 12px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau-hell); }
 .rechner-ergebnis dd { margin-top: 8px; font: 700 clamp(24px, 2.4vw, 36px)/1 "Bricolage", system-ui, sans-serif; font-stretch: 82%; font-variant-numeric: tabular-nums; }
 .rechner-ergebnis .rechner-haupt { grid-column: 1 / -1; padding: 0 0 clamp(20px, 2.4vw, 34px); border-top: 0; }
 .rechner-haupt dd { margin-top: 12px; font-size: clamp(92px, 12vw, 200px); line-height: .82; letter-spacing: -.04em; color: var(--blau-hell); }
@@ -351,7 +358,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .karten-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 2vw, 28px); }
 .karte { position: relative; display: flex; flex-direction: column; padding: clamp(24px, 2.8vw, 40px); border-radius: 24px; background: var(--weiss); border: 1px solid rgba(10, 19, 38, .1); }
 .ton-2 .karte { background: var(--papier); }
-.karte-rolle { font: 500 11.5px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--blau-text); }
+.karte-rolle { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--blau-text); }
 .karte-titel { margin-top: 12px; font-size: clamp(25px, 2.3vw, 36px); line-height: 1.02; }
 .karte p { margin-top: 14px; font-size: 16.5px; line-height: 1.5; color: var(--tinte-weich); }
 .karte .link-pfeil { margin-top: auto; padding-top: 22px; align-self: flex-start; }
@@ -415,7 +422,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .fuss-oben { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 3fr) minmax(0, 4fr); gap: 36px clamp(24px, 4vw, 72px); }
 .fuss .marke-zeichen { color: var(--blau-hell); }
 .fuss-satz { max-width: 24em; margin-top: 18px; font-size: 16px; line-height: 1.5; color: rgba(238, 241, 246, .78); }
-.fuss-titel { font: 500 11.5px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--grau-hell); }
+.fuss-titel { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--grau-hell); }
 .fuss-liste { margin-top: 12px; }
 .fuss-liste a { display: inline-flex; align-items: center; min-height: 44px; font-size: 16px; text-decoration: none; color: rgba(238, 241, 246, .9); }
 .fuss-liste a:hover { color: var(--blau-hell); text-decoration: underline; text-underline-offset: 5px; }
@@ -429,7 +436,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 /* ─── Unterseiten ─── */
 .seiten-kopf { padding: calc(var(--kopf-h) + clamp(28px, 4.4vw, 72px)) 0 clamp(48px, 6vw, 96px); }
 .krume { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau-hell); }
-.krume a { display: inline-flex; align-items: center; min-height: 44px; text-underline-offset: 4px; }
+.krume a { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; text-underline-offset: 4px; }
 .krume li + li::before { content: "/"; margin-right: 10px; color: var(--tinte-3); }
 .krume li { display: inline-flex; align-items: center; min-height: 44px; }
 .seiten-raster { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(28px, 5vw, 96px); align-items: end; margin-top: clamp(14px, 2vw, 30px); }
@@ -445,7 +452,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .vorweg > p + p { margin-top: 14px; }
 .vorweg dl { display: grid; gap: 0; margin-top: 18px; }
 .vorweg dl div { display: grid; grid-template-columns: 6.4em minmax(0, 1fr); gap: 12px; padding: 10px 0; border-top: 1px solid rgba(238, 241, 246, .26); font-size: 15px; line-height: 1.4; }
-.vorweg dt { font: 500 11px/1.5 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--blau-blass); }
+.vorweg dt { font: 500 12px/1.5 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--blau-blass); }
 .vorweg dd { color: var(--papier); }
 
 .spalten { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 5vw, 96px); align-items: start; }
@@ -463,7 +470,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .baustein { display: grid; grid-template-columns: 56px minmax(0, 4fr) minmax(0, 7fr); gap: 8px clamp(16px, 2.4vw, 40px); padding: clamp(20px, 2.2vw, 30px) 0; border-bottom: 1px solid var(--linie); counter-increment: baustein; align-items: baseline; }
 .baustein::before { content: counter(baustein, decimal-leading-zero); font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .12em; color: var(--blau-text); }
 .baustein h3 { font-size: clamp(22px, 2.1vw, 31px); line-height: 1.04; }
-.baustein h3 small { display: block; margin-top: 8px; font: 500 11.5px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau); }
+.baustein h3 small { display: block; margin-top: 8px; font: 500 12px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau); }
 .baustein p { font-size: 16.5px; line-height: 1.5; color: var(--tinte-weich); }
 
 .punkte { display: grid; gap: 0; border-top: 1px solid var(--linie); }
@@ -486,7 +493,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 
 /* Tabellen: am Rechner klassisch, schmal als Karten je Zeile */
 .tafel { width: 100%; font-size: 16.5px; line-height: 1.4; }
-.tafel caption { caption-side: top; padding-bottom: 14px; text-align: left; font: 500 11.5px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau); }
+.tafel caption { caption-side: top; padding-bottom: 14px; text-align: left; font: 500 12px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau); }
 .tafel th, .tafel td { padding: 14px 16px 14px 0; border-bottom: 1px solid var(--linie); text-align: left; vertical-align: top; }
 .tafel thead th { border-bottom: 2px solid var(--tinte); font: 600 15px/1.3 "Bricolage", system-ui, sans-serif; }
 .tafel tbody th { font-weight: 600; }
@@ -520,7 +527,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .begriffe dt { font: 700 20px/1.1 "Bricolage", system-ui, sans-serif; font-stretch: 82%; letter-spacing: -.01em; }
 .begriffe dd { margin-top: 8px; font-size: 16px; line-height: 1.5; color: var(--tinte-weich); }
 
-.stand { margin-top: clamp(28px, 3vw, 44px); font: 500 11.5px/1.6 "Mono", ui-monospace, monospace; letter-spacing: .06em; color: var(--grau); }
+.stand { margin-top: clamp(28px, 3vw, 44px); font: 500 12px/1.6 "Mono", ui-monospace, monospace; letter-spacing: .06em; color: var(--grau); }
 .abstand-oben { margin-top: clamp(28px, 3.4vw, 52px); }
 .abstand-gross { margin-top: clamp(48px, 6vw, 96px); }
 
@@ -581,12 +588,16 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
   body { font-size: 17px; }
   .marke-wort { font-size: 14px; letter-spacing: .16em; }
   .marke-zeichen { width: 28px; height: 28px; }
-  .kopf-rechts .knopf-klein { display: none; }
-  html:not(.js) .kopf-rechts .knopf-klein { display: inline-flex; }
+  /* Handy: Der Knopf „Erstgespräch“ bleibt in der Kopfleiste, das Menü wird zum Zeichen ohne Wort */
+  .kopf-rechts { gap: 8px; }
+  .kopf-rechts .knopf-klein { padding: 0 14px; font-size: 14px; }
+  .kopf-rechts .knopf-klein::after { display: none; }
+  html.js .menue-knopf { width: 44px; padding: 0; justify-content: center; }
+  html.js .menue-knopf-wort { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .held-aktionen .knopf, .seiten-aktionen .knopf, .kontakt-aktionen .knopf { width: 100%; }
   .zahlen-neben, .zahlen-reihe { grid-template-columns: minmax(0, 1fr); }
   .karten-2, .kaesten-2, .begriffe { grid-template-columns: minmax(0, 1fr); }
-  .thema { grid-template-columns: minmax(0, 1fr) 48px; padding-inline: 0; }
+  .thema { grid-template-columns: minmax(0, 1fr) 48px; row-gap: 20px; padding-inline: 0; }   /* der Pfeil ragt sonst in die erste Textzeile */
   .thema-nr { display: none; }
   .thema-text { grid-column: 1 / -1; }
   .thema-pfeil { grid-column: 2; width: 46px; height: 46px; }
@@ -611,8 +622,15 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
   .tafel-karten caption { display: block; }
   .tafel-karten tr { padding: 14px 0; border-bottom: 1px solid var(--linie); }
   .tafel-karten th, .tafel-karten td { padding: 3px 0; border: 0; }
-  .tafel-karten td::before { content: attr(data-spalte) ": "; font: 500 11px/1.6 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); }
+  .tafel-karten td::before { content: attr(data-spalte) ": "; font: 500 12px/1.6 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); }
   .tafel-zahl.tafel-karten td:last-child { text-align: left; }
+}
+@media (max-width: 389px) {
+  .marke-wort { font-size: 12.5px; letter-spacing: .12em; }
+  .kopf-rechts .knopf-klein { padding: 0 11px; font-size: 13px; }
+}
+@media (max-width: 359px) {
+  .kopf-rechts .knopf-klein { display: none; }
 }
 
 @media (min-width: 1700px) {
@@ -668,10 +686,10 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .strecke-stufe-2 .strecke-name { left: 23.5%; }
 .strecke-stufe-3 .strecke-name { left: 36%; }
 .strecke-stufe-4 .strecke-name { left: 63%; top: -18%; bottom: 40%; }
-.strecke-name i { font: 500 clamp(10px, 2.4cqw, 13px)/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; font-style: normal; color: var(--blau-blass); }
+.strecke-name i { font: 500 clamp(12px, 2.4cqw, 13px)/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; font-style: normal; color: var(--blau-blass); }
 .strecke-name b { font: 700 clamp(13px, 4.7cqw, 28px)/1 "Bricolage", system-ui, sans-serif; font-stretch: 84%; letter-spacing: -.01em; }
-.strecke-lage { position: absolute; left: 54%; right: 0; top: 100%; height: 96%; display: flex; align-items: center; font: 500 clamp(10.5px, 2.75cqw, 16px)/1.25 "Mono", ui-monospace, monospace; letter-spacing: .02em; }
-.strecke-stufe-4 .strecke-lage { left: 63%; top: 52%; height: auto; align-items: flex-start; }
+.strecke-lage { position: absolute; left: 54%; right: 0; top: 100%; height: 96%; display: flex; align-items: center; font: 500 clamp(12px, 2.75cqw, 16px)/1.25 "Mono", ui-monospace, monospace; letter-spacing: .02em; }
+.strecke-stufe-4 .strecke-lage { left: 63%; top: 52%; height: auto; align-items: flex-start; white-space: nowrap; }
 .strecke-heute, .strecke-system { display: block; }
 .strecke-heute { position: absolute; left: 0; right: 0; color: var(--warn-hell); opacity: 0; visibility: hidden; }
 .strecke-system { color: var(--blau-hell); }
@@ -688,7 +706,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .szene-stufe .szene-titel { font-size: clamp(28px, 3vw, 46px); }
 .szene-paar { flex: 1; display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
 .paar-heute, .paar-system { padding: 18px 20px 20px; border-radius: 16px; }
-.paar-marke { display: flex; align-items: center; gap: 9px; font: 500 11.5px/1 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
+.paar-marke { display: flex; align-items: center; gap: 9px; font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
 .paar-marke::before { content: ""; width: 14px; height: 0; border-top: 2px dashed currentColor; }
 .paar-marke + p { margin-top: 12px; font-size: 16.5px; line-height: 1.45; }
 .paar-heute { border: 1px dashed rgba(238, 241, 246, .32); }
@@ -762,9 +780,9 @@ html.film-an .film-leiste {
   .strecke-stufe { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
   .strecke-name, .strecke-stufe-4 .strecke-name, .strecke-lage, .strecke-stufe-4 .strecke-lage { position: static; height: auto; }
   .strecke-name { gap: 8px; }
-  .strecke-name i { font-size: 11px; }
+  .strecke-name i { font-size: 12px; }
   .strecke-name b { font-size: clamp(16px, 4.4vw, 22px); }
-  .strecke-lage, .strecke-stufe-4 .strecke-lage { position: relative; inset: auto; display: block; font-size: clamp(11.5px, 3vw, 13.5px); }
+  .strecke-lage, .strecke-stufe-4 .strecke-lage { position: relative; inset: auto; display: block; font-size: clamp(12px, 3vw, 13.5px); }
 
   html.film-an .film { --bild-h: clamp(132px, 23svh, 250px); --unten: 62px; }
   html.film-an .szene { left: var(--rand); right: var(--rand); width: auto; top: calc(var(--kopf-h) + var(--bild-h) + 22px); justify-content: flex-start; }
@@ -773,7 +791,7 @@ html.film-an .film-leiste {
   html.film-an .strecke-rahmen { width: calc(var(--bild-h) * .851); height: var(--bild-h); }
   html.film-an .strecke-stufen { width: calc(100vw - 2 * var(--rand) - var(--bild-h) * .851 - 18px); }
   html.film-an .strecke-name b { font-size: clamp(15px, min(4.4vw, 2.6svh), 22px); }
-  html.film-an .strecke-lage { font-size: clamp(11px, min(3vw, 1.7svh), 13.5px); }
+  html.film-an .strecke-lage { font-size: clamp(12px, min(3vw, 1.7svh), 13.5px); }
   html.film-an .held-titel { font-size: clamp(30px, min(9.4vw, 5.5svh), 76px); }
   html.film-an .held-zusatz { font-size: clamp(16px, min(4.6vw, 2.7svh), 26px); }
   html.film-an .held-text { font-size: clamp(15px, min(4.2vw, 2.4svh), 20px); }
@@ -787,7 +805,7 @@ html.film-an .film-leiste {
   html.film-an .paar-heute, html.film-an .paar-system { flex: none; padding: clamp(10px, 1.7svh, 18px) 16px clamp(11px, 1.9svh, 20px); }
   html.film-an .paar-marke + p { margin-top: clamp(6px, 1.1svh, 12px); font-size: clamp(14.5px, min(4vw, 2.3svh), 18px); line-height: 1.4; }
   html.film-an .szene-weiter { display: none; }
-  html.film-an .film-leiste { left: var(--rand); right: var(--rand); bottom: 4px; gap: 12px; font-size: 11px; }
+  html.film-an .film-leiste { left: var(--rand); right: var(--rand); bottom: 4px; gap: 12px; font-size: 12px; }
   .film-kapitel { min-width: 0; }
 }
 @media (max-width: 999px) and (min-width: 700px) {
@@ -799,7 +817,11 @@ html.film-an .film-leiste {
 }
 @media (max-width: 699px) {
   .szene-stufe { grid-column: 1 / -1; }
-  .strecke-lage, .strecke-stufe-4 .strecke-lage, html.film-an .strecke-lage { font-size: 11px; letter-spacing: 0; white-space: nowrap; }
+  /* Die Zeile neben dem Trichter steht mit 12 px in einer Zeile; dafür ist der Trichter am Handy etwas schmaler */
+  .strecke-rahmen { width: min(40%, 260px); }
+  .strecke-stufe { gap: 2px; }
+  .strecke-lage, .strecke-stufe-4 .strecke-lage, html.film-an .strecke-lage { font-size: 12px; line-height: 1.15; letter-spacing: 0; white-space: nowrap; }
+  html.film-an .film { --bild-h: clamp(132px, min(23svh, 44vw), 250px); }
   .grosszahl { grid-template-columns: minmax(0, 1fr); }
   html.film-an .held-aktionen { gap: 6px 26px; }
   html.film-an .held-aktionen .knopf-gross { min-height: 56px; }
@@ -811,11 +833,13 @@ html.film-an .film-leiste {
   html.film-an .szene-heute, html.film-an .szene-stufe { top: calc(var(--kopf-h) + var(--bild-h) + 16px); }
   html.film-an .strecke-stufe { gap: 1px; }
   html.film-an .strecke-name b { font-size: 14px; }
-  html.film-an .strecke-lage { font-size: 10.5px; line-height: 1.1; }
+  html.film-an .strecke-lage { line-height: 1.05; }
 }
-/* Sehr schmale Handys (320 px): die Zeile rechts neben dem Trichter darf umbrechen, sonst wird die Seite breiter als das Gerät */
+/* Sehr schmale Handys (320 px): Die Beschriftung rückt näher an den Trichter, damit die Zeile mit 12 px in das Gerät passt */
 @media (max-width: 345px) {
-  .strecke-lage, .strecke-stufe-4 .strecke-lage, html.film-an .strecke-lage { font-size: 10.5px; white-space: normal; }
+  .strecke-stufen { margin-left: 10px; }
+  .strecke-name b { font-size: 15px; }
+  .strecke-lage, .strecke-stufe-4 .strecke-lage, html.film-an .strecke-lage { line-height: 1.1; }
 }
 @media (min-width: 1000px) and (max-width: 1279px) {
   html.film-an .szene-paar { flex-direction: column; gap: 10px; }
@@ -833,9 +857,9 @@ html.film-an .film-leiste {
 .stueck-kopf { max-width: 46em; margin-bottom: clamp(24px, 3vw, 40px); }
 .stueck-kopf > .stueck-titel:first-child { margin-top: 0; }
 .stueck-kopf > p:last-child { margin-top: 14px; font-size: 17px; line-height: 1.5; color: var(--tinte-weich); }
-.stueck-marke { display: inline-flex; align-items: center; gap: 8px; font: 500 11.5px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--blau-blass); }
+.stueck-marke { display: inline-flex; align-items: center; gap: 8px; font: 500 12px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--blau-blass); }
 .stueck-marke::before { content: ""; width: 8px; height: 8px; flex: none; border-radius: 50%; border: 1.5px solid currentColor; }
-.stueck-hinweis { margin-top: 14px; font: 500 11.5px/1.55 "Mono", ui-monospace, monospace; letter-spacing: .03em; color: var(--grau-hell); }
+.stueck-hinweis { margin-top: 14px; font: 500 12px/1.55 "Mono", ui-monospace, monospace; letter-spacing: .03em; color: var(--grau-hell); }
 .knopf-zart {
   display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border: 1px solid rgba(238, 241, 246, .4); border-radius: 999px;
   background: transparent; color: var(--papier); cursor: pointer; font: 600 15px/1 "Bricolage", system-ui, sans-serif; white-space: nowrap; transition: background .2s, color .2s, border-color .2s;
@@ -849,14 +873,14 @@ html.film-an .film-leiste {
 .brett, .report, .leitfaden { min-width: 0; padding: clamp(18px, 2.4vw, 32px); border-radius: 24px; background: var(--tinte); color: var(--papier); }
 .brett-kopf { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 28px; }
 .brett-zaehler { display: flex; gap: clamp(18px, 2.4vw, 36px); }
-.brett-zaehler dt { font: 500 11px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau-hell); }
+.brett-zaehler dt { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau-hell); }
 .brett-zaehler dd { margin-top: 6px; font: 700 clamp(30px, 3vw, 44px)/.9 "Bricolage", system-ui, sans-serif; font-stretch: 82%; font-variant-numeric: tabular-nums; }
 .brett-zaehler-ohne dd { color: var(--warn-hell); }
 .brett-zaehler-ohne.null dd { color: var(--blau-hell); }
 .brett-spalten { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 22px; }
 .brett-spalte { display: flex; flex-direction: column; min-width: 0; padding: 12px 10px 10px; border-radius: 16px; background: var(--tinte-2); }
 .brett-stufe { display: flex; align-items: baseline; gap: 8px; padding: 0 4px 10px; border-bottom: 2px solid var(--blau-kraft); }
-.brett-stufe span { font: 500 11px/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--blau-hell); }
+.brett-stufe span { font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--blau-hell); }
 .brett-stufe b { font: 700 18px/1.1 "Bricolage", system-ui, sans-serif; font-stretch: 86%; }
 .brett-stufe i { margin-left: auto; min-width: 26px; padding: 4px 8px; border-radius: 999px; background: var(--tinte-3); font: 600 12px/1 "Mono", ui-monospace, monospace; font-style: normal; text-align: center; }
 .brett-karten { flex: 1; display: grid; gap: 8px; align-content: start; min-height: 60px; margin-top: 10px; }
@@ -864,7 +888,7 @@ html.film-an .film-leiste {
 .brett-firma { font: 700 17px/1.1 "Bricolage", system-ui, sans-serif; font-stretch: 88%; }
 .brett-kontakt { font-size: 13.5px; line-height: 1.3; color: var(--tinte-weich); }
 .brett-aktion { display: grid; gap: 2px; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--linie); font-size: 14px; line-height: 1.3; }
-.brett-aktion-wort { font: 500 10.5px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau); }
+.brett-aktion-wort { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau); }
 .brett-tag { font: 600 12.5px/1.3 "Mono", ui-monospace, monospace; color: var(--blau-text); }
 .brett-karte-offen { box-shadow: inset 0 0 0 2px var(--warn); }
 .brett-karte-offen [data-aktion] { color: var(--warn); font-weight: 600; }
@@ -890,7 +914,7 @@ html:not(.js) .brett-meldung { display: none; }
 .report th, .report td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--linie-hell); text-align: right; font-variant-numeric: tabular-nums; vertical-align: middle; }
 .report th:first-child, .report td:first-child { text-align: left; }
 .report th:last-child, .report td:last-child { padding-right: 0; }
-.report thead th { font: 500 11.5px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau-hell); }
+.report thead th { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau-hell); }
 .report thead th:last-child { text-align: left; padding-left: 12px; }
 .report tbody th { font-weight: 500; }
 .report-ist b { color: var(--blau-hell); font-weight: 700; font-size: 19px; }
@@ -909,7 +933,7 @@ html:not(.js) .brett-meldung { display: none; }
 .report-luecke { margin-top: 18px; font: 600 17px/1.35 "Bricolage", system-ui, sans-serif; }
 .report-satz { margin-top: 10px; font-size: 16px; line-height: 1.45; color: rgba(238, 241, 246, .86); }
 .report-satz b { color: var(--papier); }
-.report-hinweis { margin-top: 14px; font: 500 11.5px/1.55 "Mono", ui-monospace, monospace; letter-spacing: .03em; color: var(--grau-hell); }
+.report-hinweis { margin-top: 14px; font: 500 12px/1.55 "Mono", ui-monospace, monospace; letter-spacing: .03em; color: var(--grau-hell); }
 .report-hinweis a { color: var(--papier); text-underline-offset: 3px; }
 .report .knopf-zart { margin-top: 14px; }
 
@@ -919,7 +943,7 @@ html:not(.js) .brett-meldung { display: none; }
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: 100%; min-height: 56px; padding: 10px 12px; border: 1px solid var(--linie-hell); border-radius: 12px;
   background: transparent; color: var(--papier); cursor: pointer; font: 600 15.5px/1.1 "Bricolage", system-ui, sans-serif; text-align: left; transition: background .2s, border-color .2s, color .2s;
 }
-.lf-wahl button span { font: 500 11px/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--blau-hell); }
+.lf-wahl button span { font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--blau-hell); }
 .lf-wahl button:hover { border-color: rgba(238, 241, 246, .5); }
 .lf-wahl button[aria-current] { background: var(--blau); border-color: var(--blau-hell); }
 .lf-wahl button[aria-current] span { color: var(--blau-blass); }
@@ -930,9 +954,9 @@ html:not(.js) .brett-meldung { display: none; }
 .lf-titel { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; font: 700 clamp(24px, 2.3vw, 34px)/1 "Bricolage", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; }
 .lf-titel:focus { outline: none; }
 .lf-titel span { font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--blau-hell); }
-.lf-titel small { font: 500 11.5px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau-hell); }
+.lf-titel small { font: 500 12px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau-hell); }
 .lf-regel { max-width: 44em; margin-top: 14px; font-size: 17px; line-height: 1.5; color: rgba(238, 241, 246, .9); }
-.lf-marke { font: 500 11px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--blau-blass); }
+.lf-marke { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--blau-blass); }
 .lf-saetze, .lf-zusatz { margin-top: 18px; padding: 16px 18px 18px; border-radius: 16px; background: var(--blau); }
 .lf-saetze ul { display: grid; gap: 8px; margin-top: 12px; }
 .lf-satz { font: 400 clamp(20px, 1.9vw, 26px)/1.25 "Instrument", Georgia, serif; font-style: italic; quotes: "„" "“"; }
@@ -948,12 +972,12 @@ html:not(.js) .brett-meldung { display: none; }
 .lf-schritte { display: grid; gap: 0; margin-top: 16px; border-top: 1px solid var(--linie-hell); counter-reset: lf; }
 .lf-schritte li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 4px 18px; padding: 12px 0; border-bottom: 1px solid var(--linie-hell); counter-increment: lf; }
 .lf-schritte b { font: 700 17px/1.2 "Bricolage", system-ui, sans-serif; font-stretch: 86%; color: var(--blau-hell); }
-.lf-schritte b::before { content: counter(lf) "  "; font: 500 11px/1 "Mono", ui-monospace, monospace; color: var(--grau-hell); white-space: pre; }
+.lf-schritte b::before { content: counter(lf) "  "; font: 500 12px/1 "Mono", ui-monospace, monospace; color: var(--grau-hell); white-space: pre; }
 .lf-schritte span { font-size: 15.5px; line-height: 1.45; color: rgba(238, 241, 246, .9); }
 .lf-schritte .lf-satz { grid-column: 2; font-size: clamp(18px, 1.6vw, 22px); color: var(--papier); }
 .lf-danach { margin-top: 16px; padding-left: 14px; border-left: 2px solid var(--blau-hell); font-size: 15.5px; line-height: 1.5; color: rgba(238, 241, 246, .9); }
 .lf-fuss { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--linie-hell); }
-.lf-stand { font: 500 11.5px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau-hell); }
+.lf-stand { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau-hell); }
 
 /* ═══════════════════════════════════════ Filmplätze ═══════════════════════════════════════
    Echte Filme sind Symbolbilder (medien/LIESMICH.md). Erst das Poster, der Film lädt erst in Sicht (seite.js).
@@ -965,7 +989,7 @@ html:not(.js) .brett-meldung { display: none; }
 .filmplatz.laeuft video { opacity: 1; }
 .filmplatz-marke {
   position: absolute; left: 12px; bottom: 12px; z-index: 2; max-width: calc(100% - 82px); padding: 7px 10px; border-radius: 12px; background: rgba(10, 19, 38, .82); color: var(--papier);
-  font: 500 10.5px/1.35 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase;
+  font: 500 12px/1.35 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase;
 }
 .filmplatz-pause {
   position: absolute; right: 10px; bottom: 10px; z-index: 2; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid rgba(238, 241, 246, .5); border-radius: 50%;
@@ -997,6 +1021,8 @@ html:not(.js) .brett-meldung { display: none; }
   .brett-zaehler { width: 100%; justify-content: space-between; gap: 10px; }
   .brett-spalten { grid-template-columns: minmax(0, 1fr); }
   .brett-karten { grid-template-columns: repeat(2, minmax(0, 1fr)); min-height: 0; }
+  /* Bei ungerader Zahl nimmt die letzte Karte die ganze Breite, statt allein in einer halben Reihe zu stehen */
+  .brett-karten > .brett-karte:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .brett-spalte { padding: 12px 8px 8px; }
   .report th, .report td { padding-right: 8px; font-size: 15.5px; }
   .report td.report-stand { width: 34%; padding-left: 4px; font-size: 12.5px; }

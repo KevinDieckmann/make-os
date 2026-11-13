@@ -1,12 +1,14 @@
 // MAKE Revenue · Vertriebsrechner: Rückwärtsrechnung vom Umsatzziel bis zu den Erstkontakten, dazu offene Angebote,
 // Vertriebszeit und der größte Hebel. Die Rechnung ist die des Vertriebsrechners von MAKE Innovation (js/rechner.js),
 // unverändert übernommen; dieselbe Rechnung steht in bauen.mjs (rueckwaerts) für die Seite ohne JavaScript: beide gleich halten.
+// Werte je Woche stehen als ganze Zahlen da (ganz, in bauen.mjs wochenZiel). Bei ungültiger Eingabe sagt eine Meldung, was fehlt.
 // Rechnet nur im Browser, speichert und sendet nichts. Balken über SVG-Attribute: keine Inline-Stile.
 (() => {
   const VERKAUFSZEIT = 0.4; // Salesforce, State of Sales Report 2026: 40 % der Arbeitszeit wird verkauft
   const VOLLZEIT_STUNDEN = 40;
   const LEER = '·';
   const zahlDe = (n, stellen = 0) => Number(n).toLocaleString('de-DE', { maximumFractionDigits: stellen, minimumFractionDigits: 0 });
+  const ganz = (n) => Math.max(1, Math.round(n)); // je Woche: ganze Zahl, mindestens 1
   // „2.200.000“, „2200000“, „33,5“ → Zahl; leer oder Unsinn → null
   const lesen = (text) => {
     const t = String(text).trim().replace(/\s/g, '').replace(/€|%/g, '');
@@ -35,20 +37,33 @@
   const PROZENT = ['kontaktquote', 'terminquote', 'angebotsquote'];
   for (const r of document.querySelectorAll('[data-rechner]')) {
     const felder = [...r.querySelectorAll('[data-feld]')];
+    const meldung = r.querySelector('[data-rechner-meldung]');
     const setze = (n, text) => { for (const el of r.querySelectorAll(`[data-aus="${n}"]`)) el.textContent = text; };
+    const nameVon = (f) => { const l = f.closest('label'); const s = l && l.querySelector('span'); return s ? s.textContent.trim() : 'Dieses Feld'; };
+    // Was an einem Feld nicht stimmt: leer oder keine Zahl größer 0, Quote über 100, mehr als 53 Wochen
+    const mangel = (f, v) => (v == null ? 'Bitte eine Zahl größer 0.' : PROZENT.includes(f.dataset.feld) && v > 100 ? 'Bitte höchstens 100 %.' : f.dataset.feld === 'wochen' && v > 53 ? 'Bitte höchstens 53 Wochen.' : '');
     let selbst = false;
     const neu = () => {
       const w = Object.fromEntries(felder.map((f) => [f.dataset.feld, lesen(f.value)]));
-      const gueltig = felder.every((f) => w[f.dataset.feld] != null) && PROZENT.every((n) => w[n] <= 100) && w.wochen <= 53;
-      for (const f of felder) f.setAttribute('aria-invalid', String(w[f.dataset.feld] == null || (PROZENT.includes(f.dataset.feld) && w[f.dataset.feld] > 100) || (f.dataset.feld === 'wochen' && w.wochen > 53)));
-      if (!gueltig) {
+      const falsch = felder.filter((f) => mangel(f, w[f.dataset.feld]));
+      for (const f of felder) {
+        const stimmt = !falsch.includes(f);
+        f.setAttribute('aria-invalid', String(!stimmt));
+        if (meldung && !stimmt) f.setAttribute('aria-describedby', meldung.id); else f.removeAttribute('aria-describedby');
+      }
+      if (meldung) {
+        const rest = falsch.length - 1;
+        const text = !falsch.length ? '' : `${nameVon(falsch[0])}: ${mangel(falsch[0], w[falsch[0].dataset.feld])}` + (rest === 1 ? ' Ein weiteres Feld braucht ebenfalls eine gültige Zahl.' : rest > 1 ? ` ${rest} weitere Felder brauchen ebenfalls eine gültige Zahl.` : '');
+        if (meldung.textContent !== text) meldung.textContent = text;
+      }
+      if (falsch.length) {
         for (const el of r.querySelectorAll('[data-aus]')) el.textContent = LEER;
         return;
       }
       const e = rechnen(w);
-      setze('termineWoche', zahlDe(e.termineWoche, 1));
-      setze('kontakteWoche', zahlDe(e.kontakteWoche, 1));
-      setze('angeboteWoche', zahlDe(e.angeboteWoche, 1));
+      setze('termineWoche', zahlDe(ganz(e.termineWoche)));
+      setze('kontakteWoche', zahlDe(ganz(e.kontakteWoche)));
+      setze('angeboteWoche', zahlDe(ganz(e.angeboteWoche)));
       setze('abschluesse', zahlDe(e.abschluesse));
       setze('umsatzMonat', `${zahlDe(e.umsatzMonat)} €`);
       setze('kontakte', zahlDe(e.kontakte));
@@ -65,7 +80,7 @@
       // Wochenziele für den Wochenreport (anfassen.js): nur, wenn hier wirklich jemand eigene Werte eingetragen hat.
       // Bleibt im Browser (sessionStorage, damit die Ziele auch auf der Seite „Systemvertrieb“ stehen); gesendet wird nichts.
       if (selbst) {
-        const ziele = { kontakte: e.kontakteWoche, termine: e.termineWoche, angebote: e.angeboteWoche, abschluesse: e.abschluesse / w.wochen };
+        const ziele = { kontakte: ganz(e.kontakteWoche), termine: ganz(e.termineWoche), angebote: ganz(e.angeboteWoche), abschluesse: ganz(e.abschluesse / w.wochen) };
         try { sessionStorage.setItem('make-revenue-ziele', JSON.stringify(ziele)); } catch (_) { /* ohne Speicher gilt nur diese Seite */ }
         document.dispatchEvent(new CustomEvent('revenue:ziele', { detail: ziele }));
       }

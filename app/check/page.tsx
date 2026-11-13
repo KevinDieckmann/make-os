@@ -15,7 +15,7 @@ import { notFound } from 'next/navigation';
 import { InnovationsCheck } from '@/components/check/InnovationsCheck';
 import { pruefe, fehlschlag, adresseAusKoepfen, netzVon } from '@/lib/zugang/drossel';
 import { merken } from '@/lib/store/memo';
-import { vorlageVon, vorlageFuerThema, VORLAGEN, checkPfad } from '@/lib/check/katalog';
+import { vorlageVon, vorlageFuerThema, VORLAGEN, AKTIVE_VORLAGEN, checkPfad } from '@/lib/check/katalog';
 import { oeffentlicherKatalog } from '@/lib/check/oeffentlich';
 import { begruessung, gespraechSatz, kontaktSatz, kontaktSatzLang, WAHL_SATZ } from '@/lib/check/zoe-texte';
 import { HINWEIS_FASSUNG } from '@/lib/check/datenschutz';
@@ -54,7 +54,7 @@ async function seitenDaten(vorlageId: string) {
       katalog: oeffentlicherKatalog(v),
       seite: v.seite,
       // Die anderen Checks der Instanz (30.10. abends: in der Karte über dem Gespräch, „Weitere Checks“).
-      weitere: Object.values(VORLAGEN).filter(x => x.id !== v.id).map(x => ({ name: x.name, pfad: checkPfad(x.id), text: (x.seite.bereiche ?? []).map(b => b.name).join(' · ') })),
+      weitere: Object.values(VORLAGEN).filter(x => x.id !== v.id && AKTIVE_VORLAGEN.includes(x.id)).map(x => ({ name: x.name, pfad: checkPfad(x.id), text: (x.seite.bereiche ?? []).map(b => b.name).join(' · ') })),
       zoe: { begruessung: begruessung(k, v.seite.einleitung), kontakt: kontaktSatz(k), kontaktLang: kontaktSatzLang(k, perMail), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
       hinweis: { zeilen: hinweis.zeilen, link: hinweis.link, fassung: HINWEIS_FASSUNG },
       ...(nl ? { newsletter: { wortlaut: nl.wortlaut, fassung: nl.fassung } } : {}),

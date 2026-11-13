@@ -1,0 +1,16 @@
+{
+ "titel": "Wie sichtbar sind Sie, und wie planbar ist Ihr Vertrieb?",
+ "text": "Fünfzehn Fragen zu Sichtbarkeit und Vertrieb, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, ob es eher daran liegt, dass man Sie nicht findet, oder daran, dass aus Anfragen zu selten Aufträge werden, und welcher Schritt jetzt am meisten bringt.",
+ "bereiche": [
+  {
+   "name": "Sichtbarkeit",
+   "text": "Versteht und findet man Sie?"
+  },
+  {
+   "name": "Vertrieb",
+   "text": "Wird aus Anfragen planbar Umsatz?"
+  }
+ ],
+ "minuten": 7,
+ "einleitung": "Ich führe Sie in rund 7 Minuten durch den Check: zuerst Ihre Sichtbarkeit, dann Ihr Vertrieb."
+}

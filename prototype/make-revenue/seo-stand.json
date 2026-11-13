@@ -1,26 +1,26 @@
 {
  "": {
-  "abdruck": "7c9fa41b9e8b5869",
-  "lastmod": "2026-11-12"
+  "abdruck": "44967c67762c24f7",
+  "lastmod": "2026-11-13"
  },
  "systemvertrieb/": {
-  "abdruck": "d2d2b5a9b76f4c66",
-  "lastmod": "2026-11-12"
+  "abdruck": "ec4d672cf3b1924d",
+  "lastmod": "2026-11-13"
  },
  "vertrieb-auf-zeit/": {
-  "abdruck": "d5477a92a09adb78",
-  "lastmod": "2026-11-12"
+  "abdruck": "93b596e7453f59b0",
+  "lastmod": "2026-11-13"
  },
  "netzwerken/": {
-  "abdruck": "a72947a43fcc3dee",
-  "lastmod": "2026-11-12"
- },
- "vertriebs-check/": {
-  "abdruck": "4ac3af402aad0bdb",
-  "lastmod": "2026-11-12"
+  "abdruck": "973d5f0d2d787917",
+  "lastmod": "2026-11-13"
  },
  "fragen/": {
-  "abdruck": "1c9b2d2ed5ffabdc",
-  "lastmod": "2026-11-12"
+  "abdruck": "50f5c0b7f8266378",
+  "lastmod": "2026-11-13"
+ },
+ "check/": {
+  "abdruck": "6b6f6c115cf83edd",
+  "lastmod": "2026-11-13"
  }
 }

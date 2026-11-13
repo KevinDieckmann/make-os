@@ -8,6 +8,6 @@ export const FAMILIE = {
   innovation: 'https://makeinnovation.de/',
   studios: 'https://makestudios.de/',
   revenue: 'https://makerevenue.de/',
-  // Der kostenlose Vertriebs-Check läuft bei MAKE Innovation (Thema „vertrieb“, siehe lib/check/katalog.ts).
-  check: 'https://makeinnovation.de/check?thema=vertrieb',
+  // Der kostenlose Sichtbarkeits- und Vertriebs-Check läuft bei MAKE Innovation (siehe lib/check/katalog.ts).
+  check: 'https://makeinnovation.de/check?thema=sichtbarkeit-vertrieb&q=revenue',
 };

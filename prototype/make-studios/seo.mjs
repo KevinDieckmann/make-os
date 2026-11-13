@@ -120,7 +120,7 @@ const graphStart = [organisation,
   webseite('/', titelStart, beschrStart),
   ...leistungen.map(([name, beschr], i) => ({ '@type': 'Service', '@id': BASIS + '/#leistung-' + (i + 1), name: name + ' für Betriebe und Dienstleister', serviceType: ART[name] || name, description: beschr,
     provider: { '@id': ORG_ID }, areaServed: { '@type': 'City', name: 'Berlin' }, audience: { '@type': 'BusinessAudience', audienceType: 'Lokale Betriebe und Dienstleister' }, url: ankerVon(name) })),
-  { '@type': 'Service', '@id': BASIS + '/#leistung-check', name: 'Sichtbarkeits-Check', serviceType: 'Analyse der Online-Sichtbarkeit', description: checkText, provider: { '@id': ORG_ID }, areaServed: { '@type': 'City', name: 'Berlin' }, url: BASIS + '/#check' },
+  { '@type': 'Service', '@id': BASIS + '/#leistung-check', name: 'Schnelltest Sichtbarkeit', serviceType: 'Analyse der Online-Sichtbarkeit', description: checkText, provider: { '@id': ORG_ID }, areaServed: { '@type': 'City', name: 'Berlin' }, url: BASIS + '/#check' },
   { '@type': 'FAQPage', '@id': BASIS + '/#fragen', inLanguage: 'de-DE', mainEntity: fragen.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) }];
 start = familieLinks(zwischen(start, seoBlock({ pfad: '/', titel: titelStart, beschreibung: beschrStart, graph: graphStart })));
 schreibe('index.html', start);
@@ -196,7 +196,7 @@ for (const s of seiten) {
   <section aria-labelledby="f-bausteine"><h2 id="f-bausteine">Was enthält die Seite?</h2><ul class="bausteine">${s.merkmale.map((m) => '<li>' + esc(m) + '</li>').join('')}</ul>${s.aufbau ? '<p>' + esc(s.aufbau) + '</p>' : ''}<p>Wie jede unserer Seiten ist sie zuerst für das Handy gestaltet und lädt schnell.</p></section>
   <section aria-labelledby="f-passt"><h2 id="f-passt">Für wen passt so eine Seite?</h2><p>${esc(s.passt)}</p></section>
   <section aria-labelledby="f-weiter"><h2 id="f-weiter">Wie entsteht Ihre eigene Seite?</h2><p>In sechs Schritten: Briefing, Design, Feedback, Umsetzung, Abnahme, Live. Sie sehen den Entwurf, bevor wir bauen, und online geht die Seite erst mit Ihrem Okay. <a href="../../#ablauf">Zum Ablauf</a></p>
-    <p class="fall-aktionen"><a class="knopf knopf-signal" href="../../#erstgespraech-${s.buchen}">Erstgespräch buchen</a><a class="knopf" href="../../#check">Sichtbarkeits-Check machen</a></p></section>
+    <p class="fall-aktionen"><a class="knopf knopf-signal" href="../../#erstgespraech-${s.buchen}">Erstgespräch buchen</a><a class="knopf" href="../../#check">Schnelltest machen</a></p></section>
   <aside aria-labelledby="f-andere"><h2 id="f-andere">Weitere Beispielseiten</h2><ul class="andere">${andere}</ul></aside>
   <p class="stand">Stand: ${esc(seo.stand)}</p>
 </article>`;
@@ -254,7 +254,7 @@ schreibe('seo-stand.json', JSON.stringify(stand, null, 1) + '\n');
 schreibe('sitemap.xml', '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n'
   + inSitemap.map((e) => '  <url><loc>' + BASIS + e.pfad + '</loc><lastmod>' + ((stand[e.pfad] || {}).datum || HEUTE) + '</lastmod>' + (e.bild ? '<image:image><image:loc>' + BASIS + e.bild + '</image:loc></image:image>' : '') + '</url>').join('\n') + '\n</urlset>\n');
 schreibe('llms.txt', '# MAKE Studios\n\n> ' + STANDARDSATZ + '\n\n## Leistungen\n'
-  + leistungen.map(([n, b]) => '- [' + n + '](' + ankerVon(n) + '): ' + b).join('\n') + '\n- [Sichtbarkeits-Check](' + BASIS + '/#check): ' + checkText
+  + leistungen.map(([n, b]) => '- [' + n + '](' + ankerVon(n) + '): ' + b).join('\n') + '\n- [Schnelltest Sichtbarkeit](' + BASIS + '/#check): ' + checkText
   + '\n\n## Beispielseiten\n- [Übersicht](' + BASIS + '/websites/): Website-Entwürfe für erfundene Betriebe, je Seite erklärt\n'
   + seiten.filter((s) => !s.offen).map((s) => '- [Website für ' + s.thema + '](' + BASIS + '/websites/' + s.slug + '/): ' + s.satz).join('\n')
   + '\n\n## Kontakt\n- E-Mail: ' + (f.email || '') + '\n- Erstgespräch: ' + BASIS + '/#erstgespraech\n\n## Weitere Angebote\n- [MAKE Innovation](' + FAMILIE.innovation + '/): ' + SATZ_DACH + '\n- [MAKE Revenue](' + FAMILIE.revenue + '/): ' + SATZ_REVENUE + '\n');

@@ -14,6 +14,9 @@ import vertriebSeite from './vorlagen/vertriebs-check/seite.json';
 import sichtbarkeitKatalog from './vorlagen/sichtbarkeits-test/fragenkatalog.json';
 import sichtbarkeitRegeln from './vorlagen/sichtbarkeits-test/scoring.json';
 import sichtbarkeitSeite from './vorlagen/sichtbarkeits-test/seite.json';
+import marktKatalog from './vorlagen/sichtbarkeit-vertrieb/fragenkatalog.json';
+import marktRegeln from './vorlagen/sichtbarkeit-vertrieb/scoring.json';
+import marktSeite from './vorlagen/sichtbarkeit-vertrieb/seite.json';
 import type { CheckAbschnitt, CheckFrage, CheckKatalog, CheckVorlage, CheckRegeln, CheckBenchmarks, CheckSeite, LeadScoringRegeln, DimKey, SaeuleKey } from './typen';
 
 const vorlage = (id: string, name: string, katalog: unknown, regeln: unknown, seite: unknown): CheckVorlage => ({
@@ -28,13 +31,21 @@ export const VORLAGEN: Readonly<Record<string, CheckVorlage>> = {
   'innovations-check': vorlage('innovations-check', 'Innovations-Check', innovationsKatalog, innovationsRegeln, innovationsSeite),
   'vertriebs-check': vorlage('vertriebs-check', 'Vertriebs-Check', vertriebKatalog, vertriebRegeln, vertriebSeite),
   'sichtbarkeits-test': vorlage('sichtbarkeits-test', 'Sichtbarkeits-Check', sichtbarkeitKatalog, sichtbarkeitRegeln, sichtbarkeitSeite),
+  'sichtbarkeit-vertrieb': vorlage('sichtbarkeit-vertrieb', 'Sichtbarkeits- und Vertriebs-Check', marktKatalog, marktRegeln, marktSeite),
 };
+
+/** Seit 13.11. gibt es auf der Website zwei Checks: den Innovations-Check und den Sichtbarkeits- und Vertriebs-Check. Die zwei
+ *  einzelnen Checks vom 30.10. bleiben als Vorlagen bestehen, damit gespeicherte Ergebnisse und Berichte lesbar bleiben — neu
+ *  gestartet und angeboten werden nur die aktiven. */
+export const AKTIVE_VORLAGEN: readonly string[] = ['innovations-check', 'sichtbarkeit-vertrieb'];
 
 export const STANDARD_VORLAGE = 'innovations-check';
 
-/** Adresse eines Checks: `/check` = Innovations-Check, `/check?thema=vertrieb` bzw. `?thema=sichtbarkeit` die kleinen Checks. */
-export const VORLAGE_JE_THEMA: Readonly<Record<string, string>> = { vertrieb: 'vertriebs-check', sichtbarkeit: 'sichtbarkeits-test' };
-export const THEMA_JE_VORLAGE: Readonly<Record<string, string>> = Object.fromEntries(Object.entries(VORLAGE_JE_THEMA).map(([t, v]) => [v, t]));
+/** Adresse eines Checks: `/check` = Innovations-Check, `/check?thema=sichtbarkeit-vertrieb` der Sichtbarkeits- und Vertriebs-Check.
+ *  Die alten Adressen `?thema=vertrieb` und `?thema=sichtbarkeit` (Links in Mails, Lesezeichen) führen seit 13.11. zum gemeinsamen Check. */
+export const VORLAGE_JE_THEMA: Readonly<Record<string, string>> = { 'sichtbarkeit-vertrieb': 'sichtbarkeit-vertrieb', vertrieb: 'sichtbarkeit-vertrieb', sichtbarkeit: 'sichtbarkeit-vertrieb' };
+/** Die Adresse je Vorlage — auch die zwei alten Vorlagen zeigen auf den gemeinsamen Check. */
+export const THEMA_JE_VORLAGE: Readonly<Record<string, string>> = { 'sichtbarkeit-vertrieb': 'sichtbarkeit-vertrieb', 'vertriebs-check': 'sichtbarkeit-vertrieb', 'sichtbarkeits-test': 'sichtbarkeit-vertrieb' };
 export const vorlageFuerThema = (thema: string | undefined | null): string =>
   (thema && Object.prototype.hasOwnProperty.call(VORLAGE_JE_THEMA, thema) ? VORLAGE_JE_THEMA[thema] : STANDARD_VORLAGE);
 /** Der Pfad eines Checks auf der Website (ohne Domain). */

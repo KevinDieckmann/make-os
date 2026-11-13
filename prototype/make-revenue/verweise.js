@@ -3,7 +3,7 @@
 // Lokale Vorschau: Läuft die Seite auf dem eigenen Rechner, führen die Verweise zu den lokalen Vorschauen der Familie.
 import { FAMILIE } from './familie.js';
 
-const LOKAL = { innovation: 'http://localhost:3019/', studios: 'http://localhost:3022/', revenue: 'http://localhost:3023/', check: 'http://localhost:3019/check?thema=vertrieb' };
+const LOKAL = { innovation: 'http://localhost:3019/', studios: 'http://localhost:3022/', revenue: 'http://localhost:3023/', check: 'http://localhost:3019/check?thema=sichtbarkeit-vertrieb&q=revenue' };
 const liste = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) ? LOKAL : FAMILIE;
 
 for (const a of document.querySelectorAll('a[data-familie]')) {

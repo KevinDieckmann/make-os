@@ -54,9 +54,9 @@ const THEMEN = [
   { id: 'netzwerken', pfad: 'netzwerken/', titel: 'Netzwerken und Events', art: 'Netzwerk-Events', klein: 'Für Gäste kostenlos',
     kurz: 'Abende in kleiner Runde, auf Einladung. Dazu der Weg, auf dem aus Begegnungen und Empfehlungen Kontakte werden, die nicht liegen bleiben.',
     vorweg: 'Viele gute Verbindungen entstehen erst, wenn man sich einmal gegenübersitzt. Davon soll der Standort etwas haben, nicht nur wir.' },
-  { id: 'check', pfad: 'vertriebs-check/', titel: 'Vertriebs-Check', art: 'Vertriebsanalyse', klein: 'Kostenlos · rund 5 Minuten',
-    kurz: 'Zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, wo Ihr Vertrieb steht.',
-    vorweg: 'Der Vertriebs-Check ist kostenlos und dauert rund 5 Minuten. Das Ergebnis sehen Sie sofort auf dem Bildschirm.' },
+  { id: 'check', pfad: 'check/', titel: 'Sichtbarkeits- und Vertriebs-Check', art: 'Analyse von Sichtbarkeit und Vertrieb', klein: 'Kostenlos · rund 7 Minuten',
+    kurz: 'Fünfzehn Fragen zu Sichtbarkeit und Vertrieb, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, ob es eher an den Anfragen liegt oder am Abschluss.',
+    vorweg: 'Der Sichtbarkeits- und Vertriebs-Check ist kostenlos und dauert rund 7 Minuten. Das Ergebnis sehen Sie sofort auf dem Bildschirm.' },
 ];
 const thema = (id) => THEMEN.find((t) => t.id === id);
 const leistung = (id) => { const t = thema(id); return { name: t.titel, art: t.art, kurz: t.kurz, text: t.vorweg }; };
@@ -148,7 +148,9 @@ ${STUFEN.map((name, i) => `          <li class="brett-spalte" data-spalte="${i}"
 }
 
 // Der Wochenreport: Ist gegen Ziel. Die Beispielwerte stammen aus fokus.json (Wochenreport, Kalenderwoche 12).
-const REPORT = [['kontakte', 'Erstkontakte', 38, 40], ['termine', 'Termine', 5, 4], ['angebote', 'Angebote', 3, 2], ['abschluesse', 'Abschlüsse', 1, 1]];
+// wochenZiel: Werte je Woche als ganze Zahl, mindestens 1. Dieselbe Regel steht in rechner.js (ganz), beide gleich halten.
+const wochenZiel = (n) => Math.max(1, Math.round(n));
+const reportZeilen = () => [['kontakte', 'Erstkontakte', wochenZiel(BEISPIEL.kontakteWoche) - 2, wochenZiel(BEISPIEL.kontakteWoche)], ['termine', 'Termine', wochenZiel(BEISPIEL.termineWoche) + 1, wochenZiel(BEISPIEL.termineWoche)], ['angebote', 'Angebote', wochenZiel(BEISPIEL.angeboteWoche) + 1, wochenZiel(BEISPIEL.angeboteWoche)], ['abschluesse', 'Abschlüsse', 1, wochenZiel(BEISPIEL.abschluesse / START.wochen)]];
 function report(W) {
   const zeile = ([id, name, ist, ziel]) => {
     const anteil = Math.round((100 * ist) / ziel), luecke = ziel - ist;
@@ -161,7 +163,7 @@ function report(W) {
           <caption class="vh">Wochenreport: Ist gegen Ziel je Stufe</caption>
           <thead><tr><th scope="col">Stufe</th><th scope="col">Ist</th><th scope="col">Ziel</th><th scope="col">Stand</th></tr></thead>
           <tbody>
-            ${REPORT.map(zeile).join('\n            ')}
+            ${reportZeilen().map(zeile).join('\n            ')}
           </tbody>
         </table>
         <p class="report-luecke" data-report-luecke role="status">Größte Lücke: Erstkontakte, 2 unter Ziel.</p>
@@ -243,7 +245,7 @@ const NAV = [
   ['systemvertrieb/', 'Systemvertrieb', 'systemvertrieb'],
   ['vertrieb-auf-zeit/', 'Vertrieb auf Zeit', 'zeit'],
   ['netzwerken/', 'Netzwerken', 'netzwerken'],
-  ['vertriebs-check/', 'Vertriebs-Check', 'check'],
+  ['check/', 'Check', 'check'],
   ['fragen/', 'Fragen', 'fragen'],
 ];
 // Familien-Link: href ist der Rückfall (seo.mjs schreibt ihn aus familie.js), verweise.js setzt ihn im Browser neu
@@ -264,10 +266,10 @@ function kontakt(W, { titel = 'Sprechen wir <em>darüber.</em>', thema = '', sch
   <div class="w">
     <p class="ueberzeile">Kontakt</p>
     <h2 class="kontakt-titel" id="kontakt-titel">${titel}</h2>
-    <p class="abschnitt-text">Das Erstgespräch dauert 30 Minuten, läuft per Video und kostet nichts. Danach wissen Sie, ob und womit wir helfen können. Oder Sie machen zuerst den Vertriebs-Check: 5 Minuten, Ergebnis sofort.</p>
+    <p class="abschnitt-text">Das Erstgespräch dauert 30 Minuten, läuft per Video und kostet nichts. Danach wissen Sie, ob und womit wir helfen können. Oder Sie machen zuerst den Check zu Sichtbarkeit und Vertrieb: 7 Minuten, Ergebnis sofort.</p>
     <div class="kontakt-aktionen" id="erstgespraech">
       <a class="knopf knopf-gross" href="mailto:${MAIL}?subject=Erstgespr%C3%A4ch%20MAKE%20Revenue" data-buchen${thema ? `="${thema}"` : ''}>Erstgespräch vereinbaren</a>
-      ${fam('check', 'Vertriebs-Check starten', { klasse: 'knopf knopf-gross knopf-leise' })}
+      ${fam('check', 'Check starten', { klasse: 'knopf knopf-gross knopf-leise' })}
     </div>
     <a class="kontakt-mail" href="mailto:${MAIL}?subject=Anfrage%20MAKE%20Revenue">${MAIL}</a>${schritte ? `
     <ol class="kontakt-drei">
@@ -317,7 +319,7 @@ function buchenFenster() {
         <fieldset data-feld="art">
           <legend>Wie sprechen wir?</legend>
           <div class="wahl-reihe">
-            <label class="wahl"><input type="radio" name="art" value="video" data-text="Video-Call" checked><span>Video-Call</span></label>
+            <label class="wahl"><input type="radio" name="art" value="video" data-text="Videogespräch" checked><span>Videogespräch</span></label>
             <label class="wahl"><input type="radio" name="art" value="telefon" data-text="Telefon"><span>Telefon</span></label>
           </div>
           <p class="feld-fehler" hidden></p>
@@ -357,9 +359,10 @@ function buchenFenster() {
             <input id="b-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="200">
             <p class="feld-fehler" hidden></p>
           </div>
-          <div class="feld">
-            <label for="b-telefon">Telefon <span class="optional">optional</span></label>
+          <div class="feld" data-feld="telefon">
+            <label for="b-telefon">Telefon <span class="optional" data-telefon-optional>optional</span></label>
             <input id="b-telefon" name="telefon" type="tel" autocomplete="tel" maxlength="40">
+            <p class="feld-fehler" hidden></p>
           </div>
           <div class="feld feld-breit">
             <label for="b-web">Website <span class="optional">optional</span></label>
@@ -477,7 +480,7 @@ ${inhalt(W)}
           <li><a href="${W}systemvertrieb/">Digitaler Systemvertrieb</a></li>
           <li><a href="${W}vertrieb-auf-zeit/">Vertrieb auf Zeit</a></li>
           <li><a href="${W}netzwerken/">Netzwerken und Events</a></li>
-          <li><a href="${W}vertriebs-check/">Vertriebs-Check</a></li>
+          <li><a href="${W}check/">Sichtbarkeits- und Vertriebs-Check</a></li>
           <li><a href="${W}fragen/">Häufige Fragen</a></li>
         </ul>
       </nav>
@@ -546,6 +549,8 @@ function rueckwaerts(w) {
     quoteNeu: Math.min(100, w.angebotsquote + 7), hebelQuote: Math.max(0, jeWoche(termine) - termineMit(Math.min(100, w.angebotsquote + 7), w.auftrag)),
     hebelAuftrag: Math.max(0, jeWoche(termine) - termineMit(w.angebotsquote, w.auftrag * 1.25)) };
 }
+// Rechenbeispiel und Beispielziele des Wochenreports kommen aus derselben Rechnung wie der Rechner, damit die Zahlen überall gleich sind
+const BEISPIEL = rueckwaerts(START);
 const de = (n, stellen = 0) => Number(n).toLocaleString('de-DE', { maximumFractionDigits: stellen, minimumFractionDigits: 0 });
 
 function rechner() {
@@ -565,14 +570,15 @@ function rechner() {
         ${feld('Arbeitswochen im Jahr', 'wochen', START.wochen, 'Wochen')}
         ${feld('Bis ein Angebot entschieden ist', 'offen', START.offen, 'Wochen')}
         ${feld('Zeit je Termin mit Vor- und Nachbereitung', 'stunden', START.stunden, 'Stunden')}
-        <p class="rechner-hinweis">Die Startwerte sind ein Beispiel.</p>
+        <p class="rechner-meldung" id="rechner-meldung" data-rechner-meldung role="status"></p>
+        <p class="rechner-hinweis">Die Startwerte sind ein Beispiel. Die Werte je Woche sind auf ganze Zahlen gerundet.</p>
         <noscript><p class="rechner-hinweis">Zum Rechnen braucht es JavaScript. Rechts sehen Sie das Beispiel mit den Startwerten.</p></noscript>
       </div>
       <div class="rechner-rechts erscheint erscheint-2">
         <dl class="rechner-ergebnis" aria-live="polite">
-          <div class="rechner-haupt"><dt>Termine je Woche</dt><dd data-aus="termineWoche">${de(r.termineWoche, 1)}</dd></div>
-          <div><dt>Erstkontakte je Woche</dt><dd data-aus="kontakteWoche">${de(r.kontakteWoche, 1)}</dd></div>
-          <div><dt>Angebote je Woche</dt><dd data-aus="angeboteWoche">${de(r.angeboteWoche, 1)}</dd></div>
+          <div class="rechner-haupt"><dt>Termine je Woche</dt><dd data-aus="termineWoche">${de(wochenZiel(r.termineWoche))}</dd></div>
+          <div><dt>Erstkontakte je Woche</dt><dd data-aus="kontakteWoche">${de(wochenZiel(r.kontakteWoche))}</dd></div>
+          <div><dt>Angebote je Woche</dt><dd data-aus="angeboteWoche">${de(wochenZiel(r.angeboteWoche))}</dd></div>
           <div><dt>Umsatz je Monat</dt><dd data-aus="umsatzMonat">${de(r.umsatzMonat)}&nbsp;€</dd></div>
         </dl>
         <figure class="trichter" aria-label="Vom Erstkontakt zum Abschluss, im Jahr"><figcaption class="etikett">Im Jahr</figcaption>
@@ -594,10 +600,12 @@ function rechner() {
 }
 
 // ═══════════════════════════════════════ Seiten ═══════════════════════════════════════
+// Das Sales Playbook in drei Teilen: ein Satz, an jeder Stelle derselbe
+const PLAYBOOK_TEILE = 'Das Sales Playbook entsteht in drei Teilen. Teil 1 gehört zum Fundament: Sie füllen ihn im ersten Monat aus, das kostet rund 3 bis 4 Stunden. Teil 2 ist das Nachschlagewerk für jeden im Vertrieb und steht am Ende des Mandats als Head of Sales. Teil 3 gehört zum Chief Sales Officer und kommt mit dem Übergabeplan an Ihre Vertriebsleitung.';
 const FRAGEN = {
   erstgespraech: ['Ist das Erstgespräch ein Verkaufsgespräch?', 'Nein. Wir sprechen über Ihre Lage, kostenlos und per Video. Am Ende sagen wir Ihnen, ob wir helfen können und womit. Wenn nicht, sagen wir auch das.'],
-  gespraeche: ['Wer führt die Verkaufsgespräche?', 'Ihr Team. Wir machen vor, trainieren mit Rollenspielen und besprechen echte Calls nach. So bleibt das Wissen bei Ihnen, wenn wir gehen.'],
-  crm: ['Brauche ich schon ein CRM?', 'Nein. Wenn Sie keins haben, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stages, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten tragen Sie.'],
+  gespraeche: ['Wer führt die Verkaufsgespräche?', 'Ihr Team. Wir machen vor, trainieren mit Rollenspielen und besprechen echte Gespräche nach. So bleibt das Wissen bei Ihnen, wenn wir gehen.'],
+  crm: ['Brauche ich schon ein CRM?', 'Nein. Am Start reicht eine Tabelle. Sobald mehrere Personen verkaufen und Sie Zahlen je Person und je Stufe brauchen, wird ein CRM deutlich einfacher. Wenn Sie keins haben, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stufen, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten tragen Sie.'],
   preise: ['Was kostet das?', `Sie bekommen einen Festpreis, schriftlich und bevor es losgeht. Unsere ${fam('innovation', 'Startpreise', { pfad: 'preise/' })} können Sie vorher ansehen.`],
   wer: ['Wer steht hinter MAKE Revenue?', 'MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin. Ihre Ansprechpartner sind Kevin und Malin.'],
   projekt: ['Wer arbeitet an meinem Projekt?', 'Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Sie sprechen immer mit uns, und wir stimmen alles Weitere im Team ab.'],
@@ -611,24 +619,26 @@ const FRAGEN = {
   tabelle: ['Reicht eine Tabelle, oder brauche ich ein CRM?', 'Am Start reicht eine Tabelle. Sobald mehrere Personen verkaufen und Sie Zahlen je Person und je Stufe brauchen, wird ein CRM mit Pflichtfeldern deutlich einfacher.'],
   eintragen: ['Wer trägt die Zahlen ein?', 'Jede Person ihre eigenen, am selben Tag. Eine Person achtet darauf, dass alles vollständig ist, und bringt die Zahlen zur Wochenrunde mit.'],
   zeitaufwand: ['Wie viel Zeit kostet mich ein Mandat?', 'Rund 3 bis 4 Stunden für das Sales Playbook Teil 1 im ersten Monat, danach 30 Minuten Wochen-Call und kurze Freigaben. Ihr Team braucht Zeit für Training und Gespräche.'],
-  unterschied: ['Was ist der Unterschied zwischen Head of Sales und Chief Sales Officer?', 'Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer macht all das auch und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum Chief Sales Officer wechseln.'],
-  playbooks: ['Gehören Skripte und Playbooks danach mir?', 'Ja. Nach Zahlung dürfen Sie alle Vorlagen, Skripte und Playbooks in Ihrem Unternehmen zeitlich unbegrenzt nutzen.'],
+  unterschied: ['Was ist der Unterschied zwischen Head of Sales und Chief Sales Officer?', 'Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Leitfäden, Kennzahlen und Training. Der Chief Sales Officer macht all das auch und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum Chief Sales Officer wechseln.'],
+  playbooks: ['Gehören Leitfäden und Playbooks danach mir?', 'Ja. Nach Zahlung dürfen Sie alle Vorlagen, Leitfäden und Playbooks in Ihrem Unternehmen zeitlich unbegrenzt nutzen.'],
   laufzeit: ['Wie lange laufen die Verträge?', 'Head of Sales und Chief Sales Officer laufen 6 oder 12 Monate. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis.'],
   csoZeit: ['Wie viel Zeit bringt der Chief Sales Officer ein?', '30 bis 35 Stunden im Monat, fest eingeplant. Dazu kommen der Wochen-Call und ein monatlicher Strategie-Call mit der Geschäftsführung.'],
   einstellen: ['Stellen Sie unsere Vertriebler ein?', 'Wir bauen Rollenmodell, Stellenanzeige, Interviewleitfaden und Probetag und führen die Interviews mit Ihnen. Die Entscheidung und den Arbeitsvertrag machen Sie. Stellenanzeigen und Recruiting-Tools zahlen Sie direkt.'],
+  playbookTeile: ['Was sind Teil 1, 2 und 3 des Sales Playbooks?', PLAYBOOK_TEILE],
   ende: ['Was passiert am Ende eines Mandats?', 'Wir übergeben an Ihre interne Vertriebsleitung, mit Übergabeplan in 4 Schritten und dem Sales Playbook Teil 3.'],
-  workshopNichts: ['Was bringt mir der Tagesworkshop?', 'Ziel des Tages sind drei Hebel, die Sie sofort umsetzen können.'],
+  workshopNichts: ['Was bringt mir der Tagesworkshop?', 'Am Abend kennen Sie Ihre fünf größten Hebel, bewertet nach Aufwand und Wirkung. Drei davon können Sie sofort umsetzen, einen haben wir schon gemeinsam umgesetzt.'],
   workshopFokus: ['Strategie oder operativ: Was heißt das beim Tagesworkshop?', 'Mit Fokus Strategie geht es um Zielgruppe, Markteintritt und Positionierung. Mit Fokus operativ um Ablauf, Zahlen und Werkzeuge im Vertrieb. Sie wählen vorab.'],
   nichtPassend: ['Für wen passt ein Head of Sales auf Zeit nicht?', 'Für Firmen ohne fertiges Produkt, Konzerne mit Einkaufsabteilung, reine Kaltakquise-Telefonteams und Network-Marketing.'],
-  erstePerson: ['Wann sollte ich die erste Person für den Vertrieb einstellen?', 'Wenn Sie wissen, welche Kunden am besten passen, Ihr Erstgespräch einem aufgeschriebenen Ablauf folgt und genug Kontakte da sind, um eine Person auszulasten. Fehlt eines davon, holen Sie es zuerst nach.'],
+  erstePerson: ['Wann sollte ich die erste Person für den Vertrieb einstellen?', 'Wenn Sie wissen, welche Kunden am besten passen, Ihr Erstgespräch einem aufgeschriebenen Ablauf folgt und genug Kontakte da sind, um eine Person auszulasten. Fehlt eines davon, holen Sie es zuerst nach. Sonst verbringt die neue Person ihre ersten Monate damit, dieses Fundament selbst zu suchen.'],
   rollen: ['Brauche ich gleich getrennte Rollen im Vertrieb?', 'Nein. In kleinen Teams macht jede Person alles. Trennen Sie Rollen erst, wenn eine Aufgabe eine Person gut auslasten kann, und regeln Sie dann die Übergaben zwischen den Rollen.'],
   fuehren: ['Wer soll den Vertrieb führen, wenn ich es nicht mehr mache?', 'Jemand, der führen will und es gelernt hat oder lernen darf. Das ist nicht immer die Person, die am meisten verkauft. Am Anfang verkauft die Vertriebsleitung oft noch mit, braucht aber feste Zeit für die Führung.'],
   eventKosten: ['Was kosten die Events?', 'Für Gäste sind die Events kostenlos.'],
   eventEinladung: ['Wie bekomme ich eine Einladung?', `Tragen Sie sich auf die ${fam('innovation', 'Gästeliste', { pfad: 'events/' })} ein, dann bekommen Sie die nächste Einladung. Termin, Ort und Format stehen darin.`],
   eventGaeste: ['Wer kommt zu den Events?', 'Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir laden selbst ein und mischen bewusst, zum Beispiel Start-ups mit Mittelständlern oder Leute aus der Technik mit Leuten aus dem Vertrieb.'],
-  checkKosten: ['Was kostet der Vertriebs-Check?', 'Nichts. Der Vertriebs-Check und das Erstgespräch danach sind kostenlos.'],
-  checkDauer: ['Wie lange dauert der Vertriebs-Check?', 'Rund 5 Minuten. Es sind zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Das Ergebnis sehen Sie sofort.'],
-  checkDanach: ['Was passiert nach dem Vertriebs-Check?', 'Sie sehen sofort, wo Ihr Vertrieb steht und welcher Schritt jetzt am meisten bringt. Wenn Sie möchten, sprechen wir im kostenlosen Erstgespräch darüber: 30 Minuten per Video.'],
+  checkKosten: ['Was kostet der Check?', 'Nichts. Der Sichtbarkeits- und Vertriebs-Check und das Erstgespräch danach sind kostenlos.'],
+  checkDauer: ['Wie lange dauert der Check?', 'Rund 7 Minuten. Es sind fünfzehn Fragen zu Sichtbarkeit und Vertrieb, dazu zwei in Ihren eigenen Worten. Das Ergebnis sehen Sie sofort.'],
+  checkWarum: ['Warum fragt der Check auch nach der Sichtbarkeit?', 'Weil beides zusammenhängt: Ohne Anfragen hilft der beste Ablauf im Vertrieb wenig, und ohne Nachfassen verpuffen gute Anfragen. Der Check zeigt, wo bei Ihnen der größere Hebel liegt.'],
+  checkDanach: ['Was passiert nach dem Check?', 'Sie sehen sofort, wo Sie bei Sichtbarkeit und Vertrieb stehen und welcher Schritt jetzt am meisten bringt. Wenn Sie möchten, sprechen wir im kostenlosen Erstgespräch darüber: 30 Minuten per Video.'],
 };
 const fr = (...ids) => ids.map((i) => FRAGEN[i]);
 
@@ -696,7 +706,7 @@ function start(W) {
       <p class="held-text">Wir bauen Ihren Vertrieb als System auf: Zielgruppe, Prozess im CRM, Kennzahlen und Nachfassen. Dann machen wir es vor und üben mit Ihrem Team, bis es selbst abschließt. Das Erstgespräch ist kostenlos.</p>
       <div class="held-aktionen">
         <a class="knopf knopf-gross" href="#erstgespraech" data-buchen>Erstgespräch vereinbaren</a>
-        ${fam('check', 'Vertriebs-Check, 5 Minuten', { klasse: 'link-pfeil' })}
+        ${fam('check', 'Check, 7 Minuten', { klasse: 'link-pfeil' })}
       </div>
     </div>
 
@@ -730,7 +740,7 @@ ${halte.map(([name, heute, system], i) => `    <div class="szene szene-stufe" da
       <p class="szene-text">Wer angesprochen wird, was gesagt wird, was gemessen wird: Das bauen wir mit Ihnen auf, bis Ihr Team selbst abschließt.</p>
       <div class="held-aktionen">
         <a class="knopf knopf-gross" href="#erstgespraech" data-buchen>Erstgespräch vereinbaren</a>
-        ${fam('check', 'Vertriebs-Check starten', { klasse: 'knopf knopf-gross knopf-leise' })}
+        ${fam('check', 'Check starten', { klasse: 'knopf knopf-gross knopf-leise' })}
       </div>
       <p class="szene-weiter"><a class="link-pfeil" href="systemvertrieb/">So bauen wir das System auf</a></p>
     </div>
@@ -791,7 +801,7 @@ ${themen.map(([pfad, titel, text, klein], i) => `      <li class="thema erschein
   <div class="w">
     ${abKopf('Ablauf', 'So kommen wir <em>zusammen.</em>', '', 'ablauf-titel')}
     <ol class="ablauf-liste">
-      <li class="erscheint"><h3>Erstgespräch oder Check</h3><p>Kostenlos: 30 Minuten Erstgespräch per Video oder der Vertriebs-Check mit Ergebnis sofort.</p></li>
+      <li class="erscheint"><h3>Erstgespräch oder Check</h3><p>Kostenlos: 30 Minuten Erstgespräch per Video oder der Check zu Sichtbarkeit und Vertrieb mit Ergebnis sofort.</p></li>
       <li class="erscheint erscheint-2"><h3>Ihr Vorschlag</h3><p>Wir schlagen Ihnen ein Angebot vor. Festpreis und Ablauf bekommen Sie schriftlich, bevor es losgeht.</p></li>
       <li class="erscheint erscheint-3"><h3>Tagesworkshop</h3><p>Ein Tag, an dem wir die größten Hebel finden und den ersten direkt umsetzen. Beim Start eines Mandats rechnen wir ihn voll an.</p></li>
       <li class="erscheint erscheint-4"><h3>Mandat</h3><p>Head of Sales oder Chief Sales Officer auf Zeit, für 6 oder 12 Monate. Erste Ergebnisse im ersten Monat.</p></li>
@@ -838,7 +848,7 @@ ${themen.map(([pfad, titel, text, klein], i) => `      <li class="thema erschein
 
 <section class="abschnitt ton-2" id="familie" aria-labelledby="familie-titel">
   <div class="w">
-    ${abKopf('Auch von uns', 'Wenn es nicht am Vertrieb <em>liegt.</em>', '', 'familie-titel')}
+    ${abKopf('Auch von uns', 'Wenn es nicht am Vertrieb <em>liegt.</em>', 'Aus guten Angeboten soll Umsatz werden: MAKE&nbsp;Studios macht Sie sichtbar, MAKE&nbsp;Revenue macht aus Anfragen Aufträge, und MAKE&nbsp;Innovation führt KI und bessere Abläufe ein.', 'familie-titel')}
     <div class="karten-2">
       <article class="karte karte-familie familie-studios erscheint">
         <p class="familie-marke"><i class="familie-punkt" aria-hidden="true"></i><b>MAKE</b> <span>STUDIOS</span></p>
@@ -886,9 +896,9 @@ function systemvertrieb(W) {
     krume: 'Digitaler Systemvertrieb',
     titel: 'Digitaler Systemvertrieb: Vertrieb, der nicht an Ihnen <em>hängt.</em>',
     text: 'Vertrieb ist kein Talent, sondern ein System: wer angesprochen wird, was gesagt wird, was gemessen wird. Wir bauen es mit Ihnen auf, mit einem festen Ablauf im CRM und wenigen Zahlen, die jede Woche auf dem Tisch liegen.',
-    aktionen: `<a class="knopf knopf-gross" href="../#erstgespraech" data-buchen="systemvertrieb">Erstgespräch vereinbaren</a>${fam('check', 'Vertriebs-Check, 5 Minuten', { klasse: 'link-pfeil' })}`,
+    aktionen: `<a class="knopf knopf-gross" href="../#erstgespraech" data-buchen="systemvertrieb">Erstgespräch vereinbaren</a>${fam('check', 'Check, 7 Minuten', { klasse: 'link-pfeil' })}`,
     vorweg: thema('systemvertrieb').vorweg,
-    fakten: [['Für wen', 'Gründer, Mittelstand und Dienstleister im B2B, deren Vertrieb an der Geschäftsführung hängt'], ['Ergebnis', 'Pipeline im CRM, Wochenreport, feste Rollen und ein Sales Playbook, das bleibt'], ['Einstieg', 'Vertriebs-Check oder Erstgespräch, beides kostenlos']],
+    fakten: [['Für wen', 'Gründer, Mittelstand und Dienstleister im B2B, deren Vertrieb an der Geschäftsführung hängt'], ['Ergebnis', 'Pipeline im CRM, Wochenreport, feste Rollen und ein Sales Playbook, das bleibt'], ['Einstieg', 'Check oder Erstgespräch, beides kostenlos']],
     film: 'arbeit',
   })}
 
@@ -972,9 +982,9 @@ ${bausteine.map(([name, klein, text]) => `      <li class="baustein erscheint"><
           <tbody>
             <tr><th scope="row">Umsatzziel im Jahr</th><td data-spalte="Rechnung">angenommen</td><td data-spalte="Ergebnis">240.000&nbsp;€</td></tr>
             <tr><th scope="row">Abschlüsse</th><td data-spalte="Rechnung">240.000&nbsp;€ ÷ 8.000&nbsp;€ je Auftrag</td><td data-spalte="Ergebnis">30</td></tr>
-            <tr><th scope="row">Angebote</th><td data-spalte="Rechnung">jedes dritte Angebot wird ein Auftrag</td><td data-spalte="Ergebnis">90</td></tr>
-            <tr><th scope="row">Termine</th><td data-spalte="Rechnung">aus jedem zweiten Termin wird ein Angebot</td><td data-spalte="Ergebnis">180</td></tr>
-            <tr><th scope="row">Je Woche</th><td data-spalte="Rechnung">180 Termine ÷ 45 Arbeitswochen</td><td data-spalte="Ergebnis">4 Termine</td></tr>
+            <tr><th scope="row">Angebote</th><td data-spalte="Rechnung">${de(START.angebotsquote)}&nbsp;% der Angebote werden ein Auftrag</td><td data-spalte="Ergebnis">${de(BEISPIEL.angebote)}</td></tr>
+            <tr><th scope="row">Termine</th><td data-spalte="Rechnung">aus jedem zweiten Termin wird ein Angebot</td><td data-spalte="Ergebnis">${de(BEISPIEL.termine)}</td></tr>
+            <tr><th scope="row">Je Woche</th><td data-spalte="Rechnung">${de(BEISPIEL.termine)} Termine ÷ ${de(START.wochen)} Arbeitswochen</td><td data-spalte="Ergebnis">rund ${de(wochenZiel(BEISPIEL.termineWoche))} Termine</td></tr>
           </tbody>
         </table>
         <p class="tafel-fuss">Ihre eigenen Quoten kennen Sie, wenn einige Wochen lang jedes Gespräch im CRM steht.</p>
@@ -1035,17 +1045,17 @@ ${kontakt(W, { thema: 'systemvertrieb' })}`;
 function vertriebAufZeit(W) {
   const monate = [
     ['Monat 1', 'Ankommen und analysieren', 'Ergebnisbild, ein erster schneller Erfolg aus Ihrem Kundenbestand'],
-    ['Monat 2', 'Fundament bauen', 'Zielgruppe, Prozess im CRM, Skripte, Zahlen, Zwischenbilanz in Woche 8'],
+    ['Monat 2', 'Fundament bauen', 'Zielgruppe, Prozess im CRM, Leitfäden, Zahlen, Zwischenbilanz in Woche 8'],
     ['Monat 3', 'Live gehen', 'Team trainiert, Wochenreport jeden Freitag'],
     ['Monat 4 bis 5', 'Hebel umsetzen', 'die zwei, drei Module mit der größten Wirkung'],
     ['Monat 6', 'Übergeben', 'Vertrieb ohne Gründer, Sales Playbook Teil 2, Abschlussbericht'],
   ];
   const vergleich = [
-    ['Fundament: Zielgruppe, Salesprozess im CRM, Skripte und Einwandbibliothek', 1],
+    ['Fundament: Zielgruppe, Salesprozess im CRM, Leitfäden und Einwandbibliothek', 1],
     ['Ein erster schneller Erfolg aus Ihrem Kundenbestand ab Monat 1', 1],
-    ['Leadgenerierung, Prozesse und KPIs nach dem größten Hebel', 1],
+    ['Leadgenerierung, Prozesse und Kennzahlen nach dem größten Hebel', 1],
     ['Wochenreport jeden Freitag ab Monat 3', 1],
-    ['Rollenspiele, Call-Reviews und Onboarding für Ihr Team', 1],
+    ['Rollenspiele, Nachbesprechung echter Gespräche und Einarbeitung für Ihr Team', 1],
     ['Sales Playbook Teil 1 und 2', 1],
     ['Strategie, Go-to-Market und Preislogik', 0],
     ['Rollen, Vergütung und Recruiting', 0],
@@ -1109,6 +1119,7 @@ function vertriebAufZeit(W) {
 ${monate.map(([m, was, ergebnis]) => `        <li class="monat erscheint"><span class="monat-nr">${m}</span><b>${was}</b><span>${ergebnis}</span></li>`).join('\n')}
       </ol>
       <p class="tafel-fuss">Bei 12 Monaten: Monate 7 bis 9 ausbauen, Monate 10 bis 12 skalieren oder an die interne Vertriebsleitung übergeben.</p>
+      <p class="tafel-fuss" id="playbook">${PLAYBOOK_TEILE}</p>
       <div class="kasten kasten-dunkel dunkel abstand-oben">
         <h3>Wir schulden die Leistung, nicht den Umsatz.</h3>
         <p>Was wir zusagen, liefern wir. In Woche 8 bekommen Sie eine Zwischenbilanz mit Zahlen und Fahrplan. Was entsteht, dürfen Sie nach Zahlung weiter nutzen.</p>
@@ -1119,7 +1130,7 @@ ${monate.map(([m, was, ergebnis]) => `        <li class="monat erscheint"><span 
 
 <section class="abschnitt ton-2" id="vergleich" aria-labelledby="vergleich-titel">
   <div class="w">
-    ${abKopf('', 'Head of Sales oder Chief Sales <em>Officer?</em>', 'Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer macht all das auch und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum Chief Sales Officer wechseln.', 'vergleich-titel')}
+    ${abKopf('', 'Head of Sales oder Chief Sales <em>Officer?</em>', 'Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Leitfäden, Kennzahlen und Training. Der Chief Sales Officer macht all das auch und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum Chief Sales Officer wechseln.', 'vergleich-titel')}
     <table class="tafel tafel-karten">
       <caption>Leistungen von Head of Sales und Chief Sales Officer im Vergleich</caption>
       <thead><tr><th scope="col">Leistung</th><th scope="col">Head of Sales</th><th scope="col">Chief Sales Officer</th></tr></thead>
@@ -1150,7 +1161,7 @@ ${fest.map(([k, a, b]) => `        <tr><th scope="row">${k}</th><td data-spalte=
         <h3>Ihr Vertriebsleiter kommt nicht in Fahrt?</h3>
         <p>Meist fehlt ihm ein System, nach dem er führen kann. Das bauen wir mit ihm auf, arbeiten ihn ein und übergeben ihm dann den Vertrieb. Danach hängt der Vertrieb nicht mehr an der Geschäftsführung.</p>
         <h3 class="abstand-oben">Was wir von Ihnen brauchen</h3>
-        ${punkte(['Zugänge zu CRM, Kalender und Zahlen innerhalb von 5 Werktagen nach dem Kick-off', 'einen festen Ansprechpartner mit Entscheidungsbefugnis', 'Teilnahme am wöchentlichen Vertriebs-Call (30 Minuten)', 'Ihr Team führt die Gespräche selbst, wir machen vor.'])}
+        ${punkte(['Zugänge zu CRM, Kalender und Zahlen innerhalb von 5 Werktagen nach dem Kick-off', 'einen festen Ansprechpartner mit Entscheidungsbefugnis', 'Teilnahme am Wochen-Call (30 Minuten)', 'Ihr Team führt die Gespräche selbst, wir machen vor.'])}
       </div>
     </div>
   </div>
@@ -1161,7 +1172,7 @@ ${fest.map(([k, a, b]) => `        <tr><th scope="row">${k}</th><td data-spalte=
     <div class="spalten-kopf">
       <p class="ueberzeile">Tagesworkshop Vertrieb</p>
       <h2 class="abschnitt-titel" id="workshop-titel">Was bringt der <em>Tagesworkshop?</em></h2>
-      <p class="abschnitt-text">Am Abend kennen Sie Ihre fünf größten Hebel, bewertet nach Aufwand und Wirkung. Sie haben einen 90-Tage-Plan und wissen, ob Sie ein Markt- oder ein Produktproblem haben. Ein Hebel ist schon umgesetzt.</p>
+      <p class="abschnitt-text">Am Abend kennen Sie Ihre fünf größten Hebel, bewertet nach Aufwand und Wirkung. Drei davon können Sie sofort umsetzen, einen haben wir schon gemeinsam umgesetzt. Dazu haben Sie einen 90-Tage-Plan und wissen, ob Sie ein Markt- oder ein Produktproblem haben.</p>
       <a class="knopf" href="../#erstgespraech" data-buchen="workshop">Tagesworkshop anfragen</a>
     </div>
     <div>
@@ -1169,9 +1180,9 @@ ${fest.map(([k, a, b]) => `        <tr><th scope="row">${k}</th><td data-spalte=
         <li class="monat"><span class="monat-nr">Vorab</span><b>Fokus wählen</b><span>Sie wählen den Fokus: eher Strategie oder eher operativ.</span></li>
         <li class="monat"><span class="monat-nr">Vormittag</span><b>Lage, Zahlen und Kunden</b><span>Wir ordnen ein, ob Sie ein Markt- oder ein Produktproblem haben.</span></li>
         <li class="monat"><span class="monat-nr">Nachmittag</span><b>Hebel bewerten</b><span>Nach Aufwand und Wirkung. Einen davon setzen wir direkt gemeinsam um.</span></li>
-        <li class="monat"><span class="monat-nr">Danach</span><b>Protokoll und Plan</b><span>Protokoll mit Ihren Top 5 und Ihr 90-Tage-Plan, schriftlich.</span></li>
+        <li class="monat"><span class="monat-nr">Danach</span><b>Protokoll und Plan</b><span>Protokoll mit Ihren fünf Hebeln und Ihr 90-Tage-Plan, schriftlich.</span></li>
       </ol>
-      ${punkte(['Ziel des Tages sind drei Hebel, die Sie sofort umsetzen können.', 'Starten Sie danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Workshop voll an.', 'Sie bringen mit: einen Tag Zeit ohne Unterbrechung und Ihre Vertriebszahlen der letzten Monate, soweit vorhanden.'], 'abstand-oben')}
+      ${punkte(['Starten Sie danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Workshop voll an.', 'Sie bringen mit: einen Tag Zeit ohne Unterbrechung und Ihre Vertriebszahlen der letzten Monate, soweit vorhanden.'], 'abstand-oben')}
     </div>
   </div>
 </section>
@@ -1262,24 +1273,27 @@ ${merkmale.map(([n, t], i) => `      <article class="karte erscheint${i ? ` ersc
 ${kontakt(W, { thema: 'netzwerk' })}`;
 }
 
-// ─────────────── Vertriebs-Check ───────────────
+// ─────────────── Sichtbarkeits- und Vertriebs-Check ───────────────
 function vertriebsCheck(W) {
   return `${seitenKopf(W, {
-    krume: 'Vertriebs-Check',
-    titel: 'Der Vertriebs-Check zeigt, wie planbar Ihr Vertrieb <em>ist.</em>',
-    text: 'Zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, wo Ihr Vertrieb steht und welcher Schritt jetzt am meisten bringt.',
-    aktionen: `${fam('check', 'Vertriebs-Check starten', { klasse: 'knopf knopf-gross' })}<a class="link-pfeil" href="../#erstgespraech" data-buchen>Lieber gleich sprechen</a>`,
+    krume: 'Check',
+    titel: 'Der Check zeigt, ob es an der Sichtbarkeit oder am Vertrieb <em>liegt.</em>',
+    text: 'Fünfzehn Fragen zu Sichtbarkeit und Vertrieb, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, wo Sie stehen und welcher Schritt jetzt am meisten bringt.',
+    aktionen: `${fam('check', 'Check starten', { klasse: 'knopf knopf-gross' })}<a class="link-pfeil" href="../#erstgespraech" data-buchen>Lieber gleich sprechen</a>`,
     vorweg: thema('check').vorweg,
     fakten: [['Danach', 'auf Wunsch 30 Minuten Erstgespräch per Video, ebenfalls kostenlos']],
   })}
 
 <section class="abschnitt ton-2" id="bereiche" aria-labelledby="bereiche-titel">
   <div class="w">
-    ${abKopf('', 'Was fragt der <em>Vertriebs-Check?</em>', 'Zum Schluss kommen zwei Fragen, die Sie in eigenen Worten beantworten.', 'bereiche-titel')}
+    ${abKopf('', 'Was fragt der <em>Check?</em>', 'Je drei Bereiche zu Sichtbarkeit und Vertrieb. Zum Schluss kommen zwei Fragen, die Sie in eigenen Worten beantworten.', 'bereiche-titel')}
     <div class="karten-3">
-      <article class="karte erscheint"><p class="karte-rolle">01</p><h3 class="karte-titel">Organisation</h3><p>Gibt es einen festen Ablauf?</p></article>
-      <article class="karte erscheint erscheint-2"><p class="karte-rolle">02</p><h3 class="karte-titel">Zahlen</h3><p>Wissen Sie, was im nächsten Quartal kommt?</p></article>
-      <article class="karte erscheint erscheint-3"><p class="karte-rolle">03</p><h3 class="karte-titel">Neukunden</h3><p>Kommen neue Kunden planbar?</p></article>
+      <article class="karte erscheint"><p class="karte-rolle">Sichtbarkeit</p><h3 class="karte-titel">Botschaft</h3><p>Versteht man sofort, was Sie anbieten?</p></article>
+      <article class="karte erscheint erscheint-2"><p class="karte-rolle">Sichtbarkeit</p><h3 class="karte-titel">Website und Video</h3><p>Bringt Ihre Website Anfragen?</p></article>
+      <article class="karte erscheint erscheint-3"><p class="karte-rolle">Sichtbarkeit</p><h3 class="karte-titel">Reichweite</h3><p>Zeigen Sie sich, und was sagen Kunden über Sie?</p></article>
+      <article class="karte erscheint"><p class="karte-rolle">Vertrieb</p><h3 class="karte-titel">Organisation</h3><p>Wer kümmert sich, und wer fasst nach?</p></article>
+      <article class="karte erscheint erscheint-2"><p class="karte-rolle">Vertrieb</p><h3 class="karte-titel">Zahlen</h3><p>Kennen Sie Ihre Angebote und Ihre Abschlussquote?</p></article>
+      <article class="karte erscheint erscheint-3"><p class="karte-rolle">Vertrieb</p><h3 class="karte-titel">Neukunden</h3><p>Kommen neue Kunden planbar?</p></article>
     </div>
   </div>
 </section>
@@ -1288,7 +1302,7 @@ function vertriebsCheck(W) {
   <div class="w">
     ${abKopf('Ablauf', 'Was passiert nach dem <em>Check?</em>', '', 'danach-titel')}
     <ol class="ablauf-liste">
-      <li class="erscheint"><h3>Vertriebs-Check</h3><p>Zwölf Fragen, fast alles per Klick, dazu zwei in Ihren eigenen Worten. Kostenlos.</p></li>
+      <li class="erscheint"><h3>Check</h3><p>Fünfzehn Fragen, fast alles per Klick, dazu zwei in Ihren eigenen Worten. Kostenlos.</p></li>
       <li class="erscheint erscheint-2"><h3>Ergebnis</h3><p>Direkt nach der letzten Frage, auf dem Bildschirm.</p></li>
       <li class="erscheint erscheint-3"><h3>Erstgespräch</h3><p>Wenn Sie möchten: 30 Minuten per Video mit Kevin. Kostenlos und kein Verkaufsgespräch.</p></li>
       <li class="erscheint erscheint-4"><h3>Ihr Vorschlag</h3><p>Wir schlagen Ihnen ein Angebot vor. Festpreis und Ablauf bekommen Sie schriftlich, bevor es losgeht.</p></li>
@@ -1298,8 +1312,8 @@ function vertriebsCheck(W) {
 
 <section class="abschnitt ton-2" id="fragen" aria-labelledby="fragen-titel">
   <div class="w">
-    ${abKopf('Fragen', 'Häufige Fragen zum <em>Vertriebs-Check.</em>', '', 'fragen-titel')}
-    ${fragenListe(fr('checkKosten', 'checkDauer', 'checkDanach'))}
+    ${abKopf('Fragen', 'Häufige Fragen zum <em>Check.</em>', '', 'fragen-titel')}
+    ${fragenListe(fr('checkKosten', 'checkDauer', 'checkWarum', 'checkDanach'))}
     ${autor()}
   </div>
 </section>
@@ -1309,11 +1323,11 @@ ${kontakt(W, { schritte: false })}`;
 // ─────────────── Fragen ───────────────
 const FRAGEN_GRUPPEN = [
   ['Zusammenarbeit', fr('erstgespraech', 'projekt', 'erfahrung', 'vorort', 'preise', 'wer')],
-  ['Digitaler Systemvertrieb', fr('planbar', 'crm', 'welchesCrm', 'tabelle', 'kennzahlen', 'richtwerte', 'eintragen')],
-  ['Vertrieb auf Zeit', fr('unterschied', 'laufzeit', 'gespraeche', 'zeitaufwand', 'playbooks', 'csoZeit', 'einstellen', 'ende', 'nichtPassend', 'workshopNichts', 'workshopFokus')],
-  ['Vertriebsteam aufbauen', fr('ersterVertriebler', 'erstePerson', 'rollen', 'fuehren')],
+  ['Digitaler Systemvertrieb', fr('planbar', 'crm', 'welchesCrm', 'kennzahlen', 'richtwerte', 'eintragen')],
+  ['Vertrieb auf Zeit', fr('unterschied', 'laufzeit', 'gespraeche', 'zeitaufwand', 'playbookTeile', 'playbooks', 'csoZeit', 'einstellen', 'ende', 'nichtPassend', 'workshopNichts', 'workshopFokus')],
+  ['Vertriebsteam aufbauen', fr('erstePerson', 'rollen', 'fuehren')],
   ['Netzwerken und Events', fr('eventKosten', 'eventEinladung', 'eventGaeste')],
-  ['Vertriebs-Check', fr('checkKosten', 'checkDauer', 'checkDanach')],
+  ['Sichtbarkeits- und Vertriebs-Check', fr('checkKosten', 'checkDauer', 'checkWarum', 'checkDanach')],
 ];
 function fragenSeite(W) {
   return `
@@ -1361,12 +1375,12 @@ function nichtGefunden() {
 // ═══════════════════════════════════════ Bauen ═══════════════════════════════════════
 const SEITEN = [
   { pfad: '', aktuell: '', klasse: 'seite-start', inhalt: start, skripte: ['film.js', 'rechner.js', 'anfassen.js'], name: 'Start',
-    titel: 'MAKE Revenue · Vertrieb mit System für Gründer und Mittelstand',
-    beschreibung: 'MAKE Revenue baut Ihren Vertrieb als System auf: Zielgruppe, Prozess im CRM, Kennzahlen und Nachfassen. Einstieg: kostenloser Vertriebs-Check oder Erstgespräch.',
+    titel: 'MAKE Revenue · Vertriebsaufbau für Gründer und Mittelstand',
+    beschreibung: 'MAKE Revenue baut Ihren Vertrieb als System auf: Zielgruppe, Prozess im CRM, Kennzahlen und Nachfassen. Einstieg: kostenloser Check oder Erstgespräch.',
     leistungen: THEMEN.map((t) => ({ name: t.titel, art: t.art, text: t.kurz, pfad: t.pfad })),
     fragen: fr('erstgespraech', 'gespraeche', 'crm', 'preise', 'wer') },
   { pfad: 'systemvertrieb/', aktuell: 'systemvertrieb', klasse: 'seite-unter', inhalt: systemvertrieb, skripte: ['anfassen.js'], name: 'Digitaler Systemvertrieb',
-    titel: 'Digitaler Systemvertrieb: Vertrieb mit System · MAKE Revenue',
+    titel: 'Digitaler Systemvertrieb: Vertrieb im CRM · MAKE Revenue',
     beschreibung: 'Vertrieb, der nicht am Gründer hängt: Zielgruppe, Prozess im CRM, Leitfäden, Kennzahlen und Wochenreport. So baut MAKE Revenue Ihr Vertriebssystem auf.',
     leistung: leistung('systemvertrieb'),
     fragen: fr('ersterVertriebler', 'welchesCrm', 'kennzahlen', 'planbar', 'tabelle'), begriffe: BEGRIFFE },
@@ -1380,14 +1394,14 @@ const SEITEN = [
     beschreibung: 'Abende in kleiner Runde, kuratiert und auf Einladung: Gesprächsrunde, Impulsabend, Workshop und Treffen im Netzwerk. Für Gäste kostenlos, Gastgeberin ist Malin.',
     leistung: leistung('netzwerken'),
     fragen: fr('eventKosten', 'eventEinladung', 'eventGaeste') },
-  { pfad: 'vertriebs-check/', aktuell: 'check', klasse: 'seite-unter', inhalt: vertriebsCheck, name: 'Vertriebs-Check',
-    titel: 'Vertriebs-Check: Wie planbar ist Ihr Vertrieb? · MAKE Revenue',
-    beschreibung: 'Der kostenlose Vertriebs-Check: zwölf Fragen zu Organisation, Zahlen und Neukunden in rund 5 Minuten. Sie sehen sofort, wo Ihr Vertrieb steht.',
+  { pfad: 'check/', aktuell: 'check', klasse: 'seite-unter', inhalt: vertriebsCheck, name: 'Sichtbarkeits- und Vertriebs-Check',
+    titel: 'Check: Sichtbarkeit und Vertrieb prüfen · MAKE Revenue',
+    beschreibung: 'Der kostenlose Sichtbarkeits- und Vertriebs-Check: fünfzehn Fragen in rund 7 Minuten. Sie sehen sofort, ob es an den Anfragen oder am Abschluss liegt.',
     leistung: leistung('check'),
-    fragen: fr('checkKosten', 'checkDauer', 'checkDanach') },
+    fragen: fr('checkKosten', 'checkDauer', 'checkWarum', 'checkDanach') },
   { pfad: 'fragen/', aktuell: 'fragen', klasse: 'seite-unter', inhalt: fragenSeite, name: 'Fragen',
     titel: 'Häufige Fragen zum Vertriebsaufbau · MAKE Revenue',
-    beschreibung: 'Antworten auf häufige Fragen zu Systemvertrieb, Head of Sales und Chief Sales Officer auf Zeit, Tagesworkshop, Events und dem kostenlosen Vertriebs-Check.',
+    beschreibung: 'Antworten auf häufige Fragen zu Systemvertrieb, Head of Sales und Chief Sales Officer auf Zeit, Tagesworkshop, Events und dem kostenlosen Check.',
     fragen: FRAGEN_GRUPPEN.flatMap(([, l]) => l) },
 ];
 

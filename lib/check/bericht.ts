@@ -36,7 +36,10 @@ export function berichtMail(w: BerichtWerte): { betreff: string; text: string } 
     ...(a.genauigkeit === 'vorlaeufig' ? ['Das ist ein vorläufiges Ergebnis — mit den Fragen der ausführlichen Fassung wird es genauer.'] : []),
     `Die Stufen: ${a.stufen.map(x => `${x.stufe} ${ohneKlammer(x.name)}`).join(' · ')}`,
   ];
-  if (a.saeulen.length > 1) {
+  if (a.gruppen?.length) {
+    // Sichtbarkeits- und Vertriebs-Check (13.11.): je Überschrift ihr Wert, darunter ihre Bereiche.
+    for (const g of a.gruppen) teile.push('', `${g.name.toUpperCase()}: ${g.wert ?? '—'} von 100`, ...a.saeulen.filter(x => g.saeulen.includes(x.key)).map(x => `· ${x.name}: ${x.wert ?? '—'} von 100`));
+  } else if (a.saeulen.length > 1) {
     teile.push('', 'IHRE BEREICHE', ...a.saeulen.map(x => `· ${x.name}: ${x.wert ?? '—'} von 100`));
   }
   if (iv?.achsen.length) {

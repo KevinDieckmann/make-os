@@ -530,7 +530,28 @@ function ErgebnisKarte({ ansicht, gespraech, bericht, kontaktDa, laedt, mehr, te
       {/* Nur, wenn wirklich verschickt werden kann (Website-Absender eingerichtet) — sonst verspricht die Seite keine Mail. */}
       {kontaktDa && bericht?.perMail && <p className={s.berichtUnterwegs} role="status">Ihr Bericht ist unterwegs an {bericht.an}.</p>}
 
-      {ansicht.saeulen.length > 1 && (
+      {/* Zwei Überschriften über den Bereichen (13.11., Sichtbarkeits- und Vertriebs-Check): je Gruppe ihr Wert, darunter ihre Bereiche.
+          Gespeicherte Ansichten von vor dem 13.11. haben das Feld nicht — dann die Bereiche wie bisher. */}
+      {!!ansicht.gruppen?.length && (
+        <div className={s.gruppen}>
+          {ansicht.gruppen.map(g => (
+            <div key={g.key} className={s.gruppe} role="group" aria-label={g.name}>
+              <div className={s.gruppeKopf}>
+                <span><span className={s.gruppeName}>{g.name}</span>{g.frage && <span className={s.gruppeFrage}>{g.frage}</span>}</span>
+                <span className={s.gruppeWert}>{g.wert ?? '—'}<span className={s.gruppeVon}> von 100</span></span>
+              </div>
+              <div className={s.saeuleBalken} aria-hidden><div className={s.saeuleFuell} style={{ width: `${g.wert ?? 0}%` }} /></div>
+              <div className={s.gruppeBereiche} role="list" aria-label={`${g.name}: Ihre Bereiche`}>
+                {ansicht.saeulen.filter(x => g.saeulen.includes(x.key)).map(x => (
+                  <div key={x.key} className={s.gruppeBereich} role="listitem"><span>{x.name}</span><span className={s.gruppeBereichWert}>{x.wert ?? '—'}</span></div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!ansicht.gruppen?.length && ansicht.saeulen.length > 1 && (
         <div className={s.saeulen} role="list" aria-label="Ihre Bereiche">
           {ansicht.saeulen.map(x => (
             <div key={x.key} className={s.saeule} role="listitem">

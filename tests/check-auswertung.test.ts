@@ -161,7 +161,7 @@ describe('Säulen-Checks (Vertriebscheck) — eigene Bereiche, Innovation läuft
     expect(z[3]).toContain('vorläufiges Ergebnis');
   });
   it('Vorlagen bleiben neutral: keine Firmen, Marken oder Personen in Bereichen, Stufen und Schritten', () => {
-    for (const W of [VV, VORLAGEN['sichtbarkeits-test']]) {
+    for (const W of [VV, VORLAGEN['sichtbarkeits-test'], VORLAGEN['sichtbarkeit-vertrieb']]) {
       const texte = JSON.stringify([W.katalog.abschnitte, W.regeln.naechste_schritte, W.regeln.saeulen_stufen, W.regeln.siegel]);
       expect(texte).not.toMatch(/MAKE|Fokus Innovation|KD Ventures|KEMARIS|Kevin|Malin/i);
     }

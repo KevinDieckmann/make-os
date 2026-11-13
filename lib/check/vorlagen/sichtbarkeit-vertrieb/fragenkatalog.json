@@ -1,0 +1,677 @@
+{
+ "version": "1.0",
+ "stand": "2026-11-13",
+ "freigabe": "Zur Abnahme durch den Inhaber (13.11.2026)",
+ "sprache": "de, Sie-Form",
+ "hinweis": "Sichtbarkeit und Vertrieb in einem Check (13.11.2026). Die Fragen stammen wörtlich aus dem Vertriebs-Check und dem Sichtbarkeits-Check vom 30.10., je Bereich zwei. IDs sind stabil und werden in Datenbank, Scoring und Bericht verwendet. Texte dürfen nur nach Freigabe durch den Inhaber geändert werden.",
+ "anzahl_fragen": 18,
+ "anzahl_kurzcheck": 17,
+ "abschnitte": [
+  {
+   "id": "A",
+   "key": "profil",
+   "name": "Profil, ohne Punkte",
+   "dimension": null,
+   "intro": "Profil, ohne Punkte. 4 Fragen (A5 kommt mit den Kontaktdaten).",
+   "fragen": [
+    {
+     "id": "A1",
+     "text": "In welcher Branche ist Ihr Unternehmen tätig?",
+     "kurzcheck": true,
+     "feld": "branche",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A1_0",
+       "text": "Handwerk",
+       "code": "handwerk"
+      },
+      {
+       "id": "A1_1",
+       "text": "Dienstleistung, Agentur, Beratung",
+       "code": "dienstleistung"
+      },
+      {
+       "id": "A1_2",
+       "text": "Tech, KI, FinTech, Software",
+       "code": "tech"
+      },
+      {
+       "id": "A1_3",
+       "text": "Produktion und Industrie",
+       "code": "produktion"
+      },
+      {
+       "id": "A1_4",
+       "text": "Handel und E-Commerce",
+       "code": "handel"
+      },
+      {
+       "id": "A1_5",
+       "text": "Gesundheit und Praxen",
+       "code": "gesundheit"
+      },
+      {
+       "id": "A1_6",
+       "text": "Immobilien und Bau",
+       "code": "immobilien"
+      },
+      {
+       "id": "A1_7",
+       "text": "Sonstige",
+       "code": "sonstige",
+       "freitext": true,
+       "freitext_feld": "branche_sonstige"
+      }
+     ],
+     "zusatz": {
+      "feld": "startup",
+      "text": "Sind Sie ein Start-up?",
+      "typ": "ja_nein"
+     }
+    },
+    {
+     "id": "A2",
+     "text": "Wie viele Mitarbeitende haben Sie?",
+     "kurzcheck": true,
+     "feld": "groesse",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A2_0",
+       "text": "Nur ich (Solo)",
+       "code": "solo"
+      },
+      {
+       "id": "A2_1",
+       "text": "2 bis 9",
+       "code": "2-9"
+      },
+      {
+       "id": "A2_2",
+       "text": "10 bis 49",
+       "code": "10-49"
+      },
+      {
+       "id": "A2_3",
+       "text": "50 bis 249",
+       "code": "50-249"
+      },
+      {
+       "id": "A2_4",
+       "text": "250 und mehr",
+       "code": "250+"
+      }
+     ]
+    },
+    {
+     "id": "A5",
+     "text": "Welche Rolle haben Sie?",
+     "kurzcheck": false,
+     "feld": "rolle",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A5_0",
+       "text": "Inhaber oder Geschäftsführung",
+       "code": "inhaber_gf"
+      },
+      {
+       "id": "A5_1",
+       "text": "Head of Innovation, Innovations-, KI- oder Digitalisierungsverantwortliche",
+       "code": "innovation_ki"
+      },
+      {
+       "id": "A5_2",
+       "text": "Bereichs- oder Abteilungsleitung",
+       "code": "bereichsleitung"
+      },
+      {
+       "id": "A5_3",
+       "text": "Vertrieb oder Marketing",
+       "code": "vertrieb_marketing"
+      },
+      {
+       "id": "A5_4",
+       "text": "IT",
+       "code": "it"
+      },
+      {
+       "id": "A5_5",
+       "text": "Mitarbeitende ohne Führung",
+       "code": "mitarbeitende"
+      }
+     ]
+    },
+    {
+     "id": "A6",
+     "text": "Was ist Ihr wichtigstes Ziel in den nächsten 12 Monaten?",
+     "kurzcheck": true,
+     "feld": "ziel",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A6_0",
+       "text": "Mehr Umsatz und neue Kunden",
+       "code": "umsatz"
+      },
+      {
+       "id": "A6_1",
+       "text": "Mehr Zeit, weniger Handarbeit",
+       "code": "zeit"
+      },
+      {
+       "id": "A6_2",
+       "text": "Fachkräftemangel ausgleichen",
+       "code": "fachkraefte"
+      },
+      {
+       "id": "A6_3",
+       "text": "Neues Produkt oder neuer Markt",
+       "code": "neues_produkt_markt"
+      },
+      {
+       "id": "A6_4",
+       "text": "Unternehmen unabhängiger vom Chef machen",
+       "code": "unabhaengig_vom_chef"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "SK",
+   "key": "botschaft",
+   "name": "Botschaft",
+   "dimension": null,
+   "saeule": "botschaft",
+   "satz": "Zuerst zu Ihrer Sichtbarkeit: Versteht man, was Sie anbieten?",
+   "intro": "Bereich Botschaft. 2 Fragen.",
+   "fragen": [
+    {
+     "id": "S1",
+     "text": "Können Sie in einem Satz sagen, für wen Sie welches Problem lösen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S1_0",
+       "text": "Nein, das ist noch nicht klar",
+       "punkte": 0
+      },
+      {
+       "id": "S1_1",
+       "text": "Ich kann es erklären, aber nicht in einem Satz",
+       "punkte": 1
+      },
+      {
+       "id": "S1_2",
+       "text": "Ja, aber der Satz steht nirgends geschrieben",
+       "punkte": 2
+      },
+      {
+       "id": "S1_3",
+       "text": "Ja, er steht auf der Website und in unseren Profilen",
+       "punkte": 3
+      },
+      {
+       "id": "S1_4",
+       "text": "Ja, und Kunden sagen ihn uns von selbst nach",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S6",
+     "text": "Erkennen neue Besucher auf Ihrer Website in fünf Sekunden, was Sie anbieten und für wen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S6_0",
+       "text": "Wahrscheinlich nicht",
+       "punkte": 0
+      },
+      {
+       "id": "S6_1",
+       "text": "Nur, wer uns schon kennt",
+       "punkte": 1
+      },
+      {
+       "id": "S6_2",
+       "text": "Teilweise, die Seite erklärt sehr viel",
+       "punkte": 2
+      },
+      {
+       "id": "S6_3",
+       "text": "Ja, oben steht klar, was wir für wen tun",
+       "punkte": 3
+      },
+      {
+       "id": "S6_4",
+       "text": "Ja, und wir haben es mit Fremden getestet",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "SW",
+   "key": "website",
+   "name": "Website und Video",
+   "dimension": null,
+   "saeule": "website",
+   "satz": "Jetzt zu Website und Video.",
+   "intro": "Bereich Website. 2 Fragen.",
+   "fragen": [
+    {
+     "id": "S2",
+     "text": "Was bringt Ihnen Ihre Website heute?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S2_0",
+       "text": "Wir haben keine oder eine veraltete Website",
+       "punkte": 0
+      },
+      {
+       "id": "S2_1",
+       "text": "Sie ist eine Visitenkarte, Anfragen kommen kaum",
+       "punkte": 1
+      },
+      {
+       "id": "S2_2",
+       "text": "Ab und zu kommt eine Anfrage darüber",
+       "punkte": 2
+      },
+      {
+       "id": "S2_3",
+       "text": "Sie bringt regelmäßig Anfragen",
+       "punkte": 3
+      },
+      {
+       "id": "S2_4",
+       "text": "Sie bringt planbar Anfragen, und wir messen das",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S4",
+     "text": "Gibt es ein Video, das in unter zwei Minuten erklärt, was Sie anbieten?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S4_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "S4_1",
+       "text": "Ist geplant",
+       "punkte": 1
+      },
+      {
+       "id": "S4_2",
+       "text": "Ja, aber es ist veraltet",
+       "punkte": 2
+      },
+      {
+       "id": "S4_3",
+       "text": "Ja, aktuell und auf der Website",
+       "punkte": 3
+      },
+      {
+       "id": "S4_4",
+       "text": "Ja, und wir sehen, dass es Anfragen bringt",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "SR",
+   "key": "reichweite",
+   "name": "Reichweite",
+   "dimension": null,
+   "saeule": "reichweite",
+   "satz": "Und wie weit reicht Ihre Sichtbarkeit?",
+   "intro": "Bereich Reichweite. 2 Fragen.",
+   "fragen": [
+    {
+     "id": "S3",
+     "text": "Wie oft zeigen Sie sich mit eigenen Inhalten, etwa Beiträgen, Videos oder Vorträgen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S3_0",
+       "text": "Gar nicht",
+       "punkte": 0
+      },
+      {
+       "id": "S3_1",
+       "text": "Seltener als einmal im Monat",
+       "punkte": 1
+      },
+      {
+       "id": "S3_2",
+       "text": "Ein- bis dreimal im Monat",
+       "punkte": 2
+      },
+      {
+       "id": "S3_3",
+       "text": "Jede Woche",
+       "punkte": 3
+      },
+      {
+       "id": "S3_4",
+       "text": "Jede Woche, mit Plan und gemessener Wirkung",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S8",
+     "text": "Was sagen Kunden öffentlich über Sie, etwa in Bewertungen, Empfehlungen oder Referenzen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S8_0",
+       "text": "Nichts Sichtbares",
+       "punkte": 0
+      },
+      {
+       "id": "S8_1",
+       "text": "Ein paar ältere Bewertungen",
+       "punkte": 1
+      },
+      {
+       "id": "S8_2",
+       "text": "Einige Bewertungen oder Referenzen",
+       "punkte": 2
+      },
+      {
+       "id": "S8_3",
+       "text": "Regelmäßig neue Bewertungen und Referenzen auf der Website",
+       "punkte": 3
+      },
+      {
+       "id": "S8_4",
+       "text": "Viele Belege, aktiv gesammelt und überall gezeigt",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "VO",
+   "key": "organisation",
+   "name": "Organisation",
+   "dimension": null,
+   "saeule": "organisation",
+   "satz": "Jetzt zum Vertrieb: Wie ist er bei Ihnen organisiert?",
+   "intro": "Bereich Organisation. 2 Fragen.",
+   "fragen": [
+    {
+     "id": "V1",
+     "text": "Wer kümmert sich bei Ihnen um den Vertrieb?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V1_0",
+       "text": "Niemand fest, es passiert nebenbei",
+       "punkte": 0
+      },
+      {
+       "id": "V1_1",
+       "text": "Ich selbst, wenn Zeit bleibt",
+       "punkte": 1
+      },
+      {
+       "id": "V1_2",
+       "text": "Ich selbst, mit festen Zeiten in der Woche",
+       "punkte": 2
+      },
+      {
+       "id": "V1_3",
+       "text": "Eine Person oder ein Team ist dafür zuständig",
+       "punkte": 3
+      },
+      {
+       "id": "V1_4",
+       "text": "Ein Team mit klaren Zielen, Abläufen und Führung",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "V4",
+     "text": "Was passiert, wenn ein Angebot unbeantwortet bleibt?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V4_0",
+       "text": "Meist nichts",
+       "punkte": 0
+      },
+      {
+       "id": "V4_1",
+       "text": "Wir fassen nach, wenn es uns einfällt",
+       "punkte": 1
+      },
+      {
+       "id": "V4_2",
+       "text": "Wir fassen nach, aber ohne festen Rhythmus",
+       "punkte": 2
+      },
+      {
+       "id": "V4_3",
+       "text": "Es gibt feste Erinnerungen zum Nachfassen",
+       "punkte": 3
+      },
+      {
+       "id": "V4_4",
+       "text": "Ein fester Ablauf mit Fristen sorgt dafür, dass nichts liegen bleibt",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "VZ",
+   "key": "zahlen",
+   "name": "Zahlen",
+   "dimension": null,
+   "saeule": "zahlen",
+   "satz": "Weiter mit Ihren Zahlen.",
+   "intro": "Bereich Zahlen. 2 Fragen.",
+   "fragen": [
+    {
+     "id": "V2",
+     "text": "Wissen Sie, wie viele Angebote Sie im Monat schreiben und wie viele davon Sie gewinnen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V2_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "V2_1",
+       "text": "Grob, aus dem Bauch",
+       "punkte": 1
+      },
+      {
+       "id": "V2_2",
+       "text": "Die Zahl der Angebote ja, die Abschlussquote nicht",
+       "punkte": 2
+      },
+      {
+       "id": "V2_3",
+       "text": "Beides, aber nicht laufend",
+       "punkte": 3
+      },
+      {
+       "id": "V2_4",
+       "text": "Beides, jeden Monat im Blick",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "V7",
+     "text": "Wo stehen Ihre offenen Chancen und Angebote?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V7_0",
+       "text": "Nirgends, das meiste ist im Kopf",
+       "punkte": 0
+      },
+      {
+       "id": "V7_1",
+       "text": "Verteilt in Mails und Notizen",
+       "punkte": 1
+      },
+      {
+       "id": "V7_2",
+       "text": "In einer Tabelle",
+       "punkte": 2
+      },
+      {
+       "id": "V7_3",
+       "text": "In einem CRM, aber nicht vollständig",
+       "punkte": 3
+      },
+      {
+       "id": "V7_4",
+       "text": "In einem CRM, vollständig und aktuell",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "VN",
+   "key": "neukunden",
+   "name": "Neukunden",
+   "dimension": null,
+   "saeule": "neukunden",
+   "satz": "Und wie kommen neue Kunden zu Ihnen?",
+   "intro": "Bereich Neukunden. 2 Fragen.",
+   "fragen": [
+    {
+     "id": "V5",
+     "text": "Woher kommen Ihre neuen Kunden?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V5_0",
+       "text": "Es kommen kaum neue Kunden",
+       "punkte": 0
+      },
+      {
+       "id": "V5_1",
+       "text": "Fast nur über Empfehlungen, wir sprechen niemanden an",
+       "punkte": 1
+      },
+      {
+       "id": "V5_2",
+       "text": "Über Empfehlungen und gelegentlich eigene Ansprache",
+       "punkte": 2
+      },
+      {
+       "id": "V5_3",
+       "text": "Über zwei oder mehr feste Wege, die wir selbst anstoßen",
+       "punkte": 3
+      },
+      {
+       "id": "V5_4",
+       "text": "Über mehrere Wege, deren Ergebnisse wir messen und steuern",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "V9",
+     "text": "Wie oft sprechen Sie neue Kontakte selbst an, etwa per Anruf, Mail, Netzwerk oder auf Veranstaltungen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V9_0",
+       "text": "Nie",
+       "punkte": 0
+      },
+      {
+       "id": "V9_1",
+       "text": "Selten, wenn es sich ergibt",
+       "punkte": 1
+      },
+      {
+       "id": "V9_2",
+       "text": "Etwa einmal im Monat",
+       "punkte": 2
+      },
+      {
+       "id": "V9_3",
+       "text": "Jede Woche",
+       "punkte": 3
+      },
+      {
+       "id": "V9_4",
+       "text": "Jede Woche zu festen Zeiten, mit Ziel",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "W",
+   "key": "eigene_worte",
+   "name": "In Ihren Worten",
+   "dimension": null,
+   "satz": "Zum Schluss zwei Fragen in Ihren eigenen Worten.",
+   "intro": "Eigene Worte, ohne Punkte. 2 Pflichtfragen (31.10.: Auswahl geben, aber zwischendrin auch selbst schreiben).",
+   "fragen": [
+    {
+     "id": "W1",
+     "text": "Wo hakt es gerade am meisten: dabei, gefunden zu werden, oder dabei, aus Anfragen Aufträge zu machen?",
+     "kurzcheck": true,
+     "typ": "offen",
+     "pflicht": true,
+     "punkte": false,
+     "eingabe": [
+      "text"
+     ]
+    },
+    {
+     "id": "W2",
+     "text": "Woran würden Sie in 90 Tagen merken, dass es besser geworden ist?",
+     "kurzcheck": true,
+     "typ": "offen",
+     "pflicht": true,
+     "punkte": false,
+     "eingabe": [
+      "text"
+     ]
+    }
+   ]
+  }
+ ]
+}

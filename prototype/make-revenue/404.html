@@ -38,7 +38,7 @@
     <a href="/systemvertrieb/">Systemvertrieb</a>
     <a href="/vertrieb-auf-zeit/">Vertrieb auf Zeit</a>
     <a href="/netzwerken/">Netzwerken</a>
-    <a href="/vertriebs-check/">Vertriebs-Check</a>
+    <a href="/check/">Check</a>
     <a href="/fragen/">Fragen</a>
   </nav>
   <div class="kopf-rechts">
@@ -57,7 +57,7 @@
     <a href="/systemvertrieb/"><span>01</span>Systemvertrieb</a>
     <a href="/vertrieb-auf-zeit/"><span>02</span>Vertrieb auf Zeit</a>
     <a href="/netzwerken/"><span>03</span>Netzwerken</a>
-    <a href="/vertriebs-check/"><span>04</span>Vertriebs-Check</a>
+    <a href="/check/"><span>04</span>Check</a>
     <a href="/fragen/"><span>05</span>Fragen</a>
   </nav>
   <div class="menue-fuss">
@@ -91,7 +91,7 @@
           <li><a href="/systemvertrieb/">Digitaler Systemvertrieb</a></li>
           <li><a href="/vertrieb-auf-zeit/">Vertrieb auf Zeit</a></li>
           <li><a href="/netzwerken/">Netzwerken und Events</a></li>
-          <li><a href="/vertriebs-check/">Vertriebs-Check</a></li>
+          <li><a href="/check/">Sichtbarkeits- und Vertriebs-Check</a></li>
           <li><a href="/fragen/">Häufige Fragen</a></li>
         </ul>
       </nav>
@@ -146,7 +146,7 @@
         <fieldset data-feld="art">
           <legend>Wie sprechen wir?</legend>
           <div class="wahl-reihe">
-            <label class="wahl"><input type="radio" name="art" value="video" data-text="Video-Call" checked><span>Video-Call</span></label>
+            <label class="wahl"><input type="radio" name="art" value="video" data-text="Videogespräch" checked><span>Videogespräch</span></label>
             <label class="wahl"><input type="radio" name="art" value="telefon" data-text="Telefon"><span>Telefon</span></label>
           </div>
           <p class="feld-fehler" hidden></p>
@@ -186,9 +186,10 @@
             <input id="b-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="200">
             <p class="feld-fehler" hidden></p>
           </div>
-          <div class="feld">
-            <label for="b-telefon">Telefon <span class="optional">optional</span></label>
+          <div class="feld" data-feld="telefon">
+            <label for="b-telefon">Telefon <span class="optional" data-telefon-optional>optional</span></label>
             <input id="b-telefon" name="telefon" type="tel" autocomplete="tel" maxlength="40">
+            <p class="feld-fehler" hidden></p>
           </div>
           <div class="feld feld-breit">
             <label for="b-web">Website <span class="optional">optional</span></label>

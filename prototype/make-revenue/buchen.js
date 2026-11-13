@@ -115,7 +115,11 @@
       return i.dataset.text || i.closest('label').textContent.replace(/\s+/g, ' ').trim();
     };
 
+    // Wer „Telefon“ als Gesprächsart wählt, muss eine Nummer angeben: der Zusatz „optional“ verschwindet dann
+    const telOptional = form.querySelector('[data-telefon-optional]');
+    const telefonPflicht = () => { if (telOptional) telOptional.hidden = wert('art') === 'telefon'; };
     form.addEventListener('change', (e) => {
+      if (e.target && e.target.name === 'art') telefonPflicht();
       const gruppe = e.target.closest('[data-feld]');
       if (gruppe && gruppe.classList.contains('hat-fehler')) fehlerWeg(gruppe);
     });
@@ -161,7 +165,8 @@
         zeit: () => (wert('zeit') ? '' : 'Bitte wählen Sie ein Zeitfenster.'),
         name: () => (wert('name') ? '' : 'Bitte nennen Sie Ihren Namen.'),
         unternehmen: () => (wert('unternehmen') ? '' : 'Bitte nennen Sie Ihr Unternehmen.'),
-        email: () => (!wert('email') ? 'Bitte geben Sie Ihre E-Mail-Adresse an.' : (MAIL.test(wert('email')) ? '' : 'Bitte prüfen Sie die E-Mail-Adresse.'))
+        email: () => (!wert('email') ? 'Bitte geben Sie Ihre E-Mail-Adresse an.' : (MAIL.test(wert('email')) ? '' : 'Bitte prüfen Sie die E-Mail-Adresse.')),
+        telefon: () => (wert('art') === 'telefon' && !wert('telefon') ? 'Bitte geben Sie eine Telefonnummer an, unter der wir Sie erreichen.' : '')
       };
       let erstes = null;
       teil.querySelectorAll('[data-feld]').forEach((g) => {

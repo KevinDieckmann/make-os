@@ -35,7 +35,7 @@
 
 .buchen fieldset { min-width: 0; margin: 26px 0 0; padding: 0; border: 0; }
 .buchen legend { padding: 0; margin-bottom: 12px; font: 600 16px/1.3 "Bricolage", system-ui, sans-serif; }
-.optional { margin-left: 6px; font: 500 11px/1 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); }
+.optional { margin-left: 6px; font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); }
 
 /* Wahl-Pillen: echte Radio-Felder, nur anders gezeichnet */
 .wahl-reihe { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -58,7 +58,7 @@
   flex-direction: column; justify-content: center; gap: 5px; width: 100%; min-height: 64px; padding: 10px 8px;
   border-radius: 16px; text-align: center;
 }
-.wahl small { font: 500 11.5px/1.15 "Mono", ui-monospace, monospace; letter-spacing: .04em; color: var(--grau); }
+.wahl small { font: 500 12px/1.15 "Mono", ui-monospace, monospace; letter-spacing: .04em; color: var(--grau); }
 .wahl input:checked + span small { color: rgba(238, 241, 246, .74); }
 .buchen-tage { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .wahl-tag span { font-size: 17px; font-weight: 600; }
@@ -118,7 +118,7 @@
 @media (max-width: 640px) {
   .buchen { width: 100%; margin: auto 0 0; border-radius: 24px 24px 0 0; max-height: calc(100dvh - 16px); }
   .buchen-kopf { padding: 12px 12px 12px 20px; }
-  .buchen-titel { font-size: 11px; }
+  .buchen-titel { font-size: 12px; }
   .buchen-schritt-wort { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
   .buchen-balken { margin: 0 20px; }
   .buchen-inhalt { padding: 24px 20px 22px; }
@@ -128,7 +128,11 @@
   .wahl-tag span { min-height: 60px; padding: 8px 2px; font-size: 16px; }
   .wahl-raster { gap: 6px; }
   .wahl-raster span { padding: 10px 4px; font-size: 15px; }
-  .wahl-raster small { font-size: 10.5px; }
+  .wahl-raster small { letter-spacing: 0; }
+}
+/* Schmale Handys: Bei 12 px bräche „14 bis 17 Uhr“ in den drei Feldern um, darum hier 11 px */
+@media (max-width: 370px) {
+  .wahl-raster small { font-size: 11px; }
 }
 @media (max-width: 640px) and (prefers-reduced-motion: no-preference) {
   .buchen[open] { animation-name: buchen-hoch; }

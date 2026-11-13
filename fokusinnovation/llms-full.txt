@@ -1,13 +1,13 @@
 # MAKE Innovation: alle Inhalte als Klartext
 
-Stand: 2026-11-12. Website: https://makeinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
+Stand: 2026-11-13. Website: https://makeinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
 
 ## Wer wir sind
 
 MAKE Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um. Gute Ideen und starke Produkte bleiben oft unter ihren Möglichkeiten, weil zu wenige sie kennen und niemand sie mit System verkauft. Das wollen wir ändern, ein Produkt nach dem anderen. Wir kommen aus der Vertriebsführung, arbeiten in laufenden Projekten mit KI, auch im internationalen Umfeld, und bauen unsere eigene Software. Wenn es sein muss, schrauben wir am Produkt mit. Und wir bringen Menschen zusammen, die Neues umsetzen, vor allem bei unseren Events.
 
 - Was wir sind: Eine Agentur für Sichtbarkeit, Vertrieb und Innovation, die selbst mit umsetzt.
-- Sitz: Berlin
+- Sitz: Schönefeld bei Berlin
 - Für wen: Gründer, Start-ups und Unternehmer, die wachsen möchten, und Mittelstand, der Neues einführt
 - Leistungen: Positionierung, Websites, Videos sowie PR und Kommunikation; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, Umsetzungsprojekte starten in Kürze; Events und Netzwerk
 - Einstieg: Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose Erstgespräch

@@ -48,7 +48,7 @@ html.dialog-offen { overflow: hidden; }
 
 .buchen fieldset { min-width: 0; margin: 26px 0 0; padding: 0; border: 0; }
 .buchen legend { padding: 0; margin-bottom: 12px; font: 600 16px/1.3 "Bricolage", system-ui, sans-serif; }
-.optional { margin-left: 6px; font: 500 11px/1 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); }
+.optional { margin-left: 6px; font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); }
 
 /* Wahl-Pillen: echte Radio- und Checkbox-Felder, nur anders gezeichnet */
 .wahl-reihe { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -72,7 +72,7 @@ html.dialog-offen { overflow: hidden; }
   flex-direction: column; justify-content: center; gap: 5px; width: 100%; min-height: 64px; padding: 10px 8px;
   border-radius: 16px; text-align: center;
 }
-.wahl small { font: 500 11.5px/1.15 "Mono", ui-monospace, monospace; letter-spacing: .04em; color: var(--grau); }
+.wahl small { font: 500 12px/1.15 "Mono", ui-monospace, monospace; letter-spacing: .04em; color: var(--grau); }
 .wahl input:checked + span small { color: rgba(242, 237, 228, .72); }
 .buchen-tage { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .wahl-tag span { font-size: 17px; font-weight: 600; }
@@ -135,7 +135,7 @@ html.dialog-offen { overflow: hidden; }
 
 /* ═══ Kontakt: Buchen, E-Mail, Check ═══ */
 .kontakt-aktionen { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px 30px; }
-.kontakt-mail { display: inline-block; padding: 11px 0; font: 600 clamp(17px, 1.5vw, 21px)/1.2 "Bricolage", system-ui, sans-serif; color: var(--papier); text-underline-offset: 6px; text-decoration-thickness: 1px; }
+.kontakt-mail { display: inline-block; padding: 12px 0; font: 600 clamp(17px, 1.5vw, 21px)/1.2 "Bricolage", system-ui, sans-serif; color: var(--papier); text-underline-offset: 6px; text-decoration-thickness: 1px; }
 .kontakt-check { margin-top: 34px; color: rgba(242, 237, 228, .82); }
 
 /* ═══ Sichtbarkeits-Check ═══ */
@@ -206,7 +206,7 @@ html.dialog-offen { overflow: hidden; }
 }
 .check-ergebnis-titel { position: relative; font-weight: inherit; }
 .check-zahl { display: block; font: 700 66px/.9 "Bricolage", system-ui, sans-serif; font-stretch: 75%; letter-spacing: -.03em; }
-.check-von { display: block; margin-top: 6px; font: 500 11px/1 "Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: rgba(242, 237, 228, .6); }
+.check-von { display: block; margin-top: 6px; font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: rgba(242, 237, 228, .6); }
 .check-stufe {
   display: inline-flex; padding: 8px 13px; border-radius: 999px; color: var(--tinte);
   font: 600 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase;
@@ -236,8 +236,10 @@ html.dialog-offen { overflow: hidden; }
 .check-tipp { margin-top: 4px; font-size: 15px; line-height: 1.45; color: rgba(242, 237, 228, .74); }
 .check-beleg { margin-top: 12px; font-size: 14.5px; line-height: 1.45; color: rgba(242, 237, 228, .86); }
 .check-beleg b { margin-right: 2px; font: 700 22px/1 "Bricolage", system-ui, sans-serif; font-stretch: 75%; color: var(--signal); }
-.check-quelle { display: block; margin-top: 6px; font: 500 11.5px/1.45 "Mono", ui-monospace, monospace; color: rgba(242, 237, 228, .56); }
+.check-quelle { display: block; margin-top: 6px; font: 500 12px/1.45 "Mono", ui-monospace, monospace; color: rgba(242, 237, 228, .56); }
 .check-quelle a { color: inherit; text-underline-offset: 3px; }
+.check-weiter { grid-column: 2; margin: 0; font-size: 15px; line-height: 1.6; color: rgba(13, 12, 11, .7); }
+.check-weiter .link-pfeil { margin-left: 6px; color: rgb(13, 12, 11); }
 .check-klein { margin-top: 22px; font-size: 13px; line-height: 1.5; color: rgba(242, 237, 228, .56); }
 .check-aktionen { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin-top: 26px; }
 .check .knopf { background: var(--signal); color: var(--tinte); }
@@ -260,6 +262,8 @@ html.dialog-offen { overflow: hidden; }
 @media (max-width: 1024px) {
   .abschnitt-check { grid-template-columns: minmax(0, 1fr); }
   .abschnitt-check .abschnitt-kopf { position: static; }
+  .check-weiter { grid-column: 1; }
+  .check-weiter .link-pfeil { display: inline; margin-left: 0; line-height: 2.1; }
   .check { min-height: 0; }
 }
 
@@ -270,7 +274,7 @@ html.dialog-offen { overflow: hidden; }
   }
   .buchen[open] { animation-name: buchen-hoch; }
   .buchen-kopf { padding: 12px 12px 12px 20px; }
-  .buchen-titel { font-size: 11px; }
+  .buchen-titel { font-size: 12px; }
   .buchen-schritt-wort { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
   .buchen-balken { margin: 0 20px; }
   .buchen-inhalt { padding: 24px 20px 22px; }
@@ -280,7 +284,7 @@ html.dialog-offen { overflow: hidden; }
   .wahl-tag span { min-height: 60px; padding: 8px 2px; font-size: 16px; }
   .wahl-raster { gap: 6px; }
   .wahl-raster span { padding: 10px 4px; font-size: 15px; }
-  .wahl-raster small { font-size: 10.5px; }
+  .wahl-raster small { letter-spacing: 0; }
 
   .check { padding: 22px 18px 26px; border-radius: 24px; }
   .check-frage { margin: 26px 0 20px; }
@@ -292,4 +296,9 @@ html.dialog-offen { overflow: hidden; }
   .check-hebel li { padding: 16px 16px 16px 52px; }
   .check-hebel li::before { left: 16px; font-size: 21px; }
   .kontakt-aktionen { flex-direction: column; gap: 18px; }
+}
+
+/* Schmale Handys: Bei 12 px bräche „14 bis 17 Uhr“ in den drei Feldern um, darum hier 11 px */
+@media (max-width: 370px) {
+  .wahl-raster small { font-size: 11px; }
 }

@@ -349,12 +349,48 @@ describe('Vertriebscheck und Sichtbarkeitstest (30.10.)', () => {
   });
   it('Adresse: /check?thema=… wählt den Check, sonst der Innovations-Check', async () => {
     const { vorlageFuerThema, checkPfad } = await import('@/lib/check/katalog');
-    expect(vorlageFuerThema('vertrieb')).toBe('vertriebs-check');
-    expect(vorlageFuerThema('sichtbarkeit')).toBe('sichtbarkeits-test');
+    // Seit 13.11. ein gemeinsamer Check: die alten Adressen (Mails, Lesezeichen) führen dorthin.
+    expect(vorlageFuerThema('sichtbarkeit-vertrieb')).toBe('sichtbarkeit-vertrieb');
+    expect(vorlageFuerThema('vertrieb')).toBe('sichtbarkeit-vertrieb');
+    expect(vorlageFuerThema('sichtbarkeit')).toBe('sichtbarkeit-vertrieb');
     expect(vorlageFuerThema('unsinn')).toBe('innovations-check');
     expect(vorlageFuerThema(undefined)).toBe('innovations-check');
-    expect(checkPfad('vertriebs-check')).toBe('/check?thema=vertrieb');
+    expect(checkPfad('sichtbarkeit-vertrieb')).toBe('/check?thema=sichtbarkeit-vertrieb');
+    expect(checkPfad('vertriebs-check')).toBe('/check?thema=sichtbarkeit-vertrieb');
     expect(checkPfad('innovations-check')).toBe('/check');
+  });
+  it('Sichtbarkeits- und Vertriebs-Check (13.11.): ein Check, zwei Werte, sechs Bereiche; die alten Vorlagen bleiben lesbar, werden aber nicht mehr angeboten', async () => {
+    const { AKTIVE_VORLAGEN, VORLAGEN: ALLE } = await import('@/lib/check/katalog');
+    expect([...AKTIVE_VORLAGEN]).toEqual(['innovations-check', 'sichtbarkeit-vertrieb']);
+    expect(Object.keys(ALLE)).toEqual(expect.arrayContaining(['vertriebs-check', 'sichtbarkeits-test']));
+    const st = await check({ aktion: 'start', vorlage: 'sichtbarkeit-vertrieb', quelle: 'kostenlos', webseite: '' });
+    expect(st.status).toBe(201);
+    expect(st.d.katalog.name).toBe('Sichtbarkeits- und Vertriebs-Check');
+    // 3 Profilfragen + 12 Klickfragen (je Bereich zwei) + 2 in eigenen Worten.
+    expect(st.d.schritt).toEqual({ art: 'frage', frageId: 'A1', phase: 'kurzcheck', nummer: 1, von: 17 });
+    const s4 = st.d.sitzung, t4 = st.d.token;
+    const ANTWORTEN: [string, string][] = [['A1', 'A1_1'], ['A2', 'A2_1'], ['A6', 'A6_0'], ['S1', 'S1_1'], ['S6', 'S6_1'], ['S2', 'S2_3'], ['S4', 'S4_3'], ['S3', 'S3_2'], ['S8', 'S8_2'],
+      ['V1', 'V1_3'], ['V4', 'V4_3'], ['V2', 'V2_1'], ['V7', 'V7_1'], ['V5', 'V5_4'], ['V9', 'V9_4']];
+    for (const [frage, o] of ANTWORTEN) expect((await check({ aktion: 'antwort', sitzung: s4, token: t4, frage, optionIds: [o] })).status, frage).toBe(200);
+    // Eine Frage, die es nur im alten Vertriebs-Check gibt, gehört nicht zu diesem Check.
+    expect((await check({ aktion: 'antwort', sitzung: s4, token: t4, frage: 'V6', optionIds: ['V6_1'] })).status).toBe(400);
+    expect((await check({ aktion: 'antwort', sitzung: s4, token: t4, frage: 'W1', freitext: 'Es kommen zu wenige Anfragen.' })).status).toBe(200);
+    expect((await check({ aktion: 'antwort', sitzung: s4, token: t4, frage: 'W2', freitext: 'Zwei Anfragen in der Woche.' })).status).toBe(200);
+    weiter(60);
+    expect((await check({ aktion: 'kontakt', sitzung: s4, token: t4, vorname: 'Mara', email: 'mara.probe@example.invalid', firma: 'Probe Markt GmbH', rolle: 'A5_0', newsletter: false, webseite: '' })).status).toBe(200);
+    const r = await check({ aktion: 'ergebnis', sitzung: s4, token: t4 });
+    expect(r.status).toBe(200);
+    expect(r.d.ansicht.saeulen.map((x: { name: string; wert: number }) => [x.name, x.wert])).toEqual([['Botschaft', 25], ['Website und Video', 75], ['Reichweite', 50], ['Organisation', 75], ['Zahlen', 25], ['Neukunden', 100]]);
+    expect(r.d.ansicht.gruppen.map((g: { name: string; wert: number }) => [g.name, g.wert])).toEqual([['Sichtbarkeit', 50], ['Vertrieb', 67]]);
+    expect(r.d.ansicht.gesamt).toBe(58);
+    expect(r.d.ansicht.stufeName).toBe('Auf Kurs');
+    expect(r.d.ansicht.innovation).toBeNull();
+    expect(r.d.ansicht.zoe[1]).toBe('Bei Vertrieb erreichen Sie 67 Punkte, bei Sichtbarkeit 50. Der größere Hebel liegt gerade bei Sichtbarkeit.');
+    // Die zwei schwächsten Bereiche, bei Gleichstand in der Reihenfolge der Bereiche: je einer aus Sichtbarkeit und Vertrieb.
+    expect((r.d.ansicht.schritte as { saeule: string }[]).map(x => x.saeule)).toEqual(['botschaft', 'zahlen']);
+    const s = (await bestand()).sitzungen.find(x => x.id === s4)!;
+    expect(s.vorlage).toBe('sichtbarkeit-vertrieb');
+    expect(s.ergebnis?.saeulen).toEqual({ botschaft: 25, website: 75, reichweite: 50, organisation: 75, zahlen: 25, neukunden: 100 });
   });
   it('Verantwortlich als Abweichung: steht im Hinweis, Link nur https; leer = wieder die Einrichtung', async () => {
     expect((await innen({ aktion: 'einstellungen', datenschutzLink: 'http://example.invalid/datenschutz' })).status).toBe(400);

@@ -1,4 +1,4 @@
-/* ─── MAKE Studios · Erstgespräch buchen und Sichtbarkeits-Check ──────────────────────────────────────
+/* ─── MAKE Studios · Erstgespräch buchen und Schnelltest ──────────────────────────────────────
    Unabhängig vom Film (studio.js): läuft auch mit „Bewegung reduzieren“ und wenn der Film ausfällt.
    Nichts wird gespeichert oder gesendet. Die Anfrage öffnet das E-Mail-Programm mit fertigem Text,
    der Check rechnet nur im Browser. Ohne JavaScript führen alle Knöpfe zum Kontakt bzw. zur E-Mail.
@@ -165,7 +165,7 @@
 
     function checkAnzeigen() {
       checkKasten.hidden = !checkErgebnis;
-      if (checkErgebnis) checkText.textContent = 'Ergebnis Ihres Sichtbarkeits-Checks mitschicken (' + checkErgebnis.punkte + ' von 100)';
+      if (checkErgebnis) checkText.textContent = 'Ergebnis Ihres Schnelltests mitschicken (' + checkErgebnis.punkte + ' von 100)';
     }
 
     // ─── Prüfen ───
@@ -227,7 +227,7 @@
       if (wert('web')) z.push('Website oder Google-Profil: ' + wert('web'));
       if (wert('nachricht')) z.push('', 'Nachricht:', wert('nachricht'));
       if (checkErgebnis && form.elements.check_mit && form.elements.check_mit.checked) {
-        z.push('', 'Sichtbarkeits-Check: ' + checkErgebnis.punkte + ' von 100 (' + checkErgebnis.stufe + ')');
+        z.push('', 'Schnelltest Sichtbarkeit: ' + checkErgebnis.punkte + ' von 100 (' + checkErgebnis.stufe + ')');
         if (checkErgebnis.hebel.length) z.push('Größte Hebel: ' + checkErgebnis.hebel.join('; '));
       }
       z.push('', 'Viele Grüße', wert('name'));
@@ -289,7 +289,7 @@
     };
   }
 
-  // ═══ Sichtbarkeits-Check ═══
+  // ═══ Schnelltest Sichtbarkeit ═══
   const QUELLE = {
     google: ['Google, Hilfe zum Unternehmensprofil', 'https://support.google.com/business/answer/10515606?hl=de', 'Herstellerangabe'],
     brightlocal: ['BrightLocal, Local Consumer Review Survey 2026', 'https://www.brightlocal.com/research/local-consumer-review-survey/', 'USA'],

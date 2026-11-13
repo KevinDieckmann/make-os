@@ -95,7 +95,7 @@ em { font-family: "Instrument", Georgia, serif; font-style: italic; font-weight:
 .knopf::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--signal); transition: background .25s, transform .35s var(--kurve); }
 .knopf:hover { background: var(--signal); color: var(--tinte); }
 .knopf:hover::after { background: var(--tinte); transform: scale(1.4); }
-.knopf-klein { min-height: 42px; padding: 0 18px; font-size: 15px; }
+.knopf-klein { min-height: 44px; padding: 0 18px; font-size: 15px; }
 .knopf-gross { min-height: 64px; padding: 0 30px; font-size: clamp(17px, 1.5vw, 21px); }
 
 /* ─── Lader: reines CSS. Die Blende öffnet sich als Sechseck aus der Mitte und gibt die Seite frei. ─── */
@@ -145,7 +145,7 @@ html.kopf-flaeche .kopf::before { opacity: 1; }
 html.dunkel .kopf::before { background: rgba(13, 12, 11, .8); border-bottom-color: rgba(242, 237, 228, .1); }
 /* Logo B „Blende“: Irisblende in Signal, daneben MAKE fett und STUDIOS leicht (Zeichen im Vorrat oben in index.html) */
 .vorrat { position: absolute; width: 0; height: 0; overflow: hidden; }
-.marke { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
+.marke { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; text-decoration: none; }
 .marke-zeichen { flex: none; width: 30px; height: 30px; fill: var(--signal); overflow: visible; transition: transform .8s var(--kurve); }
 .marke:hover .marke-zeichen { transform: rotate(60deg); }
 .marke-wort { font: 300 20px/1 "Bricolage", system-ui, sans-serif; font-stretch: 75%; letter-spacing: .04em; white-space: nowrap; }
@@ -156,7 +156,7 @@ html.dunkel .kopf::before { background: rgba(13, 12, 11, .8); border-bottom-colo
   -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
   transition: background .4s, border-color .4s;
 }
-.kopf-nav a { padding: 9px 16px; border-radius: 999px; font-size: 15px; font-weight: 500; text-decoration: none; transition: background .2s; }
+.kopf-nav a { padding: 11px 16px; border-radius: 999px; font-size: 15px; font-weight: 500; text-decoration: none; transition: background .2s; }
 .kopf-nav a:hover { background: rgba(13, 12, 11, .07); }
 .kopf-nav a[aria-current] { background: var(--tinte); color: var(--papier); }
 html.dunkel .kopf-nav a[aria-current] { background: var(--papier); color: var(--tinte); }
@@ -228,16 +228,20 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
   box-shadow: 0 50px 90px -40px rgba(13, 12, 11, .55), 0 0 0 1px rgba(13, 12, 11, .06);
 }
 .karte-hinten { transform: rotateY(180deg); }
-/* Lesbarkeit: oben ein Hauch Tinte für die Zeile, unten Tinte für den Text. Darüber bleibt das Seitenbild frei. */
-.karte-seite::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 26%; z-index: 1; background: linear-gradient(to bottom, rgba(13, 12, 11, .62), rgba(13, 12, 11, 0)); pointer-events: none; }
-.karte-seite::after { content: ""; position: absolute; inset: 26% 0 0 0; z-index: 1; background: linear-gradient(to top, rgba(13, 12, 11, .97) 0, rgba(13, 12, 11, .94) 44%, rgba(13, 12, 11, .6) 68%, rgba(13, 12, 11, 0) 100%); pointer-events: none; }
-.karte-medium { position: absolute; inset: 0; z-index: 0; }
+/* Lesbarkeit: Der Kopf der Karte (Zeile und Schild) steht auf deckender Tinte, das Seitenbild beginnt erst darunter.
+   Unten liegt Tinte hinter dem Text. Dazwischen bleibt das Seitenbild frei. */
+.karte-seite { --karte-kopf: 80px; }
+.karte-seite::before { content: ""; position: absolute; inset: 0 0 auto 0; height: calc(var(--karte-kopf) + 12px); z-index: 1; background: linear-gradient(to bottom, rgb(13, 12, 11) 0, rgb(13, 12, 11) var(--karte-kopf), rgba(13, 12, 11, 0) 100%); pointer-events: none; }
+.karte-medium { position: absolute; inset: var(--karte-kopf) 0 0 0; z-index: 0; }
 .karte-oben, .karte-unten { position: absolute; z-index: 2; left: 20px; right: 20px; }
 .karte-oben { top: 18px; display: flex; justify-content: space-between; font: 500 12px/1 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
-.karte .karte-etikett { top: 44px; left: 16px; max-width: calc(100% - 32px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.karte .karte-etikett { top: 44px; left: 16px; max-width: calc(100% - 32px); letter-spacing: .08em; background: rgba(242, 237, 228, .12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Kleine Karten (schmale oder niedrige Fenster, Handy): Das Schild sagt nur „Beispielseite“, der Name steht im Seitenbild darunter */
+@media (max-width: 1204px), (max-height: 660px) { .karte .etikett-name { display: none; } }
 .karte-unten { bottom: 20px; }
-/* Der Schleier hängt am Textblock selbst: er deckt den Text immer ganz, gleich wie hoch die Karte und wie hell die Aufnahme ist */
-.karte-unten::before { content: ""; position: absolute; inset: -72px -20px -20px; z-index: -1; background: linear-gradient(to top, rgba(13, 12, 11, .96) 0, rgba(13, 12, 11, .93) calc(100% - 72px), rgba(13, 12, 11, 0) 100%); pointer-events: none; }
+/* Die Tinte hängt am Textblock selbst: Sie deckt den Text immer ganz, gleich wie hoch die Karte und wie hell die Aufnahme ist.
+   Darüber läuft sie kurz aus, damit das Seitenbild zwischen Kopf und Text frei bleibt. */
+.karte-unten::before { content: ""; position: absolute; inset: -88px -20px -20px; z-index: -1; background: linear-gradient(to top, rgb(13, 12, 11) 0, rgb(13, 12, 11) calc(100% - 88px), rgba(13, 12, 11, .82) calc(100% - 58px), rgba(13, 12, 11, .4) calc(100% - 26px), rgba(13, 12, 11, 0) 100%); pointer-events: none; }
 .aufnahme { display: inline-flex; align-items: center; gap: 8px; font: 500 12px/1 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
 .aufnahme i { width: 9px; height: 9px; border-radius: 50%; background: var(--signal); animation: puls 1.4s ease-in-out infinite; }
 @keyframes puls { 50% { opacity: .25; } }
@@ -259,13 +263,13 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
   display: flex; flex-direction: column; border-radius: 16px; background: #1E1C1A;
   box-shadow: 0 70px 120px -50px rgba(13, 12, 11, .62), 0 26px 44px -30px rgba(13, 12, 11, .5), 0 0 0 1px rgba(13, 12, 11, .5);
 }
-.schirm::before, .schirm::after { content: none; }
-.schirm-leiste { flex: none; display: flex; align-items: center; gap: 12px; height: var(--leiste); padding: 0 14px; color: rgba(242, 237, 228, .72); font: 500 11px/1 "Mono", monospace; letter-spacing: .05em; }
+.schirm::before { content: none; }
+.schirm-leiste { flex: none; display: flex; align-items: center; gap: 12px; height: var(--leiste); padding: 0 14px; color: rgba(242, 237, 228, .72); font: 500 12px/1 "Mono", monospace; letter-spacing: .05em; }
 .schirm-punkte { flex: none; display: flex; gap: 6px; }
 .schirm-punkte i { width: 9px; height: 9px; border-radius: 50%; background: rgba(242, 237, 228, .24); }
 .schirm-name { min-width: 0; padding: 5px 12px; border-radius: 999px; background: rgba(242, 237, 228, .09); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .schirm-name b { font-weight: 500; color: var(--papier); }
-.schirm .aufnahme { flex: none; margin-left: auto; font-size: 10.5px; }
+.schirm .aufnahme { flex: none; margin-left: auto; font-size: 12px; letter-spacing: .1em; }
 .schirm-fenster { flex: 1; min-height: 0; }
 /* Welche der fünf Aufnahmen läuft: fünf Striche, der laufende füllt sich */
 .schirm-striche { position: absolute; z-index: 3; left: 14px; right: 14px; bottom: 12px; display: flex; gap: 6px; }
@@ -288,7 +292,7 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .geraet-fenster .geraet-bild { aspect-ratio: 16 / 10; }
 .geraet-leiste { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; }
 .geraet-leiste i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: rgba(242, 237, 228, .24); }
-.geraet-leiste span { min-width: 0; margin-left: 8px; padding: 5px 11px; border-radius: 999px; background: rgba(242, 237, 228, .09); color: rgba(242, 237, 228, .72); font: 500 10.5px/1 "Mono", monospace; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.geraet-leiste span { min-width: 0; margin-left: 8px; padding: 5px 11px; border-radius: 999px; background: rgba(242, 237, 228, .09); color: rgba(242, 237, 228, .72); font: 500 12px/1 "Mono", monospace; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .geraet-handy { padding: 7px; border-radius: 30px; background: #151312; box-shadow: 0 0 0 1px rgba(242, 237, 228, .16), 0 40px 70px -30px rgba(0, 0, 0, .85); }
 .geraet-handy .geraet-bild { aspect-ratio: 540 / 1168; border-radius: 23px; }
 
@@ -311,9 +315,11 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .kennzahl-a { justify-self: end; text-align: right; }
 .kennzahl-b { justify-self: start; }
 .kennzahl-handy { align-self: stretch; display: grid; place-items: center; min-height: 0; }
-.kennzahl-handy .geraet-handy { height: 100%; max-height: 620px; aspect-ratio: 0.469; box-shadow: 0 0 0 1px rgba(242, 237, 228, .18), 0 60px 100px -40px #000; }
+.kennzahl-handy .geraet-handy { height: calc(100% - 34px); max-height: 620px; aspect-ratio: 0.469; box-shadow: 0 0 0 1px rgba(242, 237, 228, .18), 0 60px 100px -40px #000; }
 .kennzahl-handy .geraet-bild { width: 100%; height: 100%; aspect-ratio: auto; }
-.kennzahl-handy .etikett { top: 18px; left: 18px; }
+/* Das Schild steht unter dem Gerät: so verdeckt es nichts von der Beispielseite */
+.kennzahl-handy .etikett, .attrappe-handy .etikett { top: calc(100% + 10px); left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.kennzahl-handy .etikett { box-shadow: 0 0 0 1px rgba(242, 237, 228, .2); }
 .kennzahl-wert { font-size: clamp(64px, 8vw, 140px); line-height: .86; color: var(--signal); font-variant-numeric: tabular-nums; }
 /* gleiche Mindesthöhen für Satz und Quelle: so stehen beide Zahlen auf einer Höhe, auch wenn ein Text kürzer ist */
 .kennzahl-satz { min-height: 4.2em; margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(242, 237, 228, .28); font-size: clamp(16px, 1.3vw, 20px); line-height: 1.4; color: rgba(242, 237, 228, .9); box-sizing: content-box; }
@@ -342,7 +348,7 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .tafel-zahl { margin-top: 18px; font-size: clamp(64px, 7.6vw, 132px); line-height: .84; font-variant-numeric: tabular-nums; }
 .tafel-satz { margin-top: 14px; max-width: 30ch; font-size: clamp(18px, 1.45vw, 22px); line-height: 1.35; }
 .tafel-markt { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
-.tafel-markt p { padding-top: 12px; border-top: 1px solid var(--linie-hell); font: 500 11px/1.4 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: rgba(242, 237, 228, .7); }
+.tafel-markt p { padding-top: 12px; border-top: 1px solid var(--linie-hell); font: 500 12px/1.4 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: rgba(242, 237, 228, .7); }
 .tafel-markt b { display: block; margin-bottom: 8px; font-size: clamp(30px, 3vw, 46px); line-height: .9; letter-spacing: -.02em; text-transform: none; color: var(--signal); font-variant-numeric: tabular-nums; }
 .tafel-quelle { margin-top: 12px; font: 500 12px/1.45 "Mono", monospace; letter-spacing: .03em; opacity: .72; }
 .tafel-liste { list-style: none; padding: 0; margin-top: 28px; }
@@ -351,29 +357,28 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .tafel:nth-child(2) .ueberzeile::before { background: var(--tinte); }
 .tafel:nth-child(3) .ueberzeile::before { background: var(--rosa); }
 .attrappe { display: grid; place-items: center; min-width: 0; }
-.etikett { position: absolute; top: 12px; left: 12px; z-index: 2; padding: 6px 10px; border-radius: 999px; background: rgba(13, 12, 11, .72); color: var(--papier); font: 500 11px/1 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
+.etikett { position: absolute; top: 12px; left: 12px; z-index: 2; padding: 6px 10px; border-radius: 999px; background: rgba(13, 12, 11, .72); color: var(--papier); font: 500 12px/1 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
 
 .attrappe-handy .geraet-handy { width: min(250px, 30vh); transform: rotate(-4deg); box-shadow: 0 0 0 1px rgba(13, 12, 11, .3), 0 40px 80px -30px rgba(13, 12, 11, .6); }
-.attrappe-handy .etikett { top: 18px; left: 18px; }
 .attrappe-fenster .geraet-fenster { width: min(100%, 580px); transform: rotate(-2deg); box-shadow: 0 0 0 1px rgba(13, 12, 11, .2), 0 40px 80px -30px rgba(13, 12, 11, .45); }
 .handy { width: 236px; padding: 10px; border-radius: 38px; background: var(--tinte); box-shadow: 0 40px 80px -30px rgba(13, 12, 11, .6); transform: rotate(-4deg); }
 .handy > * { background: var(--papier); color: var(--tinte); }
-.handy-bild { position: relative; height: 200px; border-radius: 28px 28px 8px 8px; background: radial-gradient(70% 60% at 30% 35%, #E9B37A, transparent 70%), radial-gradient(60% 60% at 75% 70%, #7A3E1D, transparent 70%), linear-gradient(160deg, #C47A3E, #3A1E10); }
+.handy-bild { position: relative; height: 200px; border-radius: 28px 28px 8px 8px; overflow: hidden; background: radial-gradient(70% 60% at 30% 35%, #E9B37A, transparent 70%), radial-gradient(60% 60% at 75% 70%, #7A3E1D, transparent 70%), linear-gradient(160deg, #C47A3E, #3A1E10); }
 .handy-name { padding: 14px 14px 2px; font-weight: 700; font-size: 20px; font-stretch: 85%; }
 .handy-zeile { padding: 0 14px 12px; font-size: 13px; color: #3E6B3A; }
 .handy-knoepfe { display: flex; gap: 6px; padding: 0 12px 12px; }
-.handy-knoepfe span { flex: 1; padding: 8px 0; border-radius: 999px; background: #E3EBF7; color: #1A4FA0; font-size: 11px; font-weight: 600; text-align: center; }
+.handy-knoepfe span { flex: 1; padding: 8px 0; border-radius: 999px; background: #E3EBF7; color: #1A4FA0; font-size: 12px; font-weight: 600; text-align: center; }
 .handy-reihe { display: flex; gap: 6px; padding: 0 12px 14px; border-radius: 0 0 28px 28px; }
-.handy-reihe i { flex: 1; height: 54px; border-radius: 10px; background: linear-gradient(135deg, #D79A5E, #5B2D16); }
-.handy-reihe i:nth-child(2) { background: linear-gradient(135deg, #F2D2A9, #A0603A); }
-.handy-reihe i:nth-child(3) { background: linear-gradient(135deg, #8C4A25, #2B160C); }
+.handy-reihe img { flex: 1; min-width: 0; width: 0; height: 54px; border-radius: 10px; object-fit: cover; background: #C47A3E; }
+/* Fotos in den Entwürfen füllen ihre Fläche; die Farbe dahinter steht, bis das Bild geladen ist */
+.handy-bild img, .mock-foto img, .mock-faelle img, .mock-haus img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 
 /* 05 Ergebnis: die fertigen Seiten als Bildschirme im Raum. studio.js fährt von einem zum nächsten. */
 .ergebnis { position: absolute; inset: 0; z-index: 10; display: none; overflow: hidden; overflow: clip; color: var(--papier); }
 .ergebnis-kopf { position: absolute; z-index: 3; left: var(--rand); top: calc(var(--kopf-h) + 4vh); max-width: min(640px, 36vw); }
 .ergebnis-kopf .szenen-titel em { color: var(--signal); }
-.ergebnis-hinweis { margin-top: 14px; font: 500 11.5px/1.4 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: rgba(242, 237, 228, .62); }
+.ergebnis-hinweis { margin-top: 14px; font: 500 12px/1.4 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: rgba(242, 237, 228, .62); }
 .ergebnis-raum { position: absolute; inset: 0; z-index: 1; perspective: 1400px; perspective-origin: 60% 50%; pointer-events: none; }
 .werk { position: absolute; left: 50%; top: 50%; width: min(56vw, 104vh); translate: -50% -50%; opacity: 0; will-change: transform, opacity; }
 .werk .geraet-fenster { box-shadow: 0 0 0 1px rgba(242, 237, 228, .14), 0 70px 120px -50px #000, 0 0 140px -30px rgba(255, 90, 31, .22); }
@@ -625,12 +630,12 @@ html.menue-offen { overflow: hidden; }
 .entwurf:nth-child(even) .mock { rotate: 1.5deg; }
 .mock-leiste { display: flex; align-items: center; gap: 6px; padding: 11px 14px; background: #1E1C1A; }
 .mock-leiste i { width: 9px; height: 9px; border-radius: 50%; background: rgba(242, 237, 228, .26); }
-.mock-leiste span { margin-left: 10px; padding: 5px 12px; border-radius: 999px; background: rgba(242, 237, 228, .1); color: rgba(242, 237, 228, .72); font: 500 11px/1 "Mono", monospace; }
+.mock-leiste span { margin-left: 10px; padding: 5px 12px; border-radius: 999px; background: rgba(242, 237, 228, .1); color: rgba(242, 237, 228, .72); font: 500 12px/1 "Mono", monospace; }
 .mock-seite { padding: 14px 20px 22px; }
 .mock-nav { display: flex; align-items: baseline; gap: 14px; padding-bottom: 14px; font-size: 12px; }
 .mock-nav b { margin-right: auto; font-size: 15px; font-weight: 700; font-stretch: 85%; }
 .mock-nav span { opacity: .66; }
-.mock-knopf { align-self: flex-start; display: inline-block; padding: 9px 14px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 1; }
+.mock-knopf { align-self: flex-start; display: inline-block; padding: 9px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1; }
 .mock-play { position: absolute; left: 50%; top: 50%; width: 32px; height: 32px; margin: -16px 0 0 -16px; border-radius: 50%; background: rgba(242, 237, 228, .92); }
 .mock-play::after { content: ""; position: absolute; left: 13px; top: 10px; border-left: 9px solid var(--tinte); border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
 
@@ -642,11 +647,11 @@ html.menue-offen { overflow: hidden; }
 .mock-held-text { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; padding: 4px 0; }
 .mock-serif { font-family: "Instrument", Georgia, serif; font-style: italic; font-size: clamp(24px, 2.3vw, 32px); line-height: 1.02; }
 .mock-gastro .mock-knopf { background: #2B1D14; color: #FBF6EE; }
-.mock-foto { min-height: 150px; border-radius: 12px; background: radial-gradient(70% 60% at 30% 35%, #E9B37A, transparent 70%), radial-gradient(60% 60% at 75% 70%, #7A3E1D, transparent 70%), linear-gradient(160deg, #C47A3E, #3A1E10); }
+.mock-foto { position: relative; min-height: 150px; border-radius: 12px; overflow: hidden; background: radial-gradient(70% 60% at 30% 35%, #E9B37A, transparent 70%), radial-gradient(60% 60% at 75% 70%, #7A3E1D, transparent 70%), linear-gradient(160deg, #C47A3E, #3A1E10); }
 .mock-karte { display: grid; gap: 8px; width: 62%; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(43, 29, 20, .14); font-size: 12px; }
 .mock-karte p { display: flex; align-items: baseline; gap: 8px; }
 .mock-karte i { flex: 1; border-bottom: 1px dotted rgba(43, 29, 20, .4); translate: 0 -3px; }
-.mock-karte span:last-child { font: 500 10.5px/1 "Mono", monospace; opacity: .72; }
+.mock-karte span:last-child { font: 500 12px/1 "Mono", monospace; opacity: .72; }
 .entwurf .mock-handy { position: absolute; z-index: 1; right: clamp(16px, 5%, 56px); bottom: -64px; width: 236px; rotate: 6deg; scale: .8; transform: none; transform-origin: bottom right; transition: rotate .7s var(--kurve), translate .7s var(--kurve); }
 
 /* Agentur: dunkel, große Schrift, Arbeiten vorn */
@@ -654,25 +659,22 @@ html.menue-offen { overflow: hidden; }
 .mock-gross { margin: 14px 0 22px; max-width: 9ch; font-size: clamp(40px, 4.4vw, 66px); line-height: .88; }
 .mock-gross em { color: var(--rosa); }
 .mock-faelle { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
-.mock-faelle div { position: relative; display: flex; align-items: flex-end; height: 112px; padding: 10px; border-radius: 10px; font: 500 10px/1 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.mock-faelle div { position: relative; display: flex; align-items: flex-end; height: 112px; padding: 10px; border-radius: 10px; overflow: hidden; color: var(--papier); font: 500 12px/1 "Mono", monospace; letter-spacing: .04em; text-transform: uppercase; }
 .mock-faelle div:nth-child(1) { background: radial-gradient(80% 90% at 80% 20%, var(--rosa), transparent 60%), radial-gradient(90% 90% at 10% 90%, var(--signal), transparent 60%), #2A1752; }
-.mock-faelle div:nth-child(2) { background: linear-gradient(150deg, #F2EDE4, #B9AE9C); color: var(--tinte); }
+.mock-faelle div:nth-child(2) { background: linear-gradient(150deg, #F2EDE4, #B9AE9C); }
+/* Schrift auf dem Foto: unten ein Schleier aus Tinte */
+.mock-faelle div::after { content: ""; position: absolute; inset: 35% 0 0 0; background: linear-gradient(to top, rgba(13, 12, 11, .82), rgba(13, 12, 11, 0)); }
+.mock-faelle span, .mock-faelle .mock-play { z-index: 1; }
+.mock-faelle span { position: relative; }
+.mock-faelle b { font-weight: inherit; }
 .mock-faelle div:nth-child(3) { background: linear-gradient(160deg, #4B3590, #0D0C0B); }
 
 /* Makler: hell, Objekt mit Video-Rundgang, eigener Weg für Eigentümer */
 .mock-immo .mock-seite { background: #FCFBF8; color: #1F2328; }
 .mock-objekt { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: end; }
-/* Altbau-Fassade aus Verläufen: Himmel, Fensterreihen, Ladenzone */
-.mock-haus {
-  position: relative; height: 176px; border-radius: 12px; overflow: hidden;
-  background:
-    linear-gradient(180deg, #F4C7A0 0 18%, #E9B48A 18% 21%, transparent 21%),
-    linear-gradient(0deg, #3B332D 0 17%, #E2CFB6 17% 20%, transparent 20%),
-    repeating-linear-gradient(90deg, #E2CFB6 0 13px, transparent 13px 33px),
-    repeating-linear-gradient(180deg, #E2CFB6 0 11px, #56616C 11px 33px, #E2CFB6 33px 36px);
-  background-color: #E2CFB6;
-}
-.mock-chip { position: absolute; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px 5px 5px; border-radius: 999px; background: rgba(13, 12, 11, .76); color: var(--papier); font: 500 10px/1 "Mono", monospace; letter-spacing: .06em; }
+.mock-haus { position: relative; height: 176px; border-radius: 12px; overflow: hidden; background: #C9D3DC; }
+.mock-haus img { object-position: 88% 30%; }
+.mock-chip { position: absolute; z-index: 1; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px 5px 5px; border-radius: 999px; background: rgba(13, 12, 11, .76); color: var(--papier); font: 500 12px/1 "Mono", monospace; letter-spacing: .04em; }
 .mock-chip .mock-play { position: relative; left: auto; top: auto; width: 20px; height: 20px; margin: 0; }
 .mock-chip .mock-play::after { left: 8px; top: 6px; border-left-width: 6px; border-top-width: 4px; border-bottom-width: 4px; }
 .mock-objekt-text { display: flex; flex-direction: column; gap: 6px; padding-bottom: 2px; }
@@ -749,7 +751,7 @@ html.menue-offen { overflow: hidden; }
 }
 .referenz-leiste { display: flex; align-items: center; gap: 6px; padding: 11px 14px; }
 .referenz-leiste i { width: 9px; height: 9px; border-radius: 50%; background: rgba(242, 237, 228, .22); transition: background .4s; }
-.referenz-leiste span { margin-left: 10px; padding: 5px 12px; border-radius: 999px; background: rgba(242, 237, 228, .08); color: rgba(242, 237, 228, .66); font: 500 11px/1 "Mono", monospace; letter-spacing: .04em; }
+.referenz-leiste span { margin-left: 10px; padding: 5px 12px; border-radius: 999px; background: rgba(242, 237, 228, .08); color: rgba(242, 237, 228, .66); font: 500 12px/1 "Mono", monospace; letter-spacing: .04em; }
 /* overflow: clip statt hidden: kein eigener Scroll-Container, damit die Scroll-Zeitachse am Handy greift */
 .referenz-fenster { position: relative; aspect-ratio: 16 / 10; overflow: hidden; overflow: clip; background: var(--tinte-2); }
 /* Rückfall ohne Poster: der hohe Streifen. Absolut, damit er das Fenster nicht streckt. */
@@ -785,7 +787,7 @@ html.menue-offen { overflow: hidden; }
 /* Poster fehlt (Datei noch nicht geliefert): ruhige Fläche statt Bildsymbol */
 .ohne-poster > .aufnahme-poster { visibility: hidden; }
 .referenz-merkmale { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.referenz-merkmale li { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--linie-hell); font: 500 11px/1 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: rgba(242, 237, 228, .8); }
+.referenz-merkmale li { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--linie-hell); font: 500 12px/1 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: rgba(242, 237, 228, .8); }
 .referenz-los {
   display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 18px; border-radius: 999px;
   background: rgba(242, 237, 228, .08); color: var(--papier); font: 600 15px/1 "Bricolage", system-ui, sans-serif; white-space: nowrap;
@@ -811,7 +813,7 @@ html.menue-offen { overflow: hidden; }
 }
 @keyframes referenz-lauf { to { translate: 0 -80%; } }
 
-.beispiele-hinweis { margin-top: clamp(40px, 5vw, 64px); font: 500 11.5px/1.5 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: rgba(242, 237, 228, .5); }
+.beispiele-hinweis { margin-top: clamp(40px, 5vw, 64px); font: 500 12px/1.5 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: rgba(242, 237, 228, .5); }
 /* Aufruf auf dunklem Grund: Papier statt Tinte */
 .abschnitt-beispiele .aufruf { margin-top: clamp(48px, 6vw, 88px); background: var(--papier); color: var(--tinte); }
 .abschnitt-beispiele .aufruf-text em { color: var(--signal-tief); }
@@ -844,20 +846,20 @@ html.menue-offen { overflow: hidden; }
 .analyse-balken .spur { fill: rgba(242, 237, 228, .14); }
 .analyse-balken .wert { fill: var(--signal); transform-box: fill-box; transform-origin: left center; }
 .analyse-balken .wert-leise { fill: rgba(242, 237, 228, .44); }
-.analyse-mass { font: 500 11px/1 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: rgba(242, 237, 228, .58); }
+.analyse-mass { font: 500 12px/1 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: rgba(242, 237, 228, .58); }
 .analyse-vergleich { display: grid; gap: 10px; margin-top: 2px; }
-.analyse-vergleich p { display: grid; grid-template-columns: 15ch minmax(0, 1fr); align-items: center; gap: 12px; font: 500 11px/1.3 "Mono", monospace; letter-spacing: .06em; text-transform: uppercase; color: rgba(242, 237, 228, .64); }
+.analyse-vergleich p { display: grid; grid-template-columns: 15ch minmax(0, 1fr); align-items: center; gap: 12px; font: 500 12px/1.3 "Mono", monospace; letter-spacing: .04em; text-transform: uppercase; color: rgba(242, 237, 228, .64); }
 .analyse-vergleich .analyse-balken { margin-top: 0; }
 
 /* Leistungen je Branche */
 .leistung-branchen { align-self: stretch; margin: 24px 0 0; }
 .leistung-branchen div { padding: 13px 0; border-top: 1px solid var(--linie-hell); }
-.leistung-branchen dt { font: 500 11px/1.4 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--signal); }
+.leistung-branchen dt { font: 500 12px/1.4 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--signal); }
 .leistung-branchen dd { min-height: 2.9em; margin: 5px 0 0; font-size: 17px; line-height: 1.45; }
 .leistung .leistung-immer { align-self: stretch; max-width: none; margin-top: 0; padding: 13px 0 6px; border-top: 1px solid var(--linie-hell); font-size: 15px; color: rgba(242, 237, 228, .64); }
 
 /* Ablauf: wer was tut */
-.ablauf-liste p b { display: inline-block; min-width: 3.6em; margin-right: 8px; padding: 5px 0; border-radius: 999px; background: var(--tinte); color: var(--signal); font: 600 10.5px/1 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; text-align: center; vertical-align: 2px; }
+.ablauf-liste p b { display: inline-block; min-width: 3.6em; margin-right: 8px; padding: 5px 0; border-radius: 999px; background: var(--tinte); color: var(--signal); font: 600 12px/1 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; text-align: center; vertical-align: 2px; }
 .ablauf-liste p + p { margin-top: 8px; }
 
 /* ─── Video & Foto: zwei Wege. Oben der Dreh vor Ort mit Beispielfilmen, darunter die Videos ohne Kamera ─── */
@@ -881,7 +883,7 @@ html.menue-offen { overflow: hidden; }
 .film-flaeche { position: relative; overflow: hidden; background: var(--tinte-2); }
 .film-kachel .film-flaeche { aspect-ratio: 16 / 9; border-radius: 16px; box-shadow: 0 0 0 1px rgba(13, 12, 11, .1), 0 30px 50px -34px rgba(13, 12, 11, .6); }
 .film-flaeche video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
-.film-kachel figcaption { margin-top: 10px; font: 500 11.5px/1.4 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau); }
+.film-kachel figcaption { margin-top: 10px; font: 500 12px/1.4 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau); }
 .film-knopf {
   position: absolute; right: 10px; bottom: 10px; z-index: 3; display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
   border: 0; border-radius: 50%; background: rgba(13, 12, 11, .72); color: var(--papier); cursor: pointer;
@@ -891,7 +893,7 @@ html.menue-offen { overflow: hidden; }
 .film-knopf::before { content: ""; margin-left: 3px; border-left: 12px solid currentColor; border-block: 8px solid transparent; }
 .laeuft > .film-knopf::before { width: 12px; height: 14px; margin-left: 0; border: 0; border-inline: 4px solid currentColor; }
 .film-knopf:hover { background: var(--signal); color: var(--tinte); }
-.filme-hinweis { margin-top: 16px; font: 500 11.5px/1.5 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); }
+.filme-hinweis { margin-top: 16px; font: 500 12px/1.5 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); }
 
 /* Ohne Kamera: dunkle Tafel. Links der Weg, rechts die drei Schritte als Zeichnung und die drei Formate. */
 .weg-ohne {
@@ -910,7 +912,7 @@ html.menue-offen { overflow: hidden; }
 .film-ohne figcaption { color: rgba(242, 237, 228, .62); }
 .video-schritte { align-self: stretch; list-style: none; padding: 0; margin-top: 28px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .video-schritte li { font-size: 15px; line-height: 1.4; color: rgba(242, 237, 228, .74); }
-.video-schritte b { display: block; margin: 12px 0 5px; font: 500 11px/1.2 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--papier); }
+.video-schritte b { display: block; margin: 12px 0 5px; font: 500 12px/1.2 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--papier); }
 .vs-bild { position: relative; display: grid; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--tinte-2); border: 1px solid var(--linie-hell); }
 /* Skript: Textzeilen und ein Haken für die Freigabe */
 .vs-skript { align-content: center; gap: 9%; padding: 0 16%; }
@@ -935,9 +937,9 @@ html.menue-offen { overflow: hidden; }
 .format { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: baseline; gap: 6px 24px; padding: 22px 0; border-top: 1px solid var(--linie-hell); }
 .format-name { margin: 0; font-size: clamp(28px, 2.4vw, 38px); line-height: 1; }
 .format p { font-size: 17px; line-height: 1.45; color: rgba(242, 237, 228, .88); }
-.format .format-frist { grid-column: 2; font: 500 11px/1.3 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--signal); }
+.format .format-frist { grid-column: 2; font: 500 12px/1.3 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--signal); }
 .video-immer { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }
-.video-immer li { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--linie-hell); font: 500 11px/1 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: rgba(242, 237, 228, .8); }
+.video-immer li { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--linie-hell); font: 500 12px/1 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: rgba(242, 237, 228, .8); }
 
 /* ─── Social Media (auf Anfrage): drei Bausteine, daneben ein gezeichnetes Beispiel ─── */
 .abschnitt-social { background: var(--papier-2); }
@@ -964,7 +966,7 @@ html.menue-offen { overflow: hidden; }
 .social-buehne > .etikett { top: 20px; left: 20px; }
 .social-handy { grid-area: handy; justify-self: center; width: min(100%, 330px); rotate: -2deg; box-shadow: 0 0 0 1px rgba(242, 237, 228, .2), 0 50px 90px -30px rgba(8, 3, 20, .9); }
 .social-handy .geraet-bild { aspect-ratio: 9 / 16; }
-.social-art { font: 500 11px/1.2 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau); }
+.social-art { font: 500 12px/1.2 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau); }
 .social-handy .social-art { position: absolute; top: 20px; left: 20px; z-index: 2; padding: 6px 10px; border-radius: 999px; background: rgba(13, 12, 11, .72); color: var(--papier); }
 .social-karte { padding: 14px 16px 16px; border-radius: 18px; background: var(--papier); color: var(--tinte); box-shadow: 0 30px 50px -30px rgba(13, 12, 11, .7); }
 .social-plan { grid-area: plan; }
@@ -972,7 +974,7 @@ html.menue-offen { overflow: hidden; }
 .social-antwort { grid-area: antwort; }
 .social-plan ul { list-style: none; padding: 0; margin-top: 10px; }
 .social-plan li { display: grid; grid-template-columns: 68px minmax(0, 1fr); padding: 8px 0 0; margin-top: 8px; border-top: 1px solid var(--linie); font-size: 14px; line-height: 1.35; }
-.social-plan b { font: 500 11px/1.75 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--signal-text); }
+.social-plan b { font: 500 12px/1.75 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--signal-text); }
 .social-post img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; margin-top: 10px; border-radius: 10px; }
 .social-zeile { margin-top: 10px; font-size: 15px; line-height: 1.4; }
 .blase { width: fit-content; max-width: 88%; margin-top: 10px; padding: 9px 13px; border-radius: 16px 16px 16px 4px; background: var(--papier-3); font-size: 14px; line-height: 1.35; }
@@ -1101,7 +1103,7 @@ html.menue-offen { overflow: hidden; }
 /* Kopf: Navigation wird enger, darunter übernimmt der Menü-Knopf (ohne JavaScript: Seitenlinks im Fuß).
    Grenzen gemessen: volle Leiste braucht gut 1100 px, die enge gut 1000 px neben Zeichen und Knopf. */
 @media (max-width: 1139px) and (min-width: 1000px) {
-  .kopf-nav a { padding: 8px 10px; font-size: 14px; }
+  .kopf-nav a { padding: 12px 10px; font-size: 14px; }
 }
 @media (max-width: 999px) {
   .kopf-nav { display: none; }
@@ -1139,6 +1141,9 @@ html.menue-offen { overflow: hidden; }
   .tafel-zahl { font-size: clamp(54px, 12vh, 132px); margin-top: 12px; }
   .tafel-liste { display: none; }
   .tafel-markt { margin-top: 18px; }
+  /* Niedrige Fenster: Unter dem Gerät ist auf der Tafel kein Platz, das Schild steht einzeilig unten im Gerät */
+  .attrappe-handy .etikett { top: auto; bottom: 22px; padding: 5px 8px; letter-spacing: .06em; }
+  .attrappe-handy .etikett-name, .kennzahl-handy .etikett span { display: none; }
   .werk-texte { height: 170px; }
   .werk-nr { font-size: clamp(56px, 11vh, 108px); }
   .ergebnis-text { bottom: 68px; }
@@ -1152,10 +1157,13 @@ html.menue-offen { overflow: hidden; }
   .karte-liste { display: none; }
   .karte-titel { font-size: 22px; }
   .karte-satz { font-size: 15px; margin-bottom: 0; }
-  .karte-oben { font-size: 10px; top: 14px; left: 14px; right: 14px; }
-  .karte .karte-etikett { top: 34px; left: 12px; font-size: 9px; max-width: calc(100% - 24px); }
+  .karte-seite { --karte-kopf: 60px; }
+  .karte-oben { top: 12px; left: 14px; right: 14px; }
+  .karte .karte-etikett { top: 31px; left: 12px; padding: 5px 9px; max-width: calc(100% - 24px); }
   .karte-unten { left: 14px; right: 14px; bottom: 14px; }
-  .karte-auf { margin-top: 10px; font-size: 10px; }
+  .karte-unten::before { inset: -26px -14px -14px; background: linear-gradient(to top, rgb(13, 12, 11) 0, rgb(13, 12, 11) calc(100% - 26px), rgba(13, 12, 11, 0) 100%); }
+  .karte-auf { margin-top: 10px; }
+  .karte-auf-art { display: none; }
 }
 @media (min-width: 641px) and (max-height: 520px) {
   .held-text, .laufband { display: none; }
@@ -1181,26 +1189,27 @@ html.menue-offen { overflow: hidden; }
   .karussell { top: 60%; }
   .karte-titel { font-size: 27px; }
   .karte-liste { display: none; }   /* Handy: Titel und Satz reichen, so bleibt oben Platz für das Seitenbild */
-  .karte .karte-etikett { top: 40px; font-size: 10px; }
-  /* Handy: Hinter Kopfzeile und Text deckt Tinte voll, damit die Schrift der Aufnahme nicht durch den Kartentext scheint.
-     Dazwischen bleibt das Seitenbild frei. */
-  .karte-seite::before { height: 78px; background: linear-gradient(to bottom, rgba(13, 12, 11, .95) 0, rgba(13, 12, 11, .92) 74%, rgba(13, 12, 11, 0) 100%); }
+  .karte-seite { --karte-kopf: 74px; }
+  .karte .karte-etikett { top: 40px; }
+  /* Handy: Hinter dem Text deckt Tinte voll, damit die Schrift der Aufnahme nicht durch den Kartentext scheint.
+     Zwischen Kopf und Text bleibt das Seitenbild frei. */
   .karte-unten::before { inset: -30px -20px -20px; background: linear-gradient(to top, rgb(13, 12, 11) 0, rgb(13, 12, 11) calc(100% - 30px), rgba(13, 12, 11, 0) 100%); }
   .schirm { --leiste: 32px; border-radius: 13px; }
-  .schirm-leiste { padding: 0 11px; gap: 9px; font-size: 10px; }
+  .schirm-leiste { padding: 0 11px; gap: 9px; }
   .schirm .aufnahme { font-size: 0; gap: 0; }
   /* Handy: das Gerät links, die zwei Zahlen rechts untereinander */
   .kennzahlen { top: calc(var(--kopf-h) + 132px); bottom: 56px; grid-template-columns: 37vw minmax(0, 1fr); grid-template-rows: auto auto; align-content: center; gap: 22px 18px; }
   .kennzahl-handy { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
   .kennzahl-handy .geraet-handy { width: 100%; height: auto; padding: 5px; border-radius: 24px; }
   .kennzahl-handy .geraet-bild { border-radius: 19px; }
-  .kennzahl-handy .etikett { top: 12px; left: 12px; padding: 5px 8px; font-size: 9px; letter-spacing: .08em; }
+  .kennzahl-handy .geraet-handy { margin-bottom: 34px; }
+  .kennzahl-handy .etikett { padding: 5px 8px; letter-spacing: .06em; }
   .kennzahl { grid-column: 2; max-width: none; }
   .kennzahl-a { justify-self: stretch; text-align: left; }
   .kennzahl-b { justify-self: stretch; }
   .kennzahl-wert { font-size: 56px; }
   .kennzahl-satz { min-height: 0; font-size: 15px; margin-top: 10px; padding-top: 10px; }
-  .kennzahl-quelle { min-height: 0; font-size: 11px; margin-top: 6px; }
+  .kennzahl-quelle { min-height: 0; margin-top: 6px; }
   .kennzahl-handy .etikett span { display: none; }
   .streifen-spur { gap: 16px; padding: 0 16px; bottom: 52px; }   /* Abstand = Rand: die nächste Tafel schaut nicht als Streifen herein */
   .tafel { width: calc(100vw - 32px); grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); align-items: start; gap: 12px; padding: 24px 22px; border-radius: 26px; }
@@ -1213,11 +1222,12 @@ html.menue-offen { overflow: hidden; }
   .handy { transform: rotate(-4deg) scale(.7); transform-origin: top center; }
   .attrappe-handy { align-items: start; }
   .attrappe-handy .geraet-handy { width: min(46vw, 24vh); transform: rotate(-3deg); }
-  /* Handy: Etikett klein und einzeilig unten im Gerät, damit es den Kopf der Beispielseite nicht verdeckt */
-  .attrappe-handy .etikett { top: auto; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 5px 8px; font-size: 9px; letter-spacing: .08em; white-space: nowrap; }
+  /* Handy: Das Schild steht einzeilig unten im Gerät (darunter ist kein Platz) und sagt nur „Beispielseite“ */
+  .attrappe-handy .etikett { top: auto; bottom: 24px; padding: 5px 8px; letter-spacing: .06em; }
+  .attrappe-handy .etikett-name { display: none; }
   .attrappe-fenster .geraet-fenster { transform: none; }
   .ergebnis-kopf { top: calc(var(--kopf-h) + 10px); }
-  .ergebnis-hinweis { margin-top: 8px; font-size: 10.5px; }
+  .ergebnis-hinweis { margin-top: 8px; letter-spacing: .04em; }
   .werk { width: 86vw; }
   .werk .geraet-leiste { height: 28px; }
   .werk .geraet-handy { left: auto; right: -3%; bottom: -16%; width: 24%; transform: perspective(900px) rotateY(-10deg) rotateZ(2deg); }
@@ -1225,7 +1235,7 @@ html.menue-offen { overflow: hidden; }
   .werk-texte { height: 168px; }
   .werk-nr { font-size: 60px; }
   .werk-name { font-size: 30px; }
-  .werk-merkmale { font-size: 11px; }
+  .werk-merkmale { font-size: 12px; }
   .chrom { top: calc(var(--kopf-h) + 8px); left: 50%; right: auto; width: 62vw; height: 62vw; transform: translateX(-50%); }
   .szene-ziel { top: auto; bottom: 64px; width: calc(100vw - 32px); transform: none; }
   .ziel-titel { font-size: clamp(48px, 14vw, 68px); }
@@ -1246,7 +1256,7 @@ html.menue-offen { overflow: hidden; }
   .analyse { min-height: 0; }
   .tafel-markt { gap: 10px; margin-top: 20px; }
   .tafel-markt b { font-size: 28px; }
-  .tafel-markt p { font-size: 10px; letter-spacing: .06em; }
+  .tafel-markt p { letter-spacing: .04em; }
   .filter { margin-top: 0; }
   .filter-knopf { padding: 0 14px; font-size: 14px; }
   .entwurf-buehne { padding: 52px 14px 36px; border-radius: 24px; }
@@ -1260,6 +1270,7 @@ html.menue-offen { overflow: hidden; }
   .mock-foto { min-height: 120px; }
   .mock-gross { font-size: 38px; }
   .mock-faelle div { height: 78px; }
+  .mock-faelle b { display: none; }   /* Handy: nur das Wort, die Nummer passt mit 12 px nicht in die kleinen Flächen */
   .mock-objekt { grid-template-columns: 1fr; gap: 12px; }
   .mock-haus { height: 128px; }
   .entwurf-titel { font-size: clamp(34px, 10vw, 44px); }

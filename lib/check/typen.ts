@@ -83,6 +83,8 @@ export type SaeuleKey = string;
 export type AngebotBereich = 'sichtbarkeit' | 'vertrieb' | 'innovation';
 export type SchrittBand = 'niedrig' | 'mittel' | 'hoch';
 export interface CheckSaeule { key: SaeuleKey; name: string; abschnitt: string; gewicht: number; angebot?: AngebotBereich }
+/** Mehrere Säulen unter einer Überschrift (13.11., Sichtbarkeits- und Vertriebs-Check): Wert = Mittel der gemessenen Säulen. */
+export interface CheckGruppe { key: string; name: string; saeulen: SaeuleKey[]; frage?: string }
 
 /** Texte der Seite eines Checks (Einstieg, Dauer, Zoes zweiter Satz) — Daten der Vorlage, nie fest im Code. */
 export interface CheckSeite {
@@ -108,6 +110,8 @@ export interface CheckRegeln {
   /** Säulen und Stufen des Gesamtergebnisses (30.10.) — fehlen sie, gilt nur die Innovation wie bisher. */
   saeulen?: CheckSaeule[];
   saeulen_stufen?: CheckStufe[];
+  /** Zwei Überschriften über den Säulen (optional) — ohne Feld zeigt das Ergebnis nur die Säulen wie bisher. */
+  gruppen?: CheckGruppe[];
   /** Ein nächster Schritt je Säule und Band (niedrig bis 40, mittel bis 70, hoch darüber). */
   naechste_schritte?: Partial<Record<SaeuleKey, Record<SchrittBand, string>>>;
   /** Nächste Schritte je Dimension (Innovations-Check ohne Säulen, 30.10. abends): die größten Lücken zum Branchenwert. */

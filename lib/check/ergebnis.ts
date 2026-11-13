@@ -13,6 +13,17 @@ export interface ErgebnisAchse { key: DimKey; name: string; wert: number; branch
 
 export interface ErgebnisSaeule { key: SaeuleKey; name: string; wert: number | null }
 
+/** Eine Überschrift über mehreren Säulen mit ihrem Wert (Mittel der gemessenen Säulen, gerundet) — `null`, solange keine gemessen ist. */
+export interface ErgebnisGruppe { key: string; name: string; frage?: string; wert: number | null; saeulen: SaeuleKey[] }
+
+/** Rein: die Gruppen einer Vorlage aus den Säulenwerten. */
+export function gruppenWerte(gruppen: readonly { key: string; name: string; saeulen: SaeuleKey[]; frage?: string }[] | undefined, werte: Partial<Record<SaeuleKey, number>>): ErgebnisGruppe[] {
+  return (gruppen ?? []).map(g => {
+    const w = g.saeulen.map(sk => werte[sk]).filter((x): x is number => typeof x === 'number');
+    return { key: g.key, name: g.name, ...(g.frage ? { frage: g.frage } : {}), wert: w.length ? Math.round(w.reduce((a, b) => a + b, 0) / w.length) : null, saeulen: [...g.saeulen] };
+  });
+}
+
 export interface ErgebnisSchritt { saeule: SaeuleKey; name: string; wert: number; band: SchrittBand; text: string; /** Bereich des Angebots der Instanz. */ angebot?: AngebotBereich }
 
 export interface InnovationsDetail {
@@ -28,6 +39,15 @@ export interface InnovationsDetail {
   zoe: string[];
 }
 
+/** Ein Satz, der die Gruppen gegeneinander einordnet (nur bei mindestens zwei gemessenen Gruppen). Erfindet nichts. */
+export function gruppenSatz(gruppen: readonly ErgebnisGruppe[]): string | null {
+  const g = gruppen.filter((x): x is ErgebnisGruppe & { wert: number } => typeof x.wert === 'number');
+  if (g.length < 2) return null;
+  const hoch = g.reduce((m, x) => (x.wert > m.wert ? x : m)), tief = g.reduce((m, x) => (x.wert < m.wert ? x : m));
+  if (hoch.wert === tief.wert) return `${g.map(x => x.name).join(' und ')} liegen gleichauf bei ${hoch.wert} Punkten.`;
+  return `Bei ${hoch.name} erreichen Sie ${hoch.wert} Punkte, bei ${tief.name} ${tief.wert}. Der größere Hebel liegt gerade bei ${tief.name}.`;
+}
+
 export interface ErgebnisAnsicht {
   /** Gesamtwert über die Säulen (ohne Säulen in der Vorlage: die Innovation). */
   gesamt: number;
@@ -38,6 +58,8 @@ export interface ErgebnisAnsicht {
   stufen: { stufe: number; name: string }[];
   genauigkeit: CheckErgebnis['genauigkeit'];
   saeulen: ErgebnisSaeule[];
+  /** Überschriften über den Säulen (nur Vorlagen mit `gruppen`, sonst leer). */
+  gruppen: ErgebnisGruppe[];
   schritte: ErgebnisSchritt[];
   /** Die Innovation im Detail — nur im Innovations-Check (Vertriebscheck und Sichtbarkeitstest haben keine Dimensionen). */
   innovation: InnovationsDetail | null;
@@ -45,6 +67,9 @@ export interface ErgebnisAnsicht {
   /** Innovations-Stufe ab dem Siegel-Wert UND „genau“ — ob es das Siegel gibt, entscheidet die Freigabe des Berichts (kommt später). */
   siegelMoeglich: boolean;
 }
+
+/** Der Gruppensatz steht direkt nach dem Satz zur Stufe. */
+const mitGruppenSatz = (saetze: string[], gruppen: readonly ErgebnisGruppe[]): string[] => { const g = gruppenSatz(gruppen); return g ? [saetze[0], g, ...saetze.slice(1)] : saetze; };
 
 /** Reihenfolge der Achsen im Netzdiagramm. */
 export const ACHSEN: readonly DimKey[] = ['strategie', 'ki', 'automatisierung', 'daten', 'robotik', 'team'];
@@ -95,6 +120,7 @@ export function ergebnisAnsicht(v: CheckVorlage, antworten: CheckAntworten): { e
       stufen: gStufen.map(s => ({ stufe: s.stufe, name: s.name })),
       genauigkeit,
       saeulen: saeulenListe,
+      gruppen: gruppenWerte(v.regeln.gruppen, saeulen.werte),
       // Ohne Säulen (Innovations-Check seit 30.10. abends): die zwei größten Lücken zum Branchenwert, je mit einem Schritt für diese Woche;
       // das Angebot hängt nur am ersten (sonst stünde dasselbe Angebot zweimal da).
       schritte: !v.regeln.saeulen?.length && v.regeln.dimension_schritte
@@ -117,7 +143,7 @@ export function ergebnisAnsicht(v: CheckVorlage, antworten: CheckAntworten): { e
         branchenSatz: branchenSatz(v.benchmarks, profil),
         zoe: ergebnisSaetze(ergebnis, l),
       },
-      zoe: !v.regeln.saeulen?.length && mitInnovation ? ergebnisSaetze(ergebnis, l) : saeulenSaetze(saeulen, genauigkeit, namen),
+      zoe: !v.regeln.saeulen?.length && mitInnovation ? ergebnisSaetze(ergebnis, l) : mitGruppenSatz(saeulenSaetze(saeulen, genauigkeit, namen), gruppenWerte(v.regeln.gruppen, saeulen.werte)),
       siegelMoeglich: ergebnis.stufe >= v.regeln.siegel.ab_stufe && ergebnis.genauigkeit === 'genau',
     },
   };

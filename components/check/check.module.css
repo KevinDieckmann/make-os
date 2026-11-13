@@ -228,6 +228,18 @@
 .ergebnisEtikett { margin: 0 0 6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--c-leise); }
 .saeulen { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--c-linie); }
 @media (max-width: 520px) { .saeulen { grid-template-columns: 1fr; gap: 12px; } }
+/* Zwei Überschriften über den Bereichen (13.11.): Sichtbarkeit und Vertrieb nebeneinander, am Handy untereinander. */
+.gruppen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--c-linie); }
+@media (max-width: 620px) { .gruppen { grid-template-columns: 1fr; } }
+.gruppe { padding: 16px; border: 1px solid var(--c-linie); border-radius: 14px; }
+.gruppeKopf { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.gruppeName { display: block; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+.gruppeFrage { display: block; margin-top: 2px; font-size: 13px; color: var(--c-leise); }
+.gruppeWert { font-family: var(--s-zahl); font-size: 34px; line-height: 1; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gruppeVon { font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--c-leise); }
+.gruppeBereiche { margin-top: 12px; }
+.gruppeBereich { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--c-linie); font-size: 14px; }
+.gruppeBereichWert { font-family: var(--s-zahl); font-weight: 600; font-variant-numeric: tabular-nums; }
 .saeuleKopf { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .saeuleName { font-weight: 600; }
 .saeuleWert { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
