@@ -49,7 +49,7 @@ const THEMEN = [
     kurz: 'Zielgruppe, Prozess im CRM, Gesprächsleitfäden, Kennzahlen und Nachfassen. Ein Vertrieb, den Sie steuern können und der nicht an Ihnen hängt.',
     vorweg: 'Vertrieb wird planbar, wenn fünf Dinge stehen: die Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein trainiertes Team.' },
   { id: 'zeit', pfad: 'vertrieb-auf-zeit/', titel: 'Vertrieb auf Zeit', art: 'Vertriebsleitung auf Zeit', klein: 'Auch Interim oder Fractional Head of Sales',
-    kurz: 'Head of Sales oder Chief Sales Officer auf Zeit, für 6 oder 12 Monate. Wer erst testen will, startet mit dem Tagesworkshop Vertrieb.',
+    kurz: 'Head of Sales oder Chief Sales Officer auf Zeit, ab 3 Monaten, danach monatlich kündbar. Wer erst testen will, startet mit dem Tagesworkshop Vertrieb.',
     vorweg: 'Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt.' },
   { id: 'netzwerken', pfad: 'netzwerken/', titel: 'Netzwerken und Events', art: 'Netzwerk-Events', klein: 'Für Gäste kostenlos',
     kurz: 'Abende in kleiner Runde, auf Einladung. Dazu der Weg, auf dem aus Begegnungen und Empfehlungen Kontakte werden, die nicht liegen bleiben.',
@@ -621,7 +621,7 @@ const FRAGEN = {
   zeitaufwand: ['Wie viel Zeit kostet mich ein Mandat?', 'Rund 3 bis 4 Stunden für das Sales Playbook Teil 1 im ersten Monat, danach 30 Minuten Wochen-Call und kurze Freigaben. Ihr Team braucht Zeit für Training und Gespräche.'],
   unterschied: ['Was ist der Unterschied zwischen Head of Sales und Chief Sales Officer?', 'Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Leitfäden, Kennzahlen und Training. Der Chief Sales Officer macht all das auch und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum Chief Sales Officer wechseln.'],
   playbooks: ['Gehören Leitfäden und Playbooks danach mir?', 'Ja. Nach Zahlung dürfen Sie alle Vorlagen, Leitfäden und Playbooks in Ihrem Unternehmen zeitlich unbegrenzt nutzen.'],
-  laufzeit: ['Wie lange laufen die Verträge?', 'Head of Sales und Chief Sales Officer laufen 6 oder 12 Monate. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis.'],
+  laufzeit: ['Wie lange laufen die Verträge?', 'Head of Sales und Chief Sales Officer laufen mindestens 3 Monate, danach sind sie zum Ende des Folgemonats kündbar. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis.'],
   csoZeit: ['Wie viel Zeit bringt der Chief Sales Officer ein?', '30 bis 35 Stunden im Monat, fest eingeplant. Dazu kommen der Wochen-Call und ein monatlicher Strategie-Call mit der Geschäftsführung.'],
   einstellen: ['Stellen Sie unsere Vertriebler ein?', 'Wir bauen Rollenmodell, Stellenanzeige, Interviewleitfaden und Probetag und führen die Interviews mit Ihnen. Die Entscheidung und den Arbeitsvertrag machen Sie. Stellenanzeigen und Recruiting-Tools zahlen Sie direkt.'],
   playbookTeile: ['Was sind Teil 1, 2 und 3 des Sales Playbooks?', PLAYBOOK_TEILE],
@@ -804,7 +804,7 @@ ${themen.map(([pfad, titel, text, klein], i) => `      <li class="thema erschein
       <li class="erscheint"><h3>Erstgespräch oder Check</h3><p>Kostenlos: 30 Minuten Erstgespräch per Video oder der Check zu Sichtbarkeit und Vertrieb mit Ergebnis sofort.</p></li>
       <li class="erscheint erscheint-2"><h3>Ihr Vorschlag</h3><p>Wir schlagen Ihnen ein Angebot vor. Festpreis und Ablauf bekommen Sie schriftlich, bevor es losgeht.</p></li>
       <li class="erscheint erscheint-3"><h3>Tagesworkshop</h3><p>Ein Tag, an dem wir die größten Hebel finden und den ersten direkt umsetzen. Beim Start eines Mandats rechnen wir ihn voll an.</p></li>
-      <li class="erscheint erscheint-4"><h3>Mandat</h3><p>Head of Sales oder Chief Sales Officer auf Zeit, für 6 oder 12 Monate. Erste Ergebnisse im ersten Monat.</p></li>
+      <li class="erscheint erscheint-4"><h3>Mandat</h3><p>Head of Sales oder Chief Sales Officer auf Zeit, mindestens 3 Monate. Erste Ergebnisse im ersten Monat.</p></li>
     </ol>
     <p class="fragen-fuss">${fam('innovation', 'Preise ansehen', { pfad: 'preise/', klasse: 'link-pfeil link-aussen' })}</p>
   </div>
@@ -1066,18 +1066,18 @@ function vertriebAufZeit(W) {
   ];
   const fest = [
     ['Start', 'nach dem Kick-off', 'nach Suche, Auswahl und Kündigungsfrist'],
-    ['Bindung', '6 oder 12 Monate', 'unbefristeter Arbeitsvertrag'],
+    ['Bindung', 'mindestens 3 Monate, danach zum Ende des Folgemonats kündbar', 'unbefristeter Arbeitsvertrag'],
     ['Kosten', 'fester Monatspreis, Reisekosten nach Absprache gegen Beleg', 'Gehalt, Nebenkosten, Suche und Einarbeitung'],
     ['Ziel', 'System aufbauen und übergeben', 'Vertrieb dauerhaft führen'],
     ['Danach', 'Playbook, Leitfäden und Prozesse bleiben bei Ihnen', 'die Leitung bleibt im Unternehmen'],
   ];
   return `${seitenKopf(W, {
     krume: 'Vertrieb auf Zeit',
-    titel: 'Vertrieb auf Zeit: Head of Sales oder Chief Sales Officer für 6 oder 12 <em>Monate.</em>',
+    titel: 'Vertrieb auf Zeit: Head of Sales oder Chief Sales Officer ab 3 <em>Monaten.</em>',
     text: 'Auch Interim oder Fractional Head of Sales genannt. Wir bauen das System, setzen es mit Ihrem Team um und übergeben es so, dass es ohne uns weiterläuft.',
     aktionen: `<a class="knopf knopf-gross" href="../#erstgespraech" data-buchen="zeit">Erstgespräch vereinbaren</a><a class="link-pfeil" href="#tagesworkshop">Erst testen: der Tagesworkshop</a>`,
     vorweg: thema('zeit').vorweg,
-    fakten: [['Laufzeit', '6 oder 12 Monate'], ['Einstieg', 'Tagesworkshop Vertrieb, wird beim Start eines Mandats voll angerechnet'], ['Preis', `Festpreis, schriftlich vor dem Start · ${fam('innovation', 'Preise ansehen', { pfad: 'preise/' })}`]],
+    fakten: [['Laufzeit', 'mindestens 3 Monate, danach zum Ende des Folgemonats kündbar'], ['Einstieg', 'Tagesworkshop Vertrieb, wird beim Start eines Mandats voll angerechnet'], ['Preis', `Festpreis, schriftlich vor dem Start · ${fam('innovation', 'Preise ansehen', { pfad: 'preise/' })}`]],
     film: 'gespraech',
   })}
 
@@ -1092,13 +1092,13 @@ function vertriebAufZeit(W) {
         ${punkte(['Gründer und Unternehmer, die wissen wollen, wo der größte Hebel liegt, bevor sie investieren', 'Teams, deren Vertrieb wächst, aber nicht planbar läuft'])}
       </article>
       <article class="kasten erscheint erscheint-2">
-        <p class="karte-rolle">6 oder 12 Monate</p>
+        <p class="karte-rolle">ab 3 Monaten</p>
         <h3>Head of Sales auf Zeit</h3>
         <p>Wir bauen Ihnen einen Vertrieb mit System, den Ihr Team ohne Sie bedienen kann.</p>
         ${punkte(['Unternehmer mit fertigem Produkt und 10 bis 50 Mitarbeitenden', 'Tech, KI, FinTech, innovative Dienstleister und Handwerk, Gesundheit, Sport, Ernährung', 'Firmen, deren Vertrieb heute am Gründer hängt oder ohne System läuft'])}
       </article>
       <article class="kasten erscheint erscheint-3">
-        <p class="karte-rolle">6 oder 12 Monate</p>
+        <p class="karte-rolle">ab 3 Monaten</p>
         <h3>Chief Sales Officer auf Zeit</h3>
         <p>Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.</p>
         ${punkte(['Firmen, die ein Vertriebsteam aufbauen oder vergrößern wollen', 'Firmen vor Markteintritt, neuem Markt, neuem Produkt oder neuer Preisstrategie', 'Firmen, die mit Partnern oder in neue Regionen wachsen wollen'])}
@@ -1118,7 +1118,7 @@ function vertriebAufZeit(W) {
       <ol class="monate">
 ${monate.map(([m, was, ergebnis]) => `        <li class="monat erscheint"><span class="monat-nr">${m}</span><b>${was}</b><span>${ergebnis}</span></li>`).join('\n')}
       </ol>
-      <p class="tafel-fuss">Bei 12 Monaten: Monate 7 bis 9 ausbauen, Monate 10 bis 12 skalieren oder an die interne Vertriebsleitung übergeben.</p>
+      <p class="tafel-fuss">Der Plan ist auf sechs Monate ausgelegt. Mindestens laufen 3 Monate, danach ist der Vertrag zum Ende des Folgemonats kündbar.</p>
       <p class="tafel-fuss" id="playbook">${PLAYBOOK_TEILE}</p>
       <div class="kasten kasten-dunkel dunkel abstand-oben">
         <h3>Wir schulden die Leistung, nicht den Umsatz.</h3>
@@ -1386,7 +1386,7 @@ const SEITEN = [
     fragen: fr('ersterVertriebler', 'welchesCrm', 'kennzahlen', 'planbar', 'tabelle'), begriffe: BEGRIFFE },
   { pfad: 'vertrieb-auf-zeit/', aktuell: 'zeit', klasse: 'seite-unter', inhalt: vertriebAufZeit, name: 'Vertrieb auf Zeit',
     titel: 'Vertrieb auf Zeit: Head of Sales und CSO · MAKE Revenue',
-    beschreibung: 'Vertriebsleitung auf Zeit für 6 oder 12 Monate: Head of Sales oder Chief Sales Officer bauen das System auf und übergeben es. Einstieg über den Tagesworkshop.',
+    beschreibung: 'Vertriebsleitung auf Zeit ab 3 Monaten: Head of Sales oder Chief Sales Officer bauen das System auf und übergeben es. Einstieg über den Tagesworkshop.',
     leistung: leistung('zeit'),
     fragen: fr('gespraeche', 'crm', 'zeitaufwand', 'playbooks', 'laufzeit', 'csoZeit', 'einstellen', 'ende', 'nichtPassend') },
   { pfad: 'netzwerken/', aktuell: 'netzwerken', klasse: 'seite-unter', inhalt: netzwerken, name: 'Netzwerken und Events',

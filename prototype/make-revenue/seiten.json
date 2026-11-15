@@ -37,7 +37,7 @@
     {
      "name": "Vertrieb auf Zeit",
      "art": "Vertriebsleitung auf Zeit",
-     "text": "Head of Sales oder Chief Sales Officer auf Zeit, für 6 oder 12 Monate. Wer erst testen will, startet mit dem Tagesworkshop Vertrieb.",
+     "text": "Head of Sales oder Chief Sales Officer auf Zeit, ab 3 Monaten, danach monatlich kündbar. Wer erst testen will, startet mit dem Tagesworkshop Vertrieb.",
      "pfad": "vertrieb-auf-zeit/"
     },
     {
@@ -160,12 +160,12 @@
    "datei": "vertrieb-auf-zeit/index.html",
    "name": "Vertrieb auf Zeit",
    "titel": "Vertrieb auf Zeit: Head of Sales und CSO · MAKE Revenue",
-   "beschreibung": "Vertriebsleitung auf Zeit für 6 oder 12 Monate: Head of Sales oder Chief Sales Officer bauen das System auf und übergeben es. Einstieg über den Tagesworkshop.",
+   "beschreibung": "Vertriebsleitung auf Zeit ab 3 Monaten: Head of Sales oder Chief Sales Officer bauen das System auf und übergeben es. Einstieg über den Tagesworkshop.",
    "leistung": {
     "name": "Vertrieb auf Zeit",
     "art": "Vertriebsleitung auf Zeit",
     "text": "Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt.",
-    "kurz": "Head of Sales oder Chief Sales Officer auf Zeit, für 6 oder 12 Monate. Wer erst testen will, startet mit dem Tagesworkshop Vertrieb."
+    "kurz": "Head of Sales oder Chief Sales Officer auf Zeit, ab 3 Monaten, danach monatlich kündbar. Wer erst testen will, startet mit dem Tagesworkshop Vertrieb."
    },
    "leistungen": [],
    "fragen": [
@@ -187,7 +187,7 @@
     },
     {
      "f": "Wie lange laufen die Verträge?",
-     "a": "Head of Sales und Chief Sales Officer laufen 6 oder 12 Monate. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis."
+     "a": "Head of Sales und Chief Sales Officer laufen mindestens 3 Monate, danach sind sie zum Ende des Folgemonats kündbar. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis."
     },
     {
      "f": "Wie viel Zeit bringt der Chief Sales Officer ein?",
@@ -333,7 +333,7 @@
     },
     {
      "f": "Wie lange laufen die Verträge?",
-     "a": "Head of Sales und Chief Sales Officer laufen 6 oder 12 Monate. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis."
+     "a": "Head of Sales und Chief Sales Officer laufen mindestens 3 Monate, danach sind sie zum Ende des Folgemonats kündbar. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis."
     },
     {
      "f": "Wer führt die Verkaufsgespräche?",

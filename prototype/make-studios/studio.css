@@ -941,7 +941,7 @@ html.menue-offen { overflow: hidden; }
 .video-immer { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }
 .video-immer li { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--linie-hell); font: 500 12px/1 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: rgba(242, 237, 228, .8); }
 
-/* ─── Social Media (auf Anfrage): drei Bausteine, daneben ein gezeichnetes Beispiel ─── */
+/* ─── Social Media (festes Produkt S, M, L): drei Stufen, daneben ein gezeichnetes Beispiel ─── */
 .abschnitt-social { background: var(--papier-2); }
 .social { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 4.5vw, 80px); align-items: center; }
 .bausteine { list-style: none; padding: 0; }
