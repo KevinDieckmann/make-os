@@ -128,7 +128,7 @@
       "nr": "01",
       "name": "Sichtbarkeit",
       "paar": "Gesehen werden.",
-      "satz": "Positionierung, Homepages, Videos, Social Media, PR und Kommunikation. Damit Kunden Sie finden und schnell verstehen, was Sie machen.",
+      "satz": "Positionierung, Homepages, Videos, PR und Kommunikation, auf Anfrage auch Social Media. Damit Kunden Sie finden und schnell verstehen, was Sie machen.",
       "problem": "Besucher verstehen in fünf Sekunden nicht, was Sie machen und warum sie Sie anrufen sollten. In Medien und auf Bühnen Ihrer Branche kommen andere zu Wort, und Anfragen bleiben aus.",
       "weg": [
         "Unklare Botschaft, kaum bekannt, kaum Anfragen",
@@ -161,8 +161,14 @@
         "titel": "Netzwerk und Events",
         "text": "Manche Kunden lernt man am besten persönlich kennen. Wir laden Sie zu unseren Events ein und stellen Kontakte her, wo es passt. Was Sie dafür brauchen, besprechen wir im Gespräch."
       },
-      "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo}, Social Media ab {preis:social-media} im Monat sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.",
-      "auf_anfrage": []
+      "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo} sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.",
+      "auf_anfrage": [
+        {
+          "name": "Social Media",
+          "leistung": "Redaktionsplan und Beiträge, Reels und Kurzvideos, Kommentare und Nachrichten beantworten. Den Umfang legen wir im Erstgespräch fest.",
+          "preis": "auf Anfrage"
+        }
+      ]
     },
     "vertrieb": {
       "nr": "02",
@@ -209,14 +215,14 @@
         },
         {
           "titel": "Tagesworkshop",
-          "text": "ab 1.490 €, wird beim Mandatsstart voll angerechnet"
+          "text": "ab 1.900 €, wird beim Mandatsstart voll angerechnet"
         },
         {
           "titel": "Mandat",
           "text": "Head of Sales oder Chief Sales Officer"
         }
       ],
-      "kurz": "Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop für {preis:tagesworkshop} netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils mindestens 3 Monate, danach zum Ende des Folgemonats kündbar.",
+      "kurz": "Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop für {preis:tagesworkshop} netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.",
       "leiter": {
         "titel": "Ihr Vertriebsleiter kommt nicht in Fahrt?",
         "text": "Meist fehlt ihm ein System, nach dem er führen kann. Das bauen wir mit ihm auf, arbeiten ihn ein und übergeben ihm dann den Vertrieb. Danach hängt der Vertrieb nicht mehr an der Geschäftsführung."
@@ -293,8 +299,8 @@
     "titel": "MAKE Innovation · Events",
     "satz": "Verschiedene Formate. Ein Fokus. Menschen zusammenbringen, die Neues umsetzen.",
     "text": "Kuratiert und auf Einladung: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir planen verschiedene Formate, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.",
-    "kosten": "Für Unternehmer kostenlos",
-    "termine": "Alle zwei Monate ein Abend, der erste am 28. Januar 2027. Ort und Format stehen in jeder Einladung. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie sie.",
+    "kosten": "Für Gäste kostenlos",
+    "termine": "Termine, Orte und Formate stehen in jeder Einladung. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste.",
     "betreff": "MAKE Innovation · Events · Gästeliste",
     "formate_hinweis": "Diese Formate planen wir. Welches wann stattfindet, steht in der Einladung.",
     "formate": [
@@ -336,7 +342,7 @@
     ],
     "start_ruhig": "Menschen zusammenbringen, die Neues umsetzen.",
     "held_text": "Wir bringen Menschen zusammen, die Neues umsetzen: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir laden gezielt ein, zur Gesprächsrunde im kleinen Kreis ebenso wie zum Workshop. Gastgeberin ist Malin.",
-    "start_text": "Kleine Runden für Gründer und Unternehmer, die gerade etwas Neues aufbauen. Alle zwei Monate, der erste Abend am 28. Januar 2027. Für Unternehmer kostenlos, auf Einladung."
+    "start_text": "Kleine Runden für Gründer und Unternehmer, die gerade etwas Neues aufbauen. Für Gäste kostenlos, auf Einladung."
   },
   "warum_wir": [
     {
@@ -478,7 +484,6 @@
   "kurznamen": {
     "hinweis": "Kürzere Namen fürs Menü; auf den Seiten steht der volle Name.",
     "tagesworkshop": "Tagesworkshop",
-    "social-media": "Social Media",
     "umsetzungsprojekte": "Umsetzungsprojekte",
     "cso": "Chief Sales Officer"
   },
@@ -488,18 +493,18 @@
   },
   "angebote_lead": {
     "sichtbarkeit": "Jedes Angebot hat einen Startpreis. Homepages und Videos haben feste Lieferzeiten, bei PR und Kommunikation steht der Monatspreis vor dem Start fest. Ablauf, Ergebnis und Konditionen finden Sie auf der Seite des Angebots.",
-    "vertrieb": "Monatspreise, die vor dem Start feststehen, und klare Laufzeiten: mindestens 3 Monate, danach zum Ende des Folgemonats kündbar. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
+    "vertrieb": "Monatspreise, die vor dem Start feststehen, und klare Laufzeiten von 6 oder 12 Monaten. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
     "innovation": "Der Check ist kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Haben Sie ein Vorhaben, sprechen Sie uns an."
   },
   "fragen_zuschnitt": {
     "hinweis": "Antworten aus den gemeinsamen Fragen, auf den Bereich zugeschnitten (nur gekürzt, nichts Neues).",
     "sichtbarkeit": {
       "gibt-es-rabatt": "Auf Positionierung, Homepages und Videos gibt es kein Skonto. Bei PR und Kommunikation gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen.",
-      "wie-lange-laufen-die-vertraege": "Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis. Videoserie und Social-Media-Management laufen mindestens 3 Monate, danach sind sie monatlich kündbar. PR und Kommunikation läuft 6 oder 12 Monate."
+      "wie-lange-laufen-die-vertraege": "Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis. Die Videoserie läuft mindestens 3 Monate, danach ist sie monatlich kündbar. PR und Kommunikation läuft 6 oder 12 Monate."
     },
     "vertrieb": {
       "gibt-es-rabatt": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen.",
-      "wie-lange-laufen-die-vertraege": "Head of Sales und CSO laufen mindestens 3 Monate, danach sind sie zum Ende des Folgemonats kündbar. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis.",
+      "wie-lange-laufen-die-vertraege": "Head of Sales und CSO laufen 6 oder 12 Monate. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis.",
       "was-kostet-der-tagesworkshop-und-was": "{preis:tagesworkshop} netto. Sie bekommen ein Protokoll mit Ihren fünf größten Hebeln nach Aufwand und Wirkung und einen 90-Tage-Plan. Einen Hebel setzen wir am Tag gemeinsam um. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
     }
   },
@@ -605,7 +610,7 @@
       },
       "vertrieb": {
         "titel": "Vertrieb: Leistungen und Preise · MAKE Innovation",
-        "beschreibung": "Preisblatt Vertrieb: Tagesworkshop für {preis:tagesworkshop}, Head of Sales und Chief Sales Officer auf Zeit, mindestens 3 Monate. Vorgehen und Ablauf zeigt MAKE Revenue."
+        "beschreibung": "Preisblatt Vertrieb: Tagesworkshop für {preis:tagesworkshop}, Head of Sales und Chief Sales Officer auf Zeit für 6 oder 12 Monate. Vorgehen und Ablauf zeigt MAKE Revenue."
       },
       "innovation": {
         "titel": "Innovation: KI, Automatisierung, Software · MAKE Innovation",
@@ -617,11 +622,11 @@
       },
       "head-of-sales": {
         "titel": "Head of Sales auf Zeit · MAKE Innovation",
-        "beschreibung": "Vertriebsleitung auf Zeit ab 3 Monaten Laufzeit: Wir bauen Ihren Vertrieb auf, machen Ihrem Team vor und übergeben ein System. {preis:head-of-sales} netto im Monat."
+        "beschreibung": "Vertriebsleitung auf Zeit für 6 oder 12 Monate: Wir bauen Ihren Vertrieb auf, machen Ihrem Team vor und übergeben ein System. {preis:head-of-sales} netto im Monat."
       },
       "cso": {
         "titel": "Chief Sales Officer auf Zeit (CSO) · MAKE Innovation",
-        "beschreibung": "Vertriebsleitung mit Strategie, Preisen, Teamaufbau und Recruiting, ab 3 Monaten Laufzeit. {preis:cso} netto im Monat, Wechsel vom Head of Sales jederzeit."
+        "beschreibung": "Vertriebsleitung mit Strategie, Preisen, Teamaufbau und Recruiting für 6 oder 12 Monate. {preis:cso} netto im Monat, Wechsel vom Head of Sales jederzeit."
       },
       "homepage-landing": {
         "titel": "Homepage Landing: One-Pager in 10 Werktagen · MAKE Innovation",
@@ -642,10 +647,6 @@
       "videostory": {
         "titel": "Videostory: die Geschichte Ihrer Firma · MAKE Innovation",
         "beschreibung": "Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich und in Ihrer CI, mit KI-Stimme oder Ihrer eigenen. {preis:videostory} netto, fertig in 15 Werktagen."
-      },
-      "social-media": {
-        "titel": "Social-Media-Management: Plan, Texte, Reels · MAKE Innovation",
-        "beschreibung": "Redaktionsplan, Texte, KI-Reels und Veröffentlichung von uns, die Bilder von Ihnen. {preis:social-media} netto im Monat, mindestens 3 Monate."
       },
       "video-serie": {
         "titel": "Videoserie: zwei Videos im Monat · MAKE Innovation",
@@ -705,7 +706,7 @@
       },
       "events": {
         "titel": "MAKE Innovation · Events für Menschen, die Neues umsetzen",
-        "beschreibung": "Auf Einladung: Gesprächsrunden, Impulsabende, Workshops und Netzwerktreffen alle zwei Monate, ab 28.01.2027. Für Unternehmer kostenlos."
+        "beschreibung": "Kuratiert und auf Einladung: Gesprächsrunden, Impulsabende, Workshops und Netzwerktreffen für Gründer und Mittelstand. Für Gäste kostenlos, Gastgeberin ist Malin."
       },
       "pr-kommunikation": {
         "titel": "PR und Kommunikation auf Zeit · MAKE Innovation",
@@ -1263,86 +1264,6 @@
   },
   "produkt_blaetter": {
     "hinweis": "Produktblätter nur für diese Website (31.10., Prüfung: die Einstiegsprodukte hatten die dünnsten Seiten). Nur belegte Fakten aus inhalt.json, keine erfundenen Fristen.",
-    "social-media": {
-      "versprechen": "Regelmäßig sichtbar in Ihren Kanälen: Redaktionsplan, Texte, Reels und Veröffentlichung kommen von uns. Sie liefern die Bilder und geben frei.",
-      "fuer": [
-        "Unternehmen, die in ihren Kanälen regelmäßig sichtbar sein wollen",
-        "Geschäftsführer, die keine Zeit haben, selbst zu planen, zu texten und zu posten",
-        "Firmen, deren Beiträge heute unregelmäßig und nebenbei entstehen"
-      ],
-      "nicht_fuer": "wer nur einzelne Beiträge braucht, bezahlte Anzeigen schalten will oder keine eigenen Bilder liefern kann (dafür gibt es Paket L mit Shooting).",
-      "problem": "Beiträge entstehen nebenbei, wenn gerade Zeit ist. Mal kommt drei Wochen nichts, dann zwei Beiträge an einem Tag. Kunden sehen Sie selten, und wer Sie sucht, findet einen alten Stand.",
-      "loesung": "Wir übernehmen Ihre Kanäle mit einem festen Plan: Jeden Monat steht der Redaktionsplan, wir schreiben die Texte, bauen die Reels und veröffentlichen. Sie geben frei. Den Umfang wählen Sie in drei Paketen.",
-      "bausteine": [
-        {
-          "name": "Paket S",
-          "hinweis": "Einstieg",
-          "text": "Redaktionsplan, Texte, 2 KI-Reels im Monat, Bilder liefern Sie, Veröffentlichung durch uns"
-        },
-        {
-          "name": "Paket M",
-          "text": "alles aus S, dazu 2 Reels pro Woche"
-        },
-        {
-          "name": "Paket L",
-          "text": "alles aus M, dazu 3 Stories pro Woche und 1 Shooting im Monat"
-        }
-      ],
-      "bausteine_satz": "Welches Paket passt, klären wir im kostenlosen Erstgespräch.",
-      "ablauf": {
-        "zeilen": [
-          [
-            "Start",
-            "Kick-off und Redaktionsplan für den ersten Monat"
-          ],
-          [
-            "Monatsanfang",
-            "Redaktionsplan für den Monat, Sie geben frei"
-          ],
-          [
-            "Im Monat",
-            "Texte und Reels von uns, Veröffentlichung nach Plan"
-          ]
-        ]
-      },
-      "ergebnis": [
-        "Ihre Kanäle laufen nach Plan, ohne dass Sie selbst posten.",
-        "Jeden Monat stehen Plan, Texte und Reels fest, bevor etwas veröffentlicht wird."
-      ],
-      "konditionen": [
-        [
-          "Preis",
-          "ab 990 € netto im Monat"
-        ],
-        [
-          "Laufzeit",
-          "mindestens 3 Monate, danach monatlich kündbar zum Monatsende"
-        ],
-        [
-          "Zahlung",
-          "monatlich im Voraus, Rechnung zum 1., Zahlungsziel 14 Tage"
-        ]
-      ],
-      "mitwirkung": [
-        "Zugang zu Ihren Kanälen",
-        "Bilder aus Ihrem Alltag, bei Paket L machen wir sie beim Shooting",
-        "Freigabe des Redaktionsplans jeden Monat"
-      ],
-      "fragen": [
-        {
-          "frage": "Sind die Reels KI-generiert?",
-          "antwort": "Im Paket S entstehen die zwei Reels im Monat mit KI aus Ihren Bildern und Texten. Sie sehen jedes Reel, bevor wir es veröffentlichen."
-        },
-        {
-          "frage": "Wer veröffentlicht die Beiträge?",
-          "antwort": "Wir. Sie geben den Redaktionsplan frei, danach veröffentlichen wir nach Plan."
-        },
-        {
-          "frage": "Kann ich das Paket wechseln?",
-          "antwort": "Ja, zum nächsten Monat. Sprechen Sie uns an, dann passen wir den Plan an."
-        }
-      ]
-    },
     "tagesworkshop": {
       "versprechen": "Ein Tag, an dem Sie erfahren, wo Ihr größter Hebel in Vertrieb, Markteintritt und Sichtbarkeit liegt. Mit einem Plan für 90 Tage.",
       "fuer": [
@@ -1400,7 +1321,7 @@
       "konditionen": [
         [
           "Preis",
-          "ab 1.490 € netto, einmalig"
+          "ab 1.900 € netto, einmalig"
         ],
         [
           "Anrechnung",

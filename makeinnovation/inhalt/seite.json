@@ -203,7 +203,7 @@
  "fokus": {
   "titel": "Fokus Innovation",
   "satz": "Ein Abend. Ein langer Tisch. Menschen, die Neues umsetzen.",
-  "termine": "Alle zwei Monate ein Abend, der erste am 28. Januar 2027. Ort und Format stehen in der Einladung. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie sie.",
+  "termine": "Termine und Orte folgen. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste Einladung.",
   "mail_betreff": "Fokus Innovation – Gästeliste"
  },
  "fallbeispiele_hinweis": "Kevin 24.10.: erst ohne, ausgeblendet — fallbeispiele_zeigen auf true stellen, sobald die drei Fälle (mit Zustimmung) eingetragen sind.",
@@ -212,12 +212,13 @@
  "indexieren": true,
  "abzeichen": "Empfohlen",
  "ausgeblendet": {
-  "hinweis": "Kevins Inhalte bleiben in inhalt.json, erscheinen aber nicht auf der Seite. KI-CRM: laut Artikelstamm 25.10. „kommt später, wird vorerst nicht aktiv angeboten“. Bild- und Videoproduktion: nicht im freigegebenen Artikelstamm, Videos „nicht für Dreh vor Ort“ — Kevin entscheidet. Social Media ist seit 15.11.2026 ein festes Produkt (Angebot social-media).",
+  "hinweis": "Kevins Inhalte bleiben in inhalt.json, erscheinen aber nicht auf der Seite. KI-CRM: laut Artikelstamm 25.10. „kommt später, wird vorerst nicht aktiv angeboten“. Bild- und Videoproduktion, Social Media Management: nicht im freigegebenen Artikelstamm, Videos „nicht für Dreh vor Ort“ — Kevin entscheidet.",
   "angebote": [
    "ki-crm"
   ],
   "zusatzoptionen": [
-   "Bild- und Videoproduktion"
+   "Bild- und Videoproduktion",
+   "Social Media Management"
   ]
  }
 }
