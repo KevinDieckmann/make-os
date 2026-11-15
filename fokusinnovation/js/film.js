@@ -8,7 +8,6 @@ const canvas = document.querySelector('.szene');
 const kopf = document.querySelector('.kopf');
 const hinweis = document.querySelector('.hinweis');
 const aufgaben = document.querySelector('.aufgaben');
-const ergebnisse = [...document.querySelectorAll('.ergebnis')];
 const ueberspringen = document.querySelector('.ueberspringen');
 const anker = document.querySelector('.ende-anker');
 const faden = document.querySelector('.faden');
@@ -119,13 +118,6 @@ function anwenden(p, bereit) {
     aufgaben.style.opacity = ((bereit ? 1 : 0) * (1 - weg)).toFixed(3);
     aufgaben.style.transform = weg > 0 ? `scale(${(1 - 0.35 * weg).toFixed(4)})` : '';
   }
-  const ergebnisWeg = span(p, [0.80, 0.86]);
-  ergebnisse.forEach((el, n) => {
-    const stelle = FADEN_STELLEN[n + 1];
-    const wert = (bereit ? 1 : 0) * (stelle === undefined ? 0 : span(p, [stelle + 0.01, stelle + 0.01 + BLENDE])) * (1 - ergebnisWeg);
-    el.style.opacity = wert.toFixed(3);
-    el.style.translate = `0 ${((1 - wert) * 10).toFixed(1)}px`;
-  });
   fadenSetzen(p, bereit);
   for (const b of BLOECKE) {
     const ein = b.von === undefined ? 1 : span(p, [b.von, b.von + BLENDE]);
