@@ -97,8 +97,7 @@
      "angebote": [
       "tagesworkshop",
       "head-of-sales",
-      "cso",
-      "ki-crm"
+      "cso"
      ]
     },
     {
@@ -111,6 +110,7 @@
       "erklaervideo",
       "videostory",
       "video-serie",
+      "social-media",
       "positionierung",
       "pr-kommunikation",
       "fokus-innovation"
@@ -142,7 +142,7 @@
   {
    "id": "fokus",
    "titel": "Fokus Innovation",
-   "text": "Unsere Bühne und unser Netzwerk für Menschen, die Neues umsetzen. Alle zwei Monate, für Gäste kostenlos.",
+   "text": "Unsere Bühne und unser Netzwerk für Menschen, die Neues umsetzen. Alle zwei Monate, für Unternehmer kostenlos. Der erste Abend ist am 28. Januar 2027.",
    "cta": {
     "text": "Zum nächsten Abend anmelden",
     "ziel": "Anmeldeseite"
@@ -168,7 +168,7 @@
    "id": "tagesworkshop",
    "bereich": "Vertrieb",
    "name": "Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit",
-   "preis": "1.900 €",
+   "preis": "1.490 €",
    "preis_zusatz": "einmalig, wird beim Mandatsstart voll angerechnet",
    "fuer_wen": "Wer wissen will, wo der größte Hebel liegt, bevor er investiert.",
    "enthalten": [
@@ -189,7 +189,7 @@
    "bereich": "Vertrieb",
    "name": "Head of Sales",
    "preis": "2.990 €",
-   "preis_zusatz": "pro Monat, 6 oder 12 Monate",
+   "preis_zusatz": "pro Monat, mindestens 3 Monate, danach zum Ende des Folgemonats kündbar",
    "fuer_wen": "Für Unternehmer mit fertigem Produkt, deren Vertrieb heute am Gründer hängt oder ohne System läuft.",
    "enthalten": [
     "Fundament: Zielgruppe, Salesprozess im CRM, Skripte und Einwandbibliothek",
@@ -214,7 +214,7 @@
    "bereich": "Vertrieb",
    "name": "Chief Sales Officer (CSO)",
    "preis": "4.990 €",
-   "preis_zusatz": "pro Monat, 6 oder 12 Monate",
+   "preis_zusatz": "pro Monat, mindestens 3 Monate, danach zum Ende des Folgemonats kündbar",
    "fuer_wen": "Für Unternehmen, die ein Vertriebsteam aufbauen, einen neuen Markt angehen oder mit Partnern wachsen wollen.",
    "enthalten": [
     "Alles aus Head of Sales",
@@ -344,7 +344,7 @@
    "gruppe": "Videos",
    "name": "Video Serie",
    "preis": "1.990 €",
-   "preis_zusatz": "pro Monat, mindestens 3 Monate",
+   "preis_zusatz": "pro Monat, mindestens 3 Monate, danach monatlich kündbar",
    "enthalten": [
     "2 Videos im Monat aus unserem Videokatalog",
     "Redaktionsplan für 3 Monate, 30 Minuten Planung am Monatsanfang",
@@ -355,6 +355,23 @@
    "cta": "Serie starten",
    "hervorheben": true,
    "fuer_wen": "Für alle, die jeden Monat sichtbar sein wollen, ohne selbst Videos zu planen und zu bauen."
+  },
+  {
+   "id": "social-media",
+   "bereich": "Sichtbarkeit",
+   "gruppe": "Social Media",
+   "name": "Social-Media-Management",
+   "preis": "990 €",
+   "preis_zusatz": "pro Monat, mindestens 3 Monate, danach monatlich kündbar",
+   "enthalten": [
+    "Redaktionsplan jeden Monat",
+    "Texte für alle Beiträge",
+    "2 KI-Reels im Monat",
+    "Bilder liefern Sie, wir bereiten sie auf",
+    "Veröffentlichung durch uns"
+   ],
+   "cta": "Gespräch vereinbaren",
+   "fuer_wen": "Für Unternehmen, die in ihren Kanälen regelmäßig sichtbar sein wollen, ohne selbst zu planen, zu texten und zu posten."
   },
   {
    "id": "pr-kommunikation",
@@ -421,7 +438,7 @@
    "id": "fokus-innovation",
    "bereich": "Sichtbarkeit",
    "name": "Fokus Innovation",
-   "preis": "für Gäste kostenlos",
+   "preis": "für Unternehmer kostenlos",
    "enthalten": [
     "Ein Abend alle zwei Monate",
     "Bühne und Netzwerk für Menschen, die Neues umsetzen",
@@ -465,12 +482,6 @@
    "fuer": "Sichtbarkeit",
    "preis": "auf Anfrage",
    "leistung": "Fotoshooting und Videodreh bei Ihnen: Team, Räume, Produkt, Interviews"
-  },
-  {
-   "name": "Social Media Management",
-   "fuer": "Sichtbarkeit",
-   "preis": "auf Anfrage, monatlich",
-   "leistung": "Redaktionsplan, Beiträge, Community, monatlicher Bericht"
   }
  ],
  "gratis": [
@@ -619,12 +630,12 @@
   {
    "id": "wie-lange-laufen-die-vertraege",
    "f": "Wie lange laufen die Verträge?",
-   "a": "Head of Sales, CSO sowie PR und Kommunikation laufen 6 oder 12 Monate. Die Video Serie läuft mindestens 3 Monate, danach ist sie monatlich kündbar. Tagesworkshop, Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis."
+   "a": "Head of Sales und CSO laufen mindestens 3 Monate, danach sind sie zum Ende des Folgemonats kündbar. PR und Kommunikation läuft 6 oder 12 Monate. Video Serie und Social-Media-Management laufen mindestens 3 Monate, danach sind sie monatlich kündbar. Tagesworkshop, Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis."
   },
   {
    "id": "was-kostet-der-tagesworkshop-und-was",
    "f": "Was kostet der Tagesworkshop, und was passiert danach?",
-   "a": "Ab 1.900 €. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
+   "a": "Ab 1.490 €. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
   },
   {
    "id": "wie-schnell-ist-meine-homepage-fertig",
@@ -791,7 +802,7 @@
     "Homepage-Pakete Landing, Story, Cinematic mit Vergleich und Zusatzoptionen",
     "Videos: Erklärvideo, Videostory, Video Serie",
     "Positionierung S, M, L",
-    "Auf Anfrage: Bild- und Videoproduktion, Social Media Management",
+    "Social-Media-Management S, M, L",
     "Fokus Innovation",
     "Gratis Sichtbarkeit: Homepage-Check, Positionierungs-Check, LinkedIn-Check, Leitfaden 60 Sekunden, Content-Plan",
     "FAQ Sichtbarkeit",

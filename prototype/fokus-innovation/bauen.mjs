@@ -207,7 +207,7 @@ export function seitenBauen(q = quellen()) {
   const angebot = (id) => inhalt.angebote.find((a) => a.id === id);
   const startBereiche = Object.fromEntries(inhalt.startseite.find((s) => s.id === 'bereiche').bereiche.map((b) => [b.name.toLowerCase(), b.angebote]));
   // Sichtbarkeit erzählt in der Reihenfolge der Arbeit: erst die Positionierung, dann Homepage, dann Videos.
-  const REIHENFOLGE = { sichtbarkeit: ['positionierung', 'pr-kommunikation', 'homepage-landing', 'homepage-story', 'homepage-cinematic', 'erklaervideo', 'videostory', 'video-serie'] };
+  const REIHENFOLGE = { sichtbarkeit: ['positionierung', 'pr-kommunikation', 'homepage-landing', 'homepage-story', 'homepage-cinematic', 'erklaervideo', 'videostory', 'video-serie', 'social-media'] };
   const rang = (b, id) => { const i = (REIHENFOLGE[b] ?? []).indexOf(id); return i < 0 ? 99 : i; };
   const produkteIn = (b) => (startBereiche[b] ?? []).map(angebot).filter(Boolean).sort((x, y) => rang(b, x.id) - rang(b, y.id));
   const produktPfad = (a) => `/${a.bereich.toLowerCase()}/${a.id}/`;

@@ -157,7 +157,7 @@
       "beschreibung": "Was ein Head of Sales auf Zeit in sechs Monaten aufbaut, wann er sich gegenüber einer festen Einstellung lohnt und was das Mandat bei MAKE Innovation kostet.",
       "veroeffentlicht": "2026-10-27",
       "aktualisiert": "2026-10-27",
-      "kurz": "Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Er baut das System, setzt es mit Ihrem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Bei MAKE Innovation kostet das Mandat {preis:head-of-sales} netto im Monat, bei 6 oder 12 Monaten Laufzeit.",
+      "kurz": "Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Er baut das System, setzt es mit Ihrem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Bei MAKE Innovation kostet das Mandat {preis:head-of-sales} netto im Monat, mindestens 3 Monate, danach zum Ende des Folgemonats kündbar.",
       "abschnitte": [
         {
           "h": "Was ein Head of Sales auf Zeit macht",
@@ -199,7 +199,7 @@
               ],
               [
                 "Bindung",
-                "6 oder 12 Monate",
+                "mindestens 3 Monate, danach zum Ende des Folgemonats kündbar",
                 "unbefristeter Arbeitsvertrag"
               ],
               [
@@ -240,7 +240,7 @@
         {
           "h": "Was es bei uns kostet",
           "absaetze": [
-            "Der Head of Sales kostet {preis:head-of-sales} netto im Monat bei 6 oder 12 Monaten Laufzeit. Der Tagesworkshop für {preis:tagesworkshop} wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Jedes Mandat bekommt bei uns feste Zeit im Kalender."
+            "Der Head of Sales kostet {preis:head-of-sales} netto im Monat, mindestens 3 Monate, danach zum Ende des Folgemonats kündbar. Der Tagesworkshop für {preis:tagesworkshop} wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Jedes Mandat bekommt bei uns feste Zeit im Kalender."
           ]
         }
       ],
@@ -2461,7 +2461,7 @@
           "h": "Selbst umsetzen oder Hilfe holen?",
           "absaetze": [
             "Mit der Tabelle zu diesem Ratgeber können Sie morgen anfangen: Phase wählen, Woche für Woche eintragen, die Quoten rechnet sie selbst. Nach einem Monat kennen Sie Ihre Ausgangswerte.",
-            "Hilfe lohnt sich, wenn die Zahlen zeigen, dass etwas klemmt, aber nicht klar ist, woran. Im Tagesworkshop finden wir an einem Tag den Engpass und setzen den ersten Hebel direkt um. Als Head of Sales auf Zeit führen wir den Wochenrhythmus ein, bis Ihr Team ihn selbst hält. Sollen die Zahlen von selbst aus dem CRM kommen, bauen wir Ihnen ein eigenes KI-CRM mit Kennzahlen-Trichter."
+            "Hilfe lohnt sich, wenn die Zahlen zeigen, dass etwas klemmt, aber nicht klar ist, woran. Im Tagesworkshop finden wir an einem Tag den Engpass und setzen den ersten Hebel direkt um. Als Head of Sales auf Zeit führen wir den Wochenrhythmus ein, bis Ihr Team ihn selbst hält."
           ]
         }
       ],
@@ -2489,8 +2489,7 @@
       ],
       "angebote": [
         "tagesworkshop",
-        "head-of-sales",
-        "ki-crm"
+        "head-of-sales"
       ],
       "vorlagen": [
         "vertriebskennzahlen-je-phase",
@@ -2539,7 +2538,7 @@
     {
       "id": "make-innovation-events",
       "name": "MAKE Innovation · Events",
-      "text": "Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Impulsabende, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.",
+      "text": "Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Impulsabende, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, alle zwei Monate, auf Einladung und für Unternehmer kostenlos.",
       "link": "/events/"
     },
     {
