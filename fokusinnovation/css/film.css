@@ -53,6 +53,12 @@
 .aufgabe:nth-child(7) { left: 68%; top: 37%; } .aufgabe:nth-child(8) { left: 87%; top: 47%; } .aufgabe:nth-child(9) { left: 5%; top: 53%; }
 .aufgabe:nth-child(10) { left: 27%; top: 48%; } .aufgabe:nth-child(11) { left: 54%; top: 51%; } .aufgabe:nth-child(12) { left: 76%; top: 60%; }
 .aufgabe:nth-child(3n+2) { color: rgba(242, 243, 243, .38); }
+
+.ergebnisse { position: absolute; inset: 7vh 0 0 0; pointer-events: none; }
+.ergebnis { position: absolute; display: inline-flex; align-items: center; gap: 9px; white-space: nowrap; opacity: 0; color: rgba(242, 243, 243, .82); font-size: clamp(.82rem, 1vw, .98rem); font-weight: 500; }
+.ergebnis::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--akzent); box-shadow: 0 0 10px rgba(167, 139, 250, .7); flex: none; }
+.ergebnis:nth-child(1) { left: 9%; top: 18%; } .ergebnis:nth-child(2) { right: 9%; top: 24%; }
+.ergebnis:nth-child(3) { left: 12%; top: 58%; } .ergebnis:nth-child(4) { right: 12%; top: 64%; }
 @media (prefers-reduced-motion: no-preference) {
   .aufgabe { animation: schweben 9s ease-in-out infinite; }
   .aufgabe:nth-child(2n) { animation-duration: 11s; animation-delay: -3s; }
@@ -109,7 +115,7 @@
 .ruhig .film { height: auto; }
 .ruhig .buehne { position: relative; height: 100vh; height: 100svh; min-height: 560px; }
 .ruhig .szene { opacity: 1; transition: none; }
-.ruhig .block, .ruhig .aufgaben { display: none; }
+.ruhig .block, .ruhig .aufgaben, .ruhig .ergebnisse { display: none; }
 .ruhig .block[data-block="ende"] { display: block; opacity: 1; visibility: visible; }
 .ruhig .ende-text > * { opacity: 1; translate: none; transition: none; }
 .ruhig .ende-logo { opacity: 1; translate: -50% 0; transition: none; }
@@ -117,6 +123,8 @@
 
 @media (max-width: 760px) {
   .film { height: 250vh; }
+  .ergebnis:nth-child(1) { left: 6%; top: 12%; } .ergebnis:nth-child(2) { left: auto; right: 6%; top: 19%; }
+  .ergebnis:nth-child(3) { left: 6%; top: 26%; } .ergebnis:nth-child(4) { left: auto; right: 6%; top: 33%; }
   .aufgabe:nth-child(n+8) { display: none; }
   .aufgabe:nth-child(1) { left: 6%; top: 15%; } .aufgabe:nth-child(2) { left: 52%; top: 12%; } .aufgabe:nth-child(3) { left: 14%; top: 27%; }
   .aufgabe:nth-child(4) { left: 58%; top: 24%; } .aufgabe:nth-child(5) { left: 4%; top: 40%; } .aufgabe:nth-child(6) { left: 48%; top: 37%; }
@@ -138,7 +146,7 @@
 
 html:not(.js) .film { height: auto; }
 html:not(.js) .buehne { position: relative; height: 100vh; height: 100svh; min-height: 560px; }
-html:not(.js) .block, html:not(.js) .aufgaben, html:not(.js) .faden, html:not(.js) .ueberspringen { display: none; }
+html:not(.js) .block, html:not(.js) .aufgaben, html:not(.js) .ergebnisse, html:not(.js) .faden, html:not(.js) .ueberspringen { display: none; }
 html:not(.js) .block[data-block="ende"] { display: block; opacity: 1; visibility: visible; }
 html:not(.js) .ersatz { display: block; }
 html:not(.js) .ende-text > * { opacity: 1; translate: none; }
