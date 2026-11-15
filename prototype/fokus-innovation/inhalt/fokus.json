@@ -5,38 +5,38 @@
     "claim": "Innovation braucht Umsetzung.",
     "leitidee": "Wir rücken Innovation in den Fokus.",
     "kurz": "Sichtbar, verkauft, verbunden.",
-    "beschreibung": "MAKE Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um."
+    "beschreibung": "MAKE Innovation ist ein Umsetzungspartner aus Berlin für Vertrieb, Sichtbarkeit und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um."
   },
   "domain": "makeinnovation.de",
   "film": {
-    "hinweis": "Die Story der Startseite (Kevin 25.10., geschärft 29.10., neu 30.10. abends nach drei Analysen: Aufmerksamkeit, Kernproblem der Gründer, Story-Psychologie; Einstieg von Kevin gewählt). Bild 1 trifft Sichtbarkeit und Vertrieb zugleich, Bild 2 Sichtbarkeit (entschieden wird vor dem Erstkontakt), Bild 3 Vertrieb (wer anfragt, wartet), Bild 4 die Antwort mit dem Slogan, Bild 5 schließt den Bogen von Bild 1. Keine Zahlen im Film.",
-    "marke": "MAKE Innovation · Agentur für Sichtbarkeit, Vertrieb und Innovation",
+    "hinweis": "Die Story der Startseite (neu 15.11., Kevin): Bild 1 die Frage (gutes Angebot, zu wenig Umsatz), Bild 2 Gesehen werden (Sichtbarkeit), Bild 3 Verstanden werden (klares Angebot), Bild 4 Vorankommen (Vertrieb mit System, KI), Bild 5 der Slogan. Ab Bild 2 erscheinen statt der Aufgaben Ergebnisse. Keine Zahlen im Film.",
+    "marke": "MAKE Innovation · Umsetzungspartner für Vertrieb, Sichtbarkeit und Innovation",
     "laerm": {
-      "titel": "Ihr Produkt ist besser,|als Ihr Umsatz zeigt?",
-      "satz": "Kaum jemand kennt Sie, und verkauft wird, wenn neben Produkt, Team und Buchhaltung Zeit bleibt."
+      "titel": "Ihre Idee ist besser,|als Ihr Umsatz zeigt?",
+      "satz": "Viele starke Angebote scheitern nicht am Produkt, sondern daran, dass sie keiner sieht und keiner verkauft."
     },
     "fokus": {
-      "titel": "Entschieden wird,|bevor Sie im Raum sind.",
-      "satz": "Kunden recherchieren allein und kommen mit einem klaren Bedürfnis. Den Auftrag bekommt der, dem sie schon vertrauen."
+      "titel": "Gesehen werden.",
+      "satz": "Homepage, Videos und Social Media, die in fünf Sekunden zeigen, warum gerade Sie."
     },
     "luecke": {
-      "titel": "Und wer anfragt, wartet.",
-      "satz": "Drei Wochen auf das Angebot, und nachgefasst wird, wenn es gerade passt."
+      "titel": "Verstanden werden.",
+      "satz": "Ein klares Angebot in einem Satz, damit Kunden schon vor dem ersten Gespräch wissen, was sie bekommen."
     },
     "momentum": {
-      "titel": "Sichtbar sein.|Planbar verkaufen.",
-      "satz": "Sichtbarkeit bringt Anfragen, ein Vertrieb mit System macht Kunden daraus. KI kommt dazu, sobald Abläufe und Daten stimmen."
+      "titel": "Vorankommen.",
+      "satz": "Ein Vertrieb mit System macht aus Anfragen Termine und aus Terminen Kunden. KI übernimmt, was sich wiederholt."
     },
     "durchbruch": {
-      "titel": "Jetzt zeigt Ihr Umsatz,|wie gut Ihr Produkt ist.",
-      "satz": "Man kennt Sie, bevor gesucht wird, und jede Anfrage hat einen nächsten Schritt."
+      "titel": "Innovation braucht|Umsetzung.",
+      "satz": "Wir beraten nicht nur, wir setzen mit um. Im Café um die Ecke genauso wie im KI-Start-up."
     }
   },
   "start": {
-    "vorzeile": "Agentur für Sichtbarkeit, Vertrieb und Innovation · Berlin",
-    "titel": "Sichtbar sein. Planbar verkaufen.",
-    "ruhig": "Für Gründer und Unternehmer, die wachsen möchten.",
-    "lead": "Wir machen Ihr Angebot mit Positionierung, Website, Videos und PR bekannt und bauen den Vertrieb, der aus Anfragen Kunden macht. Wo KI Arbeit spart, führen wir sie ein. Jedes Angebot hat einen offenen Preis und einen festen Ablauf, und wir setzen selbst mit um.",
+    "vorzeile": "Umsetzungspartner für Vertrieb, Sichtbarkeit und Innovation · Berlin",
+    "titel": "Wir setzen mit um.",
+    "ruhig": "Für Unternehmer, Gastro und KI-Firmen, die wachsen möchten.",
+    "lead": "Wir machen Ihr Angebot mit Positionierung, Homepage, Videos und Social Media bekannt und bauen den Vertrieb, der aus Anfragen Kunden macht. Wo KI Arbeit spart, führen wir sie ein. Jedes Angebot hat einen offenen Preis und einen festen Ablauf.",
     "kernsatz": "Wir machen gute Produkte bekannt und bauen den Vertrieb, der daraus Kunden macht."
   },
   "leitidee": {
@@ -161,7 +161,7 @@
         "titel": "Netzwerk und Events",
         "text": "Manche Kunden lernt man am besten persönlich kennen. Wir laden Sie zu unseren Events ein und stellen Kontakte her, wo es passt. Was Sie dafür brauchen, besprechen wir im Gespräch."
       },
-      "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo}, Social Media ab {preis:social-media} im Monat sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.",
+      "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung in drei Stufen, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Video Serie ab {preis:video-serie} im Monat, Social Media ab {preis:social-media} im Monat sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.",
       "auf_anfrage": []
     },
     "vertrieb": {
@@ -494,11 +494,11 @@
   "fragen_zuschnitt": {
     "hinweis": "Antworten aus den gemeinsamen Fragen, auf den Bereich zugeschnitten (nur gekürzt, nichts Neues).",
     "sichtbarkeit": {
-      "gibt-es-rabatt": "Auf Positionierung, Homepages und Videos gibt es kein Skonto. Bei PR und Kommunikation gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen.",
-      "wie-lange-laufen-die-vertraege": "Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis. Videoserie und Social-Media-Management laufen mindestens 3 Monate, danach sind sie monatlich kündbar. PR und Kommunikation läuft 6 oder 12 Monate."
+      "gibt-es-rabatt": "Auf Positionierung, Homepages und Videos gibt es kein Skonto. Bei PR und Kommunikation gibt es 3 % Skonto bei Vorauszahlung der Mindestlaufzeit.",
+      "wie-lange-laufen-die-vertraege": "Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis. Videoserie und Social-Media-Management laufen mindestens 3 Monate, danach sind sie monatlich kündbar. PR und Kommunikation läuft 6 Monate."
     },
     "vertrieb": {
-      "gibt-es-rabatt": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen.",
+      "gibt-es-rabatt": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto bei Vorauszahlung der Mindestlaufzeit.",
       "wie-lange-laufen-die-vertraege": "Head of Sales und CSO laufen mindestens 3 Monate, danach sind sie zum Ende des Folgemonats kündbar. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis.",
       "was-kostet-der-tagesworkshop-und-was": "{preis:tagesworkshop} netto. Sie bekommen ein Protokoll mit Ihren fünf größten Hebeln nach Aufwand und Wirkung und einen 90-Tage-Plan. Einen Hebel setzen wir am Tag gemeinsam um. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
     }
@@ -537,6 +537,12 @@
     "Pressemitteilung",
     "KI ausprobieren",
     "CRM pflegen"
+  ],
+  "ergebnisse": [
+    "Homepage live",
+    "Termin gebucht",
+    "Angebot unterschrieben",
+    "Agent arbeitet mit"
   ],
   "fakten": [
     [
@@ -596,12 +602,12 @@
     ],
     "seiten": {
       "start": {
-        "titel": "MAKE Innovation · Agentur für Vertrieb, Sichtbarkeit, Innovation",
-        "beschreibung": "Agentur aus Berlin für Gründer, Start-ups und Unternehmer: Wir machen Ihr Produkt sichtbar und bauen den Vertrieb, der daraus Kunden macht. Mit festen Preisen."
+        "titel": "MAKE Innovation · Umsetzungspartner für Vertrieb und Sichtbarkeit",
+        "beschreibung": "Umsetzungspartner aus Berlin für Unternehmer, Gastro und KI-Firmen: Wir machen Ihr Angebot sichtbar und bauen den Vertrieb, der daraus Kunden macht."
       },
       "sichtbarkeit": {
         "titel": "Sichtbarkeit: Pakete und Preise · MAKE Innovation",
-        "beschreibung": "Preisblatt Sichtbarkeit: Positionierung ab {ab:positionierung}, Homepages ab {preis:homepage-landing}, Erklärvideos ab {preis:erklaervideo}, alles netto. Beispiele und Ablauf zeigt MAKE Studios."
+        "beschreibung": "Preisblatt Sichtbarkeit: Homepages ab {preis:homepage-landing}, Video Serie ab {preis:video-serie} und Social Media ab {preis:social-media} im Monat, netto. Beispiele zeigt MAKE Studios."
       },
       "vertrieb": {
         "titel": "Vertrieb: Leistungen und Preise · MAKE Innovation",
@@ -621,7 +627,7 @@
       },
       "cso": {
         "titel": "Chief Sales Officer auf Zeit (CSO) · MAKE Innovation",
-        "beschreibung": "Vertriebsleitung mit Strategie, Preisen, Teamaufbau und Recruiting, ab 3 Monaten Laufzeit. {preis:cso} netto im Monat, Wechsel vom Head of Sales jederzeit."
+        "beschreibung": "Vertriebsleitung mit Strategie, Preisen, Teamaufbau und Recruiting, ab 3 Monaten Laufzeit. Preis im Erstgespräch, Wechsel vom Head of Sales jederzeit."
       },
       "homepage-landing": {
         "titel": "Homepage Landing: One-Pager in 10 Werktagen · MAKE Innovation",
@@ -629,19 +635,19 @@
       },
       "homepage-story": {
         "titel": "Homepage Story: Website mit Unterseiten · MAKE Innovation",
-        "beschreibung": "Ihre Geschichte als Website: Startseite mit 3D-Effekt und drei Unterseiten, Texte von uns, fertig in 15 Werktagen. {preis:homepage-story} netto, einmalig."
+        "beschreibung": "Ihre Geschichte als Website: Startseite mit 3D-Effekt und drei Unterseiten, Texte von uns, fertig in 15 Werktagen. Preis im Erstgespräch, einmalig."
       },
       "homepage-cinematic": {
         "titel": "Homepage Cinematic: Website mit 3D-Szenen · MAKE Innovation",
-        "beschreibung": "Startseite mit 3D-Szenen, fünf Unterseiten, Story-Workshop und Erklärvideo inklusive, fertig in 25 Werktagen. {preis:homepage-cinematic} netto, einmalig."
+        "beschreibung": "Startseite mit 3D-Szenen, fünf Unterseiten, Story-Workshop und Erklärvideo inklusive, fertig in 25 Werktagen. Preis im Erstgespräch."
       },
       "erklaervideo": {
         "titel": "Erklärvideo in 10 Werktagen · MAKE Innovation",
-        "beschreibung": "Ihr Angebot in 90 Sekunden verstanden: Erklärvideo in Ihrer CI, ohne Dreh vor Ort, in drei Bildformaten mit Untertiteln. {preis:erklaervideo} netto, in 10 Werktagen."
+        "beschreibung": "Ihr Angebot in 90 Sekunden verstanden: Erklärvideo in Ihrer CI, ohne Dreh vor Ort, in drei Bildformaten mit Untertiteln. Fertig in 10 Werktagen."
       },
       "videostory": {
         "titel": "Videostory: die Geschichte Ihrer Firma · MAKE Innovation",
-        "beschreibung": "Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich und in Ihrer CI, mit KI-Stimme oder Ihrer eigenen. {preis:videostory} netto, fertig in 15 Werktagen."
+        "beschreibung": "Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich und in Ihrer CI, mit KI-Stimme oder Ihrer eigenen. Fertig in 15 Werktagen, Preis im Erstgespräch."
       },
       "social-media": {
         "titel": "Social-Media-Management: Plan, Texte, Reels · MAKE Innovation",
@@ -653,7 +659,7 @@
       },
       "positionierung": {
         "titel": "Positionierung entwickeln in drei Tiefen · MAKE Innovation",
-        "beschreibung": "Positionierung S, M oder L: von fünf klaren Sätzen bis zur Markenstory, mit KI vorbereitet und im Workshop mit Kevin geschärft. Ab {ab:positionierung} netto."
+        "beschreibung": "Positionierung S, M oder L: von fünf klaren Sätzen bis zur Markenstory, mit KI vorbereitet und im Workshop mit Kevin geschärft. Preis im Erstgespräch."
       },
       "umsetzungsprojekte": {
         "titel": "Umsetzungsprojekte: KI und Software einführen · MAKE Innovation",
@@ -1467,7 +1473,7 @@
       "konditionen": [
         [
           "Preis",
-          "S ab 1.990 €, M ab 2.990 €, L ab 4.990 €, jeweils netto und einmalig"
+          "S, M und L: Preis im Erstgespräch, jeweils netto und einmalig"
         ],
         [
           "Zahlung",

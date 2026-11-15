@@ -51,6 +51,8 @@ const platz = (s) => String(s ?? '').replace(/(\bfür )?\{(preis|ab|zusatz):([a-
   const a = ANGEBOTE.find((x) => x.id === id);
   if (!a) throw new Error(`Platzhalter ohne Angebot: {${art}:${id}}`);
   if (art === 'zusatz') return `${fuer ?? ''}${a.preis_zusatz ?? ''}`;
+  // Kevin 15.11.: offene Preise (preis_offen) stehen nie in Texten — der Satz muss ohne Betrag auskommen.
+  if (a.preis_offen) throw new Error(`Preis-Platzhalter für ein Angebot ohne öffentlichen Preis: {${art}:${id}}`);
   const betrag = `${a.preis.replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '')}\u00a0€`;
   const davor = ganz.slice(0, pos);
   if (!fuer && /\bab $/i.test(davor)) return betrag;
@@ -232,14 +234,18 @@ export function seitenBauen(q = quellen()) {
   if (seite.termin.link && seite.termin.link !== ERSTGESPRAECH && !BUCHUNG.test(seite.termin.link)) throw new Error(`termin.link muss ${ERSTGESPRAECH} oder /buchen/<name>-<24 Hex> sein, ist ${seite.termin.link}`);
   const erstLink = () => seite.termin.link || `mailto:${seite.kontakt.mail}?subject=${encodeURIComponent(F.erstgespraech.betreff)}&body=${encodeURIComponent(F.erstgespraech.mail_text)}`;
   const bald = (a) => a.status === 'Coming Soon';
+  /** Kevin 15.11.: volle Preise nur für die Einstiegsangebote — die übrigen (inhalt.json preis_offen) zeigen „Preis im Erstgespräch“. */
+  const offen = (a) => !!a.preis_offen;
+  const OFFEN_TEXT = 'Preis im Erstgespräch';
+  const ohnePreis = (a) => bald(a) || offen(a);
   const monatlich = (a) => /^pro Monat/.test(a.preis_zusatz ?? '');
   const erster = (a) => `${a.preis.replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '')}\u00a0€`;
   /** Preise (Kevin 30.10.: „Wir machen immer ab-Preise, nicht mit allen Preisen rausgehen“): überall nur der Einstiegspreis mit „ab“ —
    *  Listen, Angebotsseiten, Preisseite, llms.txt; was erst startet, hat noch keinen. Der volle Preis steht nur in den Daten. */
-  const preisKurz = (a) => (bald(a) ? 'Anfrage starten' : `ab ${erster(a)}${monatlich(a) ? ' / Monat' : ''}`);
-  const preisVoll = (a) => (bald(a) ? 'Preis auf Anfrage' : `ab ${erster(a)}`);
+  const preisKurz = (a) => (bald(a) ? 'Anfrage starten' : offen(a) ? OFFEN_TEXT : `ab ${erster(a)}${monatlich(a) ? ' / Monat' : ''}`);
+  const preisVoll = (a) => (bald(a) ? 'Preis auf Anfrage' : offen(a) ? OFFEN_TEXT : `ab ${erster(a)}`);
   /** Preis mit Markierung für js/inhalt.js (31.10., Bereich „Website“ in MAKE OS): ohne Antwort der App bleibt dieser Text stehen. */
-  const mkPreis = (a, text) => (a && !bald(a) ? `<span data-mk="preis:${e(a.id)}">${e(text)}</span>` : e(text));
+  const mkPreis = (a, text) => (a && !ohnePreis(a) ? `<span data-mk="preis:${e(a.id)}">${e(text)}</span>` : e(text));
   const anbieter = seite.anbieter[seite.anbieter_aktiv];
   // Verkäufer und Rechnungssteller der Bausteine (Kevin 31.10.: „MAKE Innovation GmbH“) — Schlüssel in fokus.json bausteine.verkaeufer,
   // Daten aus seite.anbieter. Die App nennt beim Laden des Formulars die Firmierung der gewählten Gesellschaft (js/bestellung.js).
@@ -268,7 +274,7 @@ export function seitenBauen(q = quellen()) {
       fragen: (p.fragen ?? f.fragen ?? []).filter(passt),
       katalog: p.katalog_auswahl ? p.katalog_auswahl.map((n) => f.katalog[n]) : null,
       // Positionierung: die drei Stufen als Bausteine (Preis immer „ab“).
-      bausteine: p.bausteine ?? f.bausteine ?? (a.stufen ? a.stufen.map((x) => ({ name: `Positionierung ${x.name} · ab ${x.preis.replace(/^ab /, '')}`, hinweis: `Workshop: ${x.workshop}`, text: x.ergebnis })) : undefined),
+      bausteine: p.bausteine ?? f.bausteine ?? (a.stufen ? a.stufen.map((x) => ({ name: offen(a) ? `Positionierung ${x.name}` : `Positionierung ${x.name} · ab ${x.preis.replace(/^ab /, '')}`, hinweis: `Workshop: ${x.workshop}`, text: x.ergebnis })) : undefined),
     };
   };
   /** Angebote eines Bereichs in Gruppen (Homepage-Pakete, Videos, …); Einzelne bilden eine Gruppe ohne Titel. */
@@ -447,6 +453,7 @@ ${fussSpalte('MAKE Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über 
     const basis = { '@type': 'Offer', url, priceCurrency: 'EUR', availability: bald(a) ? 'https://schema.org/PreOrder' : 'https://schema.org/InStock', eligibleCustomerType: 'https://schema.org/Business', seller: { '@id': ORG } };
     const spez = (preis, extra = {}) => ({ '@type': monat ? 'UnitPriceSpecification' : 'PriceSpecification', priceCurrency: 'EUR', valueAddedTaxIncluded: false, ...(monat ? { unitCode: 'MON', unitText: 'Monat' } : {}), ...preis, ...extra });
     const zahl = (s) => String(Number(String(s).replace(/[^\d]/g, '')));
+    if (offen(a)) return { ...basis, name: a.name };
     if (a.stufen) return a.stufen.map((s) => ({ ...basis, name: `${a.name.replace(/ S, M, L$/, '')} ${s.name}`, price: zahl(s.preis), priceSpecification: spez({ price: zahl(s.preis) }) }));
     if (/^ab /.test(a.preis)) return { ...basis, name: a.name, priceSpecification: spez({ minPrice: zahl(a.preis) }) };
     return { ...basis, name: a.name, price: zahl(a.preis), priceSpecification: spez({ price: zahl(a.preis) }) };
@@ -679,6 +686,7 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
 <div class="ersatz" aria-hidden="true">${ZEICHEN('zeichen gross')}</div>
 <p class="sr">${[fl.laerm, fl.fokus, fl.luecke, fl.momentum, fl.durchbruch].map((b) => `${e(b.titel.replace(/\|/g, " "))} ${e(b.satz)}`).join(' ')}</p>
 <div class="aufgaben" aria-hidden="true">${F.aufgaben.map((x) => `<span class="aufgabe">${e(x)}</span>`).join('')}</div>
+<div class="ergebnisse" aria-hidden="true">${(F.ergebnisse ?? []).map((x) => `<span class="ergebnis">${e(x)}</span>`).join('')}</div>
 ${block('laerm', fl.laerm, `<span class="hinweis" aria-hidden="true">Scrollen<span class="hinweis-strich"></span></span>`)}
 ${block('fokus', fl.fokus)}
 ${block('luecke', fl.luecke)}
@@ -693,7 +701,7 @@ ${block('durchbruch', fl.durchbruch)}
 <section class="held start-held" id="einstieg" aria-labelledby="start-titel"><div class="w start-raster">
 <div class="start-titel erscheint">${vorzeile(F.start.vorzeile)}<h1 id="start-titel" class="glanz">${titel(F.start.titel, F.start.ruhig)}</h1></div>
 <div class="start-zeile erscheint"><p class="lead">${t(F.start.lead)}</p>
-<div class="knoepfe">${erstKnopf()}${passenderKnopf(undefined, 'start_held')}</div></div>
+<div class="knoepfe">${checkKnopf('start_held')}${erstKnopf('zweit', 'Erstgespräch vereinbaren')}</div></div>
 <nav class="tueren erscheint" aria-label="Ihr Anliegen">${F.tueren.map((d) => `<a href="${d.pfad ?? `#${d.id}`}">${tuerZeichen(d.id)}<span class="nr">${e(d.etikett)}</span><b>${e(d.titel)}</b><span class="index-satz">${t(d.text)}</span>${PFEIL}</a>`).join('')}</nav>
 </div></section>
 
@@ -931,7 +939,7 @@ ${pb.katalog ? `<section class="abschnitt" aria-labelledby="katalog-titel"><div 
 <div class="zwei-teile"><div class="erscheint">${datenTabelle([...pb.konditionen, ...(abs?.kondition && !pb.konditionen.some(([x]) => x === 'Ihr Risiko') ? [['Ausstieg', abs.kondition]] : [])])}${netto}</div>
 <div class="erscheint"><h3 class="gruppe-titel">Was wir von Ihnen brauchen</h3>${punkte(pb.mitwirkung)}${nichtEnthalten ? `<h3 class="gruppe-titel">Nicht enthalten</h3>${punkte(nichtEnthalten, 'punkte nicht')}` : ''}${pb.abgrenzung ? `<h3 class="gruppe-titel">Abgrenzung</h3><p class="leise">${t(pb.abgrenzung)}</p>` : ''}</div></div></div></section>`
       : `<section class="abschnitt" aria-labelledby="inhalt-titel"><div class="w">${abKopf({ marke: 'Leistung', h2: 'Was drin ist', lead: a.fuer_wen, id: 'inhalt-titel' })}
-${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class="spalte"><span class="etikett">Workshop: ${e(s.workshop)}</span><h3>Positionierung ${e(s.name)}</h3><p class="stufe-preis">ab ${e(s.preis.replace(/^ab /, ''))}</p><p>${t(s.ergebnis)}</p></div>`).join('')}</div>${netto}` : ''}
+${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class="spalte"><span class="etikett">Workshop: ${e(s.workshop)}</span><h3>Positionierung ${e(s.name)}</h3>${offen(a) ? '' : `<p class="stufe-preis">ab ${e(s.preis.replace(/^ab /, ''))}</p>`}<p>${t(s.ergebnis)}</p></div>`).join('')}</div>${netto}` : ''}
 <div class="zwei-teile">${a.enthalten ? `<div class="erscheint"><h3 class="gruppe-titel">Enthalten</h3>${punkte(a.enthalten)}</div>` : ''}
 <div class="erscheint">${nichtEnthalten ? `<h3 class="gruppe-titel">Nicht enthalten</h3>${punkte(nichtEnthalten, 'punkte nicht')}` : ''}<h3 class="gruppe-titel">Gut zu wissen</h3>${punkte(regeln)}</div></div>
 </div></section>`;
@@ -1569,7 +1577,7 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
       aktiv: 'leistungen',
       bildVorzeile: 'Preise',
       bildTitel: 'Alle Preise auf einen Blick. Fest und netto.',
-      schema: [{ '@type': 'OfferCatalog', '@id': `${absolut('/preise/')}#katalog`, name: 'Preise von MAKE Innovation', numberOfItems: angeboteAlle.length, itemListElement: angeboteAlle.filter((a) => !bald(a)).flatMap((a) => [angebotDaten(a)].flat().map((o) => ({ ...o, itemOffered: { '@type': 'Service', name: a.name, url: absolut(produktPfad(a)) } }))) }],
+      schema: [{ '@type': 'OfferCatalog', '@id': `${absolut('/preise/')}#katalog`, name: 'Preise von MAKE Innovation', numberOfItems: angeboteAlle.length, itemListElement: angeboteAlle.filter((a) => !ohnePreis(a)).flatMap((a) => [angebotDaten(a)].flat().map((o) => ({ ...o, itemOffered: { '@type': 'Service', name: a.name, url: absolut(produktPfad(a)) } }))) }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, 'Preise']])}${vorzeile('Preise')}<h1 id="held-titel" class="glanz">${titel('Alle Preise.', 'Offen und netto.')}</h1><p class="lead">Jeder Preis gilt für den beschriebenen Umfang. Den genauen Festpreis bekommen Sie vor dem Start schriftlich, ohne Abrechnung nach Stunden. Die Details stehen auf der Seite des Angebots.</p>
 <nav class="az breit" aria-label="Auf dieser Seite">${PREISE_REIHE.map((k) => `<a href="#preise-${k}">${e(B[k].name)}</a>`).join('')}${BS_LISTE.length ? '<a href="#preise-bausteine">Bausteine</a>' : ''}<a href="#kostenlos-titel">Kostenlos</a><a href="#konditionen-titel">Konditionen</a></nav></div>
@@ -1608,7 +1616,7 @@ ${schlussakt({ quelle: 'preise_ende' })}`,
 
   // llms.txt (Vorschlag llmstxt.org): kurzer Wegweiser für KI-Assistenten, dazu llms-full.txt mit allen Inhalten als Klartext.
   const mdLink = (n, p) => `[${n}](${absolut(p)})`;
-  const angebotMd = (a) => `- ${mdLink(a.name, produktPfad(a))}: ${bald(a) ? 'bald, Anfrage schon jetzt möglich, Preis auf Anfrage' : `ab ${erster(a)} netto${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}`}. ${klar(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? '')}${bald(a) ? ' Startet in Kürze.' : ''}`;
+  const angebotMd = (a) => `- ${mdLink(a.name, produktPfad(a))}: ${bald(a) ? 'bald, Anfrage schon jetzt möglich, Preis auf Anfrage' : offen(a) ? `${OFFEN_TEXT}${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}` : `ab ${erster(a)} netto${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}`}. ${klar(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? '')}${bald(a) ? ' Startet in Kürze.' : ''}`;
   const faktenMd = [...F.fakten, ['Betreiber', `${anbieter.name}, ${anbieter.adresse.map(klar).join(', ')}`], ['Kontakt', seite.kontakt.mail]].map(([k, v]) => `- ${k}: ${klar(v)}`).join('\n');
   const familieMd = `${klar(FAM.dach_satz)}\n\n${FAM.marken.map((m) => `- [${m.name}](${m.url}): ${klar(m.satz)} Thema: ${m.thema}. ${m.dort} stehen dort, Preise und Umfang bei ${F.marke.name}.`).join('\n')}\n- ${F.marke.name}: KI, Abläufe, Daten, Software und der Innovations-Check, dazu die Preise aller Angebote.`;
   const leistungenMd = BEREICHE.map((k) => `### ${B[k].name}: ${B[k].paar}\n\n${markeVon(k) ? `Dieses Thema liefert die Marke [${markeVon(k).name}](${markeVon(k).url}). Hier stehen Preise und Umfang.\n\n` : ''}${klar(B[k].kurz)}\n\n${k === 'innovation' ? `- ${mdLink('Innovations-Check', '/innovations-check/')}: kostenlos, rund 10 Minuten. ${klar(F.check.text)}\n` : ''}${produkteIn(k).map(angebotMd).join('\n')}`).join('\n\n');
@@ -1618,7 +1626,7 @@ ${schlussakt({ quelle: 'preise_ende' })}`,
 
 > ${klar(F.marke.beschreibung)} Claim: „${F.marke.claim}“
 
-${klar(F.start.lead)} Alle Preise sind fest, netto und auf der Website veröffentlicht.
+${klar(F.start.lead)} Die Preise der Einstiegsangebote stehen netto auf der Website, die übrigen nennen wir im Erstgespräch.
 
 ## Marken
 
@@ -1717,7 +1725,7 @@ ${W.artikel.map(artikelMd).join('\n\n')}
       events: 'events[] ab heute (datum JJJJ-MM-TT oder JJJJ-MM-TTThh:mm), höchstens 6 — Events-Seite',
       'termin-naechster': 'erstes kommendes Event — Startseite und Events-Seite',
     },
-    angebote: ANGEBOTE.map((a, i) => ({ id: a.id, bereich: slug(a.bereich), titel: klar(F.titel_h1?.[a.id] ?? a.name), kurz: klar(F.kurztexte?.[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? ''), preisText: bald(a) ? null : preisKurz(a).replace(/\u00a0/g, ' '), preisNetto: bald(a) ? null : cent(erster(a)), ab: !bald(a), monatlich: monatlich(a), bald: bald(a), seite: produktPfad(a), rang: i + 1 })),
+    angebote: ANGEBOTE.map((a, i) => ({ id: a.id, bereich: slug(a.bereich), titel: klar(F.titel_h1?.[a.id] ?? a.name), kurz: klar(F.kurztexte?.[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? ''), preisText: bald(a) ? null : preisKurz(a).replace(/\u00a0/g, ' '), preisNetto: ohnePreis(a) ? null : cent(erster(a)), ab: !ohnePreis(a), offen: offen(a), monatlich: monatlich(a), bald: bald(a), seite: produktPfad(a), rang: i + 1 })),
     bausteine: BS_LISTE.map((b, i) => ({ id: b.id, bereich: b.bereich, titel: b.titel, kurz: b.kurz, preisNetto: b.preis, paket: !!b.paket, seite: b.seite, rang: i + 1 })),
     events: [],
     faq: START.faq,
