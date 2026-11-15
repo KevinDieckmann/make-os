@@ -211,7 +211,6 @@
   },
   {
    "id": "cso",
-   "preis_offen": true,
    "bereich": "Vertrieb",
    "name": "Chief Sales Officer (CSO)",
    "preis": "4.990 €",
@@ -235,7 +234,6 @@
    "id": "ki-crm",
    "bereich": "Vertrieb",
    "name": "KI-CRM selbst bauen",
-   "preis_offen": true,
    "preis": "ab 4.990 €",
    "preis_zusatz": "einmalig, Lieferung in 4 Wochen",
    "fuer_wen": "Für Firmen, die kein Mandat wollen, sondern ihr eigenes KI-gestütztes CRM.",
@@ -271,7 +269,6 @@
   },
   {
    "id": "homepage-story",
-   "preis_offen": true,
    "bereich": "Sichtbarkeit",
    "gruppe": "Homepage-Pakete",
    "name": "Homepage Story",
@@ -291,7 +288,6 @@
   },
   {
    "id": "homepage-cinematic",
-   "preis_offen": true,
    "bereich": "Sichtbarkeit",
    "gruppe": "Homepage-Pakete",
    "name": "Homepage Cinematic",
@@ -310,7 +306,6 @@
   },
   {
    "id": "erklaervideo",
-   "preis_offen": true,
    "bereich": "Sichtbarkeit",
    "gruppe": "Videos",
    "name": "Erklärvideo",
@@ -328,7 +323,6 @@
   },
   {
    "id": "videostory",
-   "preis_offen": true,
    "bereich": "Sichtbarkeit",
    "gruppe": "Videos",
    "name": "Videostory",
@@ -384,9 +378,8 @@
    "bereich": "Sichtbarkeit",
    "gruppe": "PR und Kommunikation",
    "name": "PR und Kommunikation",
-   "preis_offen": true,
    "preis": "ab 2.990 €",
-   "preis_zusatz": "pro Monat, 6 Monate",
+   "preis_zusatz": "pro Monat, 6 oder 12 Monate",
    "fuer_wen": "Für Unternehmer und Mittelstand, deren Thema in Medien, Podcasts und auf Bühnen gehört werden soll, vom Markteintritt bis zur Krise.",
    "enthalten": [
     "Fundament: Kernbotschaften, Themenplan, Pressemappe und Pressebereich auf Ihrer Website",
@@ -411,7 +404,6 @@
   },
   {
    "id": "positionierung",
-   "preis_offen": true,
    "bereich": "Sichtbarkeit",
    "gruppe": "Positionierung",
    "name": "Positionierung S, M, L",
@@ -459,7 +451,6 @@
    "id": "umsetzungsprojekte",
    "bereich": "Innovation",
    "name": "Umsetzungsprojekte: KI und Software einführen",
-   "preis_text": "Festpreis nach Scoping-Workshop",
    "preis": "ab 9.990 €",
    "preis_zusatz": "Projekt-Festpreis mit klarem Umfang vorab",
    "status": "Coming Soon",
@@ -639,7 +630,7 @@
   {
    "id": "wie-lange-laufen-die-vertraege",
    "f": "Wie lange laufen die Verträge?",
-   "a": "Head of Sales und CSO laufen mindestens 3 Monate, danach sind sie zum Ende des Folgemonats kündbar. PR und Kommunikation läuft 6 Monate. Video Serie und Social-Media-Management laufen mindestens 3 Monate, danach sind sie monatlich kündbar. Tagesworkshop, Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis."
+   "a": "Head of Sales und CSO laufen mindestens 3 Monate, danach sind sie zum Ende des Folgemonats kündbar. PR und Kommunikation läuft 6 oder 12 Monate. Video Serie und Social-Media-Management laufen mindestens 3 Monate, danach sind sie monatlich kündbar. Tagesworkshop, Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis."
   },
   {
    "id": "was-kostet-der-tagesworkshop-und-was",
@@ -664,7 +655,7 @@
   {
    "id": "gibt-es-rabatt",
    "f": "Gibt es Rabatt?",
-   "a": "Bei Head of Sales, Chief Sales Officer sowie PR und Kommunikation gibt es 3 % Skonto bei Vorauszahlung der Mindestlaufzeit. Auf Monatsrechnungen, Homepages und Videos gibt es kein Skonto."
+   "a": "Bei Head of Sales, Chief Sales Officer sowie PR und Kommunikation gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen. Auf Monatsrechnungen, Homepages und Videos gibt es kein Skonto."
   },
   {
    "id": "sind-die-preise-netto",
@@ -674,7 +665,7 @@
  ],
  "konditionen": [
   "Alle Preise netto zuzüglich Umsatzsteuer",
-  "Head of Sales, CSO sowie PR und Kommunikation: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto bei Vorauszahlung der Mindestlaufzeit",
+  "Head of Sales, CSO sowie PR und Kommunikation: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen",
   "Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, zahlbar in 14 Tagen; wir starten nach Zahlungseingang",
   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
  ],
@@ -904,6 +895,6 @@
    "Innovation: Von Ausprobieren zu Umsetzen",
    "Landingpage Innovations-Check: So funktioniert der Check mit Zoe"
   ],
-  "verkauf": "Dieselbe Produktionsweise ist das Angebot Erklärvideo und Video Serie ab 1.990 €/Monat. Unsere eigenen Videos dienen als Referenz."
+  "verkauf": "Dieselbe Produktionsweise ist das Angebot Erklärvideo ab 1.490 € und Video Serie ab 1.990 €/Monat. Unsere eigenen Videos dienen als Referenz."
  }
 }

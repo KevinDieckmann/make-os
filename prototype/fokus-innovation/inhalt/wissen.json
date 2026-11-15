@@ -240,7 +240,7 @@
         {
           "h": "Was es bei uns kostet",
           "absaetze": [
-            "Der Head of Sales kostet {preis:head-of-sales} netto im Monat, mindestens 3 Monate, danach zum Ende des Folgemonats kündbar. Der Tagesworkshop für {preis:tagesworkshop} wird beim Start voll angerechnet. Es gibt 3 % Skonto bei Vorauszahlung der Mindestlaufzeit. Jedes Mandat bekommt bei uns feste Zeit im Kalender."
+            "Der Head of Sales kostet {preis:head-of-sales} netto im Monat, mindestens 3 Monate, danach zum Ende des Folgemonats kündbar. Der Tagesworkshop für {preis:tagesworkshop} wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Jedes Mandat bekommt bei uns feste Zeit im Kalender."
           ]
         }
       ],
@@ -352,7 +352,7 @@
         {
           "h": "Wie wir dabei arbeiten",
           "absaetze": [
-            "Unsere Positionierung gibt es in drei Tiefen. S liefert Ihre Positionierung in fünf Sätzen, in einem Satz und in sieben Wörtern und prüft sie gegen zehn Grundsätze. M ergänzt Kundeninterviews, den Blick auf den Wettbewerb und einen Elevator Pitch. L reicht bis zur Markenstory mit Claim und Textbausteinen. Jede Stufe ist mit KI vorbereitet und endet in einem Workshop mit Kevin. Den Preis der passenden Stufe nennen wir im Erstgespräch, netto und einmalig."
+            "Unsere Positionierung gibt es in drei Tiefen. S liefert Ihre Positionierung in fünf Sätzen, in einem Satz und in sieben Wörtern und prüft sie gegen zehn Grundsätze. M ergänzt Kundeninterviews, den Blick auf den Wettbewerb und einen Elevator Pitch. L reicht bis zur Markenstory mit Claim und Textbausteinen. Jede Stufe ist mit KI vorbereitet und endet in einem Workshop mit Kevin. S kostet ab 1.990 €, M ab 2.990 €, L ab 4.990 €, jeweils netto und einmalig."
           ]
         }
       ],
@@ -363,7 +363,7 @@
         },
         {
           "f": "Was kostet eine Positionierung?",
-          "a": "Den Preis nennen wir im Erstgespräch, je nach Stufe, netto und einmalig. Er steht fest, bevor wir anfangen."
+          "a": "S ab 1.990 €, M ab 2.990 €, L ab 4.990 €, jeweils netto und einmalig."
         },
         {
           "f": "Brauche ich eine Positionierung, bevor ich eine Website baue?",
@@ -449,7 +449,7 @@
       "fragen": [
         {
           "f": "Was kostet eine Homepage bei Ihnen?",
-          "a": "Landing {preis:homepage-landing} netto, einmalig. Story und Cinematic gehen tiefer, ihren Preis nennen wir im Erstgespräch. Hosting und Domain laufen über Sie, die laufenden Kosten zahlen Sie direkt an Ihren Anbieter."
+          "a": "Landing {preis:homepage-landing}, Story {preis:homepage-story}, Cinematic {preis:homepage-cinematic}, jeweils netto und einmalig. Hosting und Domain laufen über Sie, die laufenden Kosten zahlen Sie direkt an Ihren Anbieter."
         },
         {
           "aus": "homepage-story",
@@ -550,7 +550,7 @@
       "fragen": [
         {
           "f": "Was kostet ein Erklärvideo?",
-          "a": "Den Preis nennen wir im Erstgespräch, einmalig und netto. Fertig ist es in 10 Werktagen ab vollständigem Formular und Zahlungseingang."
+          "a": "{preis:erklaervideo} netto, einmalig, fertig in 10 Werktagen ab vollständigem Formular und Zahlungseingang."
         },
         {
           "aus": "erklaervideo",

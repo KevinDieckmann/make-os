@@ -273,7 +273,7 @@
         ],
         [
           "Zahlung",
-          "monatlich, Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto bei Vorauszahlung der Mindestlaufzeit"
+          "monatlich, Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; oder die volle Laufzeit vorab mit 3 % Skonto"
         ],
         [
           "Anrechnung",
@@ -404,7 +404,7 @@
       "konditionen": [
         [
           "Preis",
-          "im Erstgespräch, netto im Monat"
+          "ab 4.990 € netto im Monat"
         ],
         [
           "Laufzeit",
@@ -412,7 +412,7 @@
         ],
         [
           "Zahlung",
-          "monatlich, Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto bei Vorauszahlung der Mindestlaufzeit"
+          "monatlich, Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; oder die volle Laufzeit vorab mit 3 % Skonto"
         ],
         [
           "Anrechnung",
@@ -613,7 +613,7 @@
       "konditionen_vorn": [
         [
           "Preis",
-          "im Erstgespräch, netto und einmalig"
+          "ab 4.990 € netto, einmalig"
         ]
       ]
     },
@@ -686,7 +686,7 @@
       "konditionen_vorn": [
         [
           "Preis",
-          "im Erstgespräch, netto und einmalig"
+          "ab 9.990 € netto, einmalig"
         ]
       ]
     },
@@ -753,7 +753,7 @@
       "konditionen_vorn": [
         [
           "Preis",
-          "im Erstgespräch, netto und einmalig"
+          "ab 1.490 € netto, einmalig"
         ],
         [
           "Zahlung",
@@ -824,7 +824,7 @@
       "konditionen_vorn": [
         [
           "Preis",
-          "im Erstgespräch, netto und einmalig"
+          "ab 1.990 € netto, einmalig"
         ],
         [
           "Zahlung",
@@ -966,7 +966,8 @@
             "Bilanz und Übergabe",
             "Kommunikationshandbuch, Abschlussbericht, Plan für die nächsten Monate"
           ]
-        ]
+        ],
+        "hinweis": "Bei 12 Monaten: Monate 7 bis 9 Themen und Bühnen ausbauen, Monate 10 bis 12 Jahresplan und Übergabe an Ihr Team oder Weiterführung."
       },
       "ergebnis": [
         "Bis Ende Monat 1 stehen Kernbotschaften, Themenlandkarte, Zielmedien und Krisenplan im Entwurf.",
@@ -981,11 +982,11 @@
         ],
         [
           "Laufzeit",
-          "6 Monate"
+          "6 oder 12 Monate"
         ],
         [
           "Zahlung",
-          "monatlich, Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto bei Vorauszahlung der Mindestlaufzeit"
+          "monatlich, Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; oder die volle Laufzeit vorab mit 3 % Skonto"
         ],
         [
           "Freigabe",

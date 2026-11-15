@@ -88,8 +88,8 @@ was fehlt, steht als gelber Platzhalter `[[KEVIN: …]]` und blockiert die Freig
   ihre Produktseite aus `inhalt/produkte.json` (dunkel: Ausgangslage, Ablauf mit Ergebnis · hell: Leistung, Videokatalog, Preis und Konditionen,
   Mitwirkung, Fragen). Sichtbarkeit zeigt die Paket- und Video-Vergleiche (am Handy als Karten). Weitere Angebote auf Paketseiten = die anderen Pakete.
 - **Korrigiert nach dem Artikelstamm:** Video Serie 1.990 €/Monat mit 2 Videos aus dem Katalog (vorher 1.490 € „Erklärvideo + Videostory“) ·
-  Homepages und Videos Vorkasse, Raten nur auf Nachfrage, kein Skonto (vorher „3 Raten“/„50/50“) · Skonto 3 % nur bei Head of Sales/CSO/PR bei Vorauszahlung der
-  Mindestlaufzeit · Lieferzeiten Story 15, Cinematic 25 Werktage · CSO-Intros frühestens nach 6 Monaten, ohne Provision · Fokus Innovation alle zwei
+  Homepages und Videos Vorkasse, Raten nur auf Nachfrage, kein Skonto (vorher „3 Raten“/„50/50“) · Skonto 3 % nur bei Head of Sales/CSO mit voller
+  Laufzeit vorab · Lieferzeiten Story 15, Cinematic 25 Werktage · CSO-Intros frühestens nach 6 Monaten, ohne Provision · Fokus Innovation alle zwei
   Monate, für Gäste kostenlos.
 - **Ausgeblendet (`seite.json › ausgeblendet`, Kevin entscheidet):** KI-CRM („kommt später, vorerst nicht aktiv angeboten“) · Zusatzoptionen
   Bild- und Videoproduktion und Social Media Management (nicht im Artikelstamm; Videos „nicht für Dreh vor Ort“).
