@@ -242,8 +242,9 @@ export function seitenBauen(q = quellen()) {
   const erster = (a) => `${a.preis.replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '')}\u00a0€`;
   /** Preise (Kevin 30.10.: „Wir machen immer ab-Preise, nicht mit allen Preisen rausgehen“): überall nur der Einstiegspreis mit „ab“ —
    *  Listen, Angebotsseiten, Preisseite, llms.txt; was erst startet, hat noch keinen. Der volle Preis steht nur in den Daten. */
-  const preisKurz = (a) => (bald(a) ? 'Anfrage starten' : offen(a) ? OFFEN_TEXT : `ab ${erster(a)}${monatlich(a) ? ' / Monat' : ''}`);
-  const preisVoll = (a) => (bald(a) ? 'Preis auf Anfrage' : offen(a) ? OFFEN_TEXT : `ab ${erster(a)}`);
+  const preisKurz = (a) => (a.preis_text ? a.preis_text : bald(a) ? 'Anfrage starten' : offen(a) ? OFFEN_TEXT : `ab ${erster(a)}${monatlich(a) ? ' / Monat' : ''}`);
+  // Kevin 15.11.: ein fester Preistext (inhalt.json preis_text), z. B. Umsetzungsprojekte „Festpreis nach Scoping-Workshop“.
+  const preisVoll = (a) => (a.preis_text ? a.preis_text : bald(a) ? 'Preis auf Anfrage' : offen(a) ? OFFEN_TEXT : `ab ${erster(a)}`);
   /** Preis mit Markierung für js/inhalt.js (31.10., Bereich „Website“ in MAKE OS): ohne Antwort der App bleibt dieser Text stehen. */
   const mkPreis = (a, text) => (a && !ohnePreis(a) ? `<span data-mk="preis:${e(a.id)}">${e(text)}</span>` : e(text));
   const anbieter = seite.anbieter[seite.anbieter_aktiv];
@@ -1616,7 +1617,7 @@ ${schlussakt({ quelle: 'preise_ende' })}`,
 
   // llms.txt (Vorschlag llmstxt.org): kurzer Wegweiser für KI-Assistenten, dazu llms-full.txt mit allen Inhalten als Klartext.
   const mdLink = (n, p) => `[${n}](${absolut(p)})`;
-  const angebotMd = (a) => `- ${mdLink(a.name, produktPfad(a))}: ${bald(a) ? 'bald, Anfrage schon jetzt möglich, Preis auf Anfrage' : offen(a) ? `${OFFEN_TEXT}${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}` : `ab ${erster(a)} netto${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}`}. ${klar(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? '')}${bald(a) ? ' Startet in Kürze.' : ''}`;
+  const angebotMd = (a) => `- ${mdLink(a.name, produktPfad(a))}: ${bald(a) ? `bald, Anfrage schon jetzt möglich, ${a.preis_text ?? 'Preis auf Anfrage'}` : offen(a) ? `${OFFEN_TEXT}${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}` : `ab ${erster(a)} netto${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}`}. ${klar(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? '')}${bald(a) ? ' Startet in Kürze.' : ''}`;
   const faktenMd = [...F.fakten, ['Betreiber', `${anbieter.name}, ${anbieter.adresse.map(klar).join(', ')}`], ['Kontakt', seite.kontakt.mail]].map(([k, v]) => `- ${k}: ${klar(v)}`).join('\n');
   const familieMd = `${klar(FAM.dach_satz)}\n\n${FAM.marken.map((m) => `- [${m.name}](${m.url}): ${klar(m.satz)} Thema: ${m.thema}. ${m.dort} stehen dort, Preise und Umfang bei ${F.marke.name}.`).join('\n')}\n- ${F.marke.name}: KI, Abläufe, Daten, Software und der Innovations-Check, dazu die Preise aller Angebote.`;
   const leistungenMd = BEREICHE.map((k) => `### ${B[k].name}: ${B[k].paar}\n\n${markeVon(k) ? `Dieses Thema liefert die Marke [${markeVon(k).name}](${markeVon(k).url}). Hier stehen Preise und Umfang.\n\n` : ''}${klar(B[k].kurz)}\n\n${k === 'innovation' ? `- ${mdLink('Innovations-Check', '/innovations-check/')}: kostenlos, rund 10 Minuten. ${klar(F.check.text)}\n` : ''}${produkteIn(k).map(angebotMd).join('\n')}`).join('\n\n');

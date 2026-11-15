@@ -28,8 +28,8 @@
       "satz": "Ein Vertrieb mit System macht aus Anfragen Termine und aus Terminen Kunden. KI übernimmt, was sich wiederholt."
     },
     "durchbruch": {
-      "titel": "Innovation braucht|Umsetzung.",
-      "satz": "Wir beraten nicht nur, wir setzen mit um. Im Café um die Ecke genauso wie im KI-Start-up."
+      "titel": "Wir setzen mit um.",
+      "satz": "Wir beraten nicht nur. Im Café um die Ecke genauso wie im KI-Start-up."
     }
   },
   "start": {
@@ -161,7 +161,7 @@
         "titel": "Netzwerk und Events",
         "text": "Manche Kunden lernt man am besten persönlich kennen. Wir laden Sie zu unseren Events ein und stellen Kontakte her, wo es passt. Was Sie dafür brauchen, besprechen wir im Gespräch."
       },
-      "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung in drei Stufen, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Video Serie ab {preis:video-serie} im Monat, Social Media ab {preis:social-media} im Monat sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.",
+      "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung in drei Stufen, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Video Serie ab {preis:video-serie} im Monat, Social Media ab {preis:social-media} im Monat, alles netto, dazu PR und Kommunikation mit Preis im Erstgespräch. Jeweils mit festem Ablauf und Texten von uns.",
       "auf_anfrage": []
     },
     "vertrieb": {
@@ -715,7 +715,7 @@
       },
       "pr-kommunikation": {
         "titel": "PR und Kommunikation auf Zeit · MAKE Innovation",
-        "beschreibung": "Auftritte und Beiträge in Leitmedien, Fachmedien, regionalen Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krise. Ab {ab:pr-kommunikation} netto im Monat."
+        "beschreibung": "Auftritte und Beiträge in Leitmedien, Fachmedien, regionalen Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krise. Preis im Erstgespräch."
       },
       "in-den-markt": {
         "titel": "Innovation in den Markt bringen · MAKE Innovation",
