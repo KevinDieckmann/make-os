@@ -1,6 +1,6 @@
 # MAKE Innovation: alle Inhalte als Klartext
 
-Stand: 2026-11-15. Website: https://makeinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
+Stand: 2026-11-13. Website: https://makeinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
 
 ## Wer wir sind
 
@@ -30,7 +30,7 @@ Was wir nicht sind: Keine reine Werbe- oder PR-Agentur (Keine Kampagne und keine
 
 Dieses Thema liefert die Marke [MAKE Studios](https://makestudios.de/). Hier stehen Preise und Umfang.
 
-Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab 1.990 €, Websites ab 2.990 € mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab 1.490 €, Social Media ab 990 € im Monat sowie PR und Kommunikation ab 2.990 € im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.
+Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab 1.990 €, Websites ab 2.990 € mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab 1.490 € sowie PR und Kommunikation ab 2.990 € im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.
 
 - [Positionierung S, M, L](https://makeinnovation.de/sichtbarkeit/positionierung/): ab 1.990 € netto (einmalig, KI-gestützt vorbereitet, Workshop mit Kevin). In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.
 - [PR und Kommunikation](https://makeinnovation.de/sichtbarkeit/pr-kommunikation/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation.
@@ -39,18 +39,17 @@ Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab 1.990 €, W
 - [Homepage Cinematic](https://makeinnovation.de/sichtbarkeit/homepage-cinematic/): ab 9.990 € netto (einmalig, fertig in 25 Werktagen). Wir entwickeln Ihre Geschichte im Story-Workshop und bauen daraus eine Website mit 3D-Szenen und Erklärvideo. Fertig in 25 Werktagen.
 - [Erklärvideo](https://makeinnovation.de/sichtbarkeit/erklaervideo/): ab 1.490 € netto (einmalig, fertig in 10 Werktagen). Ihr Angebot in 90 Sekunden verstanden: ein Erklärvideo in Ihrer CI, fertig in 10 Werktagen.
 - [Videostory](https://makeinnovation.de/sichtbarkeit/videostory/): ab 1.990 € netto (einmalig, fertig in 15 Werktagen). Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich erzählt und in Ihrer CI.
-- [Video Serie](https://makeinnovation.de/sichtbarkeit/video-serie/): ab 1.990 € netto (pro Monat, mindestens 3 Monate, danach monatlich kündbar). Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.
-- [Social-Media-Management](https://makeinnovation.de/sichtbarkeit/social-media/): ab 990 € netto (pro Monat, mindestens 3 Monate, danach monatlich kündbar). Regelmäßig sichtbar in Ihren Kanälen: Redaktionsplan, Texte, Reels und Veröffentlichung kommen von uns. Sie liefern die Bilder und geben frei.
+- [Video Serie](https://makeinnovation.de/sichtbarkeit/video-serie/): ab 1.990 € netto (pro Monat, mindestens 3 Monate). Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.
 
 ### Vertrieb: Planbar verkaufen.
 
 Dieses Thema liefert die Marke [MAKE Revenue](https://makerevenue.de/). Hier stehen Preise und Umfang.
 
-Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop ab 1.490 € netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils mindestens 3 Monate, danach zum Ende des Folgemonats kündbar.
+Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop ab 1.900 € netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.
 
-- [Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit](https://makeinnovation.de/vertrieb/tagesworkshop/): ab 1.490 € netto (einmalig, wird beim Mandatsstart voll angerechnet). Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
-- [Head of Sales](https://makeinnovation.de/vertrieb/head-of-sales/): ab 2.990 € netto (pro Monat, mindestens 3 Monate, danach zum Ende des Folgemonats kündbar). Wir bauen Ihnen einen Vertrieb mit System, den Ihr Team ohne Sie bedienen kann.
-- [Chief Sales Officer (CSO)](https://makeinnovation.de/vertrieb/cso/): ab 4.990 € netto (pro Monat, mindestens 3 Monate, danach zum Ende des Folgemonats kündbar). Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.
+- [Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit](https://makeinnovation.de/vertrieb/tagesworkshop/): ab 1.900 € netto (einmalig, wird beim Mandatsstart voll angerechnet). Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
+- [Head of Sales](https://makeinnovation.de/vertrieb/head-of-sales/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Wir bauen Ihnen einen Vertrieb mit System, den Ihr Team ohne Sie bedienen kann.
+- [Chief Sales Officer (CSO)](https://makeinnovation.de/vertrieb/cso/): ab 4.990 € netto (pro Monat, 6 oder 12 Monate). Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.
 
 ### Innovation: Im Alltag ankommen.
 
@@ -79,10 +78,10 @@ Frage: Was ist der Unterschied zwischen Head of Sales und CSO?
 Antwort: Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer macht all das auch und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum CSO wechseln.
 
 Frage: Wie lange laufen die Verträge?
-Antwort: Head of Sales und CSO laufen mindestens 3 Monate, danach sind sie zum Ende des Folgemonats kündbar. PR und Kommunikation läuft 6 oder 12 Monate. Videoserie und Social-Media-Management laufen mindestens 3 Monate, danach sind sie monatlich kündbar. Tagesworkshop, Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis.
+Antwort: Head of Sales, CSO sowie PR und Kommunikation laufen 6 oder 12 Monate. Die Videoserie läuft mindestens 3 Monate, danach ist sie monatlich kündbar. Tagesworkshop, Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis.
 
 Frage: Was kostet der Tagesworkshop, und was passiert danach?
-Antwort: Ab 1.490 €. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an.
+Antwort: Ab 1.900 €. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an.
 
 Frage: Wie schnell ist meine Homepage fertig?
 Antwort: Landing in 10, Story in 15, Cinematic in 25 Werktagen. Die Zeit läuft ab vollständigem Formular und Zahlungseingang. Mit Express halbiert sich die Lieferzeit.
@@ -115,7 +114,7 @@ Antwort: Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich a
 - Landingpage: Eine einzelne Seite, die ein Angebot und einen nächsten Schritt in den Mittelpunkt stellt, oft als Ziel einer Anzeige. Eine ganze Website auf einer Seite heißt One-Pager; unser Paket Homepage Landing ist so eine.
 - Lead: Ein Kontakt, der Interesse an Ihrem Angebot gezeigt hat oder gut zu Ihrer Zielgruppe passt.
 - Lead-Scoring: Eine Einteilung der Kontakte danach, wie gut sie passen, zum Beispiel in A, B und C. A-Kontakte bekommen zuerst Zeit.
-- MAKE Innovation · Events: Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Impulsabende, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, alle zwei Monate, auf Einladung und für Unternehmer kostenlos.
+- MAKE Innovation · Events: Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Impulsabende, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.
 - Persona: Die Beschreibung eines typischen Käufers: Rolle, Ziele, Probleme und der Anlass, zu dem er nach einer Lösung sucht.
 - Pipeline: Alle offenen Verkaufschancen, geordnet nach Stufe vom Erstkontakt bis zum Abschluss. Sie zeigt, was in den nächsten Wochen zum Abschluss kommen kann.
 - Positionierung: Die Antwort darauf, für wen Sie da sind, welches Problem Sie lösen und warum man Sie wählt. Grundlage für Website, Videos und Verkaufsgespräche.
@@ -214,7 +213,7 @@ Antwort: Das hängt vom Ausgangspunkt ab. In unserem Mandat als Head of Sales l�
 
 Quelle: https://makeinnovation.de/wissen/head-of-sales-auf-zeit/ · Kevin Dieckmann · 2026-10-27
 
-Kurz gesagt: Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Er baut das System, setzt es mit Ihrem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Bei MAKE Innovation kostet das Mandat ab 2.990 € netto im Monat, mindestens 3 Monate, danach zum Ende des Folgemonats kündbar.
+Kurz gesagt: Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Er baut das System, setzt es mit Ihrem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Bei MAKE Innovation kostet das Mandat ab 2.990 € netto im Monat, bei 6 oder 12 Monaten Laufzeit.
 
 ### Was ein Head of Sales auf Zeit macht
 
@@ -242,7 +241,7 @@ Eine feste Vertriebsleitung lohnt sich, wenn das System steht und es vor allem u
 
 Head of Sales auf Zeit und feste Vertriebsleitung im Vergleich:
 - Start | nach dem Kick-off | nach Suche, Auswahl und Kündigungsfrist
-- Bindung | mindestens 3 Monate, danach zum Ende des Folgemonats kündbar | unbefristeter Arbeitsvertrag
+- Bindung | 6 oder 12 Monate | unbefristeter Arbeitsvertrag
 - Kosten | fester Monatspreis, Reisekosten nach Absprache gegen Beleg | Gehalt, Nebenkosten, Suche und Einarbeitung
 - Ziel | System aufbauen und übergeben | Vertrieb dauerhaft führen
 - Danach | Playbook, Leitfäden und Prozesse bleiben bei Ihnen | die Leitung bleibt im Unternehmen
@@ -263,7 +262,7 @@ Den Chief Sales Officer wählen Firmen, die ein Vertriebsteam aufbauen oder verg
 
 ### Was es bei uns kostet
 
-Der Head of Sales kostet ab 2.990 € netto im Monat, mindestens 3 Monate, danach zum Ende des Folgemonats kündbar. Der Tagesworkshop ab 1.490 € wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Jedes Mandat bekommt bei uns feste Zeit im Kalender.
+Der Head of Sales kostet ab 2.990 € netto im Monat bei 6 oder 12 Monaten Laufzeit. Der Tagesworkshop ab 1.900 € wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Jedes Mandat bekommt bei uns feste Zeit im Kalender.
 
 Frage: Brauche ich schon ein CRM?
 Antwort: Nein. Wenn Sie keins haben, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stufen, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten tragen Sie.
@@ -1336,7 +1335,7 @@ Kennzahlen beim Übergang:
 
 Mit der Tabelle zu diesem Ratgeber können Sie morgen anfangen: Phase wählen, Woche für Woche eintragen, die Quoten rechnet sie selbst. Nach einem Monat kennen Sie Ihre Ausgangswerte.
 
-Hilfe lohnt sich, wenn die Zahlen zeigen, dass etwas klemmt, aber nicht klar ist, woran. Im Tagesworkshop finden wir an einem Tag den Engpass und setzen den ersten Hebel direkt um. Als Head of Sales auf Zeit führen wir den Wochenrhythmus ein, bis Ihr Team ihn selbst hält.
+Hilfe lohnt sich, wenn die Zahlen zeigen, dass etwas klemmt, aber nicht klar ist, woran. Im Tagesworkshop finden wir an einem Tag den Engpass und setzen den ersten Hebel direkt um. Als Head of Sales auf Zeit führen wir den Wochenrhythmus ein, bis Ihr Team ihn selbst hält. Sollen die Zahlen von selbst aus dem CRM kommen, bauen wir Ihnen ein eigenes KI-CRM mit Kennzahlen-Trichter.
 
 Frage: Wie viele Kennzahlen braucht mein Vertrieb?
 Antwort: So wenige wie möglich. Sieben je Phase reichen, und nicht jede davon besprechen Sie jede Woche. Wichtiger als die Zahl der Kennzahlen ist, dass sie regelmäßig zur selben Zeit besprochen werden.
