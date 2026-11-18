@@ -37,7 +37,14 @@
     if (ev.key !== 'Escape') return;
     for (const p of punkte) if (p.matches(':hover, :focus-within')) { p.classList.add('zu'); if (p.contains(document.activeElement)) p.querySelector('a')?.focus(); }
   });
+  const einpassen = (p) => {
+    const u = p.querySelector('.unter'); if (!u) return;
+    u.style.left = ''; const r = u.getBoundingClientRect(), rand = 20;
+    const zuviel = r.right - (document.documentElement.clientWidth - rand);
+    if (zuviel > 0) u.style.left = `${-10 - zuviel}px`;
+  };
   for (const p of punkte) {
+    p.addEventListener('mouseenter', () => einpassen(p)); p.addEventListener('focusin', () => einpassen(p));
     p.addEventListener('mouseleave', () => p.classList.remove('zu'));
     p.addEventListener('focusout', (ev) => { if (!p.contains(ev.relatedTarget)) p.classList.remove('zu'); });
   }
@@ -60,7 +67,6 @@
         zahl.textContent = q >= 1 ? text : (ziel * q).toLocaleString('de-DE', { minimumFractionDigits: stellen, maximumFractionDigits: stellen });
         if (linie && kugel) { const x = (x0 + (x1 - x0) * q).toFixed(1); linie.setAttribute('x2', x); kugel.setAttribute('cx', x); }
       };
-      setzen(0);
       laeufe.set(el, setzen);
     }
     const dauer = 1700;
@@ -69,6 +75,7 @@
         if (!e.isIntersecting) continue;
         io.unobserve(e.target);
         const setzen = laeufe.get(e.target);
+        setzen(0);
         const warten = 250 + 180 * belege.indexOf(e.target);
         let t0 = null;
         const takt = (jetzt) => {
@@ -79,7 +86,7 @@
         };
         requestAnimationFrame(takt);
       }
-    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.2 });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
     for (const el of laeufe.keys()) io.observe(el);
   }
 
@@ -134,4 +141,23 @@
     zeigen(0);
   }
 
+  const unten = document.querySelector('[data-cta-unten]');
+  const kurz = document.getElementById('kurz');
+  if (unten && kurz) {
+    const oben = kurz.querySelector('.knopf.cta');
+    const finale = document.querySelector('#finale .knopf.cta');
+    const wurzel = document.documentElement;
+    let wartet = false;
+    const pruefen = () => {
+      wartet = false;
+      const hoehe = innerHeight;
+      const obenWeg = !!oben && oben.getBoundingClientRect().bottom < 0;
+      const finaleDa = !!finale && finale.getBoundingClientRect().top < hoehe;
+      wurzel.classList.toggle('cta-unten-da', obenWeg && !finaleDa);
+    };
+    const planen = () => { if (!wartet) { wartet = true; requestAnimationFrame(pruefen); } };
+    addEventListener('scroll', planen, { passive: true });
+    addEventListener('resize', planen);
+    pruefen();
+  }
 })();
