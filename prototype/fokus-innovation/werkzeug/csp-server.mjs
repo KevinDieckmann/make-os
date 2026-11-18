@@ -1,10 +1,11 @@
 // Kleiner Dateiserver zum Prüfen: liefert diesen Ordner mit den Kopfzeilen der Website aus (Sicherheitsregeln wie online).
-// Aufruf: node werkzeug/csp-server.mjs [port]   (Standard 3391). Wege der Anwendung (/check, /anfrage, /api/…) antworten mit 404.
+// Aufruf: node werkzeug/csp-server.mjs [port] [wurzel]   (Standard 3391, Wurzel = dieser Ordner). Wege der Anwendung (/check, /anfrage, /api/…) antworten mit 404.
+// Mit [wurzel] liefert er einen anderen Ordner aus, z. B. den Auslieferungsordner samt Vorschau-Kopie im Unterordner (werkzeug/vorschau-unterordner.mjs).
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
-import { dirname, extname, join, normalize } from 'node:path';
+import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-const WURZEL = join(dirname(fileURLToPath(import.meta.url)), '..');
+const WURZEL = process.argv[3] ? resolve(process.argv[3]) : join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.argv[2]) || 3391;
 const TYP = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.webmanifest': 'application/manifest+json', '.pdf': 'application/pdf' };
 const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'";
@@ -18,4 +19,4 @@ createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': TYP[extname(datei)] ?? 'application/octet-stream', 'Content-Security-Policy': CSP, 'Cache-Control': 'no-store' });
     res.end(inhalt);
   } catch { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Security-Policy': CSP }); res.end('gibt es nicht'); }
-}).listen(PORT, '127.0.0.1', () => console.log(`http://localhost:${PORT}/ (mit Content-Security-Policy)`));
+}).listen(PORT, '127.0.0.1', () => console.log(`http://localhost:${PORT}/ (mit Content-Security-Policy) aus ${WURZEL}`));

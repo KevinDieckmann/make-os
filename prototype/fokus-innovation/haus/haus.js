@@ -253,8 +253,9 @@ const PAKETE = /*PAKETE*/{}/*PAKETE-ENDE*/;
 /* Linkziele aus src/ziele.json (das Bauskript setzt sie ein); im Skript stehen keine festen Adressen */
 const ZIELE = /*ZIELE*/{}/*ZIELE-ENDE*/;
 /* Anfragen (Einladung, Abendpartner, Gast im Podcast) führen auf das Formular der Anwendung. Ist es aus, macht js/app-wege.js daraus eine vorbereitete Mail
-   (Attribut data-anfrage-mail). Links, die erst das Skript einsetzt, bekommen hier dasselbe Attribut und denselben Stand. */
-const MAILS = /*MAILS*/{}/*MAILS-ENDE*/;
+   (Attribut data-anfrage-mail). Links, die erst das Skript einsetzt, bekommen hier dasselbe Attribut und denselben Stand.
+   Die Tabelle Weg → Mail steht im HTML der Bühne (data-anfrage-mails am Abschnitt #top, setzt der Bau): im Skript steht keine Adresse. */
+const MAILS = (() => { try { return JSON.parse(document.querySelector('[data-anfrage-mails]')?.dataset.anfrageMails || '{}'); } catch { return {}; } })();
 function anfrageWege(wo) {
   const perMail = !!document.querySelector('a[data-anfrage-mail][href^="mailto:"]');
   for (const a of wo.querySelectorAll('a[href^="/anfrage?anlass="]')) { const m = MAILS[a.getAttribute('href')]; if (!m) continue; a.dataset.anfrageMail = m; if (perMail) a.href = m; }

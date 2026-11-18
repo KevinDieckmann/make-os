@@ -151,8 +151,15 @@ export function hausBauen(h) {
   m = m.replace(/\{\{mit:([a-z0-9]+)\}\}/g, (_, id) => mit(id)).replace(/\{\{preise:([a-z0-9]+)\}\}/g, (_, id) => preise(id));
   // der erste Titel steht ab dem ersten Bild da: seine Buchstaben schon im HTML
   m = m.replace(/data-word="([^"]+)" data-da><\/span>/g, (_, wort) => `data-word="${wort}"><span class="lt" aria-hidden="true">${wort.split(' ').map((w) => `<span class="lt-w">${[...w].map((b) => `<span class="lt-l">${e(b)}</span>`).join('')}</span>`).join('')}</span></span>`);
-  const mitZiel = (t) => t.replace(/href="\{\{ziel:([a-z0-9.-]+)\}\}"/g, (_, name) => { const href = ziel(name); return `href="${e(href)}"${MAILS[href] ? ` data-anfrage-mail="${e(MAILS[href])}"` : ''}`; });
+  // Im Markup trägt jede Anfrage ihre vorbereitete Mail (data-anfrage-mail). Im Skript steht nie eine Adresse: Links, die das Skript einsetzt,
+  // bekommen sie zur Laufzeit aus der Tabelle am Anfang der Bühne (data-anfrage-mails, Weg → Mail), siehe anfrageWege in haus.js.
+  const mitZiel = (t, mitMail = true) => t.replace(/href="\{\{ziel:([a-z0-9.-]+)\}\}"/g, (_, name) => { const href = ziel(name); return `href="${e(href)}"${mitMail && MAILS[href] ? ` data-anfrage-mail="${e(MAILS[href])}"` : ''}`; });
   m = mitZiel(m);
+  if (Object.keys(MAILS).length) {
+    const kopf = '<section id="top" class="track haus"';
+    if (m.split(kopf).length !== 2) throw new Error('Haus: Anfang der Bühne (section#top) nicht genau einmal gefunden');
+    m = m.replace(kopf, () => `${kopf} data-anfrage-mails="${e(JSON.stringify(MAILS))}"`);
+  }
   const rest = m.match(/\{\{[^}]*\}\}|\sstyle="|<!--/); if (rest) throw new Error(`Haus: Rest im Markup der Bühne: ${rest[0]}`);
 
   // ── Stile ──
@@ -164,8 +171,9 @@ export function hausBauen(h) {
   const daten = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
   let js = les('haus.js');
   const einsetzen = (marke, wert) => { const re = new RegExp(`/\\*${marke}\\*/[\\s\\S]*?/\\*${marke}-ENDE\\*/`); if (!re.test(js)) throw new Error(`Haus: Marke ${marke} fehlt im Skript`); js = js.replace(re, () => daten(wert)); };
-  einsetzen('PAKETE', pakete); einsetzen('ZIELE', ZIELE); einsetzen('MAILS', MAILS);
-  js = jsOhneKommentare(mitZiel(js));
+  einsetzen('PAKETE', pakete); einsetzen('ZIELE', ZIELE);
+  js = jsOhneKommentare(mitZiel(js, false));
+  if (/mailto:[^'"`\s]*@|[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/.test(js)) throw new Error('Haus: E-Mail-Adresse im Skript. Adressen stehen nur im Markup (data-anfrage-mail, data-anfrage-mails).');
   if (/\{\{ziel:/.test(js)) throw new Error('Haus: Linkziel im Skript nicht ersetzt');
   if (/style=|setAttribute\(\s*['"]style/.test(js)) throw new Error('Haus: style-Attribut im Skript (Sicherheitsregeln der Website)');
   try { new vm.Script(js, { filename: 'js/haus.js' }); } catch (err) { throw new Error(`Haus: js/haus.js ist nach dem Bau kein gültiges Skript mehr (${err.message})`); }
