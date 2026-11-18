@@ -1,17 +1,15 @@
 {
-  "_hinweis": "Alle Linkziele des Hauses an EINER Stelle. In buehne.html und haus.js steht {{ziel:name}} bzw. ZIELE[name]. Werte: ein Pfad der Website (beginnt mit /), „erstgespraech“ (Buchung wie überall), „check:sichtbarkeit“ und „check:innovation“ (die Checks der Anwendung), „anfrage:einladung|abendpartner|podcast“ (Formular der Anwendung mit Anlass, wie auf /events/ und /podcast/), „angebot:<kennung>“ (Seite oder Abschnitt des Angebots). bauen.mjs löst sie mit den Helfern der Website auf und prüft jedes Ziel. Ziele „angebot.<kennung>“ für die Pakete legt der Bau selbst an.",
+  "_hinweis": "Alle Linkziele des Hauses an EINER Stelle. In szenen.json, stufen.json und haus.js stehen die Namen, nie die Adressen. Werte: ein Pfad der Website (beginnt mit /), „erstgespraech“ (Buchung wie überall), „check:sichtbarkeit“ und „check:innovation“ (die Checks der Anwendung), „anfrage:einladung|abendpartner|podcast“ (Formular der Anwendung mit Anlass, wie auf /events/ und /podcast/). Szenen verweisen mit „szene:<kennung>“ auf eine andere Szene der Fahrt (das löst das Skript auf, im Markup steht dann #szene-<kennung>). bauen.mjs löst die Ziele mit den Helfern der Website auf und prüft jedes.",
   "erstgespraech": "erstgespraech",
   "check": "check:sichtbarkeit",
   "innovations-check": "check:innovation",
-  "preise": "/preise/",
-  "mehr.eg": "/kostenlos/",
-  "mehr.08": "/sichtbarkeit/",
-  "mehr.15": "angebot:pr-kommunikation",
-  "mehr.21": "/podcast/",
-  "mehr.28": "/vertrieb/",
-  "mehr.35": "/innovation/",
-  "mehr.dach": "/events/",
+  "workshops": "/innovation/#angebote",
+  "sichtbarkeit": "/sichtbarkeit/",
+  "pr": "/sichtbarkeit/pr-kommunikation/",
+  "events": "/events/",
+  "vertrieb": "/vertrieb/",
   "einladung": "anfrage:einladung",
-  "partner-anfragen": "anfrage:abendpartner",
-  "gast-vorschlagen": "anfrage:podcast"
+  "gast-vorschlagen": "anfrage:podcast",
+  "pakete": "/#pakete",
+  "newsletter": "/newsletter"
 }

@@ -1,14 +1,13 @@
-// MAKE Innovation · „Das Haus“: baut aus den Quellen in diesem Ordner die Bühne der Startseite.
-//   buehne.html      Markup der Bühne (Auftakt, sieben Halte, Schalter, Finale, Dock)
-//   haus.css         Stile (mit „rem“ als Einheit des Hauses, siehe Kopf der Datei)
-//   haus.js          Skript (Szene, Zeitachse, Schalter)
-//   pakete.json      Pakete und Rollen der Räume, OHNE Preise: die kommen aus den Daten der Website
-//   haus.json        die sieben Etagen (Akzent, Preiszeile für die Fassung ohne Skript)
-//   verbindungen.json  „Spielt zusammen mit“
-//   ziele.json       alle Linkziele, aufgelöst über die Helfer der Website
-//   lenis.min.js     Lenis 1.3.26 (MIT, Lizenz daneben)
-// bauen.mjs ruft hausBauen() und schreibt css/haus.css, js/haus.js und js/lenis.min.js. Es gibt nur diese eine Preisliste:
-// Jeder Ab-Preis im Haus entsteht aus makeinnovation/inhalt/inhalt.json › angebote; weicht ein Paketname ab, bricht der Bau ab.
+// MAKE Innovation · „Das Haus“: baut aus den Quellen in diesem Ordner die Fahrt der Startseite (15 Szenen).
+//   buehne.html     Rahmen der Bühne (Zeichenfläche, Szenen, Leisten, Etagenwahl, Gastwunsch)
+//   szenen.json     die 15 Szenen als Daten (Texte, Kacheln, Preis, Knopf, Bild). Eine neue Etage ist ein neuer Eintrag.
+//   stufen.json     Fundament · Wachstum · Skalieren (Szene 14 und die Pakete der Kurz-Startseite)
+//   ziele.json      alle Linkziele, aufgelöst über die Helfer der Website
+//   haus.css        Stile (mit „rem“ als Einheit des Hauses, siehe Kopf der Datei)
+//   haus.js         Skript (Zeichnung der Räume, Ablauf der Fahrt, Leisten)
+//   haus-frueh.js   winziges Skript, das vor allem anderen läuft: Rückkehrer landen sofort in der Kurz-Startseite
+// bauen.mjs ruft hausBauen() und schreibt css/haus.css, js/haus.js und js/haus-frueh.js. Es gibt nur diese eine Preisliste:
+// Jeder Ab-Preis im Haus entsteht aus makeinnovation/inhalt/inhalt.json › angebote; fehlt ein Angebot, bricht der Bau ab.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -67,92 +66,124 @@ export function jsOhneKommentare(q) {
   return aus.replace(/[ \t]+$/gm, '').replace(/\n{2,}/g, '\n').replace(/^\n+/, '');
 }
 
+const ART = ['eingang', 'problem', 'fahrt', 'etage', 'tresen', 'pakete', 'finale'];
+
 /**
  * @param h Helfer der Website: angebot(id), produktPfad(a), monatlich(a), kurzname(id), ziel(wert) → { href, mail? }
  */
 export function hausBauen(h) {
-  const pakete = lade('pakete.json'), haus = lade('haus.json'), verbindungen = lade('verbindungen.json'), zieleRoh = lade('ziele.json');
+  const szenenDatei = lade('szenen.json'), stufenDatei = lade('stufen.json'), zieleRoh = lade('ziele.json');
+  const szenen = szenenDatei.szenen, stufen = stufenDatei.stufen;
   const hinweise = [];
 
   // ── Linkziele ──
   const ZIELE = {}, MAILS = {};
   const setze = (name, wert) => { const z = h.ziel(wert); if (!z || !z.href) throw new Error(`Haus: Linkziel „${name}“ (${wert}) lässt sich nicht auflösen`); ZIELE[name] = z.href; if (z.mail) MAILS[z.href] = z.mail; };
   for (const [name, wert] of Object.entries(zieleRoh)) if (!name.startsWith('_')) setze(name, wert);
-  const ziel = (name) => { if (!(name in ZIELE)) throw new Error(`Haus: Linkziel fehlt in ziele.json: ${name}`); return ZIELE[name]; };
+  const ids = new Set(szenen.map((s) => s.id));
+  /** Platzhalter im Markup: {{ziel:name}}; „szene:<kennung>“ führt auf die Szene selbst. */
+  const ziel = (name) => {
+    if (name.startsWith('szene:')) { const id = name.slice(6); if (!ids.has(id)) throw new Error(`Haus: Szene „${id}“ gibt es nicht (Ziel ${name})`); return `#szene-${id}`; }
+    if (!(name in ZIELE)) throw new Error(`Haus: Linkziel fehlt in ziele.json: ${name}`);
+    return ZIELE[name];
+  };
+  const platz = (name) => (name.startsWith('szene:') ? ziel(name) : `{{ziel:${name}}}`);
 
-  // ── Preise und Namen: aus den Angeboten der Website ──
-  const buchstaben = (s) => String(s).toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/[^a-z0-9]/g, '');
-  const zahl = (s) => String(s).replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '').trim();
-  const preisText = (a, stufe) => {
-    const roh = stufe ? stufe.preis : a.preis; if (!/\d/.test(roh)) throw new Error(`Haus: Angebot ${a.id} hat keinen Preis in Zahlen`);
-    return `ab ${zahl(roh)} €${h.monatlich(a) ? ' im Monat' : a.preis_zusatz === 'je Abend' ? ' je Abend' : ''}`;
-  };
-  const nameGleich = (unser, a) => { const u = buchstaben(unser); return [a.name, h.kurzname(a.id) ?? ''].map(buchstaben).some((w) => w && (w.includes(u) || u.includes(w))); };
-  const abgleich = (wo, obj, name) => {
-    const a = h.angebot(obj.angebot); if (!a) throw new Error(`Haus: ${wo} nennt das Angebot „${obj.angebot}“, das es in den Daten der Website nicht gibt (oder es ist ausgeblendet)`);
-    if (obj.preis) throw new Error(`Haus: ${wo} hat „angebot“ und einen eigenen Preis. Der Preis kommt aus den Daten der Website.`);
-    let stufe = null;
-    if (obj.stufe) { stufe = (a.stufen ?? []).find((s) => s.name === obj.stufe); if (!stufe) throw new Error(`Haus: ${wo}: Stufe „${obj.stufe}“ fehlt bei ${a.id}`); }
-    else if (!nameGleich(name, a)) throw new Error(`Haus: ${wo} heißt „${name}“, das Angebot der Website heißt „${a.name}“. Bitte angleichen.`);
-    if (!stufe && buchstaben(name) !== buchstaben(a.name) && buchstaben(name) !== buchstaben(h.kurzname(a.id) ?? '')) hinweise.push(`${wo}: im Haus „${name}“, auf der Website „${a.name}“`);
-    obj.preis = preisText(a, stufe);
-    const zielName = `angebot.${a.id}`; if (!(zielName in ZIELE)) setze(zielName, `angebot:${a.id}`);
-    obj.zum = zielName; delete obj.angebot; delete obj.stufe;
-  };
-  const raeume = Object.keys(pakete).filter((k) => !k.startsWith('_'));
-  for (const k of raeume) {
-    const D = pakete[k];
-    if (D.angebot) abgleich(`Raum ${k}`, D, D.name);
-    for (const L of D.linien) L.pakete.forEach((pa, i) => {
-      if (pa.angebot) abgleich(`${k}.${L.id}.${i + 1}`, pa, pa.name);
-      if (pa.link) ziel(pa.link[1]); if (pa.cta) ziel(pa.cta[1]);
-    });
-    if (D.cta) ziel(D.cta[1]);
+  // ── Prüfung der Szenenliste ──
+  if (szenen.length !== 15) throw new Error(`Haus: 15 Szenen erwartet, ${szenen.length} gefunden`);
+  if (new Set(szenen.map((s) => s.id)).size !== szenen.length) throw new Error('Haus: Kennungen der Szenen müssen eindeutig sein');
+  const stufenIds = stufen.map((s) => s.id);
+  for (const s of szenen) {
+    if (!ART.includes(s.art)) throw new Error(`Haus: Szene ${s.id}: unbekannte Art ${s.art}`);
+    if (s.stufe && !stufenIds.includes(s.stufe)) throw new Error(`Haus: Szene ${s.id}: Stufe ${s.stufe} gibt es nicht`);
+    if (!s.bild || typeof s.bild.p !== 'number') throw new Error(`Haus: Szene ${s.id}: bild.p fehlt`);
+    if (s.kacheln && s.kacheln.length !== 3) throw new Error(`Haus: Szene ${s.id}: genau drei Kacheln`);
   }
-  delete pakete._hinweis;
-  const paketPreis = (raum, linie, n) => { const D = pakete[raum], L = D.linien.find((x) => x.id === linie); const v = L.pakete[n - 1].preis || D.preis || ''; if (!v) throw new Error(`Haus: kein Preis für ${raum}.${linie}.${n}`); return v; };
-  const abKlein = (raum, linie) => {
-    const D = pakete[raum], wert = (p) => Number(p.match(/^ab ([\d.]+)/)[1].replace(/\./g, ''));
-    const alle = [...D.linien.filter((L) => !linie || L.id === linie).flatMap((L) => L.pakete.map((p) => p.preis)), ...(linie ? [] : [D.preis ?? ''])].filter((p) => /^ab /.test(p ?? ''));
-    if (!alle.length) throw new Error(`Haus: kein Ab-Preis für ${raum}${linie ? `.${linie}` : ''}`);
-    return alle.reduce((x, y) => (wert(y) < wert(x) ? y : x));
-  };
-  const preisMuster = (s) => s.replace(/\{(ab|preis):([a-z0-9.-]+)\}/g, (_, art, pfad) => { const x = pfad.split('.'); return art === 'preis' ? paketPreis(x[0], x[1], Number(x[2])) : abKlein(x[0], x[1]); });
+  for (const st of stufen) for (const id of st.etagen) if (!ids.has(id)) throw new Error(`Haus: Stufe ${st.id} nennt die Szene ${id}, die es nicht gibt`);
+  if (!stufen.some((s) => s.id === stufenDatei.empfohlen)) throw new Error('Haus: empfohlene Stufe fehlt');
 
-  // ── Markup ──
+  // ── Preise: aus den Angeboten der Website ──
+  const zahl = (x) => String(x).replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '').trim();
+  const wert = (a) => Number(zahl(a.preis).replace(/\./g, ''));
+  const preisZeile = (spec) => {
+    const alle = spec.angebote.map((id) => { const a = h.angebot(id); if (!a) throw new Error(`Haus: Preis „${spec.label}“ nennt das Angebot „${id}“, das es in den Daten der Website nicht gibt (oder es ist ausgeblendet)`); if (!/\d/.test(a.preis)) throw new Error(`Haus: Angebot ${id} hat keinen Preis in Zahlen`); return a; });
+    const klein = alle.reduce((x, y) => (wert(y) < wert(x) ? y : x));
+    const zusatz = h.monatlich(klein) ? ' im Monat' : klein.preis_zusatz === 'je Abend' ? ' je Abend' : '';
+    return `${spec.label} ab ${zahl(klein.preis)} €${zusatz}`;
+  };
+
+  // ── Markup der Szenen ──
+  const alink = (art, name, text, extra = '') => `<a class="alink ${art}" href="${platz(name)}"${extra}>${PF}<span class="t-caption">${e(text)}</span></a>`;
+  const stufeName = (id) => (id ? stufen.find((s) => s.id === id).name : '');
+  const kachelnHtml = (k) => `<ul class="sz-kacheln">${k.map((x) => `<li><b>${e(x.t)}</b>${x.d ? `<span>${e(x.d)}</span>` : ''}</li>`).join('')}</ul>`;
+  const foto = (text, klasse = '') => `<div class="sz-foto${klasse}" role="img" aria-label="${e(text)}"><span>${e(text)}</span></div>`;
+  const kopfHtml = (s, hid) => {
+    const E = s.etage, teile = [`<span class="sz-nr">${e(E.nr)}</span>`, `<span class="sz-name">${e(E.name)}${E.unter ? `: ${e(E.unter)}` : ''}</span>`];
+    if (E.tag) teile.push(`<span class="sz-tag">${e(E.tag)}</span>`);
+    if (s.stufe) teile.push(`<span class="sz-stufe">${e(stufeName(s.stufe))}</span>`);
+    return `<h2 class="sz-kopf" id="${hid}">${teile.join('<span class="sz-sep" aria-hidden="true"> · </span>')}</h2>`;
+  };
+  const NEWSLETTER = `<form class="nl" id="newsletter" data-newsletter novalidate>
+<p class="nl-zeile"><label class="nl-feld"><span class="sr-only">Deine E-Mail-Adresse</span><input type="email" name="email" autocomplete="email" inputmode="email" placeholder="Deine E-Mail-Adresse" required></label><button type="submit" class="alink mehr"><span class="t-caption">Erste Folge zuerst hören</span></button></p>
+<fieldset class="nl-wahl"><legend class="sr-only">Wofür möchtest du dich eintragen?</legend>
+<label><input type="checkbox" name="wahl" value="podcast" checked><span>Podcast</span></label><label><input type="checkbox" name="wahl" value="events"><span>Event-Einladungen</span></label><label><input type="checkbox" name="wahl" value="updates"><span>Updates</span></label></fieldset>
+<p class="nl-recht">Du bekommst zuerst eine Bestätigungsmail und kannst dich jederzeit abmelden. Mehr dazu im <a href="/datenschutz/">Datenschutz</a>.</p>
+<p class="nl-meldung" role="status" aria-live="polite"></p>
+</form><noscript><p class="nl-ohne"><a class="alink mehr" href="/newsletter">${PF}<span class="t-caption">Erste Folge zuerst hören</span></a></p></noscript>`;
+
+  const panel = (s, i) => {
+    const hid = `sz-${s.id}-h`, offen = `<section class="sz sz-${s.art}${s.stufe ? ` st-${s.stufe}` : ''}" id="szene-${s.id}" data-szene="${i}" aria-labelledby="${hid}"><div class="sz-innen">`;
+    const zu = '</div></section>';
+    if (s.art === 'eingang') return `${offen}<h1 class="sz-titel" id="${hid}">${e(s.titel)}</h1><p class="sz-pitch">${e(s.pitch)}</p><a class="sz-hinweis" href="#szene-${szenen[i + 1].id}"><span>${e(s.hinweis)}</span><svg class="sz-pfeil" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M6 13l6 6 6-6"/></svg></a>${zu}`;
+    if (s.art === 'problem') return `${offen}<h2 class="sz-links" id="${hid}">${e(s.links)}</h2><p class="sz-rechts">${e(s.rechts)}</p>${zu}`;
+    if (s.art === 'fahrt') {
+      return `${offen}<h2 class="sz-kopf sz-kopf-klein" id="${hid}">${e(s.kopf)}</h2><p class="sz-lead">${e(s.text)}</p><ul class="sz-stufenzeile">${stufen.map((st) => `<li class="st-${st.id}">${e(st.name)}</li>`).join('')}</ul><p class="sz-klein">${e(s.klein)}</p>${zu}`;
+    }
+    if (s.art === 'tresen') {
+      return `${offen}${kopfHtml(s, hid)}<p class="sz-satz">${e(s.satz)}</p>${foto(s.foto, ' sz-foto-gross')}<ul class="sz-weichen">${s.weichen.map((w) => {
+        const txt = `<b>${e(w.t)}</b>${PF}`;
+        return w.ziel ? `<li><a class="weiche" href="${platz(w.ziel)}">${txt}</a></li>` : `<li><button type="button" class="weiche" data-aktion="${e(w.aktion)}">${txt}</button></li>`;
+      }).join('')}</ul><p class="sz-zeile">${e(s.zeile)}</p>${zu}`;
+    }
+    if (s.art === 'pakete') {
+      const emp = stufenDatei.empfohlen;
+      return `${offen}<h2 class="sz-kopf sz-kopf-klein" id="${hid}">${e(s.kopf)}</h2><p class="sz-lead">${e(s.text)}</p><ul class="sz-pakete">${stufen.map((st) => `<li class="fs-paket st-${st.id}${st.id === emp ? ' ist-empfohlen' : ''}">${st.id === emp ? `<span class="fs-paket-emp">${e(stufenDatei.empfehlung)}</span>` : ''}<h3>${e(st.name)}</h3><p class="fs-paket-satz">${e(st.satz)}</p><ul class="fs-paket-punkte">${st.punkte.map((p) => `<li>${e(p)}</li>`).join('')}</ul><p class="fs-paket-ab">${e(st.ab)}</p>${alink('mehr', st.knopf.ziel, st.knopf.text)}</li>`).join('')}</ul><p class="sz-zusagen">${e(stufenDatei.zusagen)}</p><p class="sz-leise"><a class="sz-textlink" href="${platz(stufenDatei.unsicher.ziel)}">${e(stufenDatei.unsicher.text)} →</a></p>${zu}`;
+    }
+    if (s.art === 'finale') return `${offen}<h2 class="sz-titel sz-titel-final" id="${hid}">${e(s.titel)}</h2>${foto(s.foto, ' sz-foto-gross')}<p class="sz-final-knopf">${alink('erst gross', s.knopf.ziel, s.knopf.text)}</p><p class="sz-mikro">${e(s.mikro)}</p>${zu}`;
+    // Etage: immer dieselben Plätze
+    const teile = [kopfHtml(s, hid), `<p class="sz-satz">${e(s.satz)}</p>`];
+    if (s.newsletter) teile.push(NEWSLETTER);
+    else {
+      if (s.mit) teile.push(`<p class="sz-mit"><span class="sz-cap">Das nimmst du mit</span>${e(s.mit)}</p>`);
+      if (s.kacheln) teile.push(kachelnHtml(s.kacheln));
+      if (s.kennzeichen) teile.push(`<p class="sz-kennzeichen">${e(s.kennzeichen)}</p>`);
+      if (s.preis) teile.push(`<p class="sz-preis"><b>${e(preisZeile(s.preis))}</b>${s.preis.zusatz ? `<span>${e(s.preis.zusatz)}</span>` : ''}<small>Alle Preise netto.</small></p>`);
+    }
+    if (s.foto) teile.push(`<div class="sz-kevin">${foto(s.foto)}<p>${e(s.fotoSatz || '')}</p></div>`);
+    const fuss = [];
+    if (s.knopf) fuss.push(alink('mehr sz-knopf', s.knopf.ziel, s.knopf.text));
+    if (s.leise) fuss.push(s.leise.aktion ? `<button type="button" class="sz-leise" data-aktion="${e(s.leise.aktion)}">${e(s.leise.text)}</button>` : `<a class="sz-leise" href="${platz(s.leise.ziel)}">${e(s.leise.text)}</a>`);
+    if (fuss.length) teile.push(`<div class="sz-fuss">${fuss.join('')}</div>`);
+    return `${offen}${teile.join('')}${zu}`;
+  };
+
+  // ── Leisten: Etagen links, Stufen rechts ──
+  const etagen = []; // je Etage die erste Szene
+  szenen.forEach((s, i) => { if (s.art === 'etage' || s.art === 'tresen') { const nr = s.etage.nr; const alt = etagen.find((x) => x.nr === nr); if (alt) alt.szenen.push(s.id); else etagen.push({ nr, kurz: nr === 'Erdgeschoss' ? 'EG' : nr === 'Eingangshalle' ? 'Halle' : nr === 'Dach' ? 'Dach' : nr.replace(/^Etage /, ''), name: s.art === 'tresen' ? 'Eingangshalle, Tresen' : s.etage.name.replace(/^Podcast „Fokus Innovation“$/, 'Podcast und Deine Bühne'), stufe: s.stufe, szenen: [s.id] }); } });
+  const etagenNav = `<nav class="etagen" id="etagen" aria-label="Etagen"><ol>${[...etagen].reverse().map((E) => `<li><a href="#szene-${E.szenen[0]}" data-szenen="${E.szenen.join(' ')}" data-stufe="${E.stufe}" aria-label="${e(E.nr)}: ${e(E.name)}" title="${e(E.nr)}: ${e(E.name)}"><span>${e(E.kurz)}</span></a></li>`).join('')}</ol></nav>`;
+  const erste = (st) => szenen.find((s) => s.stufe === st.id).id;
+  const stufenNav = `<nav class="fahrt-stufen" id="stufen" aria-label="Stufen"><ol>${[...stufen].reverse().map((st) => `<li class="st-${st.id}"><a href="#szene-${erste(st)}" data-stufe="${st.id}" aria-label="Stufe ${e(st.name)}"><span>${e(st.name)}</span></a></li>`).join('')}</ol></nav>`;
+  const wahlListe = etagen.slice().reverse().map((E) => `<li class="st-${E.stufe}"><a href="#szene-${E.szenen[0]}" data-szenen="${E.szenen.join(' ')}"><b>${e(E.kurz)}</b><span>${e(E.nr === 'Eingangshalle' || E.nr === 'Erdgeschoss' ? E.nr : `${E.nr} · ${E.name}`)}</span></a></li>`).join('');
+
+  // ── Rahmen ──
   let m = les('buehne.html').replace(/<!--[\s\S]*?-->\n?/g, '');
-  // die sieben Etagen: Lage, Name und Etagenzahl aus den Halten
-  const halte = [...m.matchAll(/<article class="fl" data-fl="\d"[\s\S]*?<\/article>/g)].map((x) => {
-    const [lage, ...rest] = x[0].match(/<h2 class="fl-kicker[^>]*><span class="mark"><\/span>(.*?)<\/h2>/)[1].split(' · ');
-    return { nr: x[0].match(/class="fl-no[^"]*" aria-hidden="true" data-word="([^"]+)"/)[1], lage, name: rest.join(' · ') };
-  });
-  if (halte.length !== 7 || haus.etagen.length !== 7) throw new Error('Haus: sieben Halte erwartet');
-  const ETAGE = {};
-  haus.etagen.forEach((C, i) => { if (C.id !== halte[i].nr.toLowerCase()) throw new Error(`Haus: Etage ${C.id} passt nicht zum Halt ${halte[i].nr}`); ETAGE[C.id] = { ...halte[i], ...C, name: C.name ?? halte[i].name, raum: raeume.find((k) => pakete[k].etage === C.id) }; });
-  // „Spielt zusammen mit“: höchstens zwei Knöpfe je Halt, erst je Verbindung das erste Ziel
-  const mit = (id) => {
-    const V_ = verbindungen[id]; if (!V_) throw new Error(`Haus: Verbindungen fehlen für ${id}`);
-    const paare = [...V_.map((V) => [V.zu[0], V]), ...V_.flatMap((V) => V.zu.slice(1).map((z) => [z, V]))].slice(0, 2);
-    const kn = paare.map(([z, V]) => { const Z_ = ETAGE[z]; if (!Z_) throw new Error(`Haus: Verbindung zu unbekannter Etage ${z}`); return `<button type="button" class="mit-knopf mk-${z}" data-zu="${z}" title="${e(V.satz)}" aria-label="${e(Z_.lage)} · ${e(Z_.name)}: ${e(V.satz)}"><b aria-hidden="true">${e(Z_.nr)}</b><span aria-hidden="true">${e(Z_.name)}</span></button>`; }).join('');
-    return `<div class="fl-mit" role="group" aria-labelledby="mit-${id}"><span class="cap" id="mit-${id}">Spielt zusammen mit</span><span class="mit-knoepfe">${kn}</span></div>`;
-  };
-  // Preiszeile und Pakete mit Link: nur ohne Skript (mit Skript nennt der Paketschalter Preise und Seiten)
-  const preise = (id) => {
-    const E = ETAGE[id], D = E.raum ? pakete[E.raum] : null;
-    const zeile = E.preise ? `<p class="fl-preise">${e(preisMuster(E.preise))}${/ab \d/.test(preisMuster(E.preise)) ? '. Alle Preise netto.' : ''}</p>` : '';
-    const eins = D && D.zum ? `<li>${e(D.preisVor || D.name)}, ${e(D.preis)}: <a href="{{ziel:${D.zum}}}">Zum Angebot</a></li>` : ''; // ein Preis für das Ganze (PR): eine Zeile statt einer je Baustein
-    const punkte = eins || (D && !D.ohneSchalter ? D.linien.flatMap((L) => L.pakete.map((pa) => {
-      const zum = pa.link ?? (pa.zum ? [pa.name, pa.zum] : D.zum ? [pa.name, D.zum] : null); if (!zum) return '';
-      const name = D.linien.length > 1 && L.pakete.length > 1 ? `${L.name} ${pa.name}` : pa.name;
-      return `<li>${e(name)}${pa.preis ? `, ${e(pa.preis)}` : ''}: <a href="{{ziel:${zum[1]}}}">${e(pa.link ? pa.link[0] : 'Zum Angebot')}</a></li>`;
-    })).join('') : '');
-    return zeile || punkte ? `<noscript>${zeile}${punkte ? `<ul class="fl-preise">${punkte}</ul>` : ''}</noscript>` : '';
-  };
-  m = m.replace(/\{\{mit:([a-z0-9]+)\}\}/g, (_, id) => mit(id)).replace(/\{\{preise:([a-z0-9]+)\}\}/g, (_, id) => preise(id));
-  // der erste Titel steht ab dem ersten Bild da: seine Buchstaben schon im HTML
-  m = m.replace(/data-word="([^"]+)" data-da><\/span>/g, (_, wort) => `data-word="${wort}"><span class="lt" aria-hidden="true">${wort.split(' ').map((w) => `<span class="lt-w">${[...w].map((b) => `<span class="lt-l">${e(b)}</span>`).join('')}</span>`).join('')}</span></span>`);
-  // Im Markup trägt jede Anfrage ihre vorbereitete Mail (data-anfrage-mail). Im Skript steht nie eine Adresse: Links, die das Skript einsetzt,
-  // bekommen sie zur Laufzeit aus der Tabelle am Anfang der Bühne (data-anfrage-mails, Weg → Mail), siehe anfrageWege in haus.js.
+  const ersetze = (marke, text) => { if (m.split(marke).length !== 2) throw new Error(`Haus: Marke ${marke} muss genau einmal in buehne.html stehen`); m = m.replace(marke, () => text); };
+  ersetze('{{szenen}}', szenen.map(panel).join('\n'));
+  ersetze('{{snaps}}', szenen.map((s, i) => `<span class="snap" data-szene="${i}"></span>`).join(''));
+  ersetze('{{etagen}}', etagenNav);
+  ersetze('{{stufen}}', stufenNav);
+  ersetze('{{wahl}}', wahlListe);
+  // Anfragen tragen ihre vorbereitete Mail (data-anfrage-mail). Im Skript steht nie eine Adresse: Das Skript liest die Tabelle am Abschnitt #top.
   const mitZiel = (t, mitMail = true) => t.replace(/href="\{\{ziel:([a-z0-9.-]+)\}\}"/g, (_, name) => { const href = ziel(name); return `href="${e(href)}"${mitMail && MAILS[href] ? ` data-anfrage-mail="${e(MAILS[href])}"` : ''}`; });
   m = mitZiel(m);
   if (Object.keys(MAILS).length) {
@@ -163,20 +194,23 @@ export function hausBauen(h) {
   const rest = m.match(/\{\{[^}]*\}\}|\sstyle="|<!--/); if (rest) throw new Error(`Haus: Rest im Markup der Bühne: ${rest[0]}`);
 
   // ── Stile ──
-  let css = les('haus.css').replace('/*MK*/', haus.etagen.map((C) => `.mk-${C.id} { --mk: ${C.akz}; }`).join('\n'));
+  let css = les('haus.css');
   css = cssOhneKommentare(css).replace(/(?<![\w.#-])(-?(?:\d+\.?\d*|\.\d+))rem\b/g, 'calc($1 * var(--hr))');
   if (/@media[^{]*var\(--hr\)/.test(css)) throw new Error('Haus: rem in einer Medienabfrage');
 
   // ── Skript ──
   const daten = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
   let js = les('haus.js');
-  const einsetzen = (marke, wert) => { const re = new RegExp(`/\\*${marke}\\*/[\\s\\S]*?/\\*${marke}-ENDE\\*/`); if (!re.test(js)) throw new Error(`Haus: Marke ${marke} fehlt im Skript`); js = js.replace(re, () => daten(wert)); };
-  einsetzen('PAKETE', pakete); einsetzen('ZIELE', ZIELE);
+  const einsetzen = (marke, wertDaten) => { const re = new RegExp(`/\\*${marke}\\*/[\\s\\S]*?/\\*${marke}-ENDE\\*/`); if (!re.test(js)) throw new Error(`Haus: Marke ${marke} fehlt im Skript`); js = js.replace(re, () => daten(wertDaten)); };
+  einsetzen('SZENEN', szenen.map((s) => ({ id: s.id, art: s.art, stufe: s.stufe, ...s.bild })));
+  einsetzen('ZIELE', ZIELE);
   js = jsOhneKommentare(mitZiel(js, false));
   if (/mailto:[^'"`\s]*@|[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/.test(js)) throw new Error('Haus: E-Mail-Adresse im Skript. Adressen stehen nur im Markup (data-anfrage-mail, data-anfrage-mails).');
   if (/\{\{ziel:/.test(js)) throw new Error('Haus: Linkziel im Skript nicht ersetzt');
   if (/style=|setAttribute\(\s*['"]style/.test(js)) throw new Error('Haus: style-Attribut im Skript (Sicherheitsregeln der Website)');
   try { new vm.Script(js, { filename: 'js/haus.js' }); } catch (err) { throw new Error(`Haus: js/haus.js ist nach dem Bau kein gültiges Skript mehr (${err.message})`); }
+  const frueh = jsOhneKommentare(les('haus-frueh.js'));
+  try { new vm.Script(frueh, { filename: 'js/haus-frueh.js' }); } catch (err) { throw new Error(`Haus: js/haus-frueh.js ist kein gültiges Skript (${err.message})`); }
 
-  return { markup: m.trim(), css, js, ziele: ZIELE, hinweise, lenis: les('lenis.min.js'), lenisLizenz: les('lenis-LICENSE.txt') };
+  return { markup: m.trim(), css, js, frueh, ziele: ZIELE, hinweise, stufen: stufenDatei };
 }

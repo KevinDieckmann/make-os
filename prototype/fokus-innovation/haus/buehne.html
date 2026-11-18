@@ -1,24 +1,14 @@
-<!-- MAKE Innovation · „Das Haus“: Markup der Bühne (QUELLE). bauen.mjs setzt es an den Anfang der Startseite.
-     Platzhalter: {{ziel:name}} = Linkziel aus ziele.json (der Bau löst es über die Helfer der Website auf), {{mit:eg}} = Knöpfe „Spielt zusammen mit“,
-     {{preise:eg}} = Preiszeile der Etage für die Fassung ohne Skript, data-word …  data-da = Wort steht schon im HTML (erster Titel). -->
-<section id="top" class="track haus" aria-label="Das Haus: die Fahrt Ihres Produkts nach oben">
+<!-- MAKE Innovation · „Das Haus“: Rahmen der Bühne (QUELLE). bauen.mjs setzt ihn an den Anfang der Startseite.
+     Platzhalter: {{ziel:name}} = Linkziel aus ziele.json (der Bau löst es über die Helfer der Website auf), {{szenen}} = die 15 Szenen aus szenen.json,
+     {{snaps}} = die Raststellen, {{etagen}}, {{stufen}} = die Leisten, {{wahl}} = die Liste der Etagenwahl. -->
+<script src="/js/haus-frueh.js"></script>
+<section id="top" class="track haus" aria-label="Das Haus: die Fahrt durch 15 Szenen">
   <svg class="haus-zeichen" width="0" height="0" aria-hidden="true" focusable="false">
-    <symbol id="logo" viewBox="2.7 6 38 36"><path d="M6,18.5H14.5M4,24H14.5M8,29.5H14.5" fill="none" stroke="#A78BFA" stroke-width="2.6" stroke-linecap="round"/><path d="M18.8,6H24.2A0.8,0.8 0 0 1 25,6.8V12.44A12.8,12.8 0 0 0 18,21.25V6.8A0.8,0.8 0 0 1 18.8,6ZM18,26.75A12.8,12.8 0 0 0 25,35.56V41.2A0.8,0.8 0 0 1 24.2,42H18.8A0.8,0.8 0 0 1 18,41.2Z" fill="#F2F3F3"/><circle cx="30.5" cy="24" r="10.2" fill="#8B5CF6"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10"/><path d="M17 8v9H8"/></symbol>
-    <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   </svg>
 
-  <span id="fahrt" class="anchor" aria-hidden="true"></span>
-  <span id="halt-eg" class="anchor" aria-hidden="true"></span>
-  <span id="halt-08" class="anchor" aria-hidden="true"></span>
-  <span id="halt-15" class="anchor" aria-hidden="true"></span>
-  <span id="halt-21" class="anchor" aria-hidden="true"></span>
-  <span id="halt-28" class="anchor" aria-hidden="true"></span>
-  <span id="halt-35" class="anchor" aria-hidden="true"></span>
-  <span id="halt-dach" class="anchor" aria-hidden="true"></span>
-  <span id="faden" class="anchor" aria-hidden="true"></span>
-  <span id="dach" class="anchor" aria-hidden="true"></span>
+  <div class="snaps" aria-hidden="true">{{snaps}}</div>
 
   <div class="stage">
     <div class="seq" id="seqLayer">
@@ -27,186 +17,46 @@
       <div class="grain" id="grain" aria-hidden="true"></div>
     </div>
 
-    <a class="alink plain top-cta" id="topCta" href="{{ziel:erstgespraech}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Erstgespräch vereinbaren</span></a>
-
-    <div class="grid-intro" id="gridIntro"><div class="abs-fill" id="gridFade"><div class="gridlines"><i></i><i></i><i></i><i></i></div></div></div>
-
-    <!-- Auftakt 1 -->
-    <div class="hero" data-hero="0">
-      <p class="sr-only t-caption">Bühne für Innovation</p>
-      <h1 class="abs-fill"><span class="sr-only">Gute Ideen scheitern nicht mehr</span>
-        <span class="abs-fill exit" aria-hidden="true">
-          <span class="hero-vor t-caption"><span class="mark"></span>Bühne für Innovation</span>
-          <span class="slot tl word t-display" data-word="Gute Ideen" data-da></span>
-          <span class="slot cl word t-display" data-word="scheitern" data-da></span>
-          <span class="slot bl word t-display" data-word="nicht mehr" data-da></span>
-        </span>
-      </h1>
-      <p class="hero-desc right t-body">Mit MAKE Innovation scheitern innovative Ideen nicht mehr an Sichtbarkeit, Vertrieb, Netzwerk und Zugängen.
-        <span class="trust">Sichtbarkeit · Vertrieb · Innovation</span></p>
-      <p class="cue t-caption" id="cue" aria-hidden="true"><i></i>Scrollen · der Aufzug fährt gleich los</p>
-    </div>
-    <!-- Auftakt 2 -->
-    <div class="hero" data-hero="1">
-      <h2 class="abs-fill"><span class="sr-only">an Sichtbarkeit, Vertrieb und Zugängen.</span>
-        <span class="abs-fill exit" aria-hidden="true">
-          <span class="slot tl word t-display" data-word="an Sichtbarkeit,"></span>
-          <span class="slot cl word t-display" data-word="Vertrieb"></span>
-          <span class="slot bl word t-display" data-word="und Zugängen."></span>
-        </span>
-      </h2>
-      <p class="hero-desc right t-body">Website, Video, Social Media, Presse und Auftritte, ausgewählt für Ihr Produkt und Ihre Kunden.</p>
-    </div>
-    <!-- Auftakt 3 -->
-    <div class="hero" data-hero="2">
-      <h2 class="abs-fill"><span class="sr-only">Dafür gibt es uns.</span>
-        <span class="abs-fill exit" aria-hidden="true">
-          <span class="slot tl word t-display" data-word="Dafür"></span>
-          <span class="slot cl word t-display" data-word="gibt es"></span>
-          <span class="slot bl word t-display" data-word="uns."></span>
-        </span>
-      </h2>
-      <p class="hero-desc right t-body">Ihr Produkt ist stark. Jetzt soll der Markt es sehen. Wir machen es sichtbar und bauen den Vertrieb, der daraus Kunden macht.</p>
+    <div class="szenen" id="szenen">
+{{szenen}}
     </div>
 
-    <!-- Wende -->
-    <div class="statement" id="statement">
-      <p class="t-caption"><span class="mark"></span>Die Fahrt nach oben · sieben Halte</p>
-      <p class="t-headline" id="stmt">Ganz oben steht die Bühne. Der Weg dorthin beginnt unten auf der Straße: mit einem guten Produkt, das noch kaum jemand kennt.</p>
-    </div>
-
-    <!-- Die Fahrt nach oben: die Tafel im Aufzug -->
-    <aside class="slab" id="slab" aria-label="Die Fahrt nach oben, Halt für Halt">
-      <div class="rail" id="rail" aria-hidden="true"><i id="cab"></i></div>
-      <article class="fl" data-fl="0" aria-labelledby="fl0-h">
-        <h2 class="fl-kicker t-caption" id="fl0-h"><span class="mark"></span>Erdgeschoss · Straße</h2>
-        <div class="fl-mid">
-          <div class="fl-no t-display" aria-hidden="true" data-word="EG"></div>
-          <p class="fl-text">Hier steht Ihr Produkt heute. Es ist gut, aber draußen läuft man daran vorbei. Wir fangen mit einer Frage an: Wo stehen Sie bei Sichtbarkeit und Vertrieb?</p>
-        </div>{{preise:eg}}
-        <div class="fl-unten"><div class="fl-card"><span class="cap">Das nehmen Sie mit</span><p class="k">Ihr Stand in zwei Werten: Sichtbarkeit und Vertrieb. Der Check dauert 7 Minuten.</p></div><div class="fl-cta"><a class="alink haupt" href="{{ziel:check}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Sichtbarkeits- und Vertriebs-Check starten</span></a><div class="reihe"><p class="hin">17 Fragen, 7 Minuten, kostenlos.</p><a class="alink mehr" href="{{ziel:mehr.eg}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Mehr erfahren</span></a></div></div>{{mit:eg}}</div>
-      </article>
-      <article class="fl" data-fl="1" aria-labelledby="fl1-h" data-akz="studios">
-        <h2 class="fl-kicker t-caption" id="fl1-h"><span class="mark"></span>Etage 08 · MAKE Studios</h2>
-        <div class="fl-mid">
-          <div class="fl-no t-display" aria-hidden="true" data-word="08"></div>
-          <p class="fl-text">Hier entsteht, was man von Ihnen sieht: die Seiten Ihrer Website, Erklärvideo und Videoserie, Beiträge und Kurzvideos für Social Media. Am Anfang steht ein Satz, der sitzt: was Sie anbieten, für wen, und warum es die bessere Wahl ist.</p>
-        </div>{{preise:08}}
-        <div class="fl-unten"><div class="fl-card"><span class="cap">Das nehmen Sie mit</span><p class="k">Eine Website, die in fünf Sekunden klar ist, und Videos in drei Bildformaten mit Untertiteln.</p></div><div class="fl-cta"><a class="alink haupt" href="{{ziel:check}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Sichtbarkeits- und Vertriebs-Check starten</span></a><div class="reihe"><p class="hin">Zeigt Ihren Stand bei Sichtbarkeit. 7 Minuten, kostenlos.</p><a class="alink mehr" href="{{ziel:mehr.08}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Mehr erfahren</span></a></div></div>{{mit:08}}</div>
-      </article>
-      <article class="fl" data-fl="2" aria-labelledby="fl2-h">
-        <h2 class="fl-kicker t-caption" id="fl2-h"><span class="mark"></span>Etage 15 · PR</h2>
-        <div class="fl-mid">
-          <div class="fl-no t-display" aria-hidden="true" data-word="15"></div>
-          <p class="fl-text">An der Wand hängt alles, was möglich wäre: Leitmedien, Fachmagazine, regionale Zeitungen, Podcasts, Bühnen. Niemand schafft alles. Hier wird ausgewählt, was zu Ihrem Thema und Ihren Kunden passt, und in einen Plan gebracht.</p>
-        </div>{{preise:15}}
-        <div class="fl-unten"><div class="fl-card"><span class="cap">Das nehmen Sie mit</span><p class="k">Ein Themenplan je Quartal und eine Pressemappe, mit der Redaktionen arbeiten können.</p><ul class="chips"><li>Leitmedien</li><li>Fachmedien</li><li>Regionale Medien</li><li>Podcasts</li><li>Bühnen</li></ul></div><div class="fl-cta"><a class="alink haupt" href="{{ziel:check}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Sichtbarkeits- und Vertriebs-Check starten</span></a><div class="reihe"><p class="hin">Zeigt Ihren Stand bei Sichtbarkeit. 7 Minuten, kostenlos.</p><a class="alink mehr" href="{{ziel:mehr.15}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Mehr erfahren</span></a></div></div>{{mit:15}}</div>
-      </article>
-      <article class="fl" data-fl="3" aria-labelledby="fl3-h">
-        <h2 class="fl-kicker t-caption" id="fl3-h"><span class="mark"></span>Etage 21 · Fokus Innovation · Der Podcast</h2>
-        <div class="fl-mid">
-          <div class="fl-no t-display" aria-hidden="true" data-word="21"></div>
-          <p class="fl-text">Fokus Innovation ist unser Podcast. Hier stellen wir Innovationen aus Deutschland vor: Menschen, die etwas Neues gebaut haben, erzählen, was es kann und wie es dazu kam.</p>
-        </div>{{preise:21}}
-        <div class="fl-unten"><div class="fl-card"><span class="cap">Das nehmen Sie mit</span><p class="k">Wenn Ihr Thema passt: ein Gespräch über Ihr Produkt, das bleibt.</p></div><div class="fl-cta"><a class="alink haupt" href="{{ziel:gast-vorschlagen}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Als Gast vorschlagen</span></a><div class="reihe"><a class="alink mehr" href="{{ziel:mehr.21}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Mehr erfahren</span></a></div></div>{{mit:21}}</div>
-      </article>
-      <article class="fl" data-fl="4" aria-labelledby="fl4-h" data-akz="revenue">
-        <h2 class="fl-kicker t-caption" id="fl4-h"><span class="mark"></span>Etage 28 · MAKE Revenue</h2>
-        <div class="fl-mid">
-          <div class="fl-no t-display" aria-hidden="true" data-word="28"></div>
-          <p class="fl-text">Jetzt kommen Anfragen. Hier wird daraus ein Ablauf: wer nachfasst, wann das Angebot rausgeht, welche Zahlen zählen. Auf Wunsch übernehmen wir die Vertriebsleitung auf Zeit und übergeben ein System.</p>
-        </div>{{preise:28}}
-        <div class="fl-unten"><div class="fl-card"><span class="cap">Das nehmen Sie mit</span><p class="k">Ein Ablauf im CRM und Zahlen, an denen Sie ihn messen.</p></div><div class="fl-cta"><a class="alink haupt" href="{{ziel:check}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Sichtbarkeits- und Vertriebs-Check starten</span></a><div class="reihe"><p class="hin">Zeigt Ihren Stand im Vertrieb. 7 Minuten, kostenlos.</p><a class="alink mehr" href="{{ziel:mehr.28}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Mehr erfahren</span></a></div></div>{{mit:28}}</div>
-      </article>
-      <article class="fl" data-fl="5" aria-labelledby="fl5-h">
-        <h2 class="fl-kicker t-caption" id="fl5-h"><span class="mark"></span>Etage 35 · MAKE Innovation</h2>
-        <div class="fl-mid">
-          <div class="fl-no t-display" aria-hidden="true" data-word="35"></div>
-          <p class="fl-text">Mehr Anfragen heißt mehr Arbeit im Betrieb. Direkt unter dem Dach wird deshalb gebaut. Hier führen wir KI, Automatisierung und neue Software ein, bis Ihr Team im Alltag damit arbeitet. Erst Abläufe und Daten ordnen, dann einführen.</p>
-        </div>{{preise:35}}
-        <div class="fl-unten"><div class="fl-card"><span class="cap">Das nehmen Sie mit</span><p class="k">Ein Projekt mit klarem Umfang, vorab vereinbart.</p></div><div class="fl-cta"><a class="alink haupt gross" href="{{ziel:innovations-check}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Innovations-Check starten</span></a><div class="reihe"><p class="hin">Kostenlos, rund 10 Minuten.</p><a class="alink glass klein" href="{{ziel:erstgespraech}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Erstgespräch vereinbaren</span></a><a class="alink mehr" href="{{ziel:mehr.35}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Mehr erfahren</span></a></div></div>{{mit:35}}</div>
-      </article>
-      <article class="fl" data-fl="6" aria-labelledby="fl6-h">
-        <h2 class="fl-kicker t-caption" id="fl6-h"><span class="mark"></span>Dach · Dachterrasse</h2>
-        <div class="fl-mid">
-          <div class="fl-no t-display wort" aria-hidden="true" data-word="Dach"></div>
-          <p class="fl-text">Jeden Monat bringen wir in Berlin 30 bis 40 Menschen zusammen, die Neues umsetzen: zwei Impulse, Thementische und gezielte Vorstellungen. Ohne Verkaufsdruck. Die Kamera läuft mit: Aus einem Abend werden Film, Beiträge und Gesprächsanlässe für die nächsten Wochen.</p>
-        </div>{{preise:dach}}
-        <div class="fl-unten"><div class="fl-card"><span class="cap">Das nehmen Sie mit</span><p class="k">Film, Fotos und Gespräche, an die Ihr Vertrieb anknüpft.</p></div><div class="fl-cta"><a class="alink haupt" href="{{ziel:einladung}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Einladung erhalten</span></a><div class="reihe"><p class="hin">Kein Verkaufsvortrag. Keine Teilnehmerlisten. Fotos nur mit Einwilligung.</p><a class="alink glass klein" href="{{ziel:partner-anfragen}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Abendpartner anfragen</span></a><a class="alink mehr" href="{{ziel:mehr.dach}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Mehr erfahren</span></a></div></div>{{mit:dach}}</div>
-      </article>
-    </aside>
-
-    <!-- Klickpunkte auf den Gegenständen der Räume, dazu die Karte mit Einzelheiten -->
-    <div class="spots" id="spots"></div>
-    <p class="spot-hint t-caption" id="spotHint" aria-hidden="true"><span class="mark"></span>Punkte antippen für Einzelheiten</p>
-    <div class="pop" id="pop" role="dialog" aria-labelledby="popT" aria-hidden="true">
-      <button type="button" class="pop-x" id="popX" aria-label="Karte schließen"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
-      <p class="cap" id="popC"></p>
-      <h3 id="popT"></h3>
-      <div class="pop-b" id="popB"></div>
-    </div>
-
-    <!-- Markenräume: Rollenschilder an den Figuren und der Paketschalter -->
-    <div class="rollen" id="rollen" aria-hidden="true"></div>
-    <section class="pk" id="pk" aria-labelledby="pkCap">
-      <h3 class="cap" id="pkCap"></h3>
-      <div class="pk-linien" id="pkLinien" role="group" aria-label="Linie wählen"></div>
-      <div class="pk-pakete" id="pkPakete" role="group" aria-label="Paket wählen"></div>
-      <div class="pk-inhalt" aria-live="polite">
-        <p class="pk-h" id="pkH1">In diesem Paket</p>
-        <p class="pk-text" id="pkText"></p>
-        <ul class="pk-liste" id="pkListe"></ul>
-        <p class="pk-vor" id="pkVor" hidden></p>
-        <p class="pk-preis"><b id="pkPreis"></b><span id="pkNetto">Alle Preise netto.</span><a class="pk-angebot" id="pkAngebot" href="{{ziel:preise}}" hidden>Zum Angebot<svg aria-hidden="true"><use href="#i-arrow"/></svg></a></p>
-        <p class="pk-h" id="pkH2">Wer in diesem Paket für Sie arbeitet</p>
-        <ul class="pk-rollen" id="pkRollen"></ul>
-      </div>
-      <div class="pk-cta" id="pkCta"></div>
-    </section>
-
-
-    <!-- Der rote Faden: das ganze Haus -->
-    <div class="finale" id="finale">
-      <div class="det-title">
-        <h2 class="t-title" id="finTitle">Der rote Faden</h2>
-        <p class="t-body">Durch alle Etagen fährt dasselbe Produkt. Jede Etage gibt ihm etwas mit. Deshalb passt am Ende zusammen, was Website, Video, Presse und Vertrieb sagen.</p>
-      </div>
-      <span class="flag" id="flag">Dach und Etage 28: Jeder Auftritt ist ein Anlass zum Nachfassen.</span>
-      <dl class="dl-durch">
-        <div class="stat tr"><dt class="t-body">Werktage, bis Ihr One-Pager steht</dt><dd><span class="sr-only">10</span><span class="drum" aria-hidden="true" data-count="10">0</span></dd></div>
-        <div class="stat bl"><dt class="t-body">Minuten dauert der Check zum Einstieg</dt><dd><span class="sr-only">7</span><span class="drum" aria-hidden="true" data-count="7">0</span></dd></div>
-        <div class="stat br"><dt class="t-body">Bereiche: Sichtbarkeit, Vertrieb, Innovation</dt><dd><span class="sr-only">3</span><span class="drum" aria-hidden="true" data-count="3">0</span></dd></div>
-      </dl>
-    </div>
-
-    <!-- Finale auf dem Dach -->
-    <div class="summit" id="summit">
-      <h2 id="sumTitle">Sichtbar sein. Planbar verkaufen.</h2>
-      <a class="alink solid" id="sumCta" href="{{ziel:erstgespraech}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Erstgespräch vereinbaren</span></a>
-    </div>
+    {{etagen}}
+    {{stufen}}
+    <a class="ueberspringen" id="ueberspringen" href="#kurz"><span>Fahrt überspringen</span><svg aria-hidden="true"><use href="#i-close"/></svg></a>
+    <p class="zaehler t-caption" id="zaehler" aria-hidden="true"></p>
 
     <!-- Übergang: der Kreis -->
     <div class="star" id="star" aria-hidden="true">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#A78BFA"/><circle id="starTint" cx="12" cy="12" r="12" fill="#F6F4F0" opacity="0"/></svg>
     </div>
   </div>
-</section>
-<!-- ═══ Dock: der Aufzug. Etagenanzeige und Etagenwahl, keine Abschnitts-Links (die stehen im Menü oben) ═══ -->
-<div class="dock haus">
-  <nav aria-label="Aufzug: Etagenwahl" id="dockNav">
-    <ul class="menu" id="dock-menu" inert>
-      <li><a class="t-lead" href="#halt-dach"><b>D</b>Dach</a></li>
-      <li><a class="t-lead" href="#halt-35"><b>35</b>Innovation</a></li>
-      <li><a class="t-lead" href="#halt-28"><b>28</b>Revenue</a></li>
-      <li><a class="t-lead" href="#halt-21"><b>21</b>Podcast</a></li>
-      <li><a class="t-lead" href="#halt-15"><b>15</b>PR</a></li>
-      <li><a class="t-lead" href="#halt-08"><b>08</b>Studios</a></li>
-      <li><a class="t-lead" href="#halt-eg"><b>EG</b>Straße</a></li>
-    </ul>
-    <div class="bar">
-      <a class="home" href="#top" aria-label="Zurück nach oben"><svg aria-hidden="true"><use href="#logo"/></svg></a>
-      <span class="t-caption" id="dockLabel">Dach</span>
-      <button type="button" id="dockBtn" aria-expanded="false" aria-controls="dock-menu" aria-label="Etagenwahl öffnen"><svg aria-hidden="true"><use id="dockIcon" href="#i-menu"/></svg></button>
+
+  <!-- Etagenwahl: erreichbar über den Tresen -->
+  <dialog class="wahl haus" id="etagenwahl" aria-labelledby="wahl-h">
+    <div class="wahl-innen">
+      <button type="button" class="wahl-zu" id="wahlZu" aria-label="Etagenwahl schließen"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+      <h2 class="t-caption" id="wahl-h">Wohin soll die Fahrt gehen?</h2>
+      <p class="wahl-cta"><a class="alink erst" href="{{ziel:erstgespraech}}"><span class="t-caption">Erstgespräch buchen</span></a></p>
+      <ol class="wahl-liste">{{wahl}}</ol>
     </div>
-  </nav>
-</div>
+  </dialog>
+
+  <!-- Gast vorschlagen: kleines Formular, keine Kontaktdaten der vorgeschlagenen Person -->
+  <dialog class="wahl haus" id="gastwunsch" aria-labelledby="gast-h">
+    <form class="wahl-innen gast" id="gastForm" novalidate>
+      <button type="button" class="wahl-zu" id="gastZu" aria-label="Formular schließen"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+      <h2 class="t-caption" id="gast-h">Gast vorschlagen</h2>
+      <label class="gast-feld"><span>Dein Name</span><input type="text" name="name" autocomplete="name" required></label>
+      <label class="gast-feld"><span>Deine E-Mail-Adresse</span><input type="email" name="email" autocomplete="email" inputmode="email" required></label>
+      <label class="gast-feld"><span>Name des Gastes</span><input type="text" name="gast" required></label>
+      <label class="gast-feld"><span>Warum passt er oder sie?</span><textarea name="warum" rows="3" required></textarea></label>
+      <fieldset class="gast-wahl"><legend>Kennst du die Person persönlich?</legend>
+        <label><input type="radio" name="kennt" value="ja"><span>Ja</span></label><label><input type="radio" name="kennt" value="nein" checked><span>Nein</span></label></fieldset>
+      <p class="gast-hinweis" id="gastHinweis" hidden>Wir melden uns bei dir, und du stellst den Kontakt her.</p>
+      <p class="gast-recht">Wir fragen bewusst keine Kontaktdaten der vorgeschlagenen Person ab.</p>
+      <p class="gast-meldung" role="status" aria-live="polite"></p>
+      <button type="submit" class="alink mehr"><span class="t-caption">Vorschlag senden</span></button>
+    </form>
+  </dialog>
+</section>

@@ -1,66 +1,42 @@
-/* MAKE Innovation · „Das Haus“ (QUELLE; bauen.mjs macht daraus js/haus.js und setzt Pakete und Linkziele ein).
-   Das Produkt des Kunden fährt im Aufzug von der Straße bis zur Bühne auf dem Dach. Alles von Hand: Federn, Taktgeber,
-   Buchstaben-Maschine, gescrubbte Canvas-Szene, Zählwerk, Dock. Einzige Fremdbibliothek: Lenis (js/lenis.min.js, im Standbild nicht benutzt).
+/* MAKE Innovation · „Das Haus“: die Fahrt durch 15 Szenen (QUELLE; bauen.mjs macht daraus js/haus.js und setzt Szenen und Linkziele ein).
+   Das Produkt des Kunden fährt im Aufzug von der Straße bis zur Bühne auf dem Dach. Die Zeichnung (Canvas) folgt der Scroll-Position;
+   jede Szene rastet ein (CSS Scroll-Snap), ihr Text ist echtes HTML und steht sofort ganz da. Alles von Hand, keine Fremdbibliothek.
    Sicherheitsregeln der Website: keine style-Attribute in eingesetztem HTML, nur Klassen und einzelne el.style-Zuweisungen. */
+if (!document.documentElement.classList.contains('fahrt-aus')) { // Rückkehrer sehen die Fahrt nicht (haus-frueh.js)
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const root = document.documentElement;
 const QUERY = new URLSearchParams(location.search);
-/* Standbild zum Prüfen: ?p=0.35 (Stelle der Szene, 0 bis 1; die Bühne steht dann ganz oben, ohne Scrollen) oder ?y=12000 (echte Scroll-Position
-   in Pixeln). Zusatz &punkt=2 zeigt an einem Halt die Karte des zweiten Klickpunkts offen, &linie= und &paket= wählen im Paketschalter. */
-const STILL = QUERY.has('p') ? { p: +QUERY.get('p') } : QUERY.has('y') ? { y: +QUERY.get('y') } : null;
-if (STILL && STILL.p !== undefined) root.classList.add('still-p');
-/* Unterseite (studios.html, revenue.html, innovation.html): <html data-raum="…">. Der Raum der Etage steht oben als ruhiges Bild, ohne Scroll-Fahrt */
-const RAUM = root.dataset.raum || null;
-if (RAUM) root.classList.add('still-p');
+/* Prüfmodus: ?p=0.35 zeichnet die Stelle p der Zeitachse (0 bis 1) als Standbild, ohne Scrollen und ohne Rasten. Szenen ansteuern: ?szene=7 oder ?szene=e2 (springt dorthin). */
+const STILL = QUERY.has('p') ? { p: +QUERY.get('p') } : null;
+if (STILL) root.classList.add('still-s');
+/* „Weniger Bewegung“ und Standbild: keine Animation. Bei „weniger Bewegung“ stehen die Szenen als normale Abschnitte untereinander (html.statisch, setzt haus-frueh.js bzw. hier). */
 const WENIGER = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (WENIGER && !STILL) root.classList.add('statisch');
+const STATISCH = root.classList.contains('statisch');
 /* Fehlerzähler: im Standbild-Modus steht jeder Skriptfehler als roter Balken im Bild und in <html data-fehler> */
 let FEHLER = 0;
 function fehler(m) { FEHLER++; root.dataset.fehler = String(FEHLER); if (!STILL) return; let b = document.querySelector('.fail'); if (!b) { b = document.createElement('div'); b.className = 'fail'; document.body.append(b); } b.textContent = `${FEHLER} Fehler · ${m}`; }
 addEventListener('error', (e) => fehler(e.message || 'Fehler'));
 addEventListener('unhandledrejection', (e) => fehler(String(e.reason)));
 root.dataset.fehler = '0';
-const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches || STILL !== null;
+const reduce = WENIGER || STILL !== null;
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 const span = (p, [a, b]) => clamp01((p - a) / (b - a));
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeInOutSine = (t) => (1 - Math.cos(t * Math.PI)) / 2;
-const easeOutSine = (t) => Math.sin((t * Math.PI) / 2);
-const easeOutExpo = (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
-const easeOutQuart = (t) => 1 - Math.pow(1 - t, 4);
 const easeOutQuint = (t) => 1 - Math.pow(1 - t, 5);
-const easeInQuad = (t) => t * t;
-const easeOutQuad = (t) => 1 - (1 - t) * (1 - t);
-const easeInOutQuart = (t) => (t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2);
-const easeInOutQuint = (t) => (t < 0.5 ? 16 * t ** 5 : 1 - Math.pow(-2 * t + 2, 5) / 2);
 
-/* ── Voreinstellungen ── */
-const settle = (duration) => ({ duration, easing: easeOutExpo });
-const REVEAL_TIMING = { label: { stagger: 35, config: settle(1500) }, cta: { stagger: 12, config: settle(800) }, quote: { stagger: 7, config: settle(1600) } };
-const HERO_INTRO = { span: 750, config: { duration: 750, easing: easeOutQuart } };
-const DEFAULT = { tension: 170, friction: 26 };
-const SCROLL_LETTER = { tension: 170, friction: 26 };
-const TIMELINE_FOLLOW = { tension: 90, friction: 26 };
-const GENTLE = { tension: 120, friction: 14 };
-const COUNT_UP = { duration: 2200, easing: easeOutQuint };
-const GRID_INTRO = { duration: 800, easing: easeInQuad };
-const DOCK_TOGGLE = { duration: 350, easing: easeOutQuart };
-
-/* ── Feder ── */
+/* ── Feder (für die Kamera und den Einflug) ── */
 const live = new Set();
 class Spring {
-  constructor(v, cfg = DEFAULT, on = null, precision = 0.0005) { this.v = v; this.to = v; this.from = v; this.vel = 0; this.cfg = cfg; this.on = on; this.pr = precision; this.wait = 0; this.t = 0; }
+  constructor(v, cfg, on = null, precision = 0.0005) { this.v = v; this.to = v; this.from = v; this.vel = 0; this.cfg = cfg; this.on = on; this.pr = precision; this.t = 0; }
   set(to, o = {}) {
-    if (o.cfg) this.cfg = o.cfg;
-    if (o.immediate || reduce) {
-      if (to === this.to && this.v === to && !live.has(this)) return;
-      this.to = to; this.v = to; this.vel = 0; this.wait = 0; live.delete(this); if (this.on) this.on(to); return;
-    }
+    if (o.immediate || reduce) { this.to = to; this.v = to; this.vel = 0; live.delete(this); if (this.on) this.on(to); return; }
     if (to === this.to) return;
-    this.to = to; this.from = this.v; this.t = 0; this.wait = o.delay || 0; live.add(this);
+    this.to = to; this.from = this.v; this.t = 0; live.add(this);
   }
   step(dt, real = dt) {
-    if (this.wait > 0) { this.wait -= real; if (this.wait > 0) return; dt = real = -this.wait; this.wait = 0; this.from = this.v; }
     const c = this.cfg;
     if (c.duration) {
       this.t += real; const k = Math.min(1, this.t / c.duration);
@@ -76,122 +52,28 @@ class Spring {
     if (this.on) this.on(this.v);
   }
 }
+const FOLGE = { tension: 120, friction: 26 };      // die Kamera folgt der Scroll-Position mit leichtem Nachlauf
+const EINFLUG = { duration: 3200, easing: easeOutQuint };
 
-/* ── Taktgeber: Lenis zuerst, dann Leser, Federn, Zeichner ── */
+/* ── Taktgeber: Leser, Federn, Zeichner ── */
 const readers = [], painters = [];
-let lenis = null, lastT = performance.now();
+let lastT = performance.now();
 function frame(now) {
   const real = Math.min(1000, Math.max(0, now - lastT)), dt = Math.min(64, real); lastT = now;
-  if (lenis) lenis.raf(now);
   for (const f of readers) { try { f(now, dt); } catch (e) { console.error(e); fehler(e.message); } }
   for (const s of [...live]) { try { s.step(dt, real); } catch (e) { console.error(e); fehler(e.message); live.delete(s); } }
   for (const f of painters) { try { f(now, dt); } catch (e) { console.error(e); fehler(e.message); } }
   requestAnimationFrame(frame);
 }
 
-/* ── Buchstaben-Maschine ── */
-const PRESET = {
-  slide: (el, k) => { el.style.opacity = k; el.style.transform = `translateX(${-40 * (1 - k)}px)`; el.style.filter = k > 0.995 ? 'none' : `blur(${12 * (1 - k)}px)`; },
-  rise: (el, k) => { el.style.opacity = k; el.style.transform = `translateY(${105 * (1 - k)}%)`; el.style.filter = k > 0.995 ? 'none' : `blur(${12 * (1 - k)}px)`; },
-};
-function buildLetters(host, text, { preset = 'slide', clip = false } = {}) {
-  const fertig = host.querySelector('.lt'); // der erste Titel steht ab dem ersten Bild im HTML: seine Buchstaben übernehmen, nicht neu einblenden
-  if (fertig) { const malen = PRESET[preset]; return [...fertig.querySelectorAll('.lt-l')].map((l) => new Spring(1, SCROLL_LETTER, (k) => malen(l, k))); }
-  const wrap = document.createElement('span'); wrap.className = 'lt'; wrap.setAttribute('aria-hidden', 'true');
-  const letters = [], paint = PRESET[preset];
-  for (const word of text.split(' ')) {
-    const w = document.createElement('span'); w.className = 'lt-w' + (clip ? ' clip' : '');
-    for (const ch of word) {
-      const l = document.createElement('span'); l.className = 'lt-l'; l.textContent = ch; w.append(l);
-      paint(l, reduce ? 1 : 0);
-      letters.push(new Spring(reduce ? 1 : 0, SCROLL_LETTER, (k) => paint(l, k)));
-    }
-    wrap.append(w);
-  }
-  host.append(wrap);
-  return letters;
-}
-const lettersToggle = (letters, pr) => { const n = letters.length; for (let i = 0; i < n; i++) letters[i].set(pr > i / n ? 1 : 0, { cfg: SCROLL_LETTER }); };
-function revealLines(host, lines, timing, o = {}) {
-  host.textContent = ''; host.classList.add('lines');
-  const sr = document.createElement('span'); sr.className = 'sr-only'; sr.textContent = lines.join(' '); host.append(sr);
-  const all = [];
-  for (const line of lines) {
-    const row = document.createElement('span'); row.style.display = 'block';
-    if (o.justify) row.dataset.j = o.justify;
-    all.push(...buildLetters(row, line, { preset: 'rise', clip: o.clip !== false })); host.append(row);
-  }
-  let active = !!o.active, inView = false, shown = false;
-  const update = () => {
-    const want = active && inView; if (want === shown) return; shown = want;
-    if (want) all.forEach((s, i) => s.set(1, { delay: i * timing.stagger, cfg: timing.config }));
-    else all.forEach((s) => s.set(0, { immediate: true }));
-  };
-  const io = new IntersectionObserver((es) => { inView = es[es.length - 1].isIntersecting; update(); }, { rootMargin: o.rootMargin || '0px' });
-  io.observe(host);
-  return { setActive(v) { active = v; update(); }, destroy() { io.disconnect(); all.forEach((s) => live.delete(s)); } };
-}
-
-
-/* ── Zeitachse: ein Fortschritt p (0 → 1) über die stehende Spur treibt jede Ebene ── */
-const HALTS = 7, FLOOR_LEN = 0.077, TOUR_START = 0.27; // sieben Halte auf der Zeitachse p, jeder gleich lang
-const MARKEN_HALTE = [1, 2, 3, 4, 5];                     // Räume zum Hineingehen: MAKE Studios, PR, Podcast, MAKE Revenue, MAKE Innovation
-const DACH_HALT = 6;                                      // das Dach hat den Schalter ohne die Fahrt nach innen
-const DEHNUNG = { 1: 2.7, 2: 2.7, 3: 1.9, 4: 2.7, 5: 2.7, 6: 1.9 }; // so viel länger steht der Aufzug dort (Scrollweg)
-/* Scrollweg: Auftakt und Wende (p bis 0,235) laufen etwas langsamer, und in den zwei Markenräumen steht der Aufzug
-   deutlich länger (DEHNUNG). Die Zeitachse p bleibt, wie sie ist; nur der Weg, den man dafür scrollt, wird gedehnt. */
-const WEG = (() => {
-  const pts = [[0, 1.204], [0.235, 1]];
-  for (const i in DEHNUNG) { const a = TOUR_START + i * FLOOR_LEN; pts.push([a + FLOOR_LEN * 0.5, DEHNUNG[i]], [a + FLOOR_LEN * 0.9, 1]); }
-  pts.sort((x, y) => x[0] - y[0]);
-  const seg = []; let r = 0;
-  pts.forEach(([p, w], k) => { const e = k + 1 < pts.length ? pts[k + 1][0] : 1; seg.push({ p, e, w, r }); r += (e - p) * w; });
-  return { seg, sum: r };
-})();
-const toR = (p) => { p = clamp01(p); for (const s of WEG.seg) if (p <= s.e) return (s.r + (p - s.p) * s.w) / WEG.sum; return 1; };
-const toP = (r) => { const x = clamp01(r) * WEG.sum; for (const s of WEG.seg) if (x <= s.r + (s.e - s.p) * s.w) return s.p + (x - s.r) / s.w; return 1; };
-const TRAVEL_VH = Math.round(2529 * WEG.sum), TRACK_VH = TRAVEL_VH + 100; // ein gewöhnlicher Halt bleibt bei etwa 195vh
-const PHASE = {
-  hero: [0, 0.19],                 // Auftakt: von außen auf die leere, dunkle Dachbühne zu, drei Titel
-  heroIn: [null, [0.072, 0.09], [0.14, 0.158]],
-  heroOut: [[0.045, 0.063], [0.112, 0.13], [0.18, 0.198]],
-  turn: [0.19, 0.235],             // die Kamera zieht sich vom Dach zurück, danach geht es in einem Zug nach unten
-  statement: [0.205, 0.255],
-  slabIn: [0.26, 0.284],
-  slabOut: [0.806, 0.83],
-  thread: [0.832, 0.864],          // der rote Faden: der Schacht leuchtet durch alle Etagen
-  fadenUi: [0.848, 0.864],
-  fadenOut: [0.892, 0.906],
-  spots: [0.897, 0.93],            // die Scheinwerfer gehen an
-  summitUi: [0.917, 0.932],
-  summitOut: [0.95, 0.962],
-  starIn: [0.948, 0.958],          // der Kreis
-  star: [0.958, 0.996],
-};
+/* ── Zeitachse der Zeichnung: eine Stelle p (0 → 1) bestimmt Kamera, Aufzug, Kern und Licht. Jede Szene steht auf einer Stelle (szenen.json › bild). ── */
+const HALTS = 7, FLOOR_LEN = 0.077, TOUR_START = 0.27, TRAVEL_PART = 0.38; // sieben Räume, der Aufzug fährt in den ersten 38 % jedes Raums
+const DACH_HALT = 6;                                       // das Dach: kein Raum zum Hineingehen
+const MARKEN_HALTE = [0, 1, 2, 3, 4, 5];                  // Räume zum Hineingehen
+const HERO = [0, 0.19], TURN_END = 0.235;                 // Eingang: von außen auf die Dachbühne zu, dann zurück auf die Straße
+const THREAD = [0.832, 0.864], FADEN_OUT = [0.892, 0.906], SPOTS = [0.897, 0.93]; // das ganze Haus, dann die Lichtkegel auf dem Dach
 const floorRange = (i) => [TOUR_START + i * FLOOR_LEN, TOUR_START + (i + 1) * FLOOR_LEN];
-const TRAVEL_PART = 0.38; // Anteil eines Halts, in dem der Aufzug fährt
-const EXIT_SHIFT_REM = 2.5, EXIT_BLUR_REM = 0.75;
-const exitOpacity = (r) => (p) => 1 - easeInOutSine(span(p, r));
-const exitTransform = (r) => (p) => `translate3d(calc(${-EXIT_SHIFT_REM * easeInOutSine(span(p, r))} * var(--hr)), 0, 0)`;
-const exitFilter = (r) => (p) => { const b = EXIT_BLUR_REM * easeInOutSine(span(p, r)); return b > 0 ? `blur(calc(${b} * var(--hr)))` : 'none'; };
-const gridOpacity = (p) => 1 - span(p, PHASE.hero);
-const canvasOpacity = (p) => 1 - span(p, [0.986, 0.996]);
-const starTransform = (p) => `scale(${0.012 + Math.pow(span(p, PHASE.star), 4) * 3.2})`;
-const starTintOf = (p) => easeInOutSine(span(p, [PHASE.star[0] + 0.012, PHASE.star[1]]));
-/* Schalter: geschaltet, nicht gescrubbt; angewandt nur, wenn einer kippt */
-const sceneFlags = (p) => {
-  const f = {
-    canvas: p < PHASE.star[1],
-    statement: p >= PHASE.statement[0] && p < PHASE.statement[1],
-    faden: p >= PHASE.fadenUi[0] && p < PHASE.fadenOut[1],
-    summit: p >= PHASE.summitUi[0] && p < PHASE.summitOut[1],
-    floor: -1,
-  };
-  for (let i = 0; i < HALTS; i++) { const [a, b] = floorRange(i), q = (p - a) / (b - a); if (q >= 0.3 && q < (i === HALTS - 1 ? 1 : 0.96)) f.floor = i; }
-  return f;
-};
-
-const store = { framesProgress: 0, introReady: false, dockHidden: false };
+const wide = matchMedia('(min-width: 768px)');
 
 /* ═══════════════ Das Haus (2D-Canvas, von der Scroll-Position gescrubbt) ═══════════════
    Ein Turm mit 40 Etagen, oben die Dachbühne. Alles ist in Metern gebaut und wird mit einer Zentralperspektive
@@ -210,70 +92,35 @@ const TABLE = { x: 0.3, z: 6.4, h: 0.78 };               // der runde Tisch im P
 const STAGE = { x0: -4.6, x1: 4.6, y: 0.5, z0: 6.4, z1: 11, zc: 8.6 }, TRUSS = { x: 4.9, z: 10.2, h: 5.4 };
 const DT = [[5.6, 3.6], [7.7, 6.3]];                     // die zwei Thementische auf dem Dach
 const AKZ = { studios: '#FF5A1F', revenue: '#7DB7FF', lav: '#A78BFA' }; // Akzent je Etage; der Kern des Kunden bleibt violett
-/* Inhalte der Karten an den Klickpunkten: wörtlich von makeinnovation.de, Beispielwerte sind so beschriftet */
-const CHECK = '<a class="alink solid" href="{{ziel:check}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Check starten</span></a>';
-const linie = (v) => `<svg viewBox="0 0 60 20" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" points="${v.map((y, i) => `${(i * 60) / (v.length - 1)},${19 - y * 17}`).join(' ')}"/></svg>`;
-const balken = (v) => `<svg viewBox="0 0 60 20" preserveAspectRatio="none" aria-hidden="true">${v.map((y, i) => `<rect x="${i * (60 / v.length) + 1}" y="${20 - y * 18}" width="${60 / v.length - 2}" height="${y * 18}" fill="currentColor"/>`).join('')}</svg>`;
-const KPI = '<ul class="kpis">' + [['Angebote im Monat', '12', '', balken([0.4, 0.5, 0.45, 0.6, 0.7, 0.65, 0.8])], ['Abschlussquote', '25', '%', linie([0.3, 0.35, 0.3, 0.45, 0.5, 0.6, 0.62])], ['Zeit bis zum Abschluss', '38', 'Tage', linie([0.8, 0.75, 0.7, 0.6, 0.62, 0.5, 0.45])], ['Offene Chancen', '21', '', balken([0.5, 0.6, 0.55, 0.7, 0.6, 0.75, 0.7])], ['Nachfassen', '9', '', balken([0.7, 0.5, 0.6, 0.4, 0.5, 0.3, 0.35])]]
-  .map(([k, v, u, g]) => `<li><span>${k}</span><b>${v}${u ? `<small>${u}</small>` : ''}</b>${g}</li>`).join('') + '</ul><p class="pop-note">Beispielwerte</p>';
+/* Die sieben Räume des Hauses, von unten nach oben. Die Etagenzahlen der Szenen (Erdgeschoss, Eingangshalle, Etage 1 bis 5, Dach) stehen in szenen.json;
+   n ist hier nur die Höhe im Turm (40 Stockwerke). key wählt die Zeichnung des Raums. */
 const FLOORS = [
-  { n: 0, id: 'eg', key: 'strasse', label: 'Erdgeschoss · Straße', base: GROUND, y1: 6.9, eye: 2.7, z1: 10, solid: true, spots: [
-    { at: [PED.x, 0.6, PED.z - 0.33], t: 'Der Einstieg', h: `<p>17 Fragen, 7 Minuten, kostenlos. Sie sehen Ihren Stand bei Sichtbarkeit und Vertrieb.</p>${CHECK}` }] },
-  { n: 8, id: '08', key: 'studios', label: 'Etage 08 · MAKE Studios', akz: AKZ.studios, innen: true, base: baseOf(8), y1: 3.6, eye: 1.6, solid: true, dark: true, spots: [
-    { at: [0.85, 2.25, 8.5], t: 'Homepages', h: '<p>Landing: ein One-Pager. Story: Startseite und drei Unterseiten. Cinematic: Startseite mit 3D-Szenen und fünf Unterseiten. Texte von uns, mobil zuerst und mit Anfrage ins CRM.</p>' },
-    { at: [-3.75, 2.8, 8.5], t: 'Video', h: '<p>Erklärvideo, Videostory und Videoserie: Videos, die Ihr Angebot in Sekunden zeigen, mit Skript zur Freigabe.</p>' },
-    { at: [3.82, 2.3, 8.9], t: 'Social Media', h: '<p>Redaktionsplan und Beiträge, Reels und Kurzvideos, Kommentare beantworten. Keine bezahlten Anzeigen.</p>' }] },
-  { n: 15, id: '15', key: 'pr', label: 'Etage 15 · PR', innen: true, base: baseOf(15), y1: 3.6, eye: 1.6, spots: [
-    { at: [-2.1, 2.2, 8.9], t: 'Medienarbeit in vier Stufen', h: '<p>Überregionale Leitmedien, Fach- und Branchenmedien, regionale Medien und Podcasts.</p>' },
-    { at: [-4.62, 1.2, 7.65], t: 'Fundament', h: '<p>Kernbotschaften, Themenplan, Pressemappe und Pressebereich auf Ihrer Website.</p>' },
-    { at: [-1.62, 1.12, 7.95], t: 'Beiträge', h: '<p>Pressemitteilungen, Fach- und Gastbeiträge, geschrieben von uns, freigegeben von Ihnen.</p>' },
-    { at: [0.42, 1.5, 7.75], t: 'Podcasts als Gast', h: '<p>Wir bringen Sie in die Podcasts, die Ihre Kunden hören, und bereiten Sie darauf vor.</p>' }] },
-  { n: 21, id: '21', key: 'podcast', label: 'Etage 21 · Fokus Innovation · Der Podcast', innen: true, base: baseOf(21), y1: 3.6, eye: 1.6, solid: true, dark: true, spots: [
-    { at: [TABLE.x + 0.8, 1.3, TABLE.z], t: 'Ihr Platz', h: `<p>Sie haben etwas Neues gebaut? Schlagen Sie sich oder jemanden vor, der hier sitzen sollte.</p><a class="alink solid" href="{{ziel:gast-vorschlagen}}"><svg aria-hidden="true"><use href="#i-arrow"/></svg><span class="t-caption">Als Gast vorschlagen</span></a>` },
-    { at: [TABLE.x - 0.8, 1.3, TABLE.z], t: 'Vorbereitung', h: '<p>Vorbereitung von Vortrag, Interview und Podcast, Medientraining für die Geschäftsführung.</p>' }] },
-  { n: 28, id: '28', key: 'revenue', label: 'Etage 28 · MAKE Revenue', akz: AKZ.revenue, innen: true, base: baseOf(28), y1: 3.6, eye: 1.6, spots: [
-    { at: [-2.2, 1.75, 8.9], t: 'Fünf Zahlen, die Vertrieb planbar machen', h: KPI },
-    { at: [-5.2, 1.7, 7.7], t: 'In dieser Reihenfolge', h: '<ol class="steps"><li>Zielgruppe</li><li>Ansprache</li><li>Prozess im CRM</li><li>Kennzahlen</li><li>Trainiertes Team</li></ol>' }] },
-  { n: 35, id: '35', key: 'innovation', label: 'Etage 35 · MAKE Innovation', innen: true, base: baseOf(35), y1: 3.6, eye: 1.6, spots: [
-    { at: [-3.9, 1.72, 8.3], t: 'Innovations-Check', h: '<p>Wo steht Ihr Unternehmen bei Strategie, KI, Automatisierung, Daten und Team? Der kostenlose Innovations-Check zeigt es in rund 10 Minuten.</p>' },
-    { at: [-0.9, 2.1, 8.9], t: 'Scoping-Workshop', h: '<p>Umfang, Abläufe und Daten klären, bevor gebaut wird. Der Workshop wird auf das Projekt angerechnet.</p><p class="pop-note">Alle Preise netto.</p>' },
-    { at: [2.75, 2.2, 8.9], t: 'Umsetzungsprojekte', h: '<p>KI und Software einführen, bis sie im Alltag genutzt werden: Projekte mit klarem Umfang, vorab vereinbart.</p>' }] },
-  { n: 40, id: 'dach', key: 'dach', label: 'Dach · Dachterrasse', roof: true, base: 0, y1: 6, eye: 3.0, spots: [
-    { at: [0, TRUSS.h - 0.28, TRUSS.z], t: 'Der Abend', h: '<ol class="zeiten"><li><b>18:30</b>Ankommen</li><li><b>19:00</b>Begrüßung</li><li><b>19:10</b>Impuls von einem Unternehmer, der umgesetzt hat</li><li><b>19:30</b>Impuls von einem Experten</li><li><b>19:50</b>Thementische in 2 Runden</li><li><b>20:40</b>Offenes Netzwerken</li><li><b>22:00</b>Ende</li></ol>' },
-    { at: [DT[0][0], 1.42, DT[0][1]], t: 'Ehrlich gesagt', h: '<p>Wir versprechen keine Leads. Wir versprechen einen guten Abend mit den richtigen Menschen und einen Bericht, mit Zahlen, Branchen und Eindrücken.</p>' },
-    { at: [1.2, 1.75, 1.9], t: 'Was bleibt', h: '<p>Aus einem Abend werden Film, Beiträge und Gesprächsanlässe für die nächsten Wochen.</p>' }] },
+  { n: 0, id: 'eg', key: 'strasse', base: GROUND, y1: 6.9, eye: 2.7, z1: 10, solid: true, innen: true },
+  { n: 8, id: 'e1', key: 'innovation', innen: true, base: baseOf(8), y1: 3.6, eye: 1.6 },
+  { n: 15, id: 'e2', key: 'studios', akz: AKZ.studios, innen: true, base: baseOf(15), y1: 3.6, eye: 1.6, solid: true, dark: true },
+  { n: 21, id: 'e3', key: 'pr', innen: true, base: baseOf(21), y1: 3.6, eye: 1.6 },
+  { n: 28, id: 'e4', key: 'revenue', akz: AKZ.revenue, innen: true, base: baseOf(28), y1: 3.6, eye: 1.6 },
+  { n: 35, id: 'e5', key: 'podcast', innen: true, base: baseOf(35), y1: 3.6, eye: 1.6, solid: true, dark: true },
+  { n: 40, id: 'dach', key: 'dach', roof: true, base: 0, y1: 6, eye: 3.0 },
 ];
+
 const OPEN = new Set([0, 1, 8, 15, 21, 28, 35]);
 const LEVELS = [0.12, 0.28, 0.42, 0.56, 0.7, 0.86, 1];   // Helligkeit des Kerns je Halt
 const LAV = '167,139,250', LAVH = '205,192,255', WARM = '255,236,214';
-/* ── Räume mit Schalter: MAKE Studios, PR, Podcast, MAKE Revenue, MAKE Innovation und das Dach. Pakete und Rollen kommen aus src/pakete.json (das Bauskript setzt sie ein);
-   hier steht nur, wo im Raum etwas steht. zx: Mitte der Ecke je Linie (Studios) bzw. je Paket (Revenue), kern: Platz des Kerns dort,
-   FIG: je Linie und Rolle eine Figur [x, z, Haltung]. ── */
-const PAKETE = /*PAKETE*/{}/*PAKETE-ENDE*/;
-/* Linkziele aus src/ziele.json (das Bauskript setzt sie ein); im Skript stehen keine festen Adressen */
-const ZIELE = /*ZIELE*/{}/*ZIELE-ENDE*/;
-/* Anfragen (Einladung, Abendpartner, Gast im Podcast) führen auf das Formular der Anwendung. Ist es aus, macht js/app-wege.js daraus eine vorbereitete Mail
-   (Attribut data-anfrage-mail). Links, die erst das Skript einsetzt, bekommen hier dasselbe Attribut und denselben Stand.
-   Die Tabelle Weg → Mail steht im HTML der Bühne (data-anfrage-mails am Abschnitt #top, setzt der Bau): im Skript steht keine Adresse. */
-const MAILS = (() => { try { return JSON.parse(document.querySelector('[data-anfrage-mails]')?.dataset.anfrageMails || '{}'); } catch { return {}; } })();
-function anfrageWege(wo) {
-  const perMail = !!document.querySelector('a[data-anfrage-mail][href^="mailto:"]');
-  for (const a of wo.querySelectorAll('a[href^="/anfrage?anlass="]')) { const m = MAILS[a.getAttribute('href')]; if (!m) continue; a.dataset.anfrageMail = m; if (perMail) a.href = m; }
-}
+let sceneDirty = true;
+const STUFE = { fundament: '167,139,250', wachstum: '125,183,255', skalieren: '255,90,31' }; // die drei Stufen, farbig am Haus (Szene 14)
+/* Räume von innen: rgb = Licht des Raums, tief = Tönung, zx = Mitte der Ecken (Blickrichtung je Szene), kern = Platz des Kerns dort, breite = so viele Meter zeigt die Ansicht,
+   z0 = Ecke, wenn eine Szene keine nennt. Die Figuren stehen immer im Licht. */
 const MARKE = {
-  studios: { i: 1, rgb: '255,90,31', tief: '255,90,31', zx: [3.4, -0.07, -3.6], kern: [[2.88, 0.74, 6.4], [0.085, 0.9, 6.2], [STOOL.x, STOOL.h, STOOL.z]] },
-  revenue: { i: 4, rgb: '125,183,255', tief: '23,70,158', zx: [-3.6, -0.55, 3.4], kern: [[-3.31, 1.0, 6.6], [-0.53, 1.0, 6.8], [2.84, 1.0, 6.8]] },
-  /* PR: fünf Ecken, je Baustein eine (Auswahl ohne „enthält“: jede Wahl ist eine eigene Linie mit einem Paket) */
-  pr: { i: 2, rgb: '167,139,250', tief: '124,58,237', licht: 0.3, zx: [-4.35, -2.1, 0.35, 2.55, 4.2], kern: [[-3.05, 1.0, 6.3], [-0.55, 1.0, 6.3], [1.95, 1.0, 6.3], [4.15, 1.0, 6.3], [2.75, 1.0, 6.3]] },
-  /* Podcast: ein Raum ohne Schalter; der Kern liegt auf dem Tisch zwischen den beiden */
-  podcast: { i: 3, rgb: '167,139,250', tief: '124,58,237', licht: 0.3, breite: 6.2, zx: [TABLE.x], kern: [[TABLE.x, TABLE.h, TABLE.z]] },
-  /* MAKE Innovation: drei Schritte, drei Ecken (Check, Workshop, Projekt) */
-  innovation: { i: 5, rgb: '167,139,250', tief: '124,58,237', licht: 0.3, zx: [-3.5, -0.2, 3.45], kern: [[-2.3, 1.0, 6.4], [1.4, 1.0, 6.4], [3.4, 1.0, 6.3]] },
-  /* Dach: kein Raum mit Glasfront. Die Ansicht schwenkt je Rolle des Besuchers (Thementische, Bühne), fährt aber nicht hinein */
-  dach: { i: 6, rgb: '167,139,250', tief: '124,58,237', licht: 0.3, aussen: true, zx: [3.8, -0.5], zz: [-16.5, -13.2], kern: [[0, 0, 0]] },
+  strasse: { i: 0, rgb: WARM, tief: '120,100,80', licht: 0.001, breite: 6.6, zx: [1.3, 2.9], z0: 1, kern: [[PED.x, PED.h, PED.z], [PED.x, PED.h, PED.z]] },
+  innovation: { i: 1, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, zx: [-3.5, -0.2, 3.45], z0: 1, kern: [[-2.3, 1.0, 6.4], [1.4, 1.0, 6.4], [3.4, 1.0, 6.3]] },
+  studios: { i: 2, rgb: '255,90,31', tief: '255,90,31', zx: [3.4, -0.07, -3.6], z0: 1, kern: [[2.88, 0.74, 6.4], [0.085, 0.9, 6.2], [STOOL.x, STOOL.h, STOOL.z]] },
+  pr: { i: 3, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, breite: 5.4, zx: [-4.35, -2.1, 0.35, 2.55, 4.2], z0: 1, kern: [[-3.05, 1.0, 6.3], [-0.55, 1.0, 6.3], [1.95, 1.0, 6.3], [4.15, 1.0, 6.3], [2.75, 1.0, 6.3]] },
+  revenue: { i: 4, rgb: '125,183,255', tief: '23,70,158', zx: [-3.6, -0.55, 3.4], z0: 1, kern: [[-3.31, 1.0, 6.6], [-0.53, 1.0, 6.8], [2.84, 1.0, 6.8]] },
+  podcast: { i: 5, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, breite: 6.2, zx: [TABLE.x], z0: 0, kern: [[TABLE.x, TABLE.h, TABLE.z]] },
+  dach: { i: 6, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, aussen: true, zx: [3.8, -0.5], z0: 0, zz: [-16.5, -13.2], kern: [[0, 0, 0]] },
 };
-/* Die Plätze sind so gesetzt, dass in der Ansicht von innen keine Figur eine andere verdeckt: hinten und vorn im Wechsel,
-   jede mit eigenem Streifen in der freien Fläche zwischen Tafel und Paketschalter. */
+/* Die Menschen der Räume (je Gruppe eine Liste: x, z, Haltung). Ihre Plätze sind so gesetzt, dass in der Ansicht von innen keine Figur eine andere verdeckt. */
 const FIG = {
   studios: [
     [[1.79, 7.8, {}], [4.1, 7.2, { seat: true }], [4.9, 6.3, { flip: true, bob: true }]],
@@ -289,35 +136,24 @@ const FIG = {
   ],
   podcast: [[[TABLE.x - 1.3, TABLE.z, { profil: true }], [TABLE.x + 1.3, TABLE.z, { profil: true, flip: true, s: 0.97 }], [3.75, 7.5, { seat: true }]]],
   innovation: [[[-2.95, 7.7, { flip: true }], [-1.0, 7.9, { bob: true }], [2.0, 7.9, {}], [4.75, 7.2, { seat: true }], [5.75, 7.9, { flip: true, bob: true }]]],
-  /* Dach: Schilder an Gegenständen und Gruppen (y: Höhe des Schilds); die Figuren zeichnet terrace() */
-  dach: [[[DT[0][0], DT[0][1], { y: 2.15 }], [DT[1][0], DT[1][1], { y: 2.15 }]], [[2.5, 9.6, { y: 3.0 }], [-2.4, 8.25, { y: 2.6 }]]],
+  dach: [[[DT[0][0], DT[0][1], {}], [DT[1][0], DT[1][1], {}]], [[2.5, 9.6, {}], [-2.4, 8.25, {}]]],
   revenue: [[[-4.19, 7.6, { flip: true }], [-2.3, 7.6, {}], [-1.33, 6.2, { bob: true }], [0.56, 7.6, { flip: true }], [1.47, 7.6, {}], [3.5, 6.4, { profil: true, ohneKH: true }], [5.55, 7.8, { bob: true }]]],
 };
-const FADE = { duration: 500, easing: easeInOutSine };
-const WAHL = {}; // je Marke: gewählte Linie und je Linie das gewählte Paket (Start: das mittlere)
-let sceneDirty = true;
-for (const key in MARKE) {
-  const MK = MARKE[key], D = PAKETE[key]; if (!D) { delete MARKE[key]; continue; }
-  MK.D = D; MK.key = key; MK.nachLinie = D.linien.length > 1; // mehrere Linien: die Ansicht schwenkt mit der Linie, sonst mit dem Paket
-  WAHL[key] = { linie: 0, paket: D.linien.map((L) => Math.min(D.start === undefined ? 1 : D.start, L.pakete.length - 1)) }; // Start: das mittlere Paket, wenn die Daten nichts anderes sagen
-  MK.rolle = D.linien.map((L, l) => L.rollen.map(([, ab]) => new Spring(ab <= WAHL[key].paket[l] ? 1 : 0, FADE, () => { sceneDirty = true; }, 0.002)));
-  MK.linieK = D.linien.map((L, l) => new Spring(l === 0 ? 1 : 0, FADE, () => { sceneDirty = true; }, 0.002)); // nur die gewählte Linie steht im Raum, wenn man drin ist
-  MK.zone = new Spring(MK.nachLinie ? 0 : WAHL[key].paket[0], { duration: 900, easing: easeInOutSine }, () => { sceneDirty = true; }, 0.002);
+for (const key in MARKE) { // alles im Licht: keine Auswahl, kein Schalter
+  const MK = MARKE[key], fig = FIG[key] || [[]]; MK.key = key;
+  MK.rolle = fig.map(() => Array.from({ length: 12 }, () => ({ v: 1 })));
+  MK.linieK = fig.map(() => ({ v: 1 }));
+  MK.zone = { v: MK.z0 };
 }
-const zoneOf = (key) => (MARKE[key].nachLinie ? WAHL[key].linie : WAHL[key].paket[0]);
 const zwischen = (arr, v) => { if (arr.length < 2) return [arr[0], arr[0], 0]; const i = Math.max(0, Math.min(arr.length - 2, Math.floor(v))); return [arr[i], arr[i + 1], clamp01(v - i)]; };
 const zoneX = (key) => { const [a, b, t] = zwischen(MARKE[key].zx, MARKE[key].zone.v); return lerp(a, b, t); };
 const kernplatz = (key, R) => { const [A, B, t] = zwischen(MARKE[key].kern, MARKE[key].zone.v); return [lerp(A[0], B[0], t), lerp(A[1], B[1], t) + R + Math.sin(t * Math.PI) * 0.45, lerp(A[2], B[2], t)]; };
-let paketGewaehlt = null; // die Oberfläche hängt sich hier ein
-function waehle(key, linie, paket, sofort) {
-  const MK = MARKE[key], W = WAHL[key]; if (!MK) return;
-  paket = Math.max(0, Math.min(MK.D.linien[linie].pakete.length - 1, paket)); W.linie = linie; W.paket[linie] = paket;
-  MK.rolle[linie].forEach((sp, r) => sp.set(MK.D.linien[linie].rollen[r][1] <= paket ? 1 : 0, { cfg: FADE, immediate: !!sofort || WENIGER }));
-  MK.linieK.forEach((sp, l) => sp.set(l === linie ? 1 : 0, { cfg: FADE, immediate: !!sofort || WENIGER }));
-  MK.zone.set(zoneOf(key), { immediate: !!sofort || WENIGER });
-  sceneDirty = true; if (paketGewaehlt) paketGewaehlt(key);
-}
-let sky = null, skyHy = 0, CITY = null, TEX = {}, oy = 0, beacon = 0, spots = 0, marks = 0, flagAt = null, coreAt = null;
+/* Linkziele aus ziele.json (das Bauskript setzt sie ein); im Skript stehen keine festen Adressen */
+const ZIELE = /*ZIELE*/{}/*ZIELE-ENDE*/;
+/* Anfragen (Einladung, Gast im Podcast) führen auf das Formular der Anwendung. Die Tabelle Weg → vorbereitete Mail steht im HTML (data-anfrage-mails am Abschnitt #top): im Skript steht keine Adresse. */
+const MAILS = (() => { try { return JSON.parse(document.querySelector('[data-anfrage-mails]')?.dataset.anfrageMails || '{}'); } catch { return {}; } })();
+
+let sky = null, skyHy = 0, CITY = null, TEX = {}, oy = 0, beacon = 0, spots = 0, marks = 0, coreAt = null;
 const FONT = (w, s) => `${w} ${s}px "Schibsted Grotesk", system-ui, sans-serif`;
 function mulberry(a) { return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const hash = (a, b) => { let t = (Math.imul(a + 77, 374761393) + Math.imul(b + 13, 668265263)) | 0; t = Math.imul(t ^ (t >>> 13), 1274126177); return ((t ^ (t >>> 16)) >>> 0) / 4294967296; };
@@ -333,7 +169,7 @@ function buildBackdrop(w, h, hy, seed = 7, sunAt = 0.3, city = true) {
   g.fillStyle = sk; g.fillRect(0, 0, w, hy + 2);
   for (let i = 0; i < 130; i++) { const x = R() * w, y = R() * hy * 0.6; g.fillStyle = `rgba(232,228,255,${(0.12 + R() * 0.5) * (1 - y / (hy * 0.6))})`; const s = (1 + R() * 1.2) * u; g.fillRect(x, y, s, s); }
   const sx = w * sunAt, rg = g.createRadialGradient(sx, hy, 0, sx, hy, w * 0.6);
-  rg.addColorStop(0, 'rgba(221,214,254,.6)'); rg.addColorStop(0.07, 'rgba(167,139,250,.4)'); rg.addColorStop(0.3, 'rgba(124,58,237,.16)'); rg.addColorStop(1, 'rgba(124,58,237,0)');
+  rg.addColorStop(0, 'rgba(221,214,254,.6)'); rg.addColorStop(0.07, 'rgba(167,139,250,.4)'); rg.addColorStop(0.3, 'rgba(95,75,182,.16)'); rg.addColorStop(1, 'rgba(95,75,182,0)');
   g.globalCompositeOperation = 'screen'; g.fillStyle = rg; g.fillRect(0, 0, w, hy); g.globalCompositeOperation = 'source-over';
   for (let i = 0; i < 8; i++) {
     const y = hy * (0.6 + R() * 0.32), x = R() * w, rw = (260 + R() * 560) * u, rh = (5 + R() * 11) * u;
@@ -403,7 +239,7 @@ function buildTextures() {
     const card = ([x, y, rot, on]) => {
       g.save(); g.translate(x, y); g.rotate(rot);
       if (on) { g.shadowColor = 'rgba(167,139,250,.9)'; g.shadowBlur = 30; }
-      g.fillStyle = on ? '#7C3AED' : pale(0.1); g.beginPath(); g.roundRect(-cw / 2, -ch / 2, cw, ch, 6); g.fill(); g.shadowBlur = 0;
+      g.fillStyle = on ? '#5F4BB6' : pale(0.1); g.beginPath(); g.roundRect(-cw / 2, -ch / 2, cw, ch, 6); g.fill(); g.shadowBlur = 0;
       if (on) { g.strokeStyle = '#C4B5FD'; g.lineWidth = 3; g.stroke(); }
       bar(-cw / 2 + 12, -ch / 2 + 16, cw * 0.46, 9, on ? 'rgba(255,255,255,.92)' : pale(0.2)); bar(-cw / 2 + 12, -ch / 2 + 38, cw * 0.72, 6, on ? 'rgba(255,255,255,.6)' : pale(0.12)); bar(-cw / 2 + 12, -ch / 2 + 54, cw * 0.56, 6, on ? 'rgba(255,255,255,.6)' : pale(0.12));
       g.fillStyle = on ? '#EFEAFB' : pale(0.32); g.beginPath(); g.arc(0, -ch / 2 + 5, 4, 0, 7); g.fill();
@@ -451,7 +287,7 @@ function buildTextures() {
   TEX.board = tex(1300, 680, 3, (g, R, bar) => {
     const bg = g.createLinearGradient(0, 0, 0, 680); bg.addColorStop(0, '#bdb9c9'); bg.addColorStop(1, '#a5a1b3'); g.fillStyle = bg; g.fillRect(0, 0, 1300, 680);
     const ink = '#262433'; g.strokeStyle = ink; g.lineWidth = 7; g.lineJoin = 'round'; g.lineCap = 'round';
-    const box = (x, y, w, h2, on) => { if (on) { g.fillStyle = '#7C3AED'; g.beginPath(); g.roundRect(x, y, w, h2, 10); g.fill(); } g.strokeStyle = on ? '#4c1d95' : ink; g.beginPath(); g.roundRect(x, y, w, h2, 10); g.stroke(); g.strokeStyle = ink; bar(x + 22, y + 26, w * 0.5, 10, on ? 'rgba(255,255,255,.9)' : 'rgba(38,36,51,.55)'); bar(x + 22, y + 50, w * 0.68, 8, on ? 'rgba(255,255,255,.6)' : 'rgba(38,36,51,.32)'); };
+    const box = (x, y, w, h2, on) => { if (on) { g.fillStyle = '#5F4BB6'; g.beginPath(); g.roundRect(x, y, w, h2, 10); g.fill(); } g.strokeStyle = on ? '#4c1d95' : ink; g.beginPath(); g.roundRect(x, y, w, h2, 10); g.stroke(); g.strokeStyle = ink; bar(x + 22, y + 26, w * 0.5, 10, on ? 'rgba(255,255,255,.9)' : 'rgba(38,36,51,.55)'); bar(x + 22, y + 50, w * 0.68, 8, on ? 'rgba(255,255,255,.6)' : 'rgba(38,36,51,.32)'); };
     box(70, 90, 230, 120); box(400, 90, 230, 120); box(730, 90, 230, 120, true); box(1030, 90, 200, 120);
     pfeil(g, 310, 150, 390, 150, 18); pfeil(g, 640, 150, 720, 150, 18); pfeil(g, 970, 150, 1020, 150, 18);
     box(400, 330, 230, 120); box(730, 330, 230, 120); pfeil(g, 515, 220, 515, 320, 18); pfeil(g, 845, 220, 845, 320, 18); pfeil(g, 640, 390, 720, 390, 18);
@@ -540,51 +376,55 @@ let KF = [];
 function buildKeys() {
   const n = S.narrow, E = HERO_END(), cyT = n ? 0.19 : 0.5;
   const zA = n ? -17 : -15, zB = n ? -13 : -12, xA = n ? 0 : -2.6, xB = n ? 0 : -1.4;
-  KF = [{ p: PHASE.hero[1], x: E.x, y: E.y, z: STAGE.zc - E.d, cy: E.cy }, { p: PHASE.turn[1], x: n ? 0 : -8, y: 1.6, z: zA - 3, cy: cyT }];
+  KF = [{ p: HERO[1], x: E.x, y: E.y, z: STAGE.zc - E.d, cy: E.cy }, { p: TURN_END, x: n ? 0 : -8, y: 1.6, z: zA - 3, cy: cyT }];
   FLOORS.forEach((F, i) => { const [a, b] = floorRange(i), y = F.base + F.eye; KF.push({ p: a + (b - a) * TRAVEL_PART, x: xA, y, z: zA, cy: cyT }, { p: b, x: xB, y, z: zB, cy: cyT }); });
-  KF.push({ p: PHASE.thread[1], x: n ? -22 : -23, y: n ? -64 : -66, z: n ? -128 : -215, cy: 0.5 });   // das ganze Haus
-  KF.push({ p: PHASE.spots[1], x: n ? 2 : -10.5, y: n ? -2 : 4, z: n ? -56 : -40, cy: n ? 0.4 : 0.7 });   // das Dach
+  KF.push({ p: THREAD[1], x: n ? -22 : -23, y: n ? -64 : -66, z: n ? -128 : -215, cy: 0.5 });   // das ganze Haus
+  KF.push({ p: SPOTS[1], x: n ? 2 : -10.5, y: n ? -2 : 4, z: n ? -56 : -40, cy: n ? 0.4 : 0.7 });   // das Dach
   KF.push({ p: 1, x: n ? 2 : -10, y: n ? -2 : 4.3, z: n ? -52 : -37, cy: n ? 0.4 : 0.7 });
 }
-let focusK = 0, focusAt = null; // Klickpunkt: 0 → 1 fährt die Ansicht ein Stück auf den Gegenstand zu
 const insideK = (p, i) => { const [a, b] = floorRange(i), d = ((p - a) / (b - a) - TRAVEL_PART) / (1 - TRAVEL_PART); return d <= 0 || d >= 1 ? 0 : smooth((d - 0.08) / 0.22) * (1 - smooth((d - 0.78) / 0.18)); };
-let INS = { k: 0, i: -1, F: null }, AKT = { k: 0, F: null }; // AKT: der Raum, dessen Schalter gerade gilt (ein Raum von innen oder das Dach)
-const NURBILD = QUERY.has('nurbild'); // Raumbild ohne Tafel und Schalter (für die Bilder der Etagen-Kacheln)
-const freiFlaeche = (schalter) => { const W = innerWidth, frei = wide.matches && !S.narrow && !NURBILD; return [frei ? slab.offsetWidth / W : 0, frei ? (schalter ? (pk.offsetLeft || W * 0.73) / W : 0.97) : 1]; };
-const dachK = (p) => { const [a, b] = floorRange(DACH_HALT), q = (p - a) / (b - a); return q <= 0 || q > 1 || !MARKE.dach ? 0 : smooth((q - 0.48) / 0.17) * (1 - smooth((q - 0.9) / 0.085)); };
+let INS = { k: 0, i: -1, F: null }, AKT = { k: 0, F: null }; // INS: der Raum, in dem die Kamera gerade steht · AKT: dasselbe oder das Dach
+let ZOOM = 1; // 1 = so viele Meter, wie der Raum vorgibt; kleiner = näher heran (je Szene, szenen.json › bild.zoom)
+/* Die freie Fläche neben dem Text: breit rechts von der Spalte, am Handy das Bild über dem Text */
+const freiFlaeche = () => (wide.matches && !S.narrow ? [innerWidth <= 1100 ? 0.49 : 0.45, 0.93] : [0, 1]);
+const dachK = (p) => { const [a, b] = floorRange(DACH_HALT), q = (p - a) / (b - a); return q <= 0 || q > 1 ? 0 : smooth((q - 0.48) / 0.17) * (1 - smooth((q - 0.9) / 0.085)); };
 function innenCam() {
-  const F = INS.F, k = INS.k, MK = MARKE[F.key], [L, R] = freiFlaeche(!MK.D.ohneSchalter);
-  const zIn = 0.5, dRef = 6.6, fIn = Math.min(S.w * 1.5, ((R - L) * S.w * dRef) / (NURBILD ? 7.2 : MK.breite || 4.6)), mitte = (L + R) / 2; // 4,6 m Breite passen in die freie Fläche
+  const F = INS.F, k = INS.k, MK = MARKE[F.key], [L, R] = freiFlaeche();
+  const dRef = 6.6, zIn = 0.5, fIn = Math.min(S.w * 1.5, ((R - L) * S.w * dRef) / ((MK.breite || 4.6) * ZOOM)), mitte = (L + R) / 2; // die Breite des Raums passt in die freie Fläche
   const xIn = zoneX(F.key) - ((mitte - 0.5) * S.w * dRef) / fIn;
   cam.x = lerp(cam.x, xIn, k); cam.y = lerp(cam.y, F.base + 1.5, k); cam.z = lerp(cam.z, zIn, k);
   S.f = lerp(S.f0, fIn, k); S.cy = lerp(S.cy, S.h * (S.narrow ? 0.2 : 0.53), k);
 }
-function dachCam(k) { // auf dem Dach bleibt die Ansicht draußen und schwenkt zur gewählten Rolle
-  const [L, R] = freiFlaeche(true), [za, zb, zt] = zwischen(MARKE.dach.zz, MARKE.dach.zone.v), z = lerp(za, zb, zt) - (S.narrow ? 2.5 : 0), d = 5.6 - z;
+function dachCam(k) { // auf dem Dach bleibt die Ansicht draußen und schwenkt zur Bühne
+  const [L, R] = freiFlaeche(), [za, zb, zt] = zwischen(MARKE.dach.zz, MARKE.dach.zone.v), z = lerp(za, zb, zt) - (S.narrow ? 2.5 : 0), d = 5.6 - z;
   cam.x = lerp(cam.x, zoneX('dach') - (((L + R) / 2 - 0.5) * S.w * d) / S.f, k); cam.z = lerp(cam.z, z, k);
-}
-function focusCam() {
-  if (!focusAt || focusK < 0.001 || AKT.k > 0.001) return;
-  const [fx, fy, fz] = focusAt, k = focusK, breit = !S.narrow && innerWidth >= 768;
-  cam.z += (fz - cam.z) * 0.3 * k;
-  const d = fz - cam.z, want = fx - ((breit ? 0.2 : 0) * S.w * d) / S.f; // der Gegenstand rückt in die Mitte der freien Fläche
-  cam.x = lerp(cam.x, want, 0.8 * k); cam.y = lerp(cam.y, fy + 0.1, 0.55 * k);
-  if (breit) S.cy += 0.06 * S.h * k;
 }
 function camera(p) {
   S.f = S.f0; INS.k = 0;
-  if (p <= PHASE.hero[1]) { heroCam(span(p, PHASE.hero)); return; }
+  if (p <= HERO[1]) { heroCam(span(p, HERO)); INS = { k: 0, i: -1, F: null }; AKT = { k: 0, F: null }; return; }
   let i = 0; while (i < KF.length - 2 && p > KF[i + 1].p) i++;
   const A = KF[i], B = KF[i + 1], t = easeInOutSine(clamp01((p - A.p) / (B.p - A.p)));
   cam.x = lerp(A.x, B.x, t); cam.y = lerp(A.y, B.y, t);
   cam.z = A.z < 0 && B.z < 0 ? -Math.exp(lerp(Math.log(-A.z), Math.log(-B.z), t)) : lerp(A.z, B.z, t);
   S.cy = S.h * lerp(A.cy, B.cy, t);
   INS = { k: 0, i: -1, F: null };
-  for (const i of MARKEN_HALTE) { const k = insideK(p, i); if (k > 0 && MARKE[FLOORS[i].key]) INS = { k, i, F: FLOORS[i] }; }
+  for (const j of MARKEN_HALTE) { const k = insideK(p, j); if (k > 0) INS = { k, i: j, F: FLOORS[j] }; }
   if (INS.k > 0) innenCam();
   AKT = INS.k > 0 ? INS : { k: dachK(p), F: FLOORS[DACH_HALT] };
   if (AKT.k > 0 && AKT.F.roof) dachCam(AKT.k);
-  focusCam();
+}
+/* Die Kamera für eine Ansicht: entweder auf der Zeitachse (der Aufzug fährt) oder als Flug von einer Stelle zur anderen (blende). Eine Stelle ist eine Zahl der Zeitachse oder eine eigene Lage { x, y, z, cy }. */
+function stelle(o) {
+  if (typeof o === 'number') camera(o);
+  else { S.f = S.f0; cam.x = o.x; cam.y = o.y; cam.z = o.z; S.cy = S.h * o.cy; INS = { k: 0, i: -1, F: null }; AKT = { k: 0, F: FLOORS[DACH_HALT] }; }
+  return { x: cam.x, y: cam.y, z: cam.z, cy: S.cy, f: S.f };
+}
+function kamera(v) {
+  if (!v.blende) { camera(v.p); return; }
+  const a = stelle(v.blende.pa), b = stelle(v.blende.pb), t = v.blende.t;
+  cam.x = lerp(a.x, b.x, t); cam.y = lerp(a.y, b.y, t); cam.z = a.z < 0 && b.z < 0 ? -Math.exp(lerp(Math.log(-a.z), Math.log(-b.z), t)) : lerp(a.z, b.z, t);
+  S.cy = lerp(a.cy, b.cy, t); S.f = lerp(a.f, b.f, t);
+  INS = { k: 0, i: -1, F: null }; AKT = { k: 0, F: FLOORS[DACH_HALT] };
 }
 
 /* Wo der Kern gerade ist: erst auf dem Sockel im Erdgeschoss, dann in der Kabine, auf zwei Etagen steigt er aus
@@ -606,7 +446,7 @@ function coreState(p) {
       c.x = lerp(SHAFT.x, out[0], s); c.z = lerp(SHAFT.z, out[2], s); c.y = base + lerp(1.25, out[1], s) + Math.sin(s * Math.PI) * 0.35; c.im = s > 0.5 ? F.key : null;
     } else if (F.roof) { // auf dem Dach schwebt er auf die Bühne und bleibt dort
       const s = smooth(d / 0.2);
-      c.x = lerp(SHAFT.x, 0, s); c.z = lerp(SHAFT.z, STAGE.zc, s); c.y = lerp(1.25, STAGE.y + 0.75, s) + Math.sin(s * Math.PI) * 0.8; c.level = 1 + 0.3 * span(p, PHASE.spots);
+      c.x = lerp(SHAFT.x, 0, s); c.z = lerp(SHAFT.z, STAGE.zc, s); c.y = lerp(1.25, STAGE.y + 0.75, s) + Math.sin(s * Math.PI) * 0.8; c.level = 1 + 0.3 * span(p, SPOTS);
     }
     return c;
   }
@@ -724,6 +564,13 @@ function desk(x, z, w = 1.8) {
   const m = fillZ(x - 0.5, x + 0.5, 1.22, 1.82, z + 0.62, '#06060b');
   if (m) { ctx.fillStyle = sgr(0, m[1], 0, m[1] + m[3], [[0, '#2a2350'], [1, '#17142c']]); ctx.fillRect(m[0] + m[2] * 0.04, m[1] + m[3] * 0.06, m[2] * 0.92, m[3] * 0.88); ctx.fillStyle = `rgba(${LAVH},.8)`; ctx.fillRect(m[0] + m[2] * 0.12, m[1] + m[3] * 0.6, m[2] * 0.5, Math.max(1, m[3] * 0.06)); ctx.fillRect(m[0] + m[2] * 0.12, m[1] + m[3] * 0.4, m[2] * 0.32, Math.max(1, m[3] * 0.06)); ctx.fillRect(m[0] + m[2] * 0.12, m[1] + m[3] * 0.2, m[2] * 0.62, Math.max(1, m[3] * 0.06)); }
   glow(x, 1.5, z + 0.6, 1.1, [[0, `rgba(${LAV},.12)`], [1, `rgba(${LAV},0)`]]);
+}
+function softbox(x, z, h) { // Leuchte auf Stativ, von hinten gesehen: das Licht fällt in den Raum
+  const lw = lwAt(z, 0.04);
+  for (const [dx, dz] of [[-0.32, -0.22], [0.32, -0.22], [0, 0.38]]) seg([x, h, z], [x + dx, 0, z + dz], '#07070c', lw);
+  box(x - 0.3, x + 0.3, h, h + 0.6, z - 0.06, z + 0.1, '#3a3849', '#16151e', '#1b1a25');
+  fillZ(x - 0.3, x - 0.27, h, h + 0.6, z - 0.07, `rgba(${WARM},.8)`); fillZ(x + 0.27, x + 0.3, h, h + 0.6, z - 0.07, `rgba(${WARM},.8)`);
+  glow(x, h + 0.3, z + 0.4, 2.4, [[0, `rgba(${WARM},.3)`], [1, `rgba(${WARM},0)`]]);
 }
 function tripod(x, z, h) { // Kamera auf Stativ, von hinten gesehen: sie zeigt in den Raum
   const lw = lwAt(z, 0.05);
@@ -843,7 +690,15 @@ function room(F, t) {
     const lamps = [[-1.7, 6.9, 0.3], [3.2, 8.1, 0.3], [PED.x, PED.z, 0.5]];
     for (const [x, z, on] of lamps) { ctx.globalCompositeOperation = 'lighter'; poly([[x - 0.9, 0.005, z - 0.8], [x + 0.9, 0.005, z - 0.8], [x + 0.7, 0.005, z + 0.8], [x - 0.7, 0.005, z + 0.8]], `rgba(${WARM},${on * 0.11})`); ctx.globalCompositeOperation = 'source-over'; }
     // Empfang hinten rechts, dahinter eine Person
-    sil(3.3, 9.1, { rim: 0.32, rimCol: WARM });
+    // der Tresen: dahinter Kevin und Malin (nur als Umriss), an der Wand ein leerer Rahmen, hier kommt das Foto hin
+    const ra = rectZ(1.75, 4.65, 1.15, 3.05, z1 - 0.05);
+    if (ra) {
+      ctx.fillStyle = 'rgba(246,244,240,.07)'; ctx.fillRect(ra[0], ra[1], ra[2], ra[3]);
+      ctx.strokeStyle = `rgba(${WARM},.7)`; ctx.lineWidth = Math.max(1.5, ra[2] * 0.008); ctx.setLineDash([ra[2] * 0.03, ra[2] * 0.02]); ctx.strokeRect(ra[0] + ra[2] * 0.03, ra[1] + ra[3] * 0.04, ra[2] * 0.94, ra[3] * 0.92); ctx.setLineDash([]);
+      ctx.strokeStyle = '#07070c'; ctx.lineWidth = Math.max(2, ra[2] * 0.018); ctx.strokeRect(ra[0], ra[1], ra[2], ra[3]);
+    }
+    glow(3.2, 3.2, z1 - 0.1, 3.4, [[0, `rgba(${WARM},.13)`], [1, `rgba(${WARM},0)`]]);
+    sil(2.65, 9.1, { rim: 0.32, rimCol: WARM }); sil(3.85, 9.1, { rim: 0.32, rimCol: WARM, flip: true });
     shade(1.6, 4.8, 7.5, 8.7);
     box(1.7, 4.7, 0, 1.12, 7.7, 8.6, '#66666c', lg([0, 1.12, 7.7], [0, 0, 7.7], [[0, '#303035'], [1, '#18181b']]), N.side);
     fillZ(1.7, 4.7, 0.99, 1.05, 7.69, `rgba(${WARM},.75)`); fillZ(1.7, 4.7, 0.02, 0.07, 7.69, `rgba(${WARM},.3)`);
@@ -911,7 +766,7 @@ function room(F, t) {
     // vorn: die Kameras, von hinten gesehen
     ctx.globalAlpha = 0.3 + 0.7 * lk(2); tripod(-5.33, 5.3, 1.45); ctx.globalAlpha = 1;
   } else if (key === 'pr') { // fünf Ecken, je Baustein eine: Mappe und Themenplan · Kartenwand und Magazine · Rednerpult · Kalender · Telefon und Notfallordner
-    const MK = MARKE.pr, zw = z1 - 0.06, an = (l) => (MK ? 0.3 + 0.7 * MK.linieK[l].v : 1), VI = '#7C3AED', dunkel = '#0a0a10';
+    const MK = MARKE.pr, zw = z1 - 0.06, an = (l) => (MK ? 0.3 + 0.7 * MK.linieK[l].v : 1), VI = '#5F4BB6', dunkel = '#0a0a10';
     const matt = (r, l) => { if (r && an(l) < 0.98) { ctx.fillStyle = `rgba(8,8,14,${0.62 * (1 - an(l))})`; ctx.fillRect(r[0], r[1], r[2], r[3]); } };
     // Medienarbeit: die Kartenwand und ein Tisch mit aufgestellten Magazinen
     const kw = rectZ(-3.4, -0.75, 0.85, 3.05, zw); if (kw && TEX.pr) { ctx.drawImage(TEX.pr, 0, 0, TEX.pr.width * 0.47, TEX.pr.height, kw[0], kw[1], kw[2], kw[3]); matt(kw, 1); }
@@ -955,13 +810,24 @@ function room(F, t) {
       matt(kal, 3);
     }
     glow(2.6, 1.9, z1 - 0.1, 2.4, [[0, `rgba(${LAV},${0.14 * an(3)})`], [1, `rgba(${LAV},0)`]]);
-    // Krisenkommunikation: ein Sideboard mit Telefon und Notfallordner
+    // Community und Kundenbindung: der Aushang einer Laufgruppe, davor ein Sideboard mit einer Stempelkarte
+    const au = rectZ(3.75, 5.25, 1.0, 2.75, zw);
+    if (au) {
+      const [rx, ry, rw, rh] = au; ctx.fillStyle = '#e4e0ef'; ctx.fillRect(rx, ry, rw, rh); ctx.fillStyle = VI; ctx.fillRect(rx, ry, rw, rh * 0.2);
+      ctx.fillStyle = 'rgba(246,244,240,.9)'; ctx.fillRect(rx + rw * 0.08, ry + rh * 0.065, rw * 0.5, Math.max(1, rh * 0.05));
+      const cx = rx + rw * 0.5, cy = ry + rh * 0.55, u = rh * 0.011; // ein Läufer: Kopf, Rumpf, Arme, Beine
+      ctx.strokeStyle = '#2b2a38'; ctx.fillStyle = '#2b2a38'; ctx.lineWidth = Math.max(1.5, rw * 0.03); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(cx + 6 * u, cy - 17 * u, 5 * u, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx + 5 * u, cy - 11 * u); ctx.lineTo(cx, cy + 2 * u); ctx.moveTo(cx + 4 * u, cy - 8 * u); ctx.lineTo(cx + 15 * u, cy - 2 * u); ctx.moveTo(cx + 4 * u, cy - 8 * u); ctx.lineTo(cx - 9 * u, cy - 4 * u);
+      ctx.moveTo(cx, cy + 2 * u); ctx.lineTo(cx + 11 * u, cy + 12 * u); ctx.lineTo(cx + 7 * u, cy + 24 * u); ctx.moveTo(cx, cy + 2 * u); ctx.lineTo(cx - 10 * u, cy + 10 * u); ctx.lineTo(cx - 17 * u, cy + 20 * u); ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = 'rgba(38,36,51,.3)'; ctx.fillRect(rx + rw * 0.1, ry + rh * 0.88, rw * 0.62, Math.max(1, rh * 0.035));
+    }
+    glow(4.5, 1.9, z1 - 0.1, 2.2, [[0, `rgba(${LAV},.16)`], [1, `rgba(${LAV},0)`]]);
     shade(4.0, 5.6, 7.55, 8.5); box(4.1, 5.5, 0, 0.92, 7.65, 8.4, M.top, M.front, M.side);
-    box(4.3, 4.8, 0.92, 1.01, 7.8, 8.12, '#3a3849', '#16151e', '#1b1a25'); box(4.25, 4.85, 1.01, 1.08, 7.86, 7.98, '#f1ecfb', '#c4bfd3', '#aaa5bb'); // Telefon: Sockel und Hörer
-    fillZ(4.66, 4.74, 0.945, 0.985, 7.79, `rgba(${LAVH},${0.35 + 0.65 * (an(4) - 0.3) / 0.7})`);
-    for (const [x, c] of [[4.98, '#cdc8da'], [5.12, VI], [5.26, '#3b2a78']]) fillZ(x, x + 0.12, 0.92, 1.42, 7.95, c); // drei Ordner, der mittlere ist der Notfallordner
-    fillZ(5.14, 5.22, 1.2, 1.33, 7.94, 'rgba(246,244,240,.92)');
-    glow(4.8, 1.25, 7.9, 1.7, [[0, `rgba(${LAV},${0.22 * an(4)})`], [1, `rgba(${LAV},0)`]]);
+    box(4.55, 4.85, 0.92, 0.98, 7.85, 8.1, '#3a3849', '#16151e', '#1b1a25'); // die Stempelkarte auf einem Aufsteller: zwei Reihen, fünf Stempel sind voll
+    poly([[4.5, 0.97, 7.95], [4.9, 0.97, 7.95], [4.9, 1.35, 8.05], [4.5, 1.35, 8.05]], '#f1ecfb');
+    for (let j = 0; j < 2; j++) for (let i = 0; i < 4; i++) { const q = P(4.56 + i * 0.09, 1.1 + j * 0.12, 7.99), r = Math.max(1.2, (0.032 * S.f) / (7.99 - cam.z)); ctx.fillStyle = j * 4 + i < 5 ? VI : 'rgba(38,36,51,.28)'; ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, 7); ctx.fill(); }
+    glow(4.8, 1.25, 7.9, 1.7, [[0, `rgba(${LAV},.22)`], [1, `rgba(${LAV},0)`]]);
     if (MK) { MK.kern.forEach(([x, hh, z], l) => { const a = MK.linieK[l].v; if (a > 0.02) { ctx.globalAlpha = a; stehtisch(x, hh, z); ctx.globalAlpha = 1; } }); figuren('pr'); } // nur der Stehtisch des gewählten Bausteins steht da
   } else if (key === 'podcast') { // Aufnahmeraum von „Fokus Innovation“: Akustikplatten, Leuchtschrift, runder Tisch mit zwei Mikrofonen, hinten der Platz für Aufnahme und Schnitt
     const MK = MARKE.podcast, zw = z1 - 0.06;
@@ -987,6 +853,8 @@ function room(F, t) {
     ctx.fillStyle = '#5f5d74'; ctx.beginPath(); ctx.ellipse(tc[0], tc[1], trx, tryy, 0, 0, 7); ctx.fill();
     // zwei Menschen im Profil, einander zugewandt, dazu Aufnahme und Schnitt; der Kern liegt zwischen den beiden
     if (MK) figuren('podcast');
+    // Interview-Platz: eine Kamera auf Stativ und zwei Leuchten im Vordergrund, sie richten sich auf den Tisch
+    softbox(-2.5, 5.9, 1.0); softbox(2.2, 5.4, 1.0); tripod(-1.25, 5.1, 1.15);
     // Mikrofone an Schwenkarmen
     for (const s of [-1, 1]) {
       const bx = TABLE.x + s * 0.5, lw = lwAt(TABLE.z, 0.035);
@@ -1121,11 +989,9 @@ function tower() {
   oy = 0;
   const d = -cam.z, k = S.f / d, yOf = (Y) => S.cy - (Y - cam.y) * k, xOf = (X) => S.cx + (X - cam.x) * k;
   const X0 = xOf(TXL), X1 = xOf(TXR), W = X1 - X0, fh = FH * k, bw = 1.4 * k, gy = yOf(GROUND), xr = xOf(6.15);
-  flagAt = null;
   if (X1 < 0 || X0 > S.w) return;
   const nTop = Math.min(TOP - 1, Math.ceil((cam.y + S.cy / k) / FH) + TOP), nBot = Math.max(0, Math.floor((cam.y - (S.h - S.cy) / k) / FH) + TOP - 1);
   const ksh = S.f / (SHAFT.z - cam.z), sx0 = S.cx + (SHAFT.x0 - cam.x) * ksh, sx1 = S.cx + (SHAFT.x1 - cam.x) * ksh; // der Schacht liegt hinter dem Glas, in der Tiefe der Kabine
-  ctx.font = FONT(500, Math.max(10, Math.min(16, fh * 0.1))); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   for (let n = nBot; n <= nTop; n++) {
     const yt = yOf(baseOf(n) + FH), open = OPEN.has(n);
     if (open) { ctx.fillStyle = '#0c0c14'; ctx.fillRect(xr, yt, X1 - xr, fh + 1); }
@@ -1136,7 +1002,6 @@ function tower() {
       // der Schacht hinter Glas
       ctx.fillStyle = '#08080e'; ctx.fillRect(sx0, yt, sx1 - sx0, fh + 1);
       ctx.fillStyle = `rgba(${LAV},${0.2 + 0.3 * beacon})`; ctx.fillRect(sx0, yt, Math.max(1, 0.04 * k), fh + 1); ctx.fillRect(sx1 - Math.max(1, 0.04 * k), yt, Math.max(1, 0.04 * k), fh + 1);
-      if (fh > 60) { ctx.fillStyle = 'rgba(246,244,240,.4)'; ctx.fillText(String(n).padStart(2, '0'), X0 + 0.3 * k, yt + fh * 0.5); }
     }
     if (n === 0) continue;
     const sh = Math.max(1, (0.13 + 0.3 * beacon) * k), a = 0.12 + 0.5 * beacon * (0.5 + 0.5 * hash(n, 99));
@@ -1181,15 +1046,16 @@ function tower() {
     ctx.fillStyle = sgr(cxm - 3.2 * k, 0, cxm + 3.2 * k, 0, [[0, `rgba(${LAV},0)`], [0.5, `rgba(${LAV},${0.3 * beacon})`], [1, `rgba(${LAV},0)`]]); ctx.fillRect(cxm - 3.2 * k, top, 6.4 * k, bot - top);
     ctx.fillStyle = `rgba(226,216,255,${0.8 * beacon})`; ctx.fillRect(cxm - Math.max(0.6, 0.14 * k), top, Math.max(1.2, 0.28 * k), bot - top);
     ctx.globalCompositeOperation = 'source-over';
-    if (marks > 0.01) {
-      for (const F of FLOORS) { ctx.fillStyle = `rgba(239,234,251,${marks})`; ctx.beginPath(); ctx.arc(cxm, yOf(F.base + 1.25), Math.max(2.5, 0.5 * k), 0, 7); ctx.fill(); }
-      const yA = yOf(1.4), yB = yOf(baseOf(28) + 1.8), ex = X0 - 0.6 * k, bx = X0 - 10 * k;
-      if (!S.narrow) { // der Bogen gehört zur Fahne, und die gibt es am Handy nicht
-      ctx.setLineDash([7, 7]); ctx.strokeStyle = `rgba(${LAVH},${0.95 * marks})`; ctx.lineWidth = Math.max(1.5, S.w / 1100);
-      ctx.beginPath(); ctx.moveTo(ex, yA); ctx.bezierCurveTo(bx, yA, bx, yB, ex, yB); ctx.stroke(); ctx.setLineDash([]);
-      for (const y of [yA, yB]) { ctx.fillStyle = `rgba(${LAVH},${marks})`; ctx.beginPath(); ctx.arc(ex, y, Math.max(3, 0.45 * k), 0, 7); ctx.fill(); }
-      flagAt = [(X0 - 8.4 * k) / S.w, (yA + yB) / 2 / S.h];
-      }
+    if (marks > 0.01) for (const F of FLOORS) { ctx.fillStyle = `rgba(239,234,251,${marks})`; ctx.beginPath(); ctx.arc(cxm, yOf(F.base + 1.25), Math.max(2.5, 0.5 * k), 0, 7); ctx.fill(); }
+  }
+  // drei Stufen, farbig markiert (Szene 14): Fundament unten, Wachstum in der Mitte, Skalieren oben
+  if (marks > 0.01) {
+    const bandX0 = X0 - 1.6 * k, bandW = W + 3.2 * k;
+    for (const [y0, y1, rgb] of [[GROUND, baseOf(11.5), STUFE.fundament], [baseOf(11.5), baseOf(31.5), STUFE.wachstum], [baseOf(31.5), 0.6, STUFE.skalieren]]) {
+      const top = yOf(y1), bot = yOf(y0); if (bot < 0 || top > S.h) continue;
+      ctx.fillStyle = sgr(bandX0, 0, bandX0 + bandW, 0, [[0, `rgba(${rgb},${0.5 * marks})`], [0.5, `rgba(${rgb},${0.2 * marks})`], [1, `rgba(${rgb},${0.5 * marks})`]]);
+      ctx.fillRect(bandX0, top, bandW, bot - top);
+      ctx.fillStyle = `rgba(${rgb},${0.95 * marks})`; const eb = Math.max(2, 0.3 * k); ctx.fillRect(bandX0, top, bandW, eb); ctx.fillRect(bandX0, bot - eb, bandW, eb);
     }
   }
 }
@@ -1214,8 +1080,8 @@ function terrace() {
   };
   for (const [x, z] of [[-6.1, 0.8], [10.1, 0.8]]) { seg([x, 0, z], [x, 3.6, z], dark, lwAt(z, 0.07)); }
   chain([-6.1, 3.6, 0.8], [-TRUSS.x, TRUSS.h + 0.45, TRUSS.z], 0.9, 15); chain([10.1, 3.6, 0.8], [TRUSS.x, TRUSS.h + 0.45, TRUSS.z], 1.1, 18);
-  // Rolle des Besuchers (Schalter auf dem Dach): g[0] Gast, g[1] Abendpartner
-  const gk = MARKE.dach && AKT.F && AKT.F.roof ? AKT.k : 0, g = gk > 0 ? MARKE.dach.linieK.map((s) => s.v * gk) : [0, 0]; // nur solange der Schalter gilt: Fahrt, roter Faden und Finale bleiben, wie sie sind
+  // Gäste des Abends: g[0] Tische mit Gästen im Licht, g[1] (Abendpartner) gehört nicht in die Fahrt
+  const gk = AKT.F && AKT.F.roof ? AKT.k : 0, g = [gk, 0];
   // auf der Bühne: Pult und eine Person im warmen Licht
   oy = STAGE.y;
   if (g[1] > 0.02) { // Abendpartner: eine leere Tafel für das Logo an der Bühne
@@ -1244,7 +1110,7 @@ function terrace() {
   const thementisch = (x, z) => {
     if (g[0] > 0.02) { ctx.globalCompositeOperation = 'lighter'; poly([[x - 1.5, 0.005, z - 1.2], [x + 1.5, 0.005, z - 1.2], [x + 1.25, 0.005, z + 1.3], [x - 1.25, 0.005, z + 1.3]], `rgba(${WARM},${0.1 * g[0]})`); ctx.globalCompositeOperation = 'source-over'; glow(x, 1.3, z, 2.1, [[0, `rgba(${WARM},${0.2 * g[0]})`], [1, `rgba(${WARM},0)`]]); }
     tisch(x, z);
-    if (g[0] > 0.02) { ctx.globalAlpha = g[0]; fillZ(x + 0.08, x + 0.3, 1.13, 1.42, z - 0.05, '#efeaf8'); fillZ(x + 0.11, x + 0.27, 1.33, 1.37, z - 0.06, '#7C3AED'); fillZ(x + 0.11, x + 0.24, 1.24, 1.27, z - 0.06, 'rgba(38,36,51,.4)'); ctx.globalAlpha = 1; }
+    if (g[0] > 0.02) { ctx.globalAlpha = g[0]; fillZ(x + 0.08, x + 0.3, 1.13, 1.42, z - 0.05, '#efeaf8'); fillZ(x + 0.11, x + 0.27, 1.33, 1.37, z - 0.06, '#5F4BB6'); fillZ(x + 0.11, x + 0.24, 1.24, 1.27, z - 0.06, 'rgba(38,36,51,.4)'); ctx.globalAlpha = 1; }
   };
   // Gäste am hinteren Thementisch und links neben der Bühne
   thementisch(DT[1][0], DT[1][1]); sil(7.05, 6.1, GT); sil(8.35, 6.5, { ...GT, flip: true, bob: true, s: 0.96 }); sil(7.7, 7.1, { ...GT, s: 0.98 });
@@ -1320,9 +1186,9 @@ function markenLicht() {
   g.addColorStop(0, `rgba(${MK.rgb},${0.11 * k})`); g.addColorStop(1, `rgba(${MK.rgb},0)`); ctx.fillStyle = g; ctx.fillRect(0, 0, w, hh);
   ctx.globalCompositeOperation = 'source-over';
 }
-function drawScene(p, t) {
-  camera(p); oy = 0; spots = span(p, PHASE.spots); marks = span(p, [PHASE.thread[0] + 0.018, PHASE.thread[1]]) * (1 - span(p, PHASE.fadenOut)); beacon = span(p, PHASE.thread) * (1 - 0.55 * span(p, [PHASE.fadenOut[0], PHASE.spots[1]]));
-  if (cam.z < -2 && !STILL) { const d = -cam.z; cam.x += d * 0.0035 * Math.sin(t * 0.00031); cam.y += d * 0.0016 * Math.sin(t * 0.00023 + 1.3); } // ruhiges Atmen der Kamera
+function drawScene(v, t) {
+  const p = v.pz; // Stelle für Kern und Licht (bei einem Flug weicht sie von der Stelle der Kamera ab)
+  kamera(v); oy = 0; spots = span(p, SPOTS); marks = span(p, [THREAD[0] + 0.018, THREAD[1]]) * (1 - span(p, FADEN_OUT)); beacon = span(p, THREAD) * (1 - 0.55 * span(p, [FADEN_OUT[0], SPOTS[1]]));
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   ctx.drawImage(sky, 0, Math.round(S.cy - skyHy));
   drawCity();
@@ -1340,306 +1206,210 @@ function drawScene(p, t) {
 
 /* Prüfmodus: Canvas als Bild ausgeben (ein verstecktes Vorschaufenster zeigt Canvas-Änderungen nicht) */
 function snap(c) { if (!STILL) return; c.style.visibility = 'hidden'; c.parentElement.style.background = `url(${c.toDataURL('image/jpeg', 0.9)}) center / cover no-repeat`; }
-function sizeTo(c, el) { const dpr = Math.min(devicePixelRatio || 1, 1.5), r = el.getBoundingClientRect(); c.width = Math.max(2, Math.round((r.width || innerWidth) * dpr)); c.height = Math.max(2, Math.round((r.height || innerHeight) * dpr)); return c.getContext('2d'); }
-/* ═══════════════ Aufbau der Seite ═══════════════ */
-const track = $('#top'), seqLayer = $('#seqLayer'), gridFade = $('#gridFade');
-const star = $('#star'), starTint = $('#starTint');
-const statement = $('#statement'), slab = $('#slab'), finale = $('#finale'), summit = $('#summit'), flag = $('#flag'), cab = $('#cab'), cue = $('#cue'), topCta = $('#topCta'), dockLabel = $('#dockLabel');
-const wide = matchMedia('(min-width: 768px)');
-const RAUM_I = { studios: 1, pr: 2, podcast: 3, revenue: 4, innovation: 5, dach: 6 }[RAUM], FIXP = RAUM ? floorRange(RAUM_I)[0] + FLOOR_LEN * 0.72 : 0;
-/* Einstieg direkt an einer Etage: index.html?etage=08 (eg, 08, 15, 21, 28, 35, dach) */
-const ETAGE = { eg: 0, '08': 1, 8: 1, 15: 2, 21: 3, 28: 4, 35: 5, dach: 6 }[(QUERY.get('etage') || '').toLowerCase()];
-const SPRUNG = ETAGE !== undefined && !STILL && !RAUM;
-let sprung = SPRUNG, lastMarke = null;
-const vis = (el, on) => { el.style.visibility = on ? 'visible' : 'hidden'; };
 
-const heroes = $$('.hero').map((el) => ({ el, words: $$('.word', el).map((w) => buildLetters(w, w.dataset.word, { preset: 'slide' })), exit: $('.exit', el), desc: $('.hero-desc', el) }));
-const stmt = revealLines($('#stmt'), ['Ganz oben steht die Bühne.', 'Der Weg dorthin beginnt unten', 'auf der Straße: mit einem guten Produkt,', 'das noch kaum jemand kennt.'], REVEAL_TIMING.cta);
-const finTitle = revealLines($('#finTitle'), ['Der rote Faden'], REVEAL_TIMING.label);
-const sumTitle = revealLines($('#sumTitle'), ['Sichtbar sein.', 'Planbar verkaufen.'], REVEAL_TIMING.label);
-const floorsUI = $$('.fl').map((el) => { const no = $('.fl-no', el); return { el, no: buildLetters(no, no.dataset.word, { preset: 'slide' }) }; });
-$$('[data-lines]').forEach((el) => revealLines(el, el.dataset.lines.split('|'), REVEAL_TIMING.cta, { active: true, rootMargin: '0px 0px -12% 0px' }));
-/* Die Leiste zeigt das Haus von oben nach unten, die Fahrt geht von unten nach oben */
-['D', '35', '28', '21', '15', '08', 'EG'].forEach((tk, i) => { const b = document.createElement('b'); b.textContent = tk; b.style.top = `${(i / (HALTS - 1)) * 100}%`; $('#rail').append(b); });
-const DOCK_LABELS = ['EG · Straße', '08 · Studios', '15 · PR', '21 · Podcast', '28 · Revenue', '35 · Innovation', 'Dach'];
-/* Sprungmarken auf der Spur: aus der Zeitachse gerechnet, nicht von Hand gesetzt */
-const setAnchor = (id, p) => { $('#' + id).style.top = `${toR(p) * TRAVEL_VH}vh`; };
-setAnchor('fahrt', PHASE.statement[0] + 0.02);
-['halt-eg', 'halt-08', 'halt-15', 'halt-21', 'halt-28', 'halt-35', 'halt-dach'].forEach((id, i) => setAnchor(id, floorRange(i)[0] + FLOOR_LEN * 0.7));
-setAnchor('faden', PHASE.fadenUi[1] + 0.012); setAnchor('dach', PHASE.summitUi[1] + 0.006);
+/* ═══════════════ Aufbau der Seite: die 15 Szenen ═══════════════ */
+const SZ = /*SZENEN*/[]/*SZENEN-ENDE*/;   // je Szene: id, art, stufe und bild (p, pz, ue, zone, zoom)
+const N = SZ.length, KREIS = 0.5;          // nach der letzten Szene wächst der Kreis noch einen halben Bildschirm lang (Übergang in die Kurz-Startseite)
+const kopf = $('.kopf');
+const track = $('#top'), star = $('#star'), starTint = $('#starTint'), skip = $('#ueberspringen');
+const panels = SZ.map((s) => $('#szene-' + s.id));
+const etagenNav = $('#etagen'), stufenNav = $('#stufen'), wahl = $('#etagenwahl'), gast = $('#gastwunsch');
+const KURZ = () => document.getElementById('kurz') || document.getElementById('einstieg');
+const spurTop = () => track.getBoundingClientRect().top + scrollY;
+const szeneY = (i) => (STATISCH ? Math.round(panels[i].getBoundingClientRect().top + scrollY - 8) : Math.round(spurTop() + i * innerHeight));
+let animLaeuft = false;
+/* Eine Szene anfahren (i = N: die Kurz-Startseite). Wir animieren selbst, weil gerastet wird, sobald die Fahrt zu Ende ist: Während der Animation ruht das Rasten. */
+function szeneZu(i, sofort) {
+  const kurz = i >= N && KURZ(), y = kurz ? Math.round(KURZ().getBoundingClientRect().top + scrollY) : szeneY(Math.max(0, Math.min(N - 1, i))), von = scrollY, d = y - von;
+  if (Math.abs(d) < 2) return;
+  root.classList.remove('snap-aktiv');
+  if (sofort || STATISCH || reduce) { scrollTo(0, y); return; }
+  const dauer = i >= N ? 1200 : Math.min(1500, 520 + 120 * Math.abs(d / innerHeight)), t0 = performance.now(); animLaeuft = true;
+  const schritt = (now) => { const k = Math.min(1, (now - t0) / dauer); scrollTo(0, von + d * easeInOutSine(k)); if (k < 1) requestAnimationFrame(schritt); else animLaeuft = false; };
+  requestAnimationFrame(schritt);
+}
+const szeneNr = (w) => { const n = /^\d+$/.test(w) ? +w - 1 : SZ.findIndex((s) => s.id === w); return n >= 0 && n < N ? n : -1; };
+const sceneDirty0 = () => { sceneDirty = true; };
+
+/* ── Ansicht: aus der Scroll-Position (s = 0 … 14, Szene für Szene) wird eine Stelle der Zeitachse ── */
+const keyVon = (z) => { const i = Math.floor((z.p - TOUR_START) / FLOOR_LEN); return i >= 0 && i < HALTS ? FLOORS[i].key : null; };
+function ansicht(s) {
+  if (STILL) return { p: STILL.p, pz: STILL.p, blende: null };
+  const k = Math.min(N - 2, Math.max(0, Math.floor(s))), t = clamp01(s - k), A = SZ[k], B = SZ[k + 1];
+  const v = { p: lerp(A.p, B.p, t), pz: lerp(A.pz ?? A.p, B.pz ?? B.p, t), blende: null };
+  if (B.ue === 'blende') v.blende = { pa: A.kam || A.p, pb: B.kam || B.p, t: easeInOutSine(t) }; // die Kamera fliegt, statt dass der Aufzug fährt
+  for (const key in MARKE) MARKE[key].zone.v = MARKE[key].z0;
+  const ka = keyVon(A), kb = keyVon(B), za = A.zone ?? (ka ? MARKE[ka].z0 : 0), zb = B.zone ?? (kb ? MARKE[kb].z0 : 0);
+  if (ka && ka === kb) MARKE[ka].zone.v = lerp(za, zb, t); else { if (ka) MARKE[ka].zone.v = za; if (kb) MARKE[kb].zone.v = zb; }
+  ZOOM = lerp(A.zoom ?? 1, B.zoom ?? 1, t);
+  return v;
+}
+const sS = new Spring(0, FOLGE, sceneDirty0, 0.0004);
 
 /* Filmkorn über der Szene */
 (() => { const c = document.createElement('canvas'); c.width = c.height = 160; const g = c.getContext('2d'), d = g.createImageData(160, 160), R = mulberry(3); for (let i = 0; i < d.data.length; i += 4) { const v = (R() * 255) | 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; } g.putImageData(d, 0, 0); $('#grain').style.backgroundImage = `url(${c.toDataURL()})`; })();
 
-const drums = $$('.drum').map((el) => {
-  const value = +el.dataset.count;
-  const paint = (n) => { const rest = 1 - n / value; el.style.filter = rest > 0.003 ? `blur(calc(${rest * 0.5} * var(--hr)))` : 'none'; el.style.transform = `translate3d(0, calc(${rest * 1.25} * var(--hr)), 0)`; el.textContent = Math.floor(n + 1e-6); };
-  const sp = new Spring(0, COUNT_UP, paint, 0.001); paint(0); return { sp, value };
-});
-
-/* Die Szene folgt der Scroll-Position mit Nachlauf */
-let flags = sceneFlags(0), lastRaw = -1, lastLabel = '';
-function setLabel(s) { if (s !== lastLabel) { lastLabel = s; dockLabel.textContent = s; } }
-function apply(p) {
-  seqLayer.style.opacity = canvasOpacity(p); vis(seqLayer, p < PHASE.star[1]);
-  const go = gridOpacity(p); gridFade.style.opacity = go; vis(gridFade, go > 0);
-  heroes.forEach((h, i) => {
-    const out = PHASE.heroOut[i], inn = PHASE.heroIn[i];
-    vis(h.el, p < out[1] && (!inn || p >= inn[0] - 0.012));
-    h.exit.style.opacity = exitOpacity(out)(p); h.exit.style.transform = exitTransform(out)(p); h.exit.style.filter = exitFilter(out)(p);
-    if (h.desc) h.desc.style.opacity = (inn ? span(p, inn) : 1) * (1 - span(p, out));
+/* ── Lesen: wo steht die Seite? Danach Text, Leisten, Kreis und Kopf ── */
+let roh = 0, aktiv = -1, canvasAn = true, kopfLage = '', marke = false;
+const stufenFolge = [...new Set(SZ.map((s) => s.stufe).filter(Boolean))];
+const stufeVon = (i) => SZ[i].stufe;
+const etagenLinks = $$('a', etagenNav), stufenLinks = $$('a', stufenNav);
+const schmal = matchMedia('(max-width: 767.98px), (max-width: 1100px) and (max-aspect-ratio: 9/10)'); // Handy und Tablet hochkant: das Bild über dem Text
+function zeigeSzene(a) {
+  aktiv = a;
+  panels.forEach((el, i) => el.classList.toggle('an', i === a));
+  const st = stufeVon(a), sichtbar = a >= 3 && a <= 13;
+  etagenNav.classList.toggle('an', sichtbar); stufenNav.classList.toggle('an', sichtbar || a === 13);
+  etagenLinks.forEach((l) => { const jetzt = l.dataset.szenen.split(' ').includes(SZ[a].id); l.classList.toggle('jetzt', jetzt); if (jetzt) l.setAttribute('aria-current', 'step'); else l.removeAttribute('aria-current'); l.parentElement.hidden = schmal.matches && !!st && l.dataset.stufe !== st; if (schmal.matches && !st) l.parentElement.hidden = true; });
+  stufenLinks.forEach((l) => {
+    const idx = SZ.map((s, i) => (s.stufe === l.dataset.stufe ? i : -1)).filter((i) => i >= 0), von = idx[0], n = idx.length, jetzt = l.dataset.stufe === st;
+    l.classList.toggle('jetzt', jetzt); l.style.setProperty('--fuell', `${Math.round(clamp01((a - von + 1) / n) * 100)}%`);
+    if (jetzt) l.setAttribute('aria-current', 'step'); else l.removeAttribute('aria-current');
   });
-  cue.style.opacity = 1 - span(p, [0.004, 0.02]);
-  const co = 1 - span(p, PHASE.slabIn); topCta.style.opacity = co; vis(topCta, co > 0);
-  // Wende
-  const so = span(p, [PHASE.statement[0] - 0.004, PHASE.statement[0] + 0.008]) * (1 - span(p, [PHASE.statement[1] - 0.008, PHASE.statement[1] + 0.004]));
-  statement.style.opacity = so; vis(statement, so > 0);
-  // Tafel im Aufzug
-  const sIn = easeInOutSine(span(p, PHASE.slabIn)), sOut = easeInOutSine(span(p, PHASE.slabOut)), off = (1 - sIn + sOut) * 102;
-  slab.style.transform = wide.matches ? `translate3d(${-off}%, 0, 0)` : `translate3d(0, ${off}%, 0)`; vis(slab, sIn > 0 && sOut < 1);
-  let cabAt = 1;
-  floorsUI.forEach((F, i) => {
-    const [a, b] = floorRange(i), q = (p - a) / (b - a), vin = clamp01((q - 0.1) / 0.14), // der Text des nächsten Halts kommt schon in der Fahrt, damit die Tafel nicht lange leer steht
-      vout = i === HALTS - 1 ? 0 : clamp01((q - 0.95) / 0.07), o = q < 0 ? 0 : vin * (1 - vout);
-    F.el.style.opacity = o; vis(F.el, o > 0.001); F.el.style.transform = `translate3d(0, calc(${(1 - vin) * 1.5 - vout * 1.5} * var(--hr)), 0)`;
-    if (i && q > 0) cabAt = lerp((HALTS - i) / (HALTS - 1), (HALTS - 1 - i) / (HALTS - 1), easeInOutSine(clamp01(q / TRAVEL_PART)));
-  });
-  cab.style.top = `${cabAt * 100}%`;
-  // Markenhalt: Tafel, Linien und Dock nehmen die Farbe der Marke an
-  let marke = RAUM && MARKE[RAUM] ? RAUM : '';
-  if (!RAUM) for (const i of MARKEN_HALTE) { const [a, b] = floorRange(i), q = (p - a) / (b - a); if (q >= 0.3 && q < 0.97 && MARKE[FLOORS[i].key]) marke = FLOORS[i].key; }
-  if (marke !== lastMarke) { lastMarke = marke; if (marke) root.dataset.marke = marke; else delete root.dataset.marke; }
-  // Der rote Faden, dann das Finale auf dem Dach
-  const fo = span(p, PHASE.fadenUi) * (1 - span(p, PHASE.fadenOut)); finale.style.opacity = fo; vis(finale, fo > 0);
-  const su = span(p, PHASE.summitUi) * (1 - span(p, PHASE.summitOut)); summit.style.opacity = su; vis(summit, su > 0); summit.style.pointerEvents = su > 0.5 ? 'auto' : 'none';
-  // Der Kreis
-  const st = span(p, PHASE.starIn); star.style.opacity = st; vis(star, st > 0);
-  star.style.transform = starTransform(p); starTint.setAttribute('opacity', starTintOf(p));
-  sceneDirty = true;
-}
-const pSpring = new Spring(0, TIMELINE_FOLLOW, apply, 0.00002);
-function applyFlags(next, force) {
-  if (force || next.statement !== flags.statement) stmt.setActive(next.statement);
-  if (force || next.faden !== flags.faden) { finTitle.setActive(next.faden); drums.forEach((d) => (next.faden ? d.sp.set(d.value) : d.sp.set(0, { immediate: true }))); }
-  if (force || next.summit !== flags.summit) sumTitle.setActive(next.summit);
-  flags = next;
 }
 readers.push(() => {
-  const bb = track.getBoundingClientRect();
-  { const h = !STILL && bb.bottom < innerHeight + 1; if (h !== store.dockHidden) { store.dockHidden = h; syncDock(); } } // das Dock gehört zur Fahrt: Kommt das Ende der Spur ins Bild (der helle Teil beginnt), tritt es zurück
-  const raw = STILL && STILL.p !== undefined ? clamp01(STILL.p) : RAUM ? FIXP : toP(clamp01(-bb.top / Math.max(1, bb.height - innerHeight)));
-  if (raw !== lastRaw) {
-    lastRaw = raw; pSpring.set(raw, { immediate: !!RAUM || sprung });
-    heroes.forEach((h, i) => { if (i) h.words.forEach((w) => lettersToggle(w, span(raw, PHASE.heroIn[i]))); });
-    floorsUI.forEach((F, i) => { const [a, b] = floorRange(i), L = b - a; lettersToggle(F.no, span(raw, [a + L * 0.08, a + L * 0.24])); });
-    applyFlags(sceneFlags(raw));
-    if (openSpot && openRaw >= 0 && Math.abs(raw - openRaw) > 0.0035) closePop(); // Weiterscrollen schließt die Karte
-    let label = 'Dach';
-    if (bb.bottom < innerHeight * 0.6 && !(STILL && STILL.p !== undefined)) label = 'MAKE Innovation';
-    else if (raw >= PHASE.spots[0]) label = 'Dach';
-    else if (raw >= PHASE.slabOut[0] + 0.01) label = 'Das Haus';
-    else if (raw >= TOUR_START + FLOOR_LEN * 0.2) label = DOCK_LABELS[Math.min(HALTS - 1, Math.floor((raw - TOUR_START - FLOOR_LEN * 0.2) / FLOOR_LEN))];
-    else if (raw >= PHASE.turn[1]) label = 'Fahrt';
-    if (RAUM) label = 'Zurück ins Haus'; // auf einer Unterseite führt das Dock zurück in die Etage
-    setLabel(label);
-  }
+  const bb = track.getBoundingClientRect(), h = innerHeight;
+  if (STATISCH) { kopfSetzen(bb.bottom <= (kopf ? kopf.offsetHeight : 0) * 0.6 ? 'hell' : 'glas'); return; }
+  roh = STILL ? 0 : Math.min(N - 1 + KREIS, Math.max(0, -bb.top / h));
+  const a = Math.min(N - 1, Math.max(0, Math.round(Math.min(roh, N - 1))));
+  if (a !== aktiv) zeigeSzene(a);
+  root.classList.toggle('snap-aktiv', !STILL && !animLaeuft && bb.bottom > 2); // gerastet wird nur in der Fahrt; danach scrollt die Seite ganz normal
+  if (!marke && roh >= N - 1 - 0.02) { marke = true; try { localStorage.setItem('make-fahrt', '1'); } catch (_) { /* ohne localStorage: die Fahrt startet beim nächsten Mal wieder */ } }
+  if (!STILL) sS.set(Math.min(roh, N - 1));
+  // der Kreis nach der letzten Szene
+  const c = clamp01((roh - (N - 1)) / KREIS);
+  star.style.visibility = c > 0 ? 'visible' : 'hidden'; star.style.opacity = c > 0 ? 1 : 0;
+  star.style.transform = `scale(${0.012 + Math.pow(c, 4) * 3.2})`; starTint.setAttribute('opacity', easeInOutSine(span(c, [0.2, 1])));
+  canvasAn = c < 0.98 && bb.bottom > 0 && bb.top < h;
+  kopfSetzen(bb.bottom <= (kopf ? kopf.offsetHeight : 0) * 0.6 || c > 0.97 ? 'hell' : roh < 0.5 ? 'szene' : 'glas');
 });
+function kopfSetzen(lage) { // Kopf der Website: über Szene 1 durchsichtig, über der Fahrt dunkles Glas, im hellen Teil wie überall
+  if (!kopf || lage === kopfLage) return; kopfLage = lage;
+  kopf.classList.toggle('ueber-film', lage !== 'hell'); kopf.classList.toggle('film-geht', lage === 'glas');
+}
 let lastAmbient = 0;
-/* Klickpunkte: je Halt zwei bis drei Punkte genau auf den gezeichneten Gegenständen. Sie sind Knöpfe, nur sichtbar,
-   solange der Halt steht, und folgen dem Gegenstand in jedem Bild. Ein Klick zeigt die Karte und fährt ein Stück heran. */
-const spotsEl = $('#spots'), pop = $('#pop'), popT = $('#popT'), popB = $('#popB'), popC = $('#popC'), spotHint = $('#spotHint');
-const noMove = matchMedia('(prefers-reduced-motion: reduce)').matches; // „weniger Bewegung“: Karte ohne Fahrt
-let spotFloor = -1, openSpot = null, openRaw = 0, hintDone = false;
-const focusSpring = new Spring(0, { duration: 750, easing: easeInOutSine }, (v) => { focusK = v; sceneDirty = true; });
-function closePop(back) {
-  if (!openSpot) return; const b = openSpot.b; b.classList.remove('active'); b.setAttribute('aria-expanded', 'false'); openSpot = null;
-  pop.classList.remove('open'); pop.setAttribute('aria-hidden', 'true'); focusSpring.set(0); if (back) b.focus({ preventScroll: true });
-}
-function showPop(fi, si) {
-  const F = FLOORS[fi], s = F.spots && F.spots[si]; if (!s) return;
-  if (openSpot) { openSpot.b.classList.remove('active'); openSpot.b.setAttribute('aria-expanded', 'false'); }
-  openSpot = { fi, si, b: SPOT_BTNS[fi][si] }; openRaw = lastRaw; hintDone = true;
-  popC.textContent = F.label; popT.textContent = s.t; popB.innerHTML = s.h; anfrageWege(popB); pop.style.setProperty('--akz', F.akz || AKZ.lav); pop.classList.toggle('breit', s.h.includes('kpis'));
-  pop.classList.add('open'); pop.setAttribute('aria-hidden', 'false'); openSpot.b.classList.add('active'); openSpot.b.setAttribute('aria-expanded', 'true');
-  focusAt = [s.at[0], F.base + s.at[1], s.at[2]]; if (!noMove) focusSpring.set(1);
-  if (!STILL) $('#popX').focus({ preventScroll: true });
-}
-const SPOT_BTNS = FLOORS.map((F, fi) => (F.spots || []).map((s, si) => {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'spot'; b.tabIndex = -1; b.style.setProperty('--akz', F.akz || AKZ.lav);
-  b.setAttribute('aria-label', `${s.t}: Einzelheiten zeigen`); b.setAttribute('aria-expanded', 'false'); b.setAttribute('aria-controls', 'pop');
-  b.addEventListener('click', () => (openSpot && openSpot.b === b ? closePop(true) : showPop(fi, si)));
-  spotsEl.append(b); return b;
-}));
-$('#popX').addEventListener('click', () => closePop(true));
-addEventListener('keydown', (e) => { if (e.key === 'Escape' && openSpot) closePop(true); });
-addEventListener('pointerdown', (e) => { if (openSpot && !e.target.closest('.pop, .spot')) closePop(); });
-function placeSpots(p) {
-  let fi = -1; for (let i = 0; i < HALTS; i++) { const [a, b] = floorRange(i), q = (p - a) / (b - a); if (q >= TRAVEL_PART + 0.06 && q < 0.93 && (FLOORS[i].innen ? insideK(p, i) > 0.92 : !FLOORS[i].roof || !MARKE.dach || dachK(p) > 0.92)) fi = i; }
-  if (fi !== spotFloor) { if (openSpot && openSpot.fi !== fi) closePop(); SPOT_BTNS.forEach((bs, i) => bs.forEach((b) => { b.classList.toggle('on', i === fi); b.tabIndex = i === fi ? 0 : -1; })); spotFloor = fi; }
-  spotHint.classList.toggle('on', fi === 0 && !hintDone);
-  if (fi < 0) return;
-  const F = FLOORS[fi], breit = wide.matches; oy = F.base;
-  F.spots.forEach((s, si) => {
-    const q = P(s.at[0], s.at[1], s.at[2]), b = SPOT_BTNS[fi][si], x = q[0] / S.w, y = q[1] / S.h;
-    b.style.left = `${x * 100}%`; b.style.top = `${y * 100}%`;
-    b.style.display = x < (breit ? 0.42 : 0.04) || x > (breit && pk.classList.contains('on') ? 0.725 : 0.975) || y < 0.04 || y > (breit ? 0.96 : 0.345) ? 'none' : ''; // nie unter der Tafel, nie am Rand
-  });
-  oy = 0;
-}
-function place() {
-  if (flagAt) { flag.style.left = `${flagAt[0] * 100}%`; flag.style.top = `${flagAt[1] * 100}%`; }
-  if (coreAt) { star.style.left = `${clamp01(coreAt[0]) * 100}%`; star.style.top = `${clamp01(coreAt[1]) * 100}%`; } // der Kreis wächst aus dem Kern
-  placeSpots(pSpring.v);
-  const key = AKT.k > 0 && AKT.F && MARKE[AKT.F.key] ? AKT.F.key : null;
-  if (key && key !== pkKey) bauePk(key);
-  const pkAn = !!key && AKT.k > 0.6 && !MARKE[key].D.ohneSchalter; pk.classList.toggle('on', pkAn); root.classList.toggle('blatt-offen', pkAn); // blatt-offen: am Handy rückt das Dock tiefer
-  placeTags();
-}
-/* ── Paketschalter und Rollenschilder der Markenräume ── */
-const pk = $('#pk'), tagsEl = $('#rollen'), TAGS = {}, PFEIL = '<svg aria-hidden="true"><use href="#i-arrow"/></svg>';
-let pkKey = null, pkLinie = -1;
-for (const key in MARKE) TAGS[key] = MARKE[key].D.linien.map((L) => L.rollen.map(([name]) => { const s = document.createElement('span'); s.className = 'rolle'; s.textContent = name; tagsEl.append(s); return s; }));
-function bauePk(key) {
-  pkKey = key; pkLinie = -1; const D = MARKE[key].D, einzeln = D.wahl === 'einzeln';
-  pk.style.setProperty('--akz', FLOORS[MARKE[key].i].akz || AKZ.lav); $('#pkCap').textContent = D.kicker; pk.classList.toggle('ohne', !!D.ohneSchalter);
-  pk.classList.toggle('gesamt', !!D.preis); $('#pkVor').textContent = D.preisVor || ''; $('#pkVor').hidden = !D.preisVor; // ein Preis für das Ganze (PR: Mandat): er steht einmal am Ende des Schalters, gleich welcher Baustein gewählt ist
-  const L = $('#pkLinien'); L.textContent = ''; L.hidden = D.linien.length < 2; L.classList.toggle('liste', einzeln); L.setAttribute('aria-label', einzeln ? D.gruppe || 'Auswahl' : 'Linie wählen'); $('#pkPakete').setAttribute('aria-label', D.gruppe && !einzeln ? D.gruppe : 'Paket wählen');
-  D.linien.forEach((ln, l) => { // einzeln: jede Wahl steht für sich (kein „enthält“), als Liste mit Nummer
-    const b = document.createElement('button'); b.type = 'button'; const pa = ln.pakete[0];
-    if (einzeln) b.innerHTML = `<b>${pa.kurz}</b><span class="lang">${ln.name}</span><span class="knapp">${pa.mobil || ln.name}</span>`; else b.textContent = ln.name;
-    b.addEventListener('click', () => waehle(key, l, WAHL[key].paket[l])); L.append(b);
-  });
-  $('#pkH1').textContent = D.kopf || 'In diesem Paket'; $('#pkH2').textContent = D.kopfRollen || 'Wer in diesem Paket für Sie arbeitet';
-  $('#pkH2').hidden = $('#pkRollen').hidden = D.kopfRollen === false;
-  zeigePaket();
-}
-function zeigePaket() {
-  if (!pkKey) return; const key = pkKey, D = MARKE[key].D, W = WAHL[key], ln = D.linien[W.linie], gew = W.paket[W.linie], pa = ln.pakete[gew], P_ = $('#pkPakete');
-  [...$('#pkLinien').children].forEach((b, l) => b.setAttribute('aria-pressed', String(l === W.linie)));
-  if (pkLinie !== W.linie) { // die drei Knöpfe nur neu bauen, wenn die Linie wechselt: so bleibt der Tastaturfokus beim Umschalten stehen
-    pkLinie = W.linie; P_.textContent = ''; P_.hidden = ln.pakete.length < 2; P_.classList.toggle('reihe', ln.pakete.some((x) => x.name.length > 12));
-    ln.pakete.forEach((x, i) => { const b = document.createElement('button'); b.type = 'button'; b.innerHTML = `<b>${x.kurz}</b><span class="lang">${x.name}</span><span class="knapp">${x.mobil || x.name}</span>`; b.setAttribute('aria-label', `${D.einheit || 'Paket'} ${x.kurz}: ${x.name}`); b.addEventListener('click', () => waehle(key, W.linie, i)); P_.append(b); });
-  }
-  [...P_.children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === gew)));
-  $('#pkText').textContent = pa.text || ''; $('#pkText').classList.toggle('nur-breit', !!pa.textNurBreit); $('#pkListe').innerHTML = pa.punkte.map((x) => `<li>${x}</li>`).join(''); $('#pkListe').classList.toggle('zwei', pa.punkte.length >= 4); const preis = D.preis || pa.preis; $('#pkPreis').textContent = preis;
-  $('#pkNetto').hidden = !/^ab /.test(preis);
-  $('#pkRollen').innerHTML = ln.rollen.filter(([, ab]) => ab <= gew).map(([n]) => `<li>${n}</li>`).join('');
-  const cta = pa.cta || D.cta || ['Sichtbarkeits- und Vertriebs-Check starten', 'check']; // Aufruf im Schalter (am Handy; breit steht er in der Tafel)
-  const zum = pa.link || (pa.zum ? ['Zum Angebot', pa.zum] : D.zum ? ['Zum Angebot', D.zum] : null); // je Paket die Seite des Angebots (Ziele aus ziele.json)
-  $('#pkCta').innerHTML = `<a class="alink haupt" href="${ZIELE[cta[1]]}">${PFEIL}<span class="t-caption">${cta[0]}</span></a>` + (zum && zum[1] !== cta[1] ? `<a class="alink mehr" href="${ZIELE[zum[1]]}">${PFEIL}<span class="t-caption">${zum[0]}</span></a>` : `<a class="alink mehr" href="${ZIELE['mehr.' + FLOORS[MARKE[key].i].id]}">${PFEIL}<span class="t-caption">Mehr erfahren</span></a>`);
-  const an = $('#pkAngebot'); an.hidden = !zum; if (zum) { an.href = ZIELE[zum[1]]; an.firstChild.textContent = zum[0]; }
-  anfrageWege(pk);
-}
-paketGewaehlt = (key) => { if (key === pkKey) zeigePaket(); };
-function placeTags() {
-  const F = AKT.k > 0 ? AKT.F : null, sicht = F ? clamp01((AKT.k - 0.8) / 0.2) : 0, items = [], breit = wide.matches && !S.narrow, W = tagsEl.clientWidth, H = tagsEl.clientHeight;
-  for (const key in TAGS) TAGS[key].forEach((L, l) => L.forEach((el, r) => {
-    const kk = MARKE[key].rolle[l][r].v, an = kk >= 0.5, Ln = MARKE[key].D.linien[l], k = F && F.key === key && l === WAHL[key].linie ? Math.abs(2 * kk - 1) * sicht : 0;
-    const txt = an ? Ln.rollen[r][0] : `ab ${Ln.ab[Ln.rollen[r][1]]}${Ln.abName ? ` · ${Ln.rollen[r][0]}` : ''}`;
-    if (el._txt !== txt) { el._txt = txt; el.textContent = txt; el.classList.toggle('leise', !an); }
-    if (k < 0.04) { if (el._an) { el.style.opacity = 0; el._an = false; } return; }
-    const [x, z, o] = FIG[key][l][r]; oy = F.base; const q = P(x, o.y || (o.seat ? 1.44 : o.profil ? 1.47 : 2.03), z); oy = 0;
-    items.push({ el, x: (q[0] / S.w) * W, y: (q[1] / S.h) * H, k });
-  }));
-  items.sort((a, b) => b.y - a.y); const fest = [], kanteL = breit ? slab.offsetWidth : 0, kanteR = breit && pk.classList.contains('on') ? pk.offsetLeft : breit && !NURBILD ? W * 0.975 : W;
-  for (const it of items) {
-    const w = it.el.offsetWidth, li0 = kanteL + w / 2 + 6, re0 = kanteR - w / 2 - 6, xx = Math.max(li0, Math.min(re0, it.x)); let y = it.y - 8, n = 0;
-    while (n < 6 && fest.some((d) => Math.abs(d.x - xx) < (d.w + w) / 2 + 6 && Math.abs(d.y - y) < 27)) { y -= 27; n++; }
-    fest.push({ x: xx, y, w });
-    const aus = it.x < kanteL + 18 || it.x > kanteR - 10, tx = xx; // das Schild bleibt in der freien Fläche zwischen Tafel und Paketschalter
-    it.el.style.left = `${tx}px`; it.el.style.top = `${y}px`; it.el.style.setProperty('--stiel', `${it.y - y}px`); it.el.style.opacity = aus ? 0 : it.k; it.el._an = true;
-  }
-}
+function place() { if (coreAt) { star.style.left = `${clamp01(coreAt[0]) * 100}%`; star.style.top = `${clamp01(coreAt[1]) * 100}%`; } } // der Kreis wächst aus dem Kern
 painters.push((now) => {
-  if (!flags.canvas || document.hidden || !sky) return;
-  if (STILL) { if (sceneDirty) { drawScene(pSpring.v, 0); sceneDirty = false; snap(cv); place(); } return; }
-  if (sceneDirty || (!RAUM && now - lastAmbient > 32)) { drawScene(pSpring.v, now); sceneDirty = false; lastAmbient = now; place(); }
+  if (STATISCH || !canvasAn || document.hidden || !sky) return;
+  if (STILL) { if (sceneDirty) { drawScene(ansicht(0), 0); sceneDirty = false; snap(cv); place(); } return; }
+  if (sceneDirty || now - lastAmbient > 32) { drawScene(ansicht(sS.v), now); sceneDirty = false; lastAmbient = now; place(); }
 });
 
-/* ── Dock ── */
-const dockNav = $('#dockNav'), dockMenu = $('#dock-menu'), dockBtn = $('#dockBtn');
-let menuOpen = QUERY.has('menu');
-const dockSpring = new Spring(0, DOCK_TOGGLE, (v) => { dockNav.style.opacity = 1 - v; dockNav.style.transform = `translateY(${40 * v}px)`; });
-const menuSpring = new Spring(0, DOCK_TOGGLE, (v) => { dockMenu.style.opacity = v; dockMenu.style.transform = `translateY(${12 * (1 - v)}px)`; });
-function syncDock() {
-  const hidden = store.dockHidden, open = menuOpen && !hidden;
-  dockSpring.set(hidden ? 1 : 0); dockNav.inert = hidden; dockNav.style.pointerEvents = hidden ? 'none' : 'auto';
-  menuSpring.set(open ? 1 : 0); dockMenu.inert = !open; dockMenu.style.pointerEvents = open ? 'auto' : 'none';
-  dockBtn.setAttribute('aria-expanded', String(open)); dockBtn.setAttribute('aria-label', open ? 'Etagenwahl schließen' : 'Etagenwahl öffnen'); $('#dockIcon').setAttribute('href', open ? '#i-close' : '#i-menu');
+/* ── Wege: Überspringen, Etagenwahl, Szenen anfahren, Gastwunsch, Newsletter ── */
+function markeSetzen() { try { localStorage.setItem('make-fahrt', '1'); } catch (_) { /* siehe oben */ } }
+function ueberspringen(e) {
+  if (e) e.preventDefault();
+  markeSetzen(); const k = KURZ();
+  scrollTo({ top: k ? Math.round(k.getBoundingClientRect().top + scrollY) : Math.round(spurTop() + track.offsetHeight), behavior: 'auto' });
 }
-dockBtn.addEventListener('click', () => { menuOpen = !menuOpen; syncDock(); });
-dockMenu.addEventListener('click', (e) => { if (e.target.closest('a')) { menuOpen = false; syncDock(); } });
-addEventListener('keydown', (e) => { if (e.key === 'Escape' && menuOpen) { menuOpen = false; syncDock(); dockBtn.focus(); } });
-/* „Spielt zusammen mit“: die kleinen Knöpfe in der Tafel fahren mit dem Aufzug zur Ziel-Etage, wie die Etagenwahl im Dock */
-$$('.mit-knopf').forEach((b) => b.addEventListener('click', () => { const z = $('#halt-' + b.dataset.zu); if (!z) return; if (lenis) lenis.scrollTo(z); else z.scrollIntoView({ behavior: WENIGER ? 'auto' : 'smooth' }); }));
-/* Die Zeile steht nur, wo sie Platz hat: Läuft die Tafel eines Halts mit ihr über (kleines Fenster, langer Text), bleibt sie an diesem Halt weg */
-function mitPruefen() {
-  $$('.fl').forEach((el) => {
-    el.classList.remove('ohne-mit'); if (!$('.fl-mit', el) || !$('.fl-mit', el).offsetHeight) return;
-    const cs = getComputedStyle(el), px = (v) => parseFloat(v) || 0, kinder = [...el.children];
-    const hoch = kinder.reduce((s, k) => { const c = getComputedStyle(k); return s + k.offsetHeight + px(c.marginTop) + px(c.marginBottom); }, 0) + px(cs.rowGap) * (kinder.length - 1);
-    if (hoch > el.clientHeight - px(cs.paddingTop) - px(cs.paddingBottom) + 0.5) el.classList.add('ohne-mit');
-  });
+skip.addEventListener('click', ueberspringen);
+addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || document.querySelector('dialog[open]') || e.target.closest?.('input, textarea, select')) return; // ein offener Dialog schließt zuerst
+  if (root.classList.contains('snap-aktiv') && !STILL) ueberspringen(e);
+});
+function zu(dlg) { if (dlg.open) dlg.close(); }
+for (const dlg of [wahl, gast]) { // Klick auf den dunklen Rand schließt
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) zu(dlg); });
 }
+$('#wahlZu').addEventListener('click', () => zu(wahl));
+$('#gastZu').addEventListener('click', () => zu(gast));
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href^="#szene-"]'); if (a) {
+    const i = szeneNr(a.getAttribute('href').slice(7)); if (i < 0) return;
+    e.preventDefault(); if (a.closest('dialog')) zu(a.closest('dialog')); szeneZu(i); return;
+  }
+  const b = e.target.closest('[data-aktion]'); if (!b) return;
+  const w = b.dataset.aktion;
+  if (w === 'etagenwahl') { if (!wahl.open) wahl.showModal(); }
+  else if (w === 'weiter') szeneZu(Math.max(0, aktiv) + 1);
+  else if (w === 'gast') { if (!gast.open) gast.showModal(); }
+});
+/* Mausrad und Trackpad: ein Schwung bewegt genau eine Szene (der Schwung selbst läuft aus und zählt nicht weiter). Das Rasten der Seite würde einen kurzen Schwung
+   wieder zurückschnappen lassen; darum führen wir das Rad selbst. Tasten und Wischen am Handy bleiben beim Rasten der Seite. Höchstens etwa eine Sekunde Halt je Szene. */
+let letztesRad = 0, radSumme = 0, radBereit = true, letzterZug = 0, letztesDy = 0;
+addEventListener('wheel', (e) => {
+  if (STATISCH || STILL || e.ctrlKey || e.metaKey || e.shiftKey || track.getBoundingClientRect().bottom <= 2 || document.querySelector('dialog[open]')) return; // nach der Fahrt scrollt die Seite ganz normal
+  if (Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+  e.preventDefault();
+  const now = performance.now(), dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * innerHeight : e.deltaY, neu = now - letztesRad > 130;
+  letztesRad = now;
+  if (neu) { radBereit = true; radSumme = 0; }
+  else if (!radBereit && !animLaeuft && now - letzterZug > 950 && Math.abs(dy) >= Math.abs(letztesDy) && Math.abs(dy) > 8) { radBereit = true; radSumme = 0; } // wer weiterdreht, will weiter
+  letztesDy = dy;
+  if (!radBereit || animLaeuft) return;
+  radSumme += dy;
+  if (Math.abs(radSumme) < 20) return;
+  radBereit = false; letzterZug = now;
+  const s = Math.min(roh, N - 1 + KREIS), ziel = radSumme > 0 ? Math.floor(s + 0.01) + 1 : Math.ceil(s - 0.01) - 1;
+  szeneZu(Math.max(0, Math.min(N, ziel)));
+}, { passive: false });
+addEventListener('keydown', (e) => { // Ende: ans Ende der Seite, nicht nur ans Ende der Fahrt
+  if (e.key !== 'End' || STATISCH || STILL || e.target.closest?.('input, textarea, select') || document.querySelector('dialog[open]')) return;
+  e.preventDefault(); root.classList.remove('snap-aktiv'); scrollTo(0, document.documentElement.scrollHeight);
+});
+/* Gast vorschlagen: die Anwendung nimmt das Formular nur mit einem Stempel ihrer eigenen Seite an. Darum öffnet das Formular hier die vorbereitete Mail der Anfrage,
+   mit den Angaben im Text; gesendet wird erst dort. Keine Kontaktdaten der vorgeschlagenen Person. */
+const gastForm = $('#gastForm'), kennt = () => gastForm.elements.namedItem('kennt').value;
+for (const r of gastForm.elements.namedItem('kennt')) r.addEventListener('change', () => { $('#gastHinweis').hidden = kennt() !== 'ja'; });
+gastForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const f = (n) => gastForm.elements.namedItem(n).value.trim(), meldung = $('.gast-meldung', gastForm), mailOk = /^[^\s@<>"',;:]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,24}$/i;
+  for (const n of ['name', 'email', 'gast', 'warum']) gastForm.elements.namedItem(n).removeAttribute('aria-invalid');
+  const fehlt = ['name', 'gast', 'warum'].find((n) => !f(n)) || (mailOk.test(f('email')) ? null : 'email');
+  if (fehlt) { const el = gastForm.elements.namedItem(fehlt); el.setAttribute('aria-invalid', 'true'); el.focus(); meldung.textContent = 'Bitte fülle alle Felder aus (mit gültiger E-Mail-Adresse).'; return; }
+  const basis = MAILS[ZIELE['gast-vorschlagen']];
+  if (!basis) { meldung.textContent = 'Das Formular ist gerade nicht erreichbar. Bitte versuche es später noch einmal.'; return; }
+  const text = `Mein Name: ${f('name')}\nMeine E-Mail: ${f('email')}\nGast: ${f('gast')}\nWarum er oder sie passt: ${f('warum')}\nIch kenne die Person persönlich: ${kennt() === 'ja' ? 'ja' : 'nein'}`;
+  meldung.textContent = 'Dein Mailprogramm öffnet sich mit dem Vorschlag. Dort schickst du ihn ab.';
+  location.href = `${basis}${basis.includes('?') ? '&' : '?'}body=${encodeURIComponent(text)}`;
+});
+/* Newsletter (Etage 5): die Anwendung nimmt die Anmeldung nur von ihrer eigenen Seite an (Stempel, Wortlaut der Einwilligung, Bestätigungsmail). Darum führt der Knopf dorthin. */
+const nl = $('#newsletter');
+if (nl) nl.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const meldung = $('.nl-meldung', nl), feld = nl.elements.namedItem('email'), mail = feld.value.trim();
+  feld.removeAttribute('aria-invalid');
+  if (!/^[^\s@<>"',;:]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,24}$/i.test(mail)) { feld.setAttribute('aria-invalid', 'true'); feld.focus(); meldung.textContent = 'Bitte gib eine gültige E-Mail-Adresse an.'; return; }
+  meldung.textContent = 'Einen Moment …';
+  try {
+    const r = await fetch(ZIELE.newsletter, { method: 'HEAD', cache: 'no-store', redirect: 'error' });
+    if (!r.ok) throw new Error('aus');
+    meldung.textContent = 'Weiter zur Anmeldung: Dort bestätigst du deine Adresse.';
+    location.assign(ZIELE.newsletter);
+  } catch (_) { meldung.textContent = 'Die Anmeldung ist gerade nicht erreichbar. Bitte versuche es später noch einmal.'; }
+});
 
-function introGo() {
-  store.introReady = true;
-  heroes[0].words.forEach((w) => w.forEach((s, i) => s.set(1, { delay: i * (HERO_INTRO.span / w.length), cfg: HERO_INTRO.config })));
-  new Spring(0, GRID_INTRO, (v) => { $('#gridIntro').style.opacity = v; }).set(1);
-  new Spring(0, { duration: 3200, easing: easeOutQuint }, (v) => { introK = v; sceneDirty = true; }).set(1);
-}
-/* ── Kopf der Website über der Szene: hell auf dunkel. Über dem Auftakt durchsichtig, über Fahrt und Räumen dunkles Glas, im hellen Teil wie überall.
-   html.kopf-da: Etikett der Tafel, Paketschalter und Karte rücken unter den Kopf (nur breit; am Handy liegen Tafel und Schalter unten) ── */
-const kopf = $('.kopf');
-if (kopf) {
-  let stand = '';
-  readers.push(() => {
-    const ueber = track.getBoundingClientRect().bottom > kopf.offsetHeight * 0.6;
-    const hell = !ueber || (!STILL && lastRaw >= PHASE.star[1] - 0.011); // am Ende deckt der Kreis alles in Papier
-    const lage = hell ? 'hell' : lastRaw < PHASE.hero[1] ? 'szene' : 'glas', da = !hell && wide.matches;
-    if (lage + da === stand) return; stand = lage + da;
-    kopf.classList.toggle('ueber-film', !hell); kopf.classList.toggle('film-geht', lage === 'glas'); root.classList.toggle('kopf-da', da);
-  });
-}
-/* Das Menü der Website am Handy ist ein eigenes Blatt mit eigenem Scrollen: solange es offen ist, hält Lenis still */
-const menue = $('details.menue');
-if (menue) {
-  const blatt = $('.menue-blatt', menue); if (blatt) blatt.setAttribute('data-lenis-prevent', '');
-  menue.addEventListener('toggle', () => { if (!lenis) return; if (menue.open) lenis.stop(); else lenis.start(); });
+/* ── „Weniger Bewegung“: jede Szene bekommt ihr ruhiges Bild, wenn sie ins Bild kommt (ein Standbild der Zeichnung) ── */
+function bilderMalen() {
+  const io = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting) { io.unobserve(en.target); malen(panels.indexOf(en.target)); } }), { rootMargin: '60% 0px' });
+  const ruhig = []; let laeuft = false;
+  function malen(i) { ruhig.push(i); if (!laeuft) { laeuft = true; setTimeout(abarbeiten, 0); } }
+  function abarbeiten() {
+    const i = ruhig.shift(); if (i === undefined) { laeuft = false; return; }
+    const v = ansicht(i); drawScene(v, 0); panels[i].style.backgroundImage = `url(${cv.toDataURL('image/jpeg', 0.8)})`; setTimeout(abarbeiten, 20);
+  }
+  panels.forEach((el) => io.observe(el));
 }
 
 /* ── Start ── */
-if (!STILL && !RAUM) track.style.height = `${TRACK_VH}vh`;
-/* Auswahl aus der Adresse: ?linie=website&paket=3 (Linie: social, website, video; Paket: 1 bis 3) */
-if (QUERY.has('linie') || QUERY.has('paket')) for (const key in MARKE) {
-  const D = MARKE[key].D, qp = +QUERY.get('paket'); let l = D.linien.findIndex((x) => x.id === QUERY.get('linie')); if (l < 0) l = 0;
-  waehle(key, l, qp >= 1 && qp <= 3 ? qp - 1 : WAHL[key].paket[l], true); // waehle begrenzt auf die Pakete, die es in der Linie gibt
+if (!STILL && !STATISCH) { /* die Höhe der Spur steht in haus.css */ }
+sizeScene(); zeigeSzene(0); sceneDirty = true;
+if (!STATISCH && !STILL) { // Einflug: die Kamera gleitet heran, statt zu stehen
+  new Spring(0, EINFLUG, (v) => { introK = v; sceneDirty = true; }).set(1);
 }
-if (RAUM && MARKE[RAUM]) bauePk(RAUM);
-if (NURBILD) root.classList.add('nurbild');
-sizeScene(); apply(0); applyFlags(sceneFlags(0), true); syncDock();
-introGo();
 let rz = 0;
-addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { sizeScene(); mitPruefen(); apply(pSpring.v); lastRaw = -1; }); });
+addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { sizeScene(); zeigeSzene(aktiv); if (STATISCH) panels.forEach((el) => { el.style.backgroundImage = ''; }); }); });
 requestAnimationFrame(frame);
 
 const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]);
-const steps = 3; let stepDone = 0; const stepUp = () => { stepDone++; store.framesProgress = Math.min(1, stepDone / steps); };
 (async () => {
-  if (!STILL) { try { if (window.Lenis) { lenis = new window.Lenis({ smoothWheel: true, anchors: true }); window.lenis = lenis; } else console.warn('Lenis nicht geladen (lib/lenis.min.js fehlt), natives Scrollen.'); } catch (e) { console.warn('Lenis nicht geladen, natives Scrollen.', e); } }
-  stepUp();
   await withTimeout(Promise.all(['400 20px', '500 40px', '600 20px'].map((f) => document.fonts.load(`${f} "Schibsted Grotesk"`))).catch(() => {}), 4000);
-  stepUp();
-  mitPruefen(); // erst jetzt: die Schrift bestimmt, wie hoch die Texte der Tafel sind
   buildTextures(); sceneDirty = true;
-  stepUp();
-  if (STILL && STILL.p !== undefined && QUERY.has('punkt')) { // Standbild mit offener Karte: ?p=…&punkt=2
-    const fi = Math.max(0, Math.min(HALTS - 1, Math.floor((STILL.p - TOUR_START) / FLOOR_LEN))); showPop(fi, (+QUERY.get('punkt') || 1) - 1);
-  }
-  if (SPRUNG) { // direkt an die Etage, ohne Vorlader und ohne Fahrt
-    const y = Math.round((toR(floorRange(ETAGE)[0] + FLOOR_LEN * 0.72) * TRAVEL_VH * innerHeight) / 100);
-    scrollTo(0, y); if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); setTimeout(() => { sprung = false; }, 500);
-  }
+  // Sprung an eine Szene: ?szene=7, ?szene=e2 oder ?etage=eg|tresen|1|2|3|4|5|dach (Adresse) bzw. #szene-e2
+  const ETAGE = { eg: 'eg', tresen: 'tresen', 1: 'e1', 2: 'e2', 3: 'e3a', 4: 'e4', 5: 'e5a', dach: 'dach' };
+  const ziel = QUERY.get('szene') || ETAGE[(QUERY.get('etage') || '').toLowerCase()] || (location.hash.startsWith('#szene-') ? location.hash.slice(7) : '');
+  if (ziel && !STILL && !STATISCH) { const i = szeneNr(ziel); if (i >= 0) { scrollTo(0, szeneY(i)); sS.set(i, { immediate: true }); } }
+  if (STATISCH) bilderMalen();
   root.dataset.bereit = '1';
-  if (STILL && STILL.y !== undefined) setTimeout(() => scrollTo(0, STILL.y), 60);
 })();
+} // Ende: nur ohne Rückkehrer-Marke

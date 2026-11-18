@@ -770,8 +770,8 @@
     ],
     "seiten": {
       "start": {
-        "titel": "MAKE Innovation · Agentur für Vertrieb, Sichtbarkeit, Innovation",
-        "beschreibung": "Agentur aus Berlin für Gründer, Start-ups und Unternehmer: Wir machen Ihr Produkt sichtbar und bauen den Vertrieb, der daraus Kunden macht. Mit festen Preisen."
+        "titel": "MAKE Innovation · Mach deine Innovation sichtbar",
+        "beschreibung": "Mit MAKE Innovation wirst du sichtbar, an deinem Standort und digital. Für Gründer und Unternehmer, die mit etwas Neuem durchstarten. Aus Berlin."
       },
       "sichtbarkeit": {
         "titel": "Sichtbarkeit: Pakete und Preise · MAKE Innovation",
@@ -1032,8 +1032,8 @@
     }
   ],
   "erstgespraech": {
-    "name": "Erstgespräch",
-    "knopf": "Erstgespräch vereinbaren",
+    "name": "Erstgespräch buchen",
+    "knopf": "Erstgespräch buchen",
     "kurz": "kostenlos, 30 Minuten per Video",
     "betreff": "Erstgespräch",
     "mail_text": "Guten Tag,\n\nich möchte ein Erstgespräch vereinbaren.\n\nUnternehmen:\nWorum es geht:\nWas soll in 90 Tagen anders sein:\nWann passt ein Gespräch:\n\nViele Grüße"
@@ -1632,5 +1632,135 @@
       ]
     ],
     "bedingungen_hinweis": "Fragen vor dem Kauf? Schreiben Sie uns an kevin@makeinnovation.de oder vereinbaren Sie ein kostenloses Erstgespräch von 30 Minuten."
+  },
+  "kurz": {
+    "_hinweis": "Kurz-Startseite nach der Fahrt (Konzept Malin 18.11.): alle Texte in Du. Platzhalter stehen in eckigen Klammern. Ziele: Pfad der Website oder angebot:<kennung>.",
+    "pitch_h2": "Wir bringen innovative Ideen in die Sichtbarkeit.",
+    "pitch": "Mit MAKE Innovation wirst du sichtbar, an deinem Standort und digital. Für Gründer und Unternehmer, die mit etwas Neuem durchstarten.",
+    "foto_beide": "[FOTO KEVIN UND MALIN]",
+    "mikro": "30 Min. · kostenlos · kein Verkaufsgespräch",
+    "fahrt": "Fahrt durchs Haus starten",
+    "problem": {
+      "links": "Die besten Ideen scheitern nicht an der Innovation, sondern daran, ihre Zielgruppe nicht zu erreichen und nicht im richtigen Licht zu stehen.",
+      "rechts": "MAKE Innovation bringt Lösungen für Analyse & KI, digitale Sichtbarkeit, Sichtbarkeit & Vertrauen, Vertrieb und Events."
+    },
+    "bereiche_titel": "Fünf Bereiche, ein Ziel.",
+    "bereiche": [
+      {
+        "name": "Analyse & KI",
+        "satz": "Bevor wir loslegen, schauen wir genau hin: Wo stehst du, was fehlt, wo hilft KI?",
+        "ziel": "/innovation/"
+      },
+      {
+        "name": "Digitale Sichtbarkeit",
+        "satz": "Gefunden werden, wo gesucht wird: Website, Google, Video und Social Media aus einer Hand.",
+        "ziel": "/sichtbarkeit/"
+      },
+      {
+        "name": "Sichtbarkeit & Vertrauen",
+        "satz": "Menschen vertrauen Menschen. Wir holen dich und dein Unternehmen ins Licht: in den Medien, auf Bühnen und in Berlin.",
+        "ziel": "angebot:pr-kommunikation"
+      },
+      {
+        "name": "Vertrieb",
+        "satz": "Aus Aufmerksamkeit werden Kunden: ein fester Ablauf, der nicht mehr an dir hängt.",
+        "ziel": "/vertrieb/"
+      },
+      {
+        "name": "Events",
+        "satz": "Aus Besuchern werden Stammkunden: mit Events, Community und Ideen, die Menschen wiederkommen lassen.",
+        "ziel": "/events/"
+      }
+    ],
+    "mehr": "Mehr erfahren",
+    "pakete": {
+      "marke": "Deine Pakete",
+      "h2": "Klein anfangen, Schritt für Schritt ausbauen.",
+      "ab": "[AB-PREIS FOLGT]",
+      "empfehlung": "Unsere Empfehlung",
+      "stufen": [
+        {
+          "name": "Fundament",
+          "satz": "Du weißt, wo du stehst, und hast einen klaren Plan.",
+          "punkte": [
+            "Analysen und Checks",
+            "Workshops",
+            "KI und Innovation"
+          ],
+          "ziel": "/innovation/"
+        },
+        {
+          "name": "Wachstum",
+          "satz": "Du wirst gefunden, gewinnst Vertrauen und machst aus Interesse Kunden.",
+          "punkte": [
+            "Digitale Sichtbarkeit",
+            "Sichtbarkeit und Vertrauen",
+            "Vertrieb"
+          ],
+          "ziel": "/sichtbarkeit/",
+          "empfohlen": true
+        },
+        {
+          "name": "Skalieren",
+          "satz": "Du bekommst eine eigene Bühne und eine Community, die über dich spricht.",
+          "punkte": [
+            "Podcast und deine Bühne",
+            "Fokus Abend",
+            "Alles aus Wachstum"
+          ],
+          "ziel": "/events/"
+        }
+      ],
+      "zusagen": "Festpreis vorab, keine Stunden · Workshop-Preis wird beim Start angerechnet · Upgrade später, du zahlst nur die Differenz",
+      "unsicher": "Unsicher, welches passt? Lass uns kurz sprechen"
+    },
+    "team": {
+      "marke": "Wer dich begleitet",
+      "h2": "Kevin und Malin leiten jedes Projekt persönlich.",
+      "kevin": "Kevin kommt aus der Vertriebsführung und verantwortet bei MAKE Innovation Vertrieb und Umsetzung.",
+      "malin": "Malin ist Mitgründerin und Gastgeberin unserer Events und verantwortet Bühne und Netzwerk.",
+      "foto_kevin": "[FOTO KEVIN]",
+      "foto_malin": "[FOTO MALIN]",
+      "link": "Über uns"
+    },
+    "referenzen_platz": "Hier folgt später die Sektion Referenzen (Kundenstimmen, Logos, Fallstudien).",
+    "community": {
+      "marke": "Community",
+      "h2": "Neues umsetzen, gemeinsam mit anderen.",
+      "abend": {
+        "titel": "Fokus Abend",
+        "text": "Erster Fokus Abend im Januar 2027 · 30 bis 40 Plätze · auf Einladung",
+        "knopf": "Einladung anfragen"
+      },
+      "podcast": {
+        "titel": "Podcast „Fokus Innovation“",
+        "text": "Unser Podcast über Innovation: besondere Persönlichkeiten, von Unternehmern bis Spitzensportlern, die durch neues Denken vorangekommen sind. Bald hier.",
+        "link": "Zum Podcast"
+      },
+      "newsletter": {
+        "titel": "Newsletter",
+        "text": "Podcast, Event-Einladungen und Updates, wenn es etwas Neues gibt.",
+        "knopf": "Newsletter abonnieren"
+      }
+    },
+    "fragen_titel": "Bevor du fragst",
+    "fragen_hinweis": "Noch etwas offen? Schreib uns, wir antworten persönlich.",
+    "fragen": [
+      {
+        "f": "Wer arbeitet an meinem Projekt?",
+        "a": "Du arbeitest direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Die Fachleute für Produktion, Technik und Medienarbeit sind im Team. Du sprichst immer mit uns, und wir stimmen alles Weitere im Team ab."
+      },
+      {
+        "f": "Was kostet das?",
+        "a": "Jedes Angebot steht mit Startpreis, festem Ablauf und klaren Konditionen auf seiner Seite; den genauen Festpreis bekommst du vor dem Start. Homepages und Videos haben eine feste Lieferzeit in Werktagen, Mandate einen festen Monatspreis und eine klare Laufzeit. Im Mandat siehst du den Fortschritt schwarz auf weiß: Zwischenbilanz in Woche 8, im Vertrieb ab Monat 3 jeden Freitag der Wochenreport."
+      },
+      {
+        "f": "Ist das Erstgespräch ein Verkaufsgespräch?",
+        "a": "Nein, es ist ein Gespräch über deine Lage, kostenlos und per Video. Am Ende sagen wir dir klar, ob wir helfen können und womit. Und wenn nicht, sagen wir auch das."
+      }
+    ],
+    "finale": {
+      "h2": "Mach deine Innovation sichtbar."
+    }
   }
 }

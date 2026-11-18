@@ -1,0 +1,36 @@
+{
+  "_hinweis": "Die drei Stufen: Quelle für Szene 14 der Fahrt UND für die Pakete der Kurz-Startseite (Runde 1b liest diese Datei). satz = ein Satz je Stufe, etagen = die Etagen der Stufe (Kennungen aus szenen.json), punkte = drei Stichpunkte, ab = Ab-Preis (Platzhalter, solange Kevin ihn nicht nennt), knopf = Rahmen-Knopf (ziel aus ziele.json). empfohlen = genau eine Stufe. Zusagen und Textlink stehen darunter.",
+  "empfohlen": "wachstum",
+  "empfehlung": "Unsere Empfehlung",
+  "stufen": [
+    {
+      "id": "fundament",
+      "name": "Fundament",
+      "satz": "Wir schauen genau hin und legen die Grundlage.",
+      "etagen": ["eg", "tresen", "e1"],
+      "punkte": ["Analysen und Checks", "Workshops", "KI und Innovation"],
+      "ab": "[AB-PREIS FOLGT]",
+      "knopf": { "text": "Mehr erfahren", "ziel": "pakete" }
+    },
+    {
+      "id": "wachstum",
+      "name": "Wachstum",
+      "satz": "Du wirst gefunden, vertrauenswürdig und gewinnst Kunden.",
+      "etagen": ["e2", "e3a", "e3b", "e4"],
+      "punkte": ["Digitale Sichtbarkeit", "Sichtbarkeit und Vertrauen", "Vertrieb"],
+      "ab": "[AB-PREIS FOLGT]",
+      "knopf": { "text": "Mehr erfahren", "ziel": "pakete" }
+    },
+    {
+      "id": "skalieren",
+      "name": "Skalieren",
+      "satz": "Du bekommst eine Bühne und baust deine Reichweite aus.",
+      "etagen": ["e5a", "e5b", "dach"],
+      "punkte": ["Podcast und deine Bühne", "Fokus Abend", "Alles aus Wachstum"],
+      "ab": "[AB-PREIS FOLGT]",
+      "knopf": { "text": "Mehr erfahren", "ziel": "pakete" }
+    }
+  ],
+  "zusagen": "Festpreis vorab, keine Stunden · Workshop-Preis wird beim Start angerechnet · Upgrade später, du zahlst nur die Differenz",
+  "unsicher": { "text": "Unsicher, welches passt? Lass uns kurz sprechen", "ziel": "erstgespraech" }
+}

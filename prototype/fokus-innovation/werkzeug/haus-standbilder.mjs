@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Standbilder der Startseite („Das Haus“) aufnehmen und dabei die Konsole mitlesen (auch Verstöße gegen die Sicherheitsregeln).
    Vorher: node werkzeug/csp-server.mjs   Aufruf: node werkzeug/haus-standbilder.mjs <zielordner> <profilordner> auftrag …
-   Auftrag: name|abfrage|breite|höhe[|scrollY[|wartezeit in ms[|ausschnitt x,y,b,h[|schärfe[|skript]]]]], z. B.  halt-08|p=0.4024|1440|900
+   Auftrag: name|abfrage|breite|höhe[|scrollY[|wartezeit in ms[|ausschnitt x,y,b,h[|schärfe[|skript]]]]], z. B.  szene-07|fahrt=1&szene=7|1440|900   (?fahrt=1&szene=<Nr 1 bis 15 oder Kennung, z. B. e2> springt in die Szene; ?p=0.4 zeichnet nur eine Stelle der Zeitachse)
    Abfrage „ohneskript“ nimmt die Fassung ohne Skript auf; „seite@abfrage“ eine andere Seite (z. B. sichtbarkeit/@). Ein Chrome ohne Fenster über eine Leitung. */
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';

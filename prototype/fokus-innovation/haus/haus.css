@@ -9,6 +9,7 @@
 @media (max-width: 1440px) { :root { --hr: 1.111111vw; } }
 @media (max-width: 1024px) { :root { --hr: 1.5625vw; } }
 @media (max-width: 640px)  { :root { --hr: 4.444444vw; } }
+@media (min-width: 641px) and (max-width: 1100px) and (max-aspect-ratio: 9/10) { :root { --hr: clamp(15px, 2.1vw, 19px); } } /* Tablet hochkant */
 
 /* ── Tokens: Stufe 1 = die einzigen Literale (CI von MAKE Innovation), Stufe 2 = Rollen ── */
 :root {
@@ -18,7 +19,6 @@
   --raw-leise: #62666B;          /* leise Beschriftung auf Papier */
   --raw-glas: #14161b;           /* Dock, Knopf-Glas */
   --raw-glas-hoch: #1d2027;      /* Glas beim Überfahren */
-  --raw-violett: #7C3AED;        /* Akzent auf Papier */
   --raw-lavendel: #A78BFA;       /* Akzent auf Nacht */
   --raw-kern: #8B5CF6;           /* der Kern im Zeichen, auf Nacht */
   --raw-zart: #EFEAFB;           /* getönte helle Fläche */
@@ -81,7 +81,6 @@
   --foreground-inverse-text: var(--raw-text);
   --foreground-inverse-muted: var(--raw-leise);
   --accent: var(--raw-lavendel);
-  --accent-inverse: var(--raw-violett);
   --duration-fast: var(--raw-duration-fast);
   --duration-normal: var(--raw-duration-normal);
   --duration-slow: var(--raw-duration-slow);
@@ -105,12 +104,8 @@
 :where(.haus) :is(a, button, summary):focus-visible { outline: 1px solid currentColor; outline-offset: 4px; }
 .haus-zeichen { position: absolute; }
 .dl-durch { display: contents; }
-.fl[data-akz="studios"] { --akz: #FF5A1F; }
-.fl[data-akz="revenue"] { --akz: #7DB7FF; }
-/*MK*/
-html.lenis, html.lenis body { height: auto; }
-.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
-.lenis.lenis-stopped { overflow: hidden; }
+/* ── Die eine Farbe des Erstgesprächs: nur dieser Knopf (.alink.erst), sonst nirgends in der Fahrt ── */
+:root { --cta: #7C3AED; --cta-text: #F6F4F0; --stufe-fundament: #A78BFA; --stufe-wachstum: #7DB7FF; --stufe-skalieren: #FF5A1F; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .abs-fill { position: absolute; inset: 0; }
 
@@ -121,402 +116,303 @@ html.lenis, html.lenis body { height: auto; }
 .t-body { font-size: var(--font-size-body-phone); line-height: var(--leading-copy); letter-spacing: var(--tracking-copy); }
 .t-caption { font-size: var(--font-size-caption); letter-spacing: var(--tracking-caps); text-transform: uppercase; font-weight: 500; line-height: var(--leading-display); }
 .t-lead { font-size: var(--font-size-lead); font-weight: 500; letter-spacing: var(--tracking-copy); }
-@media (min-width: 640px) {
-  .t-display { font-size: var(--font-size-display-tablet); }
-  .t-title { font-size: var(--font-size-title); }
-  .t-headline { font-size: var(--font-size-headline); }
-  .t-body { font-size: var(--font-size-body); }
-}
-@media (min-width: 1025px) { .t-display { font-size: var(--font-size-display); } }
-@media (min-width: 1025px) and (max-height: 780px) { :root { --font-size-display: 9.25rem; } }
 
-/* Buchstaben-Maschine */
-.lt { display: flex; flex-wrap: wrap; column-gap: .26em; }
-.lt-w { display: inline-block; white-space: nowrap; }
-.lt-w.clip { overflow: hidden; line-height: var(--leading-display); margin-bottom: -.875rem; padding-bottom: 1rem;
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - .8rem), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - .8rem), transparent); }
-.lt-l { display: inline-block; will-change: transform, opacity, filter; }
-.lines { display: flex; flex-direction: column; }
-/* ── Szene ── */
-.track { position: relative; z-index: 1; background: var(--background); height: 3015vh; } /* das Skript setzt die genaue Länge aus der Zeitachse */
-/* Standbild-Schalter (?p= und ?s=): die Bühne steht ganz oben, nichts hängt am Scrollen */
-html.still-p .track { height: 100vh; height: 100dvh; }
-.track .anchor { position: absolute; left: 0; right: 0; height: 1px; pointer-events: none; }
-html.still-p .track .anchor { display: none; } /* Unterseiten und Standbilder: die Spur ist nur ein Bildschirm hoch, die Sprungmarken der Fahrt lägen weit darunter und machten die Seite länger */
+/* ── Spur und Bühne: 15 Szenen, je ein Bildschirm hoch. Die Bühne bleibt stehen, die Spur gibt ihr den Scrollweg (14 Szenen + Kreis) ── */
+.track { position: relative; z-index: 1; background: var(--background); height: calc(15.5 * 100vh); height: calc(15.5 * 100dvh); }
+html.still-s .track { height: 100vh; height: 100dvh; }
 .stage { position: sticky; top: 0; height: 100vh; height: 100dvh; width: 100%; overflow: hidden; }
-.seq { position: absolute; inset: 0; z-index: 1; }
+.seq { position: absolute; inset: 0; z-index: 1; background: var(--raw-nacht); background-size: cover; background-position: center; }
 .seq canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .seq-shade { position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(130% 95% at 50% 45%, transparent 52%, rgb(5 6 9 / .6) 100%), linear-gradient(to bottom, rgb(5 6 9 / .4), transparent 24%, transparent 68%, rgb(5 6 9 / .55)); }
-.top-cta { position: absolute; right: 2.5rem; top: 2.5rem; z-index: 9; }
-.grid-intro { pointer-events: none; position: absolute; inset: 0; z-index: 2; opacity: 0; }
-.gridlines { position: absolute; left: 2rem; right: 2rem; top: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); }
-.gridlines i { border-left: 1px solid var(--fg-22); }
-.gridlines i:last-child { border-right: 1px solid var(--fg-22); }
-
-.hero { pointer-events: none; position: absolute; inset: 0; z-index: 5; }
-.slot { position: absolute; }
-.slot.tl { left: 2.5rem; top: 2.5rem; }
-.slot.tr { right: 2.5rem; top: 5.5rem; }
-.slot.cl { left: 2.5rem; top: 47%; translate: 0 -50%; }
-.slot.cr { right: 2.5rem; top: 50%; translate: 0 -50%; }
-.slot.cc { left: 50%; top: 50%; translate: -50% -50%; }
-.slot.bl { left: 2.5rem; bottom: 8.5rem; } /* über dem Dock, mit Luft für Unterlängen („Zugängen“) */
-.slot.br { right: 2.5rem; bottom: 2.5rem; }
-.hero .word { text-shadow: 0 0 3rem rgb(5 6 9 / .45); }
-/* Auftakt: die drei Bilder tragen die Mission in EINER Größe. Maß ist die längste Zeile („an Sichtbarkeit,“, 6,71 em breit):
-   Sie muss in jedes Fenster passen, und die untere Zeile („und Zugängen.“, 6,43 em) muss links vom Satz rechts unten enden. */
-.hero .word { font-size: 2.8rem; }
-@media (min-width: 640px) { .hero .word { font-size: 8.5rem; } }
-@media (min-width: 1025px) { .hero .word { font-size: 9rem; } }
-@media (min-width: 1025px) and (max-height: 700px) { .hero .word { font-size: 7.5rem; } }
-/* Vorzeile über dem ersten Titel */
-.hero-vor { position: absolute; left: 2.5rem; top: calc(var(--kopf) + 1.5rem); display: flex; align-items: center; gap: .6rem; color: var(--fg-85); white-space: nowrap; text-shadow: 0 0 1rem rgb(5 6 9 / .8); }
-.hero-desc { position: absolute; bottom: 2.5rem; width: 23rem; color: var(--fg-85); text-shadow: 0 0 1.2rem rgb(5 6 9 / .7); }
-.hero-desc.right { right: 2.5rem; text-align: right; }
-.hero-desc.left { left: 2.5rem; text-align: left; }
-.hero-desc .trust { display: block; margin-top: 1rem; color: var(--raw-lavendel); font-size: .6875rem; letter-spacing: .16em; text-transform: uppercase; font-weight: 500; }
-/* Schmale Fenster (768 bis 1024): Titel kleiner, Beschreibung schmaler, damit unten rechts nichts ins letzte Wort läuft */
-@media (min-width: 768px) and (max-width: 1024.98px) {
-  .hero .word { font-size: 6rem; }
-  .hero-desc { width: 17.5rem; }
-  .hero .cue { max-width: 17.5rem; white-space: normal; text-align: right; line-height: 1.5; bottom: 14.2rem; }
-  .hero .cue i { flex: none; }
-}
-@media (max-width: 767.98px) {
-  .top-cta { right: 1.5rem; top: 1.5rem; }
-  .gridlines { left: 1.5rem; right: 1.5rem; }
-  .slot.tl { left: 1.5rem; top: calc(var(--kopf) + 3.25rem); } .slot.tr { right: 1.5rem; top: 6rem; }
-  .hero-vor { left: 1.5rem; top: calc(var(--kopf) + 1.3rem); }
-  .slot.cl { left: 1.5rem; } .slot.cr { right: 1.5rem; }
-  .slot.bl { left: 1.5rem; bottom: 15rem; } .slot.br { right: 1.5rem; bottom: 15rem; }
-  .hero-desc { left: 1.5rem !important; right: 1.5rem !important; bottom: 7rem; width: auto; text-align: left !important; }
-  .hero-desc .trust { display: none; }
-}
-
-/* Der rote Faden: das ganze Haus */
-.finale { position: absolute; inset: 0; z-index: 25; pointer-events: none; visibility: hidden; text-shadow: 0 0 1.6rem rgb(5 6 9 / .7); }
-.det-title { position: absolute; left: 2.5rem; top: 2.5rem; z-index: 25; display: flex; flex-direction: column; max-width: 40vw; }
-.det-title p { margin-top: 1.1rem; max-width: 27rem; text-transform: none; color: var(--fg-85); }
-.flag { position: absolute; left: 40%; top: 30%; z-index: 24; translate: -100% -50%; text-shadow: none; display: flex; align-items: center; gap: .6rem; padding: .55rem .85rem; max-width: 19rem;
-  font-size: .8125rem; line-height: 1.35; letter-spacing: .01em; color: var(--foreground); border: 1px solid rgb(167 139 250 / .55); background: rgb(24 18 48 / .66);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-.flag::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--raw-lavendel); flex: none; }
-.stat { position: absolute; z-index: 25; display: flex; flex-direction: column-reverse; gap: .75rem; max-width: 19rem; }
-.stat.tr { right: 2.5rem; top: 2.5rem; align-items: flex-end; text-align: right; }
-.stat.bl { left: 2.5rem; bottom: 2.5rem; align-items: flex-start; }
-.stat.br { right: 2.5rem; bottom: 2.5rem; align-items: flex-end; text-align: right; }
-.stat dt { color: var(--fg-85); }
-.stat dd { font-size: var(--font-size-stat-phone); font-variant-numeric: tabular-nums; line-height: var(--leading-hero); letter-spacing: var(--tracking-display); font-weight: 500; }
-.stat dd .drum { display: inline-block; }
-@media (min-width: 768px) { .stat dd { font-size: var(--font-size-display-tablet); } }
-@media (min-width: 1025px) { .stat dd { font-size: var(--font-size-display); } }
-
-/* Finale auf dem Dach */
-.summit { position: absolute; left: 2.5rem; top: 50%; translate: 0 -50%; z-index: 26; max-width: 52vw; visibility: hidden; display: flex; flex-direction: column; gap: 2.2rem; align-items: flex-start; text-shadow: 0 0 2rem rgb(5 6 9 / .8), 0 0 .4rem rgb(5 6 9 / .5); }
-.summit h2 { font-size: 5.5rem; line-height: 1; letter-spacing: var(--tracking-display); font-weight: 500; }
-.summit .alink { text-shadow: none; }
-
-/* Übergang: der Kreis, die runde Öffnung aus dem Zeichen */
-.star { pointer-events: none; position: absolute; left: 50%; top: 50%; z-index: 30; aspect-ratio: 1; width: var(--size-star); translate: -50% -50%; will-change: transform; }
-.star svg { width: 100%; height: 100%; }
-
-@media (max-width: 767.98px) {
-  .det-title { left: 1.5rem; top: 5.2rem; max-width: none; right: 1.5rem; }
-  .det-title p { font-size: .875rem; line-height: 1.4; }
-  .flag { display: none; }
-  .det-title { max-width: 54%; right: auto; }
-  .stat { max-width: 54%; gap: .3rem; left: 1.5rem !important; right: auto !important; top: auto !important; align-items: flex-start !important; text-align: left !important; }
-  .stat dt { font-size: .75rem; line-height: 1.3; }
-  .stat.tr { bottom: 20.6rem; } .stat.bl { bottom: 13.8rem; } .stat.br { bottom: 7rem; }
-  .summit { left: 1.5rem; right: 1.5rem; max-width: none; top: auto; bottom: 7.5rem; translate: none; gap: 1.4rem; }
-  .summit h2 { font-size: 2.3rem; }
-}
-
-/* Filmkorn, Scroll-Hinweis */
 .grain { position: absolute; inset: 0; pointer-events: none; opacity: .08; mix-blend-mode: overlay; background-size: 160px 160px; }
-.cue { position: absolute; right: 2.5rem; bottom: 11.2rem; display: flex; align-items: center; gap: .8rem; color: var(--fg-85); white-space: nowrap; text-shadow: 0 0 1rem rgb(5 6 9 / .8); }
-.cue i { width: 1px; height: 1.8rem; background: var(--fg-70); }
 
-/* Wende */
-.statement { position: absolute; left: 2.5rem; top: 50%; translate: 0 -50%; z-index: 12; max-width: 50rem; pointer-events: none; visibility: hidden; text-shadow: 0 0 2rem rgb(5 6 9 / .85), 0 0 .4rem rgb(5 6 9 / .5); }
-.statement .t-caption { display: flex; align-items: center; gap: .6rem; margin-bottom: 1.4rem; color: var(--fg-85); }
-.statement .t-headline { text-transform: none; }
+/* Raststellen: jede Szene rastet ein (Scroll-Snap). Gilt nur, solange man in der Fahrt steht (html.snap-aktiv setzt das Skript);
+   danach scrollt die Seite ganz normal. Das Ende der Fahrt, der erste Abschnitt danach, rastet auch ein. */
+.snaps { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.snap { position: absolute; left: 0; width: 100%; height: 100vh; height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; }
+.snap:nth-child(1) { top: 0; }
+.snap:nth-child(2) { top: calc(1 * 100vh); top: calc(1 * 100dvh); }
+.snap:nth-child(3) { top: calc(2 * 100vh); top: calc(2 * 100dvh); }
+.snap:nth-child(4) { top: calc(3 * 100vh); top: calc(3 * 100dvh); }
+.snap:nth-child(5) { top: calc(4 * 100vh); top: calc(4 * 100dvh); }
+.snap:nth-child(6) { top: calc(5 * 100vh); top: calc(5 * 100dvh); }
+.snap:nth-child(7) { top: calc(6 * 100vh); top: calc(6 * 100dvh); }
+.snap:nth-child(8) { top: calc(7 * 100vh); top: calc(7 * 100dvh); }
+.snap:nth-child(9) { top: calc(8 * 100vh); top: calc(8 * 100dvh); }
+.snap:nth-child(10) { top: calc(9 * 100vh); top: calc(9 * 100dvh); }
+.snap:nth-child(11) { top: calc(10 * 100vh); top: calc(10 * 100dvh); }
+.snap:nth-child(12) { top: calc(11 * 100vh); top: calc(11 * 100dvh); }
+.snap:nth-child(13) { top: calc(12 * 100vh); top: calc(12 * 100dvh); }
+.snap:nth-child(14) { top: calc(13 * 100vh); top: calc(13 * 100dvh); }
+.snap:nth-child(15) { top: calc(14 * 100vh); top: calc(14 * 100dvh); }
+html.snap-aktiv { scroll-snap-type: y mandatory; scroll-padding-top: 0; }
+html.snap-aktiv :is(#kurz, #einstieg) { scroll-snap-align: start; scroll-snap-stop: always; }
+html.fahrt-aus .track { display: none; }
+html.fahrt-aus .kopf { position: sticky; }
 
-/* Die Fahrt nach oben: die Tafel im Aufzug */
-.slab { position: absolute; top: 0; bottom: 0; left: 0; z-index: 20; width: 40%; border-right: 1px solid var(--fg-08); background: rgb(13 15 19 / .72);
-  backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); will-change: transform; visibility: hidden; }
-.rail { position: absolute; right: 1.75rem; top: 3.9rem; bottom: 7.6rem; width: 1px; background: var(--fg-18); }
-.rail b { position: absolute; right: 1rem; translate: 0 -50%; font-size: .625rem; line-height: 1; letter-spacing: .14em; font-weight: 500; color: var(--fg-70); font-variant-numeric: tabular-nums; }
-.rail b::after { content: ""; position: absolute; right: -1.2rem; top: 50%; width: .45rem; height: 1px; background: var(--fg-30); }
-.rail i { position: absolute; left: 50%; z-index: 1; width: .7rem; height: .7rem; translate: -50% -50%; border-radius: 50%; background: var(--raw-kern); box-shadow: 0 0 .9rem rgb(167 139 250 / .8); }
-.fl { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 3.5rem 5.5rem 3.5rem 3.5rem; visibility: hidden; will-change: transform, opacity; }
-.fl-kicker { display: flex; align-items: center; gap: .6rem; color: var(--fg-85); }
-.fl-mid { display: flex; flex-direction: column; gap: 1.4rem; margin: 1.5rem 0; }
-.fl-no { font-variant-numeric: tabular-nums; }
-.fl-mid .fl-text { font-size: 1.1875rem; line-height: 1.5; letter-spacing: var(--tracking-copy); color: var(--fg-85); max-width: 29rem; }
-.fl .mark { background: var(--akz); }
-.fl-no.wort { font-size: 8.5rem; }
-.fl-card { display: flex; flex-direction: column; gap: .7rem; border: 1px solid var(--fg-12); border-left: 2px solid var(--akz); background: rgb(11 14 16 / .55); padding: 1.1rem 1.25rem 1.2rem; }
-.fl-card .cap { font-size: .6875rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 500; color: var(--akz); }
-.fl-card .k { font-size: 1rem; line-height: 1.4; color: var(--fg-95); max-width: 27rem; }
-.chips { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .2rem; }
-.chips li { border: 1px solid var(--fg-18); padding: .28rem .7rem; font-size: .8125rem; line-height: 1.3; color: var(--fg-85); }
-@media (min-width: 768px) and (max-width: 1024.98px) { .fl-no.wort { font-size: 6rem; } }
-@media (min-width: 768px) and (max-height: 780px) { .fl-no.wort { font-size: 6.5rem; } .fl { padding-top: 2.5rem; padding-bottom: 2.5rem; } .fl-mid { gap: 1rem; margin: 1rem 0; } .fl-mid .fl-text { font-size: 1.0625rem; } }
-@media (max-width: 767.98px) {
-  .cue { display: none; }
-  .statement { left: 1.5rem; right: 1.5rem; top: 46%; }
-  .slab { top: auto; right: 0; width: 100%; height: 64vh; border-right: 0; border-top: 1px solid var(--fg-12); }
-  .rail { display: none; }
-  .fl { padding: 1.2rem 1.5rem 6.4rem; justify-content: flex-start; gap: .7rem; }
-  .fl-mid { margin: 0; gap: .5rem; }
-  .fl-no, .fl-no.wort { font-size: 2.6rem; }
-  .fl[data-fl="5"] .fl-no { display: none; } /* Etage 35: Der Text ist seit Runde 8 zwei Zeilen länger; ohne die große Zahl (sie steht im Etikett darüber) bleibt die letzte Zeile über dem Dock */
-  .fl-mid .fl-text { font-size: .875rem; line-height: 1.42; }
-  .fl-card { padding: .65rem .9rem .75rem; gap: .35rem; }
-  .fl-card .k { font-size: .875rem; line-height: 1.35; }
-  .chips { gap: .3rem; margin-top: .1rem; } .chips li { font-size: .75rem; padding: .18rem .5rem; }
-}
+/* ── Szenen: der Text jeder Szene ist echter HTML-Text und steht beim Einrasten sofort ganz da ── */
+.szenen { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.sz { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .28s ease, visibility 0s linear .28s; }
+.sz.an { opacity: 1; visibility: visible; transition: opacity .28s ease; }
+.sz-innen { position: absolute; pointer-events: auto; }
+.sz h1, .sz h2 { text-wrap: balance; }
 
-/* Klickpunkte auf den Gegenständen und die Karte mit Einzelheiten */
-.spots { position: absolute; inset: 0; z-index: 21; pointer-events: none; }
-.spot { position: absolute; width: 2.75rem; height: 2.75rem; min-width: 44px; min-height: 44px; translate: -50% -50%; display: grid; place-items: center; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity var(--duration-normal) var(--ease-glide), visibility var(--duration-normal); }
-.spot.on { opacity: 1; visibility: visible; pointer-events: auto; }
-.spot::before { content: ""; width: .75rem; height: .75rem; border-radius: 50%; background: var(--akz); box-shadow: 0 0 0 .2rem rgb(11 14 16 / .6), 0 0 1rem var(--akz); transition: scale var(--duration-fast); }
-.spot::after { content: ""; position: absolute; width: 2rem; height: 2rem; border-radius: 50%; border: 1.5px solid var(--akz); animation: puls 2.8s ease-out infinite; }
-.spot:hover::before, .spot:focus-visible::before { scale: 1.25; }
-.spot.active::after { animation: none; scale: 1; opacity: 1; }
-.spot:focus-visible { outline: 2px solid var(--foreground); outline-offset: 0; border-radius: 50%; }
-@keyframes puls { 0% { scale: .42; opacity: .95; } 70%, 100% { scale: 1.2; opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .spot::after { animation: none; opacity: .7; } }
-html.still-p .spot::after { animation: none; opacity: .75; }
-.spot-hint { position: absolute; right: 2.5rem; bottom: 2.6rem; z-index: 21; display: flex; align-items: center; gap: .6rem; color: var(--fg-85); opacity: 0; visibility: hidden; pointer-events: none; text-shadow: 0 0 1rem rgb(5 6 9 / .8); transition: opacity var(--duration-normal) var(--ease-glide), visibility var(--duration-normal); }
-.spot-hint.on { opacity: 1; visibility: visible; }
-@media (min-width: 768px) and (max-width: 1024.98px) { .spot-hint { bottom: 7.4rem; } } /* in dieser Breite reicht das Dock bis unter den Hinweis: Er steht darüber */
-.pop { position: absolute; right: 2.5rem; top: 2.5rem; z-index: 28; width: min(28rem, 52%); padding: 1.3rem 1.4rem 1.45rem; border: 1px solid var(--fg-12); border-left: 2px solid var(--akz); background: rgb(16 18 23 / .9);
-  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); color: var(--foreground); opacity: 0; visibility: hidden; translate: 0 -.6rem; pointer-events: none;
-  transition: opacity var(--duration-normal) var(--ease-glide), translate var(--duration-normal) var(--ease-glide), visibility var(--duration-normal); }
-.pop.open { opacity: 1; visibility: visible; translate: 0 0; pointer-events: auto; }
-.pop.breit { width: min(37rem, 58%); }
-.pop .cap { display: block; font-size: .6875rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 500; color: var(--akz); margin-right: 2.5rem; }
-.pop h3 { font-size: 1.5rem; line-height: 1.2; letter-spacing: var(--tracking-title); font-weight: 600; margin: .55rem 2.5rem .7rem 0; }
-.pop-b p { font-size: 1rem; line-height: 1.5; color: var(--fg-85); }
-.pop-b p + p, .pop-b .alink { margin-top: .9rem; }
-.pop-b .alink { min-height: 2.75rem; padding: .7rem 1.2rem; }
-.pop-x { position: absolute; right: .35rem; top: .35rem; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; min-width: 44px; min-height: 44px; }
-.pop-x svg { width: 1.25rem; height: 1.25rem; }
-.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: .45rem; }
-.kpis li { display: flex; flex-direction: column; gap: .3rem; border: 1px solid var(--fg-12); background: rgb(11 14 16 / .5); padding: .55rem .5rem .5rem; min-width: 0; }
-.kpis span { font-size: .6875rem; line-height: 1.25; color: var(--fg-85); min-height: 2.6em; }
-.kpis b { font-size: 1.375rem; line-height: 1; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.kpis b small { font-size: .55em; font-weight: 500; margin-left: .15em; color: var(--fg-85); }
-.kpis svg { width: 100%; height: 1.5rem; color: var(--akz); }
-.pop-note { margin-top: .7rem; font-size: .6875rem !important; letter-spacing: .16em; text-transform: uppercase; font-weight: 500; color: var(--akz) !important; }
-.steps { counter-reset: s; display: flex; flex-direction: column; gap: .35rem; }
-.steps li { counter-increment: s; display: flex; align-items: baseline; gap: .8rem; font-size: 1.0625rem; padding: .35rem 0; border-bottom: 1px solid var(--fg-10); }
-.steps li::before { content: "0" counter(s); font-size: .75rem; font-weight: 500; letter-spacing: .12em; color: var(--akz); }
-@media (max-width: 767.98px) {
-  .spot-hint { right: auto; left: 1.5rem; bottom: auto; top: 1.2rem; }
-  .pop, .pop.breit { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 64vh; overflow-y: auto; border-left: 0; border-top: 2px solid var(--akz); padding: 1.1rem 1.5rem 6.6rem; translate: 0 100%; background: rgb(16 18 23 / .97); }
-  .pop.open { translate: 0 0; }
-  .pop h3 { font-size: 1.3rem; }
-  .pop-b p { font-size: .9375rem; }
-  .kpis { grid-template-columns: repeat(3, 1fr); }
-  .kpis span { min-height: 0; }
-}
-
-/* ── Pfeil-Link ── */
-.alink { display: inline-flex; width: fit-content; align-items: center; gap: .75rem; color: var(--foreground);
+/* Pfeil-Link und Knöpfe */
+.alink { display: inline-flex; width: fit-content; align-items: center; gap: .75rem; color: var(--foreground); min-height: 44px;
   transition: opacity var(--duration-normal) var(--ease-glide), translate var(--duration-normal) var(--ease-glide), background-color var(--duration-normal) var(--ease-glide), border-color var(--duration-normal) var(--ease-glide); }
-.alink svg { width: 1.125rem; height: 1.125rem; transition: transform var(--duration-normal) var(--ease-glide); }
+.alink svg { width: 1.125rem; height: 1.125rem; flex: none; transition: transform var(--duration-normal) var(--ease-glide); }
 .alink:hover svg { transform: translate(.125rem, .125rem); }
-.alink.plain:hover { opacity: .8; translate: 0 .125rem; }
-.alink.glass { min-height: 3rem; border-radius: .25rem; border: 1px solid var(--fg-12); background: rgb(20 22 27 / .75); padding: .875rem 1.75rem; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); pointer-events: auto; }
-.alink.glass:hover { translate: 0 -.125rem; border-color: var(--fg-22); background: rgb(29 32 39 / .95); }
-.alink.solid { min-height: 3rem; border-radius: .25rem; background: var(--foreground); color: var(--raw-tinte); padding: .875rem 1.75rem; pointer-events: auto; }
-.alink.solid:hover { translate: 0 -.125rem; }
-.alink.violet { min-height: 3rem; border-radius: .25rem; background: var(--raw-violett); color: #fff; padding: .875rem 1.75rem; }
-.alink.violet:hover { translate: 0 -.125rem; }
-.alink.ink { color: var(--foreground-inverse); min-height: 3rem; border-radius: .25rem; border: 1px solid var(--ink-18); padding: .875rem 1.75rem; }
-.alink.ink:hover { translate: 0 -.125rem; border-color: var(--foreground-inverse); }
-
-.mark { width: .5rem; height: .5rem; border-radius: 50%; background: var(--accent); display: inline-block; flex: none; }
 .alink .t-caption { text-align: left; }
-/* ── Dock: Etagenanzeige und Etagenwahl ── */
-.dock { pointer-events: none; position: fixed; left: 0; right: 0; bottom: 2.5rem; z-index: 100; display: flex; justify-content: center; }
-.dock nav { position: relative; pointer-events: auto; }
-.dock .menu { position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: .5rem; display: flex; flex-direction: column; border: 1px solid var(--fg-10); background: rgb(20 22 27 / .92); padding: .7rem 1.25rem;
-  backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); opacity: 0; pointer-events: none; }
-.dock .menu a b { display: inline-block; width: 2.6rem; font-size: .75rem; font-weight: 500; letter-spacing: .12em; color: var(--raw-lavendel); }
-.dock .menu a { display: flex; align-items: center; min-height: 2.3rem; text-transform: uppercase; font-size: 1rem; transition: opacity var(--duration-fast); }
-.dock .menu a:hover { opacity: .7; }
-.dock .menu .sep { height: 1px; margin: .45rem 0; background: var(--fg-12); }
-.dock .bar { display: flex; height: 4rem; width: 22.5rem; align-items: center; justify-content: space-between; border: 1px solid var(--fg-10); background: rgb(20 22 27 / .85); padding: 0 .75rem 0 1.25rem;
-  backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); transition: background-color var(--duration-normal) var(--ease-glide), border-color var(--duration-normal) var(--ease-glide), translate var(--duration-normal) var(--ease-glide); }
-.dock .bar:hover { translate: 0 -.125rem; border-color: var(--fg-22); background: rgb(29 32 39 / .95); }
-.dock .home { display: flex; align-items: center; min-height: 2.75rem; transition: opacity var(--duration-fast); }
-.dock .home:hover { opacity: .8; }
-.dock .home svg { width: 1.9rem; height: 1.8rem; }
-#dockLabel { letter-spacing: var(--tracking-caps-wide); white-space: nowrap; }
-.dock .home.zd { flex: 1; gap: .9rem; } .dock .home.zd .pf { width: 1rem; height: 1rem; margin-left: .4rem; } .dock .home.zd #dockLabel { letter-spacing: var(--tracking-caps); }
-.dock .menu a[aria-current] { color: rgb(var(--ton, 167 139 250)); }
-.dock .bar button { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; min-width: 44px; min-height: 44px; }
-.dock .bar button svg { width: 1.375rem; height: 1.375rem; }
-@media (max-width: 767.98px) { .dock { bottom: 1.5rem; transition: translate var(--duration-normal) var(--ease-glide); } html.blatt-offen .dock { translate: 0 .75rem; } } /* Handy: Solange das Schalterblatt offen ist, rückt das Dock tiefer, damit der letzte Knopf im Blatt frei steht */
-@media (max-width: 639.98px) { .dock .bar { width: 17.5rem; } .dock .home.zd { gap: .5rem; } .dock .home.zd .pf { margin-left: .15rem; } .dock .home.zd #dockLabel { letter-spacing: .1em; font-size: .75rem; } }
-@media (max-height: 700px) { .dock .menu a { min-height: 2rem; } }
+/* Stufe 3: Rahmen-Knopf in der Farbe der Etage (Mehr erfahren, Check starten, Workshops ansehen, Pakete ansehen, Einladung anfragen) */
+.alink.mehr { min-height: 3rem; padding: .7rem 1.35rem; border: 1px solid var(--akz); border-radius: .25rem; background: rgb(11 14 16 / .35); color: var(--foreground); }
+.alink.mehr:hover { translate: 0 -.125rem; background: color-mix(in srgb, var(--akz) 18%, rgb(11 14 16 / .5)); }
+/* Stufe 1: der Hauptknopf. Die Farbe gehört nur ihm. */
+.alink.erst { min-height: 3.25rem; padding: .9rem 1.8rem; border-radius: .25rem; background: var(--cta); color: var(--cta-text); }
+.alink.erst:hover { translate: 0 -.125rem; }
+.alink.erst.gross { min-height: 4.25rem; padding: 1.2rem 2.4rem; }
+.alink.erst.gross .t-caption { font-size: 1.0625rem; letter-spacing: .1em; font-weight: 600; }
+.alink.erst:focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; }
+.sz-textlink { display: inline-flex; align-items: center; min-height: 44px; color: var(--foreground); border-bottom: 1px solid var(--fg-30); }
+.sz-textlink:hover { border-bottom-color: var(--foreground); }
+
+/* ── Szene 1: Eingang ── */
+.sz-eingang .sz-innen { left: 2.5rem; right: 2.5rem; top: 0; bottom: 0; pointer-events: none; }
+.sz-eingang .sz-titel { position: absolute; left: 0; top: calc(var(--kopf) + 4.5rem); max-width: 46rem; font-size: 5.6rem; line-height: .98; letter-spacing: var(--tracking-display); font-weight: 500; text-shadow: 0 0 3rem rgb(5 6 9 / .55); }
+.sz-eingang .sz-pitch { position: absolute; left: 0; bottom: 8.5rem; max-width: 28rem; font-size: 1.1875rem; line-height: 1.5; color: var(--fg-95); text-shadow: 0 0 1.2rem rgb(5 6 9 / .8); }
+.sz-hinweis { position: absolute; left: 0; bottom: 2.5rem; display: inline-flex; align-items: center; gap: .8rem; min-height: 44px; pointer-events: auto; font-size: .9375rem; color: var(--fg-95); text-shadow: 0 0 1rem rgb(5 6 9 / .8); }
+.sz-pfeil { width: 1.4rem; height: 1.4rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; animation: hinweis 2.2s ease-in-out infinite; }
+@keyframes hinweis { 0%, 100% { translate: 0 0; } 50% { translate: 0 .35rem; } }
+html.statisch .sz-pfeil { animation: none; }
+
+/* ── Szene 2: Das Problem ── */
+.sz-problem .sz-innen { inset: 0; pointer-events: none; }
+.sz-problem .sz-links { position: absolute; left: 2.5rem; top: calc(var(--kopf) + 4.5rem); max-width: 40rem; font-size: 3rem; line-height: 1.08; letter-spacing: var(--tracking-title); font-weight: 500; text-shadow: 0 0 2.4rem rgb(5 6 9 / .85), 0 0 .5rem rgb(5 6 9 / .5); }
+.sz-problem .sz-rechts { position: absolute; right: 2.5rem; bottom: 4rem; width: 24rem; font-size: 1.1875rem; line-height: 1.5; color: var(--fg-95); text-shadow: 0 0 1.4rem rgb(5 6 9 / .85); }
+
+/* ── Szene 3: Für klein bis groß ── */
+.sz-fahrt .sz-innen { left: 2.5rem; top: calc(var(--kopf) + 4.5rem); max-width: 40rem; display: flex; flex-direction: column; gap: 1.6rem; padding: 1.5rem 1.7rem 1.6rem; border-radius: .4rem; background: rgb(11 14 16 / .86); pointer-events: none; }
+.sz-kopf-klein { font-size: .8125rem; letter-spacing: var(--tracking-caps); text-transform: uppercase; font-weight: 500; color: var(--fg-85); }
+.sz-lead { font-size: 1.6rem; line-height: 1.32; letter-spacing: var(--tracking-title); font-weight: 500; text-shadow: 0 0 2rem rgb(5 6 9 / .85); }
+.sz-stufenzeile { display: flex; flex-wrap: wrap; gap: .6rem; }
+.sz-stufenzeile li { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem 1rem; border: 1px solid var(--fg-30); border-radius: 2rem; font-size: .9375rem; background: rgb(11 14 16 / .6); }
+.sz-stufenzeile li::before { content: ""; width: .6rem; height: .6rem; border-radius: 50%; background: var(--c); }
+.st-fundament { --c: var(--stufe-fundament); } .st-wachstum { --c: var(--stufe-wachstum); } .st-skalieren { --c: var(--stufe-skalieren); }
+.sz-klein { font-size: .8125rem; letter-spacing: .14em; text-transform: uppercase; color: var(--fg-85); font-weight: 500; }
+
+/* ── Etagen: überall genau dieselben Plätze (Kopf oben, Knopf unten, dazwischen von oben nach unten) ── */
+.sz-etage, .sz-tresen { --akz: var(--raw-lavendel); }
+.sz-e2 { --akz: var(--raw-signal); }
+.sz-e4 { --akz: var(--raw-hellblau); }
+/* Die Tafel ist so hoch wie ihr Inhalt (mindestens eine feste Höhe, in allen Etagen gleich); der Rest wird gleichmäßig verteilt, der Knopf steht überall am Boden der Tafel. */
+.sz-etage .sz-innen, .sz-tresen .sz-innen { left: 0; top: 0; bottom: auto; min-height: 42.4rem; max-height: 100dvh; width: 41%; display: flex; flex-direction: column; justify-content: space-between; gap: 1.15rem; padding: calc(var(--kopf) + 1.4rem) 2.5rem 2.2rem 5.4rem;
+  background: rgb(13 15 19 / .8); backdrop-filter: blur(34px); -webkit-backdrop-filter: blur(34px); border-right: 1px solid var(--fg-08); border-bottom: 1px solid var(--fg-12); overflow: hidden; }
+.sz-etage .sz-fuss, .sz-tresen .sz-fuss, .sz-tresen .sz-zeile { margin-top: 0; }
+.sz-e4 .sz-innen { background: color-mix(in srgb, var(--raw-tiefblau) 17%, rgb(11 13 17 / .82)); border-right-color: rgb(125 183 255 / .45); }
+.sz-e2 .sz-innen { background: color-mix(in srgb, #FF5A1F 8%, rgb(11 13 17 / .8)); border-right-color: rgb(255 90 31 / .4); }
+.sz-kopf { font-size: 1.7rem; line-height: 1.14; letter-spacing: var(--tracking-title); font-weight: 500; }
+.sz-nr { color: var(--akz); } .sz-sep { color: var(--fg-30); } .sz-stufe { color: var(--fg-70); }
+.sz-name { color: var(--foreground); }
+.sz-tag { display: inline-block; padding: .1rem .55rem; border: 1px solid var(--akz); border-radius: 1rem; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; vertical-align: .25em; color: var(--akz); }
+.sz-satz { font-size: 1.1875rem; line-height: 1.48; letter-spacing: var(--tracking-copy); color: var(--fg-95); max-width: 31rem; }
+.sz-mit { font-size: .9375rem; line-height: 1.45; color: var(--fg-85); max-width: 31rem; border-left: 2px solid var(--akz); padding-left: .9rem; }
+.sz-cap { display: block; font-size: .6875rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 500; color: var(--akz); margin-bottom: .25rem; }
+.sz-kacheln { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+.sz-kacheln li { display: flex; flex-direction: column; gap: .3rem; padding: .7rem .75rem .8rem; border: 1px solid var(--fg-12); border-top: 2px solid var(--akz); background: rgb(11 14 16 / .5); min-width: 0; }
+.sz-kacheln b { font-size: .9375rem; line-height: 1.25; font-weight: 600; letter-spacing: -.005em; }
+.sz-kacheln span { font-size: .75rem; line-height: 1.35; color: var(--fg-85); }
+.sz-preis { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .9rem; font-size: .9375rem; }
+.sz-preis b { font-size: 1.25rem; font-weight: 600; letter-spacing: -.01em; }
+.sz-preis span { font-size: .8125rem; color: var(--fg-85); flex-basis: 100%; }
+.sz-preis small { font-size: .75rem; color: var(--fg-70); }
+.sz-kennzeichen { font-size: .8125rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 500; color: var(--akz); }
+.sz-fuss { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: .55rem; }
+.sz-leise { display: inline-flex; align-items: center; min-height: 44px; font-size: .9375rem; color: var(--fg-95); border-bottom: 1px solid var(--fg-30); text-align: left; }
+.sz-leise:hover { border-bottom-color: var(--foreground); }
+button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
+.sz-foto { display: grid; place-items: center; padding: 1rem; border: 1px dashed var(--fg-30); border-radius: .25rem; background: rgb(246 244 240 / .05); text-align: center; color: var(--fg-85); font-size: .75rem; letter-spacing: .14em; font-weight: 500; text-transform: uppercase; }
+.sz-foto-gross { min-height: clamp(7rem, 20vh, 12rem); }
+.sz-kevin { display: flex; align-items: center; gap: .9rem; }
+.sz-kevin .sz-foto { width: 5.2rem; height: 5.2rem; padding: .3rem; flex: none; font-size: .5625rem; letter-spacing: .08em; }
+.sz-kevin p { font-size: .9375rem; color: var(--fg-95); }
+
+/* Tresen: drei gleich große Karten */
+.sz-weichen { display: flex; flex-direction: column; gap: .5rem; }
+.sz-weichen li { display: flex; }
+.weiche { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 4rem; padding: .8rem 1.1rem; border: 1px solid var(--fg-22); border-radius: .25rem; background: rgb(11 14 16 / .55); color: var(--foreground); text-align: left; font-size: 1.0625rem; transition: background-color var(--duration-fast), border-color var(--duration-fast), translate var(--duration-normal) var(--ease-glide); }
+.weiche b { font-weight: 500; letter-spacing: -.005em; }
+.weiche svg { width: 1.2rem; height: 1.2rem; flex: none; }
+.weiche:hover { border-color: var(--akz); background: color-mix(in srgb, var(--akz) 14%, rgb(11 14 16 / .6)); translate: 0 -.1rem; }
+.sz-zeile { font-size: .9375rem; color: var(--fg-85); margin-top: auto; }
+
+/* Newsletter (Etage 5, Podcast) */
+.nl { display: flex; flex-direction: column; gap: .8rem; }
+.nl-zeile { display: flex; flex-direction: column; gap: .6rem; }
+.nl-feld input { width: 100%; min-height: 3rem; padding: .7rem 1rem; border: 1px solid var(--fg-30); border-radius: .25rem; background: rgb(11 14 16 / .6); color: var(--foreground); font: inherit; font-size: 1rem; }
+.nl-feld input::placeholder { color: var(--fg-70); }
+.nl-feld input:focus-visible, .gast-feld :is(input, textarea):focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
+.nl-wahl, .gast-wahl { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; }
+.nl-wahl label, .gast-wahl label { display: inline-flex; align-items: center; gap: .55rem; min-height: 44px; font-size: .9375rem; cursor: pointer; }
+.nl-wahl input, .gast-wahl input { width: 1.2rem; height: 1.2rem; accent-color: var(--akz); flex: none; }
+.nl-recht { font-size: .8125rem; line-height: 1.4; color: var(--fg-85); max-width: 29rem; }
+.nl-recht a { text-decoration: underline; text-underline-offset: .2em; display: inline-block; padding: .95rem .3rem; margin: -.95rem -.3rem; }
+.nl-meldung { min-height: 1.2em; font-size: .875rem; color: var(--akz); }
+.nl .alink.mehr { align-self: flex-start; }
+.nl-ohne { display: none; }
+
+/* ── Szene 14: Pakete ── */
+.sz-pakete .sz-innen { inset: 0; pointer-events: none; }
+.sz-pakete .sz-innen::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgb(11 14 16 / .9) 0, rgb(11 14 16 / .88) 20%, rgb(11 14 16 / 0) 38%, rgb(11 14 16 / 0) 55%, rgb(11 14 16 / .84) 70%, rgb(11 14 16 / .94) 100%); }
+.sz-pakete .sz-kopf-klein { position: absolute; left: 5.4rem; top: calc(var(--kopf) + 2.4rem); }
+.sz-pakete .sz-lead { position: absolute; left: 5.4rem; top: calc(var(--kopf) + 4.4rem); max-width: 34rem; }
+.sz-pakete .sz-pakete { position: absolute; left: 5.4rem; right: 5.6rem; bottom: 8rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem; pointer-events: auto; }
+.fs-paket { position: relative; display: flex; flex-direction: column; gap: .7rem; padding: 1.2rem 1.3rem 1.3rem; border: 1px solid var(--fg-18); border-top: 3px solid var(--c); border-radius: .25rem; background: rgb(13 15 19 / .82); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); --akz: var(--c); }
+.fs-paket.ist-empfohlen { border: 2px solid var(--c); border-top-width: 3px; background: color-mix(in srgb, var(--c) 12%, rgb(13 15 19 / .88)); }
+.fs-paket-emp { position: absolute; right: 1rem; top: -.75rem; padding: .15rem .7rem; border-radius: 1rem; background: var(--c); color: var(--raw-nacht); font-size: .6875rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
+.fs-paket h3 { font-size: 1.5rem; font-weight: 500; letter-spacing: var(--tracking-title); }
+.fs-paket-satz { font-size: .9375rem; line-height: 1.4; color: var(--fg-85); min-height: 2.8em; }
+.fs-paket-punkte { display: flex; flex-direction: column; gap: .3rem; }
+.fs-paket-punkte li { position: relative; padding-left: 1rem; font-size: .9375rem; line-height: 1.35; color: var(--fg-95); }
+.fs-paket-punkte li::before { content: ""; position: absolute; left: 0; top: .5em; width: .4rem; height: .4rem; background: var(--c); }
+.fs-paket-ab { font-size: .9375rem; font-weight: 600; letter-spacing: .02em; color: var(--foreground); padding-top: .5rem; border-top: 1px solid var(--fg-12); }
+.sz-zusagen { position: absolute; left: 5.4rem; right: 5.6rem; bottom: 4.4rem; font-size: .9375rem; line-height: 1.4; color: var(--fg-95); text-shadow: 0 0 1rem rgb(5 6 9 / .9); }
+.sz-pakete .sz-leise { position: absolute; left: 5.4rem; bottom: 1.4rem; margin: 0; pointer-events: auto; }
+.sz-pakete .sz-textlink { font-size: .9375rem; }
+
+/* ── Szene 15: Finale ── */
+.sz-finale .sz-innen { inset: 0; pointer-events: none; }
+.sz-finale .sz-innen::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgb(11 14 16 / .86) 0, rgb(11 14 16 / .72) 34%, rgb(11 14 16 / 0) 62%); }
+.sz-titel-final { position: absolute; left: 2.5rem; top: 50%; translate: 0 -50%; max-width: 44rem; font-size: 5.2rem; line-height: 1; letter-spacing: var(--tracking-display); font-weight: 500; text-shadow: 0 0 2rem rgb(5 6 9 / .8), 0 0 .4rem rgb(5 6 9 / .5); }
+.sz-finale .sz-foto { position: absolute; right: 2.5rem; top: calc(var(--kopf) + 4.6rem); width: 17rem; height: 13rem; }
+.sz-final-knopf { position: absolute; left: 2.5rem; bottom: 6.8rem; pointer-events: auto; }
+.sz-mikro { position: absolute; left: 2.5rem; bottom: 4.2rem; font-size: .9375rem; color: var(--fg-95); text-shadow: 0 0 1rem rgb(5 6 9 / .9); }
+
+/* ── Leisten: links die Etagen, rechts die drei Stufen (ab Szene 4 sichtbar) ── */
+.etagen, .fahrt-stufen { position: absolute; z-index: 20; opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility 0s linear .3s; }
+.etagen.an, .fahrt-stufen.an { opacity: 1; visibility: visible; transition: opacity .3s ease; }
+.etagen { left: .9rem; top: 50%; translate: 0 -46%; }
+.etagen ol { display: flex; flex-direction: column; }
+.etagen a { display: grid; place-items: center; width: 3.1rem; min-width: 44px; height: 3.1rem; min-height: 44px; position: relative; font-size: .8125rem; font-weight: 500; letter-spacing: .06em; font-variant-numeric: tabular-nums; color: var(--fg-70); border-left: 2px solid var(--fg-22); transition: color var(--duration-fast), border-color var(--duration-fast), background-color var(--duration-fast); }
+.etagen a:hover { color: var(--foreground); background: rgb(246 244 240 / .06); }
+.etagen a.jetzt { color: var(--foreground); border-left-color: var(--c); background: rgb(246 244 240 / .09); font-weight: 600; }
+.etagen a.jetzt::after { content: ""; position: absolute; right: .35rem; top: 50%; width: .4rem; height: .4rem; margin-top: -.2rem; border-radius: 50%; background: var(--c); }
+.etagen li[hidden] { display: none; }
+.fahrt-stufen { right: .9rem; top: calc(var(--kopf) + 4.4rem); bottom: 2.2rem; width: 3rem; }
+.fahrt-stufen ol { height: 100%; display: flex; flex-direction: column; gap: .35rem; }
+.fahrt-stufen li { position: relative; flex: 1; min-height: 44px; width: 100%; }
+.fahrt-stufen li:nth-child(1) { flex: 3; } .fahrt-stufen li:nth-child(2) { flex: 4; } .fahrt-stufen li:nth-child(3) { flex: 3; }
+.fahrt-stufen a { position: absolute; inset: 0; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); border-radius: .25rem; background: rgb(11 14 16 / .6); color: var(--fg-85); overflow: hidden; transition: background-color var(--duration-normal), color var(--duration-normal), border-color var(--duration-normal); }
+.fahrt-stufen a span { writing-mode: vertical-rl; rotate: 180deg; font-size: .75rem; letter-spacing: .16em; text-transform: uppercase; font-weight: 500; white-space: nowrap; position: relative; }
+.fahrt-stufen a::before { content: ""; position: absolute; right: 0; bottom: 0; width: .28rem; height: var(--fuell, 0%); background: var(--c); }
+.fahrt-stufen a.jetzt { background: color-mix(in srgb, var(--c) 26%, rgb(11 14 16 / .78)); color: var(--foreground); border-color: var(--c); border-width: 2px; }
+.fahrt-stufen a.jetzt span { font-weight: 600; }
+.fahrt-stufen a:hover { color: var(--foreground); }
+.fahrt-stufen a:focus-visible, .etagen a:focus-visible, .ueberspringen:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
+
+/* ── Fahrt überspringen: klein, kontrastreich, ab der ersten Sekunde da ── */
+.ueberspringen { position: absolute; z-index: 40; right: 2.5rem; top: calc(var(--kopf) + .8rem); display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; padding: 0 1rem 0 1.15rem; border: 1px solid var(--fg-30); border-radius: 2rem;
+  background: rgb(11 14 16 / .78); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--foreground); font-size: .875rem; font-weight: 500; transition: background-color var(--duration-fast), border-color var(--duration-fast); }
+.ueberspringen:hover { background: rgb(29 32 39 / .95); border-color: var(--fg-70); }
+.ueberspringen svg { width: 1rem; height: 1rem; }
+
+/* Etagenwahl und Gastwunsch (Dialoge) */
+.wahl { position: fixed; inset: 0; margin: auto; width: min(34rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; padding: 0; border: 1px solid var(--fg-22); border-radius: .4rem; background: rgb(17 19 24 / .98); color: var(--foreground); }
+.wahl::backdrop { background: rgb(5 6 9 / .72); }
+.wahl-innen { position: relative; display: flex; flex-direction: column; gap: 1rem; padding: 1.6rem 1.6rem 1.5rem; }
+.wahl-zu { position: absolute; right: .5rem; top: .5rem; display: grid; place-items: center; width: 44px; height: 44px; }
+.wahl-zu svg { width: 1.2rem; height: 1.2rem; }
+.wahl h2 { color: var(--fg-85); margin-right: 3rem; }
+.wahl-cta { display: flex; }
+.wahl-cta .alink { width: 100%; justify-content: center; }
+.wahl-liste { display: flex; flex-direction: column; }
+.wahl-liste a { display: flex; align-items: center; gap: 1rem; min-height: 48px; padding: .3rem .2rem; border-bottom: 1px solid var(--fg-10); font-size: 1.0625rem; --akz: var(--c); }
+.wahl-liste a:hover { background: rgb(246 244 240 / .06); }
+.wahl-liste b { width: 3.1rem; flex: none; font-size: .8125rem; letter-spacing: .1em; font-weight: 600; color: var(--c); }
+.gast-feld { display: flex; flex-direction: column; gap: .35rem; font-size: .875rem; color: var(--fg-85); }
+.gast-feld :is(input, textarea) { width: 100%; padding: .7rem .9rem; border: 1px solid var(--fg-30); border-radius: .25rem; background: rgb(11 14 16 / .7); color: var(--foreground); font: inherit; font-size: 1rem; }
+.gast-wahl legend { font-size: .875rem; color: var(--fg-85); padding: 0; margin-bottom: .2rem; }
+.gast { --akz: var(--raw-lavendel); }
+.gast-hinweis { font-size: .9375rem; color: var(--akz); }
+.gast-hinweis[hidden] { display: none; }
+.gast-recht { font-size: .8125rem; color: var(--fg-70); }
+.gast-meldung { min-height: 1.2em; font-size: .875rem; color: var(--akz); }
+
+/* ── Übergang: der Kreis, die runde Öffnung aus dem Zeichen ── */
+.star { pointer-events: none; position: absolute; left: 50%; top: 50%; z-index: 30; aspect-ratio: 1; width: var(--size-star); translate: -50% -50%; will-change: transform; visibility: hidden; }
+.star svg { width: 100%; height: 100%; }
 
 .fail { position: fixed; left: 1rem; right: 1rem; top: 1rem; z-index: 400; background: #7a1d14; color: #fff; padding: .8rem 1rem; font-size: 14px; }
 
-/* ══ Runde 4: Aufrufe an jedem Halt ══ */
-.fl-unten { display: flex; flex-direction: column; gap: .9rem; }
-.fl-cta { display: flex; flex-direction: column; gap: .55rem; }
-.fl-cta .reihe { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1.4rem; }
-.fl-cta .hin { font-size: .8125rem; line-height: 1.3; color: var(--fg-70); }
-/* Spielt zusammen mit: eine schmale Zeile unten in der Tafel, je Ziel-Etage ein kleiner Knopf (fährt mit dem Aufzug dorthin).
-   Nur dort, wo sie Platz hat: nicht unter 1200 px Breite (am Handy steht dort der Paketschalter), und das Skript blendet sie an einem Halt aus,
-   wenn die Tafel sonst überliefe (mitPruefen: Klasse ohne-mit) */
-.fl-mit { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .9rem; padding-top: .7rem; border-top: 1px solid var(--fg-12); }
-.fl-mit .cap { font-size: .75rem; line-height: 1.3; color: var(--fg-70); }
-.mit-knoepfe { display: flex; flex-wrap: wrap; gap: .4rem; }
-.mit-knopf { display: inline-flex; align-items: center; gap: .5rem; min-height: 1.75rem; padding: .2rem .7rem .2rem .55rem; border: 1px solid color-mix(in srgb, var(--mk) 55%, transparent); background: rgb(11 14 16 / .5); font-size: .8125rem; line-height: 1.2; color: var(--fg-95); white-space: nowrap;
-  transition: background-color var(--duration-fast), border-color var(--duration-fast); }
-.fl.ohne-mit .fl-mit { display: none; }
-@media (max-width: 1199.98px) { .fl-mit { display: none; } }
-.mit-knopf b { font-size: .6875rem; letter-spacing: .1em; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--mk); }
-.mit-knopf:hover { border-color: var(--mk); background: color-mix(in srgb, var(--mk) 16%, rgb(11 14 16 / .5)); }
-.mit-knopf:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
-.alink.haupt { min-height: 3rem; border-radius: .25rem; background: var(--akz); color: var(--raw-nacht); padding: .75rem 1.3rem; pointer-events: auto; }
-.alink.haupt:hover { translate: 0 -.125rem; }
-.alink.haupt:focus-visible, .alink.solid:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; } /* die Schrift dieser Knöpfe ist dunkel: Der Umriss in Schriftfarbe wäre auf dem dunklen Grund nicht zu sehen */
-.alink.haupt .t-caption { white-space: normal; text-align: left; line-height: 1.25; }
-.fl-cta .alink.haupt:not(.gross) .t-caption { font-size: .75rem; letter-spacing: .08em; }
-.alink.haupt svg, .alink.mehr svg, .alink.klein svg { flex: none; }
-.alink.mehr { min-height: 2.75rem; pointer-events: auto; color: var(--fg-95); }
-.alink.mehr .t-caption { border-bottom: 1px solid var(--akz); padding-bottom: .15rem; }
-.alink.mehr:hover { opacity: .8; }
-.alink.klein { min-height: 2.75rem; padding: .6rem 1.1rem; }
-/* MAKE Innovation: der Innovations-Check steht größer und im Licht */
-.alink.haupt.gross { min-height: 3.9rem; padding: 1.05rem 1.6rem; background: #C4B5FD; box-shadow: 0 0 0 1px rgb(239 234 251 / .7), 0 0 2.4rem rgb(139 92 246 / .85), 0 0 6.5rem rgb(139 92 246 / .45); }
-.alink.haupt.gross .t-caption { font-size: 1rem; font-weight: 600; }
-.alink.haupt.gross svg { width: 1.4rem; height: 1.4rem; }
-@media (min-width: 768px) and (max-height: 820px) { .fl-unten { gap: .6rem; } .fl-card { padding: .8rem 1.1rem .9rem; gap: .45rem; } .alink.haupt { min-height: 2.75rem; padding: .6rem 1.1rem; } .alink.haupt.gross { min-height: 3.3rem; padding: .8rem 1.3rem; } }
-@media (max-width: 767.98px) {
-  .fl-unten { gap: .5rem; } .fl-cta { gap: .25rem; }
-  .alink.haupt { min-height: 2.75rem; padding: .5rem .9rem; gap: .55rem; } .alink.haupt .t-caption { font-size: .75rem; }
-  .alink.haupt.gross { min-height: 3.2rem; padding: .7rem 1.1rem; } .alink.haupt.gross .t-caption { font-size: .875rem; }
-  .fl-cta .hin { font-size: .6875rem; } .alink.mehr { min-height: 2.5rem; gap: .35rem; } .alink.mehr svg { width: .9rem; height: .9rem; } .alink.mehr .t-caption { font-size: .6875rem; letter-spacing: .04em; } .fl-cta .reihe { gap: .1rem .6rem; flex-wrap: nowrap; justify-content: space-between; }
-  .alink.haupt.gross ~ .reihe { flex-wrap: wrap; justify-content: flex-start; }
-  .alink.haupt.gross ~ .reihe .hin { flex-basis: 100%; }
-  .alink.haupt.gross ~ .reihe .klein { border: 0; background: none; padding: 0; min-height: 2.5rem; gap: .35rem; backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .alink.haupt.gross ~ .reihe .klein svg { width: .9rem; height: .9rem; }
-  .alink.haupt.gross ~ .reihe .t-caption { font-size: .65rem; letter-spacing: .04em; white-space: nowrap; }
-  .alink.haupt.gross ~ .reihe .klein .t-caption { border-bottom: 1px solid var(--akz); padding-bottom: .15rem; }
+/* ── Handy und Tablet hochkant ── */
+@media (max-width: 767.98px), (max-width: 1100px) and (max-aspect-ratio: 9/10) {
+  .sz-eingang .sz-innen { left: 1.5rem; right: 1.5rem; }
+  .sz-eingang .sz-titel { top: calc(var(--kopf) + 3.4rem); font-size: 2.35rem; max-width: none; }
+  .sz-eingang .sz-pitch { bottom: 6.2rem; font-size: 1rem; max-width: none; }
+  .sz-hinweis { bottom: 1.6rem; }
+  .sz-problem .sz-links { left: 1.5rem; right: 1.5rem; top: calc(var(--kopf) + 3.4rem); font-size: 1.55rem; }
+  .sz-problem .sz-rechts { left: 1.5rem; right: 1.5rem; width: auto; bottom: 2rem; font-size: 1rem; }
+  .sz-fahrt .sz-innen { left: 1.5rem; right: 1.5rem; top: calc(var(--kopf) + 3.4rem); gap: 1rem; }
+  .sz-lead { font-size: 1.15rem; }
+  .sz-stufenzeile li { padding: .4rem .8rem; font-size: .875rem; }
+  .sz-etage .sz-innen, .sz-tresen .sz-innen { top: auto; width: auto; left: 0; right: 0; bottom: 0; min-height: 0; max-height: 66dvh; justify-content: flex-start; gap: .7rem; padding: 1.1rem 1.5rem 1.4rem 1.5rem; border-right: 0; border-bottom: 0; border-top: 1px solid var(--fg-12); }
+  .sz-etage .sz-fuss, .sz-tresen .sz-fuss { margin-top: auto; }
+  .sz-kopf { font-size: 1.1875rem; }
+  .sz-satz { font-size: .9375rem; line-height: 1.42; }
+  .sz-mit { font-size: .8125rem; }
+  .sz-kacheln { grid-template-columns: 1fr; gap: .3rem; }
+  .sz-kacheln li { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: .1rem .6rem; padding: .45rem .7rem; }
+  .sz-kacheln b { font-size: .875rem; } .sz-kacheln span { font-size: .75rem; }
+  .sz-preis b { font-size: 1rem; } .sz-preis span, .sz-preis small { display: none; }
+  .sz-kennzeichen { font-size: .6875rem; }
+  .alink.mehr { min-height: 44px; padding: .5rem 1.1rem; }
+  .sz-fuss { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; }
+  .sz-foto-gross { min-height: 3.6rem; max-height: 4rem; }
+  .sz-kevin .sz-foto { width: 3.2rem; height: 3.2rem; }
+  .sz-kevin p { font-size: .8125rem; }
+  .weiche { min-height: 3.1rem; padding: .5rem .9rem; font-size: .9375rem; }
+  .sz-zeile { font-size: .8125rem; margin-top: 0; }
+  .nl-zeile { gap: .4rem; } .nl-feld input { min-height: 44px; padding: .5rem .8rem; }
+  .nl-recht { font-size: .75rem; }
+  .sz-pakete .sz-kopf-klein { left: 1.5rem; top: calc(var(--kopf) + 3.2rem); }
+  .sz-pakete .sz-lead { left: 1.5rem; right: 1.5rem; top: calc(var(--kopf) + 4.8rem); font-size: 1.05rem; }
+  .sz-pakete .sz-pakete { left: 1.5rem; right: 1.5rem; bottom: 6.6rem; grid-template-columns: 1fr; gap: .45rem; max-height: 56dvh; overflow: hidden; }
+  .fs-paket { display: grid; grid-template-columns: 1fr auto; gap: .15rem .8rem; padding: .6rem .8rem; align-items: center; }
+  .fs-paket h3 { font-size: 1.05rem; grid-column: 1; }
+  .fs-paket-satz, .fs-paket-punkte { display: none; }
+  .fs-paket-ab { grid-column: 1; border: 0; padding: 0; font-size: .75rem; }
+  .fs-paket .alink { grid-column: 2; grid-row: 1 / span 2; min-height: 44px; padding: .3rem .8rem; }
+  .fs-paket .alink svg { display: none; }
+  .fs-paket-emp { right: auto; left: .8rem; top: -.6rem; }
+  .sz-zusagen { left: 1.5rem; right: 1.5rem; bottom: 3.2rem; font-size: .75rem; }
+  .sz-pakete .sz-leise { left: 1.5rem; bottom: .6rem; }
+  .sz-finale .sz-innen::before { background: linear-gradient(180deg, rgb(11 14 16 / .9) 0, rgb(11 14 16 / .78) 34%, rgb(11 14 16 / 0) 52%, rgb(11 14 16 / 0) 62%, rgb(11 14 16 / .8) 82%, rgb(11 14 16 / .9) 100%); }
+  .sz-titel-final { left: 1.5rem; right: 1.5rem; top: calc(var(--kopf) + 3.6rem); translate: none; font-size: 2.6rem; }
+  .sz-finale .sz-foto { right: 1.5rem; left: 1.5rem; width: auto; top: auto; bottom: 11.2rem; height: 6rem; }
+  .sz-final-knopf { left: 1.5rem; right: 1.5rem; bottom: 4.8rem; } .sz-final-knopf .alink { width: 100%; justify-content: center; }
+  .sz-mikro { left: 1.5rem; bottom: 2.4rem; font-size: .8125rem; }
+  .ueberspringen { right: 1rem; top: calc(var(--kopf) + .4rem); }
+  .etagen { left: .2rem; top: calc(var(--kopf) + 3.4rem); translate: none; }
+  .etagen a { width: 2.7rem; }
+  .fahrt-stufen { right: .3rem; top: calc(var(--kopf) + 3.4rem); bottom: auto; width: 2.5rem; height: 9.4rem; }
+  .fahrt-stufen a span { font-size: .625rem; letter-spacing: .1em; }
+}
+/* Tablet breit und kleine Laptops: Etagenspalte schmaler und Schrift kleiner, wenn die Höhe knapp ist */
+@media (min-width: 768px) and (max-width: 1100px) and (min-aspect-ratio: 9/10) { .sz-etage .sz-innen, .sz-tresen .sz-innen { width: 46%; } .sz-eingang .sz-titel { font-size: 4.2rem; } .sz-titel-final { font-size: 4rem; } .sz-problem .sz-links { font-size: 2.3rem; } }
+@media (min-width: 768px) and (max-height: 820px) and (min-aspect-ratio: 9/10) {
+  .sz-etage .sz-innen, .sz-tresen .sz-innen { gap: .8rem; min-height: 30.8rem; padding-top: calc(var(--kopf) + .9rem); padding-bottom: 1.5rem; }
+  .sz-kopf { font-size: 1.4rem; } .sz-satz { font-size: 1.0625rem; line-height: 1.42; }
+  .sz-mit { font-size: .875rem; } .sz-kacheln li { padding: .55rem .65rem .6rem; } .sz-kacheln b { font-size: .875rem; }
+  .sz-preis b { font-size: 1.1rem; } .sz-preis span { display: none; }
+  .alink.mehr { min-height: 2.9rem; padding: .55rem 1.2rem; }
+  .sz-foto-gross { min-height: 5rem; } .weiche { min-height: 3.3rem; }
+  .sz-pakete .sz-pakete { bottom: 6.4rem; } .fs-paket { padding: .9rem 1rem 1rem; gap: .5rem; } .fs-paket-satz { min-height: 0; }
+  .sz-zusagen { bottom: 4.4rem; } .sz-pakete .sz-leise { bottom: .8rem; } .sz-lead { font-size: 1.35rem; }
+  .sz-eingang .sz-titel { font-size: 4.6rem; } .sz-titel-final { font-size: 4.4rem; }
 }
 
-/* ══ Markenräume: die Tafel, die Linien und das Dock nehmen für den Halt die Farbe der Marke an ══ */
-html[data-marke="studios"] { --ton: 255 90 31; --ton-flaeche: 255 90 31; }
-html[data-marke="revenue"] { --ton: 125 183 255; --ton-flaeche: 23 70 158; }
-html[data-marke="pr"], html[data-marke="podcast"], html[data-marke="innovation"], html[data-marke="dach"] { --ton: 167 139 250; --ton-flaeche: 124 58 237; } /* Lavendel und Violett: die Räume von MAKE Innovation */
-.slab, .dock .bar, .rail, .rail b, #dockLabel { transition: background-color var(--duration-slow), border-color var(--duration-slow), color var(--duration-slow); }
-html[data-marke] .slab { background: color-mix(in srgb, rgb(var(--ton-flaeche)) 16%, rgb(11 13 17 / .82)); border-right-color: rgb(var(--ton) / .5); }
-html[data-marke] .rail { background: rgb(var(--ton) / .45); }
-html[data-marke] .rail b { color: rgb(var(--ton)); } html[data-marke] .rail b::after { background: rgb(var(--ton) / .6); }
-html[data-marke] .fl-card { border-color: rgb(var(--ton) / .28); border-left-color: rgb(var(--ton)); }
-html[data-marke] .dock .bar { border-color: rgb(var(--ton) / .6); } html[data-marke] #dockLabel { color: rgb(var(--ton)); }
-html[data-marke] .dock .menu a b { color: rgb(var(--ton)); }
-@media (max-width: 767.98px) { html[data-marke] .slab { border-top-color: rgb(var(--ton) / .6); } }
-
-/* Rollenschilder an den Figuren */
-.rollen { position: absolute; inset: 0; z-index: 19; pointer-events: none; }
-.rolle { position: absolute; translate: -50% -100%; white-space: nowrap; padding: .28rem .6rem .3rem; font-size: .75rem; line-height: 1.2; font-weight: 500; letter-spacing: .02em; color: var(--foreground);
-  border: 1px solid rgb(var(--ton, 167 139 250) / .55); border-bottom: 2px solid rgb(var(--ton, 167 139 250)); background: rgb(11 14 16 / .82); opacity: 0; }
-.rolle::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: var(--stiel, .5rem); margin-top: 2px; background: rgb(var(--ton, 167 139 250) / .8); }
-.rolle.leise { font-size: .6875rem; font-weight: 400; padding: .18rem .45rem .2rem; color: var(--fg-85); border-style: dashed; border-bottom: 1px dashed rgb(var(--ton, 167 139 250) / .8); background: rgb(11 14 16 / .66); }
-.pk .knapp { display: none; }
-@media (max-width: 767.98px) { .rolle { font-size: .625rem; padding: .16rem .38rem .18rem; } .rolle.leise { font-size: .5625rem; padding: .12rem .3rem; } }
-
-/* Paketschalter */
-.pk { position: absolute; right: 2.5rem; top: 2.5rem; z-index: 22; width: min(21.5rem, 27vw); display: flex; flex-direction: column; gap: .8rem; padding: 1.1rem 1.2rem 1.2rem; border: 1px solid var(--fg-12); border-top: 2px solid var(--akz);
-  background: rgb(13 15 19 / .86); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: var(--foreground); opacity: 0; visibility: hidden; translate: 0 .8rem; pointer-events: none;
-  transition: opacity var(--duration-normal), translate var(--duration-normal) var(--ease-glide), visibility var(--duration-normal); }
-.pk.on { opacity: 1; visibility: visible; translate: 0 0; pointer-events: auto; }
-.pop.open ~ .pk { opacity: 0; visibility: hidden; pointer-events: none; } /* solange eine Karte offen ist, tritt der Paketschalter zurück */
-.pk .cap, .pk-h { font-size: .6875rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 500; line-height: 1.3; }
-.pk .cap { color: var(--akz); } .pk-h { color: var(--fg-70); margin-bottom: .45rem; }
-.pk-linien { display: grid; grid-template-columns: repeat(3, 1fr); gap: .3rem; } .pk-linien[hidden] { display: none; }
-.pk-pakete { display: grid; grid-template-columns: repeat(3, 1fr); gap: .3rem; } .pk-pakete.reihe { grid-template-columns: 1fr; }
-.pk button { min-height: 2.75rem; border: 1px solid var(--fg-18); background: rgb(11 14 16 / .5); padding: .35rem .5rem; font-size: .8125rem; line-height: 1.2; text-align: center; transition: background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast); }
-.pk button:hover { border-color: var(--fg-30); }
-.pk button:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
-.pk button[aria-pressed="true"] { background: var(--akz); border-color: var(--akz); color: var(--raw-nacht); font-weight: 600; }
-.pk-pakete button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; min-height: 3.3rem; }
-.pk-pakete button b { font-size: .6875rem; letter-spacing: .14em; font-weight: 600; opacity: .75; }
-.pk-pakete.reihe button { flex-direction: row; justify-content: flex-start; gap: .7rem; min-height: 2.75rem; text-align: left; padding: .35rem .8rem; } .pk-pakete.reihe button b { width: 1rem; }
-.pk-text { font-size: .875rem; line-height: 1.4; color: var(--fg-85); margin-bottom: .5rem; } .pk-text:empty { display: none; }
-.pk-liste { display: flex; flex-direction: column; gap: .28rem; } .pk-liste:empty { display: none; }
-.pk-liste li { position: relative; padding-left: 1rem; font-size: .875rem; line-height: 1.35; color: var(--fg-95); }
-.pk-liste li::before { content: ""; position: absolute; left: 0; top: .5em; width: .38rem; height: .38rem; background: var(--akz); }
-.pk-preis { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .8rem; margin: .7rem 0 .85rem; padding-top: .7rem; border-top: 1px solid var(--fg-12); }
-.pk-preis b { font-size: 1.375rem; line-height: 1.1; font-weight: 600; letter-spacing: -.01em; } .pk-preis span { font-size: .75rem; color: var(--fg-70); }
-.pk-rollen { display: flex; flex-wrap: wrap; gap: .3rem; }
-.pk-rollen li { border: 1px solid color-mix(in srgb, var(--akz) 55%, transparent); padding: .2rem .55rem; font-size: .75rem; line-height: 1.3; color: var(--fg-95); }
-.pk-cta { display: none; }
-html[data-raum] .pk-cta { display: none !important; }
-.pk.ohne, html[data-raum="podcast"] #pk { display: none; } /* Raum ohne Schalter */
-.pk [hidden] { display: none !important; }
-/* Auswahl ohne „enthält“ (PR: fünf Bausteine, Dach: zwei Rollen): eine Liste, jede Wahl steht für sich */
-.pk-linien.liste { grid-template-columns: 1fr; }
-.pk-linien.liste button { display: flex; align-items: center; gap: .7rem; min-height: 2.5rem; text-align: left; padding: .3rem .8rem; }
-.pk-linien.liste button b { width: 1rem; font-size: .6875rem; letter-spacing: .14em; font-weight: 600; opacity: .75; }
-.pk-preis span[hidden] { display: none; }
-.pk-vor { font-size: .6875rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 500; line-height: 1.3; color: var(--fg-70); }
-.pk.gesamt .pk-inhalt { display: flex; flex-direction: column; }
-.pk.gesamt .pk-vor { order: 8; margin-top: .85rem; padding-top: .7rem; border-top: 1px solid var(--fg-12); }
-.pk.gesamt .pk-preis { order: 9; margin: .35rem 0 0; padding-top: 0; border-top: 0; }
-/* Unterseiten: Vergleichstabelle (Abende), Uhrzeiten als Ablauf, großer Absatz (Podcast) */
-.vgl-block { grid-column: 1 / -1; display: flex; flex-direction: column; gap: .9rem; min-width: 0; } .note.breit { grid-column: 1 / -1; }
-.vgl-rahmen { overflow-x: auto; border: 1px solid var(--ink-10); border-top: 2px solid var(--kt, var(--raw-violett)); background: var(--raw-karte); color: var(--foreground-inverse); }
-.vgl-rahmen:focus-visible { outline: 2px solid var(--raw-violett); outline-offset: 3px; }
-.vgl { width: 100%; min-width: 42rem; border-collapse: collapse; font-size: 1rem; line-height: 1.45; }
-.vgl th, .vgl td { text-align: left; vertical-align: top; padding: 1rem 1.25rem; border-bottom: 1px solid var(--ink-10); font-weight: 400; }
-.vgl thead th { font-size: 1.125rem; font-weight: 600; letter-spacing: var(--tracking-title); }
-.vgl tbody th { width: 11.5rem; padding-top: 1.25rem; font-size: .6875rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 600; color: var(--foreground-inverse-muted); }
-.vgl tbody tr:first-child td { font-weight: 600; } .vgl tbody tr:last-child th, .vgl tbody tr:last-child td { border-bottom: 0; }
-.kachel.ablauf.zeit { min-height: 0; } .kachel.ablauf.zeit .kz { font-size: 2.25rem; line-height: 1; font-variant-numeric: tabular-nums; }
-.kachel .anriss.gross { font-size: 1.5rem; line-height: 1.42; } .note.breit { max-width: 62rem; }
-@media (max-width: 767.98px) { .kachel .anriss.gross { font-size: 1.1875rem; } .vgl th, .vgl td { padding: .8rem .9rem; } .vgl tbody th { width: 7.5rem; } }
-/* Karte „Der Abend“: Uhrzeiten und Programmpunkte */
-.zeiten { display: flex; flex-direction: column; }
-.zeiten li { display: flex; align-items: baseline; gap: 1rem; padding: .34rem 0; border-bottom: 1px solid var(--fg-10); font-size: 1rem; line-height: 1.35; color: var(--fg-95); }
-.zeiten li b { flex: none; width: 3.1rem; font-size: .8125rem; font-weight: 500; letter-spacing: .06em; color: var(--akz); font-variant-numeric: tabular-nums; }
-/* Raumbild ohne Tafel und Schalter (&nurbild): daraus entstehen die Bilder der Etagen-Kacheln */
-html.nurbild .slab, html.nurbild .pk, html.nurbild .rollen, html.nurbild .spots, html.nurbild .spot-hint, html.nurbild .dock, html.nurbild .mz, html.nurbild .pop, html.nurbild .rk { display: none !important; }
-@media (min-width: 768px) and (max-height: 800px) { .pk { top: 1.5rem; gap: .55rem; padding: .85rem 1rem .9rem; } .pk-preis { margin: .45rem 0 .55rem; padding-top: .45rem; } .pk-liste li, .pk-text { font-size: .8125rem; } .pk-pakete button { min-height: 2.75rem; } }
-@media (max-width: 767.98px) {
-  /* Blatt als Raster: Etikett und Link teilen sich die erste Zeile (das Etikett kürzt mit Auslassungspunkten, bevor es den Link berührt) */
-  .pk { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 64vh; overflow-y: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: start; gap: .5rem .8rem; padding: .8rem 1.5rem 5.5rem; border: 0; border-top: 2px solid var(--akz); background: rgb(12 14 18 / .97); translate: 0 100%; }
-  .pk.on { translate: 0 0; }
-  .pk-preis { margin: .4rem 0 .5rem; padding-top: .45rem; } .pk-preis b { font-size: 1.2rem; }
-  .pk > * { grid-column: 1 / -1; min-width: 0; }
-  .pk > .cap { grid-column: 1; grid-row: 1; align-self: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pk-cta { display: contents; } .pk-cta .haupt { grid-column: 1 / -1; margin-top: .2rem; } .pk-cta .mehr { grid-column: 2; grid-row: 1; align-self: center; min-height: 2.2rem; margin: -.7rem 0; }
-  .pk.gesamt .pk-vor { margin-top: .5rem; padding-top: .45rem; }
-  .pk .lang { display: none; } .pk .knapp { display: inline; }
-  .pk-linien.liste { grid-template-columns: repeat(3, 1fr); } .pk-linien.liste:has(> button:first-child + button:last-child) { grid-template-columns: repeat(2, 1fr); } .pk-linien.liste button { flex-direction: column; justify-content: center; gap: .1rem; min-height: 2.9rem; text-align: center; padding: .25rem .25rem; font-size: .75rem; } .pk-linien.liste button b { width: auto; }
-  .pk-pakete.reihe { grid-template-columns: repeat(3, 1fr); } .pk-pakete.reihe button { flex-direction: column; justify-content: center; gap: .15rem; min-height: 2.9rem; text-align: center; padding: .3rem .25rem; } .pk-pakete.reihe button b { width: auto; }
-  .pk-h { margin-bottom: .3rem; } .pk-text { font-size: .8125rem; margin-bottom: .35rem; } .pk-text.nur-breit { display: none; } /* pakete.json: textNurBreit (CSO): am Handy fehlt die Höhe für den Satz */
-  .pk-liste.zwei { display: grid; grid-template-columns: 1fr 1fr; gap: .25rem .9rem; } .pk-liste li { font-size: .8125rem; }
-  .pk-rollen { gap: .22rem; } .pk-rollen li { font-size: .6875rem; padding: .12rem .4rem; }
-}
-
-/* ══ Vor dem Skript: Nur der erste Auftakt steht da (Titel und Satz ab dem ersten Bild). Alles andere schaltet das Skript sichtbar ══ */
-.slab, .star, .hero:not([data-hero="0"]) { visibility: hidden; }
-
-/* ══ Der Kopf der Website über der Szene: hell auf dunkel, über dem Auftakt durchsichtig, danach dunkles Glas ══ */
-.start .kopf { position: fixed; left: 0; right: 0; }
-.start .sprung { position: fixed; } /* „Zum Inhalt“ steht wie der Kopf fest: Sonst springt die Seite beim ersten Tab an den Anfang und die Stelle im Haus ist weg */
+/* Kopf der Website über der Szene: hell auf dunkel; über Szene 1 durchsichtig, danach dunkles Glas, im hellen Teil wie überall (das Skript schaltet) */
+html:not(.fahrt-aus) .start .kopf { position: fixed; left: 0; right: 0; }
+html:not(.fahrt-aus) .start .sprung { position: fixed; }
 .kopf.ueber-film { color: var(--hell); border-color: transparent; }
 .kopf.ueber-film::before { opacity: 0; }
 .kopf.ueber-film.film-geht::before { opacity: 1; background: rgba(11, 12, 15, .86); }
@@ -526,63 +422,62 @@ html.nurbild .slab, html.nurbild .pk, html.nurbild .rollen, html.nurbild .spots,
 .kopf.ueber-film .haupt-nav > a:hover, .kopf.ueber-film .nav-punkt > a:hover, .kopf.ueber-film .kopf-kontakt:hover { color: var(--hell); background: rgba(242, 243, 243, .08); }
 .kopf.ueber-film .knopf { background: var(--hell); color: var(--nacht); border-color: var(--hell); }
 .kopf.ueber-film .menue summary { border-color: rgba(242, 243, 243, .34); }
-html.menue-offen .dock { visibility: hidden; }
 
-/* Platz für den Kopf: Der Auftakt beginnt darunter; über einem Halt rücken Etikett, Paketschalter und Karte darunter (html.kopf-da setzt das Skript).
-   --kopf-mehr: so viel höher ist der Kopf der Website als die Leiste, für die die Abstände gezeichnet sind */
-.haus { --kopf-mehr: calc(var(--kopf) - 4.25rem); }
-@media (min-width: 768px) and (max-height: 800px) { html.kopf-da .fl-kicker { translate: 0 calc(1.9rem + var(--kopf-mehr)); } }
-@media (min-width: 768px) {
-  .slot.tl { top: calc(7.5rem + var(--kopf-mehr)); } /* unter Kopf und Vorzeile */
-  .slot.cl { top: 50%; } /* mittig zwischen der oberen und der unteren Zeile */
-  html.kopf-da .pk.on, html.kopf-da .pop.open { translate: 0 calc(2.6rem + var(--kopf-mehr)); }
-  .fl-kicker, .det-title, .stat.tr { transition: translate var(--duration-normal) var(--ease-glide); }
-  html.kopf-da .fl-kicker, html.kopf-da .det-title, html.kopf-da .stat.tr { translate: 0 calc(2.4rem + var(--kopf-mehr)); }
-  html.kopf-da .rail { top: calc(var(--kopf) + 1.6rem); } /* die Etagenleiste beginnt unter dem Kopf, sonst läge „D“ dahinter */
-}
-/* Schmale, niedrige Fenster (768 bis 1024 breit, bis 800 hoch): Hier ist die Tafel am engsten. Das Etikett bekommt echten Platz unter dem Kopf
-   statt nur verschoben zu werden, die Etagenzahl wird kleiner, und die Stichworte der PR-Karte entfallen (sie stehen im Text darüber). */
-@media (min-width: 768px) and (max-width: 1024.98px) and (max-height: 800px) {
-  html.kopf-da .fl-kicker { translate: none; margin-top: calc(1.9rem + var(--kopf-mehr)); }
-  .fl-no { font-size: 5rem; } .fl-no.wort { font-size: 4.25rem; }
-  .fl .chips { display: none; }
-}
-.top-cta { display: none !important; }
-
-/* „Zum Angebot“ im Paketschalter (breit: neben dem Preis; am Handy steht der Link oben im Blatt) */
-.pk-preis .pk-angebot { margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; min-height: 1.5rem; font-size: .75rem; line-height: 1.2; letter-spacing: .08em; text-transform: uppercase; font-weight: 500; color: var(--fg-95); border-bottom: 1px solid var(--akz); pointer-events: auto; }
-.pk-preis .pk-angebot svg { width: .8rem; height: .8rem; flex: none; transition: transform var(--duration-normal) var(--ease-glide); }
-.pk-preis .pk-angebot:hover svg { transform: translate(.1rem, .1rem); }
-.pk-preis .pk-angebot[hidden] { display: none; }
-@media (max-width: 767.98px) { .pk-preis .pk-angebot { display: none; } }
-
-/* ══ Ohne Skript: statt der Bühne eine lesbare Fassung. Auftakt und sieben Etagen als schlichte Abschnitte (dieselben Texte, kein zweiter Satz davon) ══ */
-html:not(.js) .track { height: auto; }
-html:not(.js) .stage { position: static; height: auto; overflow: visible; padding: calc(var(--kopf) + 3rem) 2.5rem 4rem; max-width: 62rem; margin: 0 auto; }
-html:not(.js) :is(.seq, .grid-intro, .cue, .statement .t-caption, .rail, .spots, .spot-hint, .pop, .rollen, .pk, .star, .anchor, .flag, .hero .exit, .fl-no, .fl-mit, .stat .drum) { display: none; }
-html:not(.js) .dock { display: none; }
-html:not(.js) :is(.hero, .statement, .slab, .fl, .finale, .det-title, .stat, .summit) { position: static; visibility: visible; translate: none; transform: none; inset: auto; width: auto; max-width: none; height: auto; overflow: visible; opacity: 1; pointer-events: auto; text-shadow: none; }
-html:not(.js) .hero :is(h1, h2) { position: static; }
-html:not(.js) .hero .sr-only, html:not(.js) .stat .sr-only { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: normal; }
-html:not(.js) .hero h1 .sr-only { display: block; font-size: 4rem; line-height: 1; letter-spacing: var(--tracking-display); font-weight: 500; }
-html:not(.js) .hero h2 .sr-only { display: block; margin-top: 2.5rem; font-size: 2rem; line-height: 1.1; font-weight: 500; }
-html:not(.js) .hero-desc { position: static; width: auto; max-width: 34rem; margin-top: 1rem; text-align: left; }
-html:not(.js) .statement { margin: 3rem 0 0; max-width: 40rem; }
-html:not(.js) .slab { background: none; border: 0; margin-top: 1rem; }
-html:not(.js) .fl { display: block; padding: 2.5rem 0 0; margin-top: 2.5rem; border-top: 1px solid var(--fg-18); }
-html:not(.js) .fl-kicker { font-size: 1.125rem; }
-html:not(.js) .fl-mid { margin: 1rem 0; }
-html:not(.js) .fl-preise { margin-top: .9rem; font-size: .9375rem; color: var(--fg-85); }
-html:not(.js) ul.fl-preise { margin: .6rem 0 1.4rem; line-height: 1.6; }
-html:not(.js) .fl-preise a { text-decoration: underline; text-underline-offset: .2em; color: var(--foreground); }
+/* ── Ohne Skript und bei „weniger Bewegung“: die 15 Szenen stehen als normale, untereinander lesbare Abschnitte (mit ruhigem Bild, wenn das Skript es malt) ── */
+html:not(.js) .track, html.statisch .track { height: auto; }
+html:not(.js) .stage, html.statisch .stage { position: static; height: auto; overflow: visible; }
+html:not(.js) :is(.snaps, .etagen, .fahrt-stufen, .star, .grain, .seq-shade, .ueberspringen) , html.statisch :is(.snaps, .etagen, .fahrt-stufen, .star, .grain, .seq-shade) { display: none; }
+html:not(.js) .seq, html.statisch .seq { display: none; }
+html:not(.js) .szenen, html.statisch .szenen { position: static; }
+html:not(.js) .sz, html.statisch .sz { position: relative; inset: auto; opacity: 1; visibility: visible; min-height: 100vh; min-height: 100dvh; background-color: var(--raw-nacht); background-size: cover; background-position: center; border-bottom: 1px solid var(--fg-12); transition: none; }
+html:not(.js) .sz-innen, html.statisch .sz-innen { position: relative; inset: auto; width: auto; max-height: none; max-width: 62rem; min-height: inherit; padding: calc(var(--kopf) + 3rem) 2.5rem 3rem; margin: 0 auto; display: flex; flex-direction: column; gap: 1.2rem; background: none; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; pointer-events: auto; overflow: visible; }
+html:not(.js) .sz-innen > *, html.statisch .sz-innen > * { position: static !important; translate: none !important; max-width: 40rem; }
+html:not(.js) .sz-innen .sz-pakete, html.statisch .sz-innen .sz-pakete { max-width: none; }
+html.statisch .sz-innen { background: rgb(13 15 19 / .78); border-radius: .4rem; margin-top: 3rem; margin-bottom: 3rem; min-height: 0; padding: 2rem 2.2rem; }
+html.statisch .sz { display: grid; align-items: center; }
+html:not(.js) .sz-pakete .sz-pakete, html.statisch .sz-pakete .sz-pakete { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+html:not(.js) .sz-eingang .sz-titel, html.statisch .sz-eingang .sz-titel { font-size: 3.4rem; }
+html:not(.js) .sz-titel-final, html.statisch .sz-titel-final { font-size: 3rem; }
+html:not(.js) .sz-fuss, html.statisch .sz-fuss { margin-top: .6rem; }
 html:not(.js) .start .kopf { position: absolute; }
-html:not(.js) .finale { margin-top: 4rem; padding-top: 2.5rem; border-top: 1px solid var(--fg-18); }
-html:not(.js) .det-title { display: block; }
-html:not(.js) .stat { flex-direction: row-reverse; justify-content: flex-end; align-items: baseline; gap: 1rem; margin-top: 1rem; text-align: left; }
-html:not(.js) .stat dd { font-size: 2rem; line-height: 1; }
-html:not(.js) .summit { margin-top: 3rem; max-width: none; }
-html:not(.js) .summit h2 { font-size: 2.5rem; }
-@media (max-width: 767.98px) { html:not(.js) .stage { padding-left: 1.5rem; padding-right: 1.5rem; } html:not(.js) .hero h1 .sr-only { font-size: 2.6rem; } html:not(.js) .fl-cta .reihe { flex-wrap: wrap; justify-content: flex-start; } html:not(.js) .fl-mid .fl-text { font-size: 1rem; } }
+html:not(.js) .nl, html.statisch .nl { display: flex; }
+html:not(.js) .nl { display: none; }
+html:not(.js) .nl-ohne { display: block; }
+html:not(.js) .sz-leise[data-aktion], html:not(.js) .weiche[data-aktion] { display: none; }
+html:not(.js) .ueberspringen { position: static; margin: 5rem 2.5rem 0; }
 
+/* Handy: die Stufen als Reihe neben „Fahrt überspringen“, die Etagen der aktuellen Stufe links darunter; alles auf eigener Fläche, damit es über jedem Bild lesbar bleibt */
+@media (max-width: 767.98px), (max-width: 1100px) and (max-aspect-ratio: 9/10) {
+  .fahrt-stufen { left: .5rem; right: 11.1rem; top: calc(var(--kopf) + .4rem); bottom: auto; width: auto; height: 44px; }
+  .ueberspringen { font-size: .72rem; padding: 0 .8rem 0 .9rem; gap: .4rem; }
+  .fahrt-stufen ol { flex-direction: row-reverse; gap: .2rem; }
+  .fahrt-stufen li, .fahrt-stufen li:nth-child(n) { flex: 1; min-height: 44px; width: auto; }
+  .fahrt-stufen a span { writing-mode: horizontal-tb; rotate: none; font-size: .75rem; letter-spacing: 0; text-transform: none; white-space: nowrap; }
+  .fahrt-stufen li { transition: flex-grow var(--duration-normal) var(--ease-glide); }
+  .fahrt-stufen li:has(> a.jetzt) { flex-grow: 3.2; }
+  .fahrt-stufen ol:has(> li > a.jetzt) a:not(.jetzt) span { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* Namen nur für Vorlesegeräte; sehen kann man ihn bei der aktuellen Stufe; ohne aktuelle Stufe (Pakete) stehen alle drei Namen da */
+  .fahrt-stufen ol:not(:has(> li > a.jetzt)) a span { font-size: .6875rem; }
+  .fahrt-stufen a::before { left: 0; right: auto; top: auto; bottom: 0; width: var(--fuell, 0%); height: .22rem; }
+  .etagen { left: .5rem; top: calc(var(--kopf) + 3.6rem); }
+  .etagen a { background: rgb(11 14 16 / .66); color: var(--foreground); margin-bottom: .2rem; }
+  .sz-fahrt .sz-innen { padding: 1rem 1.1rem 1.1rem; background: rgb(11 14 16 / .92); border-radius: .4rem; left: 1rem; right: 1rem; }
+  .sz-problem .sz-links { text-shadow: 0 0 1.4rem rgb(5 6 9 / .95), 0 0 .3rem rgb(5 6 9 / .8); }
+  .sz-pakete .sz-pakete { bottom: 9rem; }
+  .sz-zusagen { bottom: 5rem; font-size: .6875rem; }
+  .sz-pakete .sz-leise { bottom: .3rem; font-size: .8125rem; line-height: 1.3; }
+}
+@media (max-width: 767.98px) and (max-height: 740px), (max-width: 1100px) and (max-aspect-ratio: 9/10) and (max-height: 740px) {
+  .sz-etage .sz-innen, .sz-tresen .sz-innen { max-height: 72dvh; gap: .5rem; padding-top: .8rem; }
+  .sz-mit { display: none; }
+  .sz-kacheln li { padding: .3rem .6rem; }
+  .sz-kacheln span { display: none; }
+  .sz-foto-gross { min-height: 2.6rem; max-height: 3rem; }
+  .sz-satz { font-size: .875rem; line-height: 1.38; }
+  .sz-kevin { display: none; }
+  .sz-eingang .sz-pitch { bottom: 5rem; }
+  .etagen li { display: none; } .etagen li:has(a.jetzt) { display: block; } /* auf kleinen Bildschirmen nur die aktuelle Etage; alle Etagen stehen in der Etagenwahl am Tresen */
+}
 /* Druck: die Fahrt ist ein Bildschirm-Erlebnis, auf Papier beginnt die Seite mit dem ersten hellen Abschnitt */
 @media print { .haus { display: none !important; } }
+/* Farbe der Stufe an den Etagen links */
+.etagen a[data-stufe="fundament"] { --c: var(--stufe-fundament); } .etagen a[data-stufe="wachstum"] { --c: var(--stufe-wachstum); } .etagen a[data-stufe="skalieren"] { --c: var(--stufe-skalieren); }

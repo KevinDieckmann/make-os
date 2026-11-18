@@ -296,7 +296,8 @@ export function seitenBauen(q = quellen()) {
   // ── Bausteine ──
   const knopf = (href, text, art = '') => `<a class="knopf${art ? ` ${art}` : ''}" href="${href}">${e(text)} ${PFEIL}</a>`;
   const checkKnopf = (quelle, text = 'Innovations-Check starten', art = '') => knopf(check(quelle), text, art);
-  const erstKnopf = (art = '', text = F.erstgespraech.knopf) => knopf(erstLink(), text, art);
+  /** „Erstgespräch buchen“ ist der einzige Knopf in der Farbe --cta (css/fokus.css); die Farbe steht für nichts anderes. */
+  const erstKnopf = (art = '', text = F.erstgespraech.knopf) => knopf(erstLink(), text, `cta${art ? ` ${art}` : ''}`);
   /** Der passende Check je Bereich (31.10., Prüfung „Texte“): Sichtbarkeit/Vertrieb = der kleine Check, Innovation = der Innovations-Check,
    *  ohne Bereich die Übersicht unter „Kostenlos“. So führt der zweite Knopf nie zu einem Check, der das Falsche misst. */
   const passenderCheck = (bereich, quelle) => {
@@ -338,11 +339,13 @@ export function seitenBauen(q = quellen()) {
   let seitenKrumen = null;
   // Dieselbe Frage nur auf EINER Seite als FAQPage auszeichnen (Google-Regel für wiederholte FAQs): die erste Seite, die sie zeigt.
   const ausgezeichnet = new Set();
+  /** Hinweis in Du: „Schreib uns“ ist der Anfrage-Link zur Frage. */
+  const anfrageInlineTeil = (text) => e(text).replace('Schreib uns', anfrageInline('frage', 'Frage', 'Schreib uns'));
   const fragen = (liste, titelText = 'Häufige Fragen', { id = 'fragen', marke = 'Fragen', hinweis = true, mehr = false } = {}) => {
     if (!liste.length) return '';
     for (const f of liste) if (!ausgezeichnet.has(klar(f.f))) { ausgezeichnet.add(klar(f.f)); seitenFragen.push(f); }
     return `<section class="abschnitt" id="${id}" aria-labelledby="${id}-titel"><div class="w"><div class="zweispaltig">
-<div class="erscheint"><p class="ab-marke">${e(marke)}</p><h2 id="${id}-titel">${e(titelText)}</h2>${hinweis ? `<p class="leise">Noch etwas offen? ${anfrageInline('frage', 'Frage', 'Schreiben Sie uns')}, wir antworten persönlich.</p>` : ''}</div>
+<div class="erscheint"><p class="ab-marke">${e(marke)}</p><h2 id="${id}-titel">${e(titelText)}</h2>${typeof hinweis === 'string' ? `<p class="leise">${anfrageInlineTeil(hinweis)}</p>` : hinweis ? `<p class="leise">Noch etwas offen? ${anfrageInline('frage', 'Frage', 'Schreiben Sie uns')}, wir antworten persönlich.</p>` : ''}</div>
 <div class="fragen erscheint">${liste.map((f) => `<details><summary>${t(f.f)}<span class="plus" aria-hidden="true"></span></summary><p>${t(f.a)}</p></details>`).join('')}${mehr ? `<p class="fragen-mehr">${textlink('/fragen/', 'Alle Fragen und Antworten')}</p>` : ''}</div>
 </div></div></section>`;
   };
@@ -383,43 +386,57 @@ export function seitenBauen(q = quellen()) {
   // Kevin 31.10.: Sichtbarkeit, Vertrieb und Innovation stehen zusammen unter „Leistungen“, je Bereich mit seinen Bausteinen
   // (ohne Preis — Kevin 29.10.: kein Preis im Menü). Der Punkt selbst führt auf die Preisseite, die alle Leistungen zeigt.
   const bausteineVon = (b) => (BS_LISTE.some((x) => x.bereich === b) ? `/bausteine/#bausteine-${b}` : null);
+  /** Linkziel aus fokus.json › kurz: ein Pfad der Website oder angebot:<kennung> (Seite des Angebots). */
+  const kurzZiel = (z) => (z.startsWith('angebot:') ? produktPfad(angebot(z.slice(8))) : z);
+  /** Die drei Pakete: Sätze, Stichpunkte, Ab-Preis, Empfehlung und Zusagen kommen aus haus/stufen.json (dieselbe Quelle wie Szene 14 der Fahrt), die Ziele der Knöpfe aus fokus.json › kurz. */
+  const STUFEN = existsSync(join(ORDNER, 'haus', 'stufen.json')) ? lies(join(ORDNER, 'haus', 'stufen.json')) : null;
+  const KURZ = !STUFEN ? F.kurz : {
+    ...F.kurz,
+    pakete: {
+      ...F.kurz.pakete, empfehlung: STUFEN.empfehlung ?? F.kurz.pakete.empfehlung, zusagen: STUFEN.zusagen ?? F.kurz.pakete.zusagen, unsicher: STUFEN.unsicher?.text ?? F.kurz.pakete.unsicher,
+      stufen: F.kurz.pakete.stufen.map((x) => { const y = STUFEN.stufen.find((z) => z.name === x.name); return y ? { ...x, satz: y.satz, punkte: y.punkte, ab: y.ab, empfohlen: STUFEN.empfohlen === y.id } : x; }),
+    },
+  };
+  // Menü (Konzept 18.11.): Leistungen · Über uns · Community · Kostenloser Check · Kontakt · Erstgespräch buchen. Alles Weitere steht im Fuß.
+  const NEWSLETTER_ZIEL = '/?fahrt=1#newsletter';
   const NAV = [
-    { key: 'leistungen', name: 'Leistungen', href: '/preise/', bereiche: BEREICHE },
-    { key: 'events', name: 'Events', href: '/events/' },
-    { key: 'podcast', name: 'Podcast', href: '/podcast/' },
-    { key: 'kostenlos', name: 'Kostenlos', href: '/kostenlos/' },
+    { key: 'leistungen', name: 'Leistungen', href: '/preise/', gruppe: [...BEREICHE, 'leistungen', 'preise'], leistungen: true },
     { key: 'ueber-uns', name: 'Über uns', href: '/ueber-uns/' },
+    { key: 'community', name: 'Community', href: '/events/', gruppe: ['events', 'podcast'], unter: [['/events/', 'Fokus Abend'], ['/podcast/', 'Podcast'], [NEWSLETTER_ZIEL, 'Newsletter']] },
+    { key: 'kostenlos', name: 'Kostenloser Check', href: '/kostenlos/#checks' },
   ];
   /** `haus` (Startseite): „Zum Inhalt“ führt hinter die Fahrt, und der Kopf steht von Anfang an hell auf dunkel über der Szene (js/haus.js schaltet weiter). */
-  const kopf = (aktiv, haus = false) => `<a class="sprung" href="${haus ? '#einstieg' : '#inhalt'}">Zum Inhalt</a>
+  const kopf = (aktiv, haus = false) => `<a class="sprung" href="${haus ? '#kurz' : '#inhalt'}">Zum Inhalt</a>
 <header class="kopf${haus ? ' ueber-film' : ''}"><div class="w kopf-innen">
 <a class="marke" href="/" aria-label="MAKE Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a>
 <nav class="haupt-nav" aria-label="Hauptmenü">${NAV.map((n) => {
     const cur = n.key === aktiv ? ' aria-current="page"' : '';
-    if (n.bereiche) {
-      const dabei = n.key === aktiv ? ' aria-current="page"' : n.bereiche.includes(aktiv) ? ' aria-current="true"' : '';
-      return `<div class="nav-punkt"><a href="${n.href}"${dabei}>${e(n.name)}</a><div class="unter unter-leistungen">${n.bereiche.map((b) => `<div class="unter-spalte"><a class="unter-alles" href="/${b}/">${e(F.bereiche[b].name)}</a>${navUnter(b).map(([h, name, p]) => `<a href="${h}">${e(name)}${p ? `<span>${e(p)}</span>` : ''}</a>`).join('')}${bausteineVon(b) ? `<a class="unter-baustein" href="${bausteineVon(b)}">Bausteine<span>zum Selbermachen</span></a>` : ''}</div>`).join('')}<a class="unter-fuss" href="/preise/"><span>Alle Leistungen und Preise</span> ${PFEIL}</a></div></div>`;
+    const dabei = cur || (n.gruppe?.includes(aktiv) ? ' aria-current="true"' : '');
+    if (n.leistungen) {
+      return `<div class="nav-punkt"><a href="${n.href}"${dabei}>${e(n.name)}</a><div class="unter unter-leistungen"><div class="unter-spalte"><p class="unter-titel">Bereiche</p>${KURZ.bereiche.map((x) => `<a href="${kurzZiel(x.ziel)}">${e(x.name)}</a>`).join('')}</div><div class="unter-spalte"><p class="unter-titel">Pakete</p>${KURZ.pakete.stufen.map((x) => `<a href="/#pakete">${e(x.name)}</a>`).join('')}</div></div></div>`;
     }
-    if (!n.unter) return `<a href="${n.href}"${cur}>${e(n.name)}</a>`;
-    return `<div class="nav-punkt"><a href="${n.href}"${cur}>${e(n.name)}</a><div class="unter"><a class="unter-alles" href="${n.href}">Überblick ${e(n.name)}</a>${n.unter.map(([h, name, p]) => `<a href="${h}">${e(name)}${p ? `<span>${e(p)}</span>` : ''}</a>`).join('')}</div></div>`;
+    if (!n.unter) return `<a href="${n.href}"${dabei}>${e(n.name)}</a>`;
+    return `<div class="nav-punkt"><a href="${n.href}"${dabei}>${e(n.name)}</a><div class="unter">${n.unter.map(([h, name]) => `<a href="${h}">${e(name)}</a>`).join('')}</div></div>`;
   }).join('')}</nav>
 <a class="kopf-kontakt" href="/kontakt/"${aktiv === 'kontakt' ? ' aria-current="page"' : ''}>Kontakt</a>
-<a class="knopf klein kopf-check" href="${erstLink()}">${e(F.erstgespraech.name)}</a>
+<a class="knopf klein cta kopf-check" href="${erstLink()}">${e(F.erstgespraech.name)}</a>
 <details class="menue"><summary><span class="striche" aria-hidden="true"></span>Menü</summary><nav class="menue-blatt" aria-label="Menü">
-${BEREICHE.map((b) => `<p class="menue-gruppe">${e(F.bereiche[b].name)}</p><a href="/${b}/">Überblick ${e(F.bereiche[b].name)}</a>${navUnter(b).map(([h, name]) => `<a href="${h}">${e(name)}</a>`).join('')}${bausteineVon(b) ? `<a href="${bausteineVon(b)}">Bausteine zum Selbermachen</a>` : ''}`).join('\n')}
-<p class="menue-gruppe">MAKE Innovation</p><a href="/events/">Events</a><a href="/podcast/">Podcast</a><a href="/kostenlos/">Kostenlos</a><a href="/preise/">Preise</a><a href="/ueber-uns/">Über uns</a><a href="/kontakt/">Kontakt</a>
-${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Oder: Innovations-Check, 10 Minuten</span> ${PFEIL}</a>
+<p class="menue-gruppe">Leistungen</p>${KURZ.bereiche.map((x) => `<a href="${kurzZiel(x.ziel)}">${e(x.name)}</a>`).join('')}<a href="/#pakete">Pakete: ${KURZ.pakete.stufen.map((x) => e(x.name)).join(' · ')}</a>
+<p class="menue-gruppe">Community</p><a href="/events/">Fokus Abend</a><a href="/podcast/">Podcast</a><a href="${NEWSLETTER_ZIEL}">Newsletter</a>
+<p class="menue-gruppe">MAKE Innovation</p><a href="/ueber-uns/">Über uns</a><a href="/kostenlos/#checks">Kostenloser Check</a><a href="/kontakt/">Kontakt</a>
+${erstKnopf()}
 </nav></details>
 </div></header>`;
 
   const fussSpalte = (titelText, links) => `<div><p class="fuss-titel">${e(titelText)}</p><ul>${links.map(([h, n]) => `<li><a href="${h}">${e(n)}</a></li>`).join('')}</ul></div>`;
+  // Fuß (Konzept 18.11.): Ratgeber, Vorlagen, Begriffe, Bausteine, Zahlen, Preise, Häufige Fragen, Impressum, Datenschutz. „Auch von uns“ bleibt, ohne Verkaufsweg.
   const fuss = () => `<footer class="fuss"><div class="w">
 <div class="fuss-raster">
 <div class="fuss-marke"><a class="marke" href="/" aria-label="MAKE Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a><p class="claim glanz erscheint">${e(F.marke.claim)}</p>
 <p><a ${anfrageAttr('kontakt', 'Anfrage')}>Nachricht schreiben</a><br><a href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a><br>${seite.kontakt.adresse.map(t).join('<br>')}</p><p class="fuss-familie">Auch von uns: ${FAM.marken.map((m) => `<a href="${e(m.url)}">${e(m.name)}</a>`).join(' · ')}</p></div>
-${fussSpalte('Leistungen', [...BEREICHE.map((b) => [`/${b}/`, F.bereiche[b].name]), ['/innovations-check/', 'Innovations-Check'], ['/preise/', 'Preise'], ...(BS_LISTE.length ? [['/bausteine/', 'Bausteine']] : [])])}
-${fussSpalte('Kostenlos', [['/kostenlos/#checks', 'Checks'], ['/kostenlos/#ratgeber', 'Ratgeber'], ...(Z ? [['/kostenlos/zahlen/', 'Zahlen']] : []), ...(VL ? [['/kostenlos/#vorlagen', 'Vorlagen']] : []), ['/fragen/', 'Häufige Fragen'], ['/begriffe/', 'Begriffe']])}
-${fussSpalte('MAKE Innovation', [['/events/', 'Events'], ['/podcast/', 'Podcast'], ['/ueber-uns/', 'Über uns'], ['/kontakt/', 'Kontakt'], ['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
+${fussSpalte('Wissen', [['/kostenlos/#ratgeber', 'Ratgeber'], ...(VL ? [['/kostenlos/#vorlagen', 'Vorlagen']] : []), ['/begriffe/', 'Begriffe'], ...(Z ? [['/kostenlos/zahlen/', 'Zahlen']] : [])])}
+${fussSpalte('Angebot', [...(BS_LISTE.length ? [['/bausteine/', 'Bausteine']] : []), ['/preise/', 'Preise'], ['/fragen/', 'Häufige Fragen']])}
+${fussSpalte('Rechtliches', [['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
 </div>
 <div class="fuss-unten"><span>© 2026 ${e(anbieter.name)}${anbieter.name.startsWith(F.marke.name) ? '' : ` · ${e(F.marke.name)} ist eine Marke der ${e(anbieter.name)}`}</span><span>Keine Cookies, kein Tracking. Alle Preise netto zuzüglich Umsatzsteuer, für Unternehmen.</span></div>
 </div></footer>`;
@@ -510,7 +527,7 @@ ${suche}<meta name="theme-color" content="${film || haus ? '#0B0C0F' : '#F6F4F0'
 <link rel="stylesheet" href="/css/fokus.css?v=${stempel('css/fokus.css')}">
 ${film ? `<link rel="stylesheet" href="/css/film.css?v=${stempel('css/film.css')}">\n` : ''}${haus ? `<link rel="stylesheet" href="/css/haus.css?v=${stempelText(haus.css)}">\n` : ''}<script src="/js/frueh.js?v=${stempel('js/frueh.js')}"></script>
 <script src="/js/seite.js?v=${stempel('js/seite.js')}" defer></script>
-${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${haus ? `<script src="/js/lenis.min.js?v=${stempelText(haus.lenis)}" defer></script>\n<script type="module" src="/js/haus.js?v=${stempelText(haus.js)}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}${main.includes('data-unterlage') ? `<script src="/js/unterlage.js?v=${stempel('js/unterlage.js')}" defer></script>\n` : ''}${main.includes('data-baustein') ? `<script src="/js/bestellung.js?v=${stempel('js/bestellung.js')}" defer></script>\n` : ''}${main.includes('data-mk=') ? `<script src="/js/inhalt.js?v=${stempel('js/inhalt.js')}" defer></script>\n` : ''}<script src="/js/app-wege.js?v=${stempel('js/app-wege.js')}" defer></script>\n<script type="application/ld+json">${ldJson}</script>
+${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${haus ? `<script type="module" src="/js/haus.js?v=${stempelText(haus.js)}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}${main.includes('data-unterlage') ? `<script src="/js/unterlage.js?v=${stempel('js/unterlage.js')}" defer></script>\n` : ''}${main.includes('data-baustein') ? `<script src="/js/bestellung.js?v=${stempel('js/bestellung.js')}" defer></script>\n` : ''}${main.includes('data-mk=') ? `<script src="/js/inhalt.js?v=${stempel('js/inhalt.js')}" defer></script>\n` : ''}<script src="/js/app-wege.js?v=${stempel('js/app-wege.js')}" defer></script>\n<script type="application/ld+json">${ldJson}</script>
 </head>
 <body${klasse ? ` class="${klasse}"` : ''}>
 ${kopf(aktiv, !!haus)}
@@ -582,7 +599,7 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
   /** Arbeitsprobe (31.10., Prüfung „Gestaltung“: zeigen statt beschreiben): diese Website auf Rechner und Handy, daneben was sie ausmacht. */
   const arbeitsprobe = () => `<section class="abschnitt" aria-labelledby="probe-titel"><div class="w"><div class="probe">
 <div class="probe-text erscheint">${vorzeile('Arbeitsprobe')}<h2 id="probe-titel">${e(F.arbeitsprobe.titel)}</h2><p class="lead">${t(F.arbeitsprobe.text)}</p>${punkte(F.arbeitsprobe.punkte)}<div class="knoepfe">${textlink('/', 'Zur Startseite mit der Geschichte')}</div></div>
-<figure class="probe-buehne erscheint"><div class="geraet laptop"><img src="/assets/bild/arbeitsprobe/rechner.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="Die Startseite von MAKE Innovation am Rechner: Etage 08, der Raum von MAKE Studios, daneben die Pakete für Websites"></div><div class="geraet handy"><img src="/assets/bild/arbeitsprobe/handy.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Dieselbe Stelle der Startseite auf dem Handy: oben der Raum von MAKE Studios, darunter die Pakete für Websites"></div><figcaption class="leise klein-text">Diese Website, gebaut wie Ihre: am Rechner und auf dem Handy.</figcaption></figure>
+<figure class="probe-buehne erscheint"><div class="geraet laptop"><img src="/assets/bild/arbeitsprobe/rechner.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="Die Startseite von MAKE Innovation am Rechner: die Fahrt durchs Haus, Etage 2 Digitale Sichtbarkeit mit dem Angebot Website"></div><div class="geraet handy"><img src="/assets/bild/arbeitsprobe/handy.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Dieselbe Stelle der Startseite auf dem Handy: oben der Raum der Etage 2, darunter das Angebot Website"></div><figcaption class="leise klein-text">Diese Website, gebaut wie Ihre: am Rechner und auf dem Handy.</figcaption></figure>
 </div></div></section>`;
   const musterPositionierung = () => {
     const M = F.muster_positionierung;
@@ -692,76 +709,68 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
     };
     neu('index.html', {
       seo: 'start',
-      bildTitel: F.start.titel,
+      bildTitel: F.kurz.pitch_h2,
       bildVorzeile: 'Vertrieb · Sichtbarkeit · Innovation',
       haus: HAUS,
       klasse: 'start',
       main: `${HAUS.markup}
 
-<section class="held start-held" id="einstieg" aria-labelledby="start-titel"><div class="w start-raster">
-<div class="start-titel erscheint">${vorzeile(F.start.vorzeile)}<h2 id="start-titel" class="glanz held-titel">${titel(F.start.titel, F.start.ruhig)}</h2></div>
-<div class="start-zeile erscheint"><p class="lead">${t(F.start.lead)}</p>
-<div class="knoepfe">${erstKnopf()}${passenderKnopf(undefined, 'start_held')}</div></div>
-<nav class="tueren erscheint" aria-label="Ihr Anliegen">${F.tueren.map((d) => `<a href="${d.pfad ?? `#${d.id}`}">${tuerZeichen(d.id)}<span class="nr">${e(d.etikett)}</span><b>${e(d.titel)}</b><span class="index-satz">${t(d.text)}</span>${PFEIL}</a>`).join('')}</nav>
+${(() => {
+    const K = KURZ, P = K.pakete;
+    const ph = (x) => `<span class="ph">${e(x)}</span>`;
+    const foto = (text, klasse = '') => `<figure class="foto-platz${klasse ? ` ${klasse}` : ''}" role="img" aria-label="Platzhalter für ein Foto"><span class="ph">${e(text)}</span></figure>`;
+    // Hier, zwischen Team und Community, folgt später die Sektion „Referenzen“ (fokus.json › kurz.referenzen_platz); bis dahin nichts Sichtbares.
+    const mikro = `<p class="mikro">${e(K.mikro)}</p>`;
+    // Die Zusagen der Pakete: „·“-getrennt in der Quelle, als Liste mit Haken-Punkten im Bau.
+    const zusagen = P.zusagen.split(' · ');
+    return `<section class="kurz" id="kurz" aria-labelledby="kurz-titel"><div class="w kurz-raster">
+<div class="kurz-text erscheint"><h2 id="kurz-titel" class="glanz held-titel">${e(K.pitch_h2)}</h2><p class="lead">${t(K.pitch)}</p>
+<div class="kurz-aktion"><div class="kurz-haupt">${erstKnopf('gross')}${mikro}</div>${textlink('/?fahrt=1#top', K.fahrt)}</div></div>
+<div class="kurz-bild erscheint">${foto(K.foto_beide)}</div>
 </div></section>
 
-<section class="abschnitt" id="familie" aria-labelledby="familie-titel"><div class="w">
-${abKopf({ marke: FAM.marke, h2: FAM.titel, lead: FAM.lead, id: 'familie-titel' })}
-<div class="marken">${FAM.marken.map((m) => markenKarte(m, { id: `bereich-${m.bereich}` })).join('\n')}</div>
+<section class="abschnitt kurz-problem" id="problem" aria-label="Das Problem"><div class="w"><div class="problem-paar erscheint">
+<p class="problem-links">${t(K.problem.links)}</p><p class="problem-rechts">${t(K.problem.rechts)}</p>
+</div></div></section>
+
+<section class="abschnitt" id="bereiche" aria-labelledby="bereiche-titel"><div class="w">
+${abKopf({ marke: 'Bereiche', h2: K.bereiche_titel, id: 'bereiche-titel' })}
+<ul class="kacheln n5 erscheint">${K.bereiche.map((x, i) => `<li><a href="${kurzZiel(x.ziel)}"><span class="nr">${String(i + 1).padStart(2, '0')}</span><b>${e(x.name)}</b><span class="kachel-satz">${t(x.satz)}</span><span class="kachel-mehr">${e(K.mehr)} ${PFEIL}</span></a></li>`).join('')}</ul>
 </div></section>
 
-<section class="abschnitt" id="bereich-innovation" aria-labelledby="innovation-titel"><div class="w">
-${abKopf({ marke: FAM.innovation_marke, h2: B.innovation.paar, lead: B.innovation.satz, id: 'innovation-titel' })}
-<div class="leistung solo">
-<div class="leistung-kopf erscheint"><p class="etikett">Woran es oft hakt</p><p class="problem">${t(B.innovation.problem)}</p><div class="knoepfe">${checkKnopf('start_innovation')}${textlink('/innovation/', `Mehr zu ${B.innovation.name}`)}</div></div>
-<div class="leistung-weg">${bereichGrafik('innovation')}<p class="etikett erscheint">Womit anfangen</p><ul class="wl erscheint">${lagenVon('innovation').map(wegZeile).join('')}</ul></div>
+<section class="abschnitt band sand" id="pakete" aria-labelledby="pakete-titel"><div class="w">
+${abKopf({ marke: P.marke, h2: P.h2, id: 'pakete-titel' })}
+<ul class="kpakete erscheint">${P.stufen.map((x) => `<li class="kpaket${x.empfohlen ? ' empfohlen' : ''}">${x.empfohlen ? `<span class="kpaket-marke">${e(P.empfehlung)}</span>` : ''}<h3>${e(x.name)}</h3><p class="kpaket-satz">${t(x.satz)}</p><ul class="kpaket-punkte">${x.punkte.map((y) => `<li>${t(y)}</li>`).join('')}</ul><p class="kpaket-ab">${ph(x.ab ?? P.ab)}</p><a class="knopf zweit" href="${kurzZiel(x.ziel)}">${e(K.mehr)} ${PFEIL}</a></li>`).join('')}</ul>
+<ul class="zusagen erscheint">${zusagen.map((z) => `<li>${t(z)}</li>`).join('')}</ul>
+<p class="satz-unter erscheint">${textlink(erstLink(), P.unsicher)}</p>
+</div></section>
+
+<section class="abschnitt" id="team" aria-labelledby="team-titel"><div class="w">
+${abKopf({ marke: K.team.marke, h2: K.team.h2, id: 'team-titel' })}
+<div class="kurz-team erscheint">
+<div class="kurz-person">${foto(K.team.foto_kevin, 'klein')}<h3>${e(F.team[0].name)}</h3><p>${t(K.team.kevin)}</p></div>
+<div class="kurz-person">${foto(K.team.foto_malin, 'klein')}<h3>${e(F.team[1].name)}</h3><p>${t(K.team.malin)}</p></div>
 </div>
-<p class="satz-unter erscheint">Nichts dabei? ${textlink(erstLink(), 'Erzählen Sie uns im Erstgespräch, worum es geht')}</p>
+<div class="knoepfe erscheint">${textlink('/ueber-uns/', K.team.link)}</div>
 </div></section>
 
-<section class="abschnitt" id="bekannt" aria-labelledby="bekannt-titel"><div class="w">
-${abKopf({ marke: 'Ihr Alltag', h2: F.bekannt.titel, lead: F.bekannt.lead, id: 'bekannt-titel' })}
-${(() => {
-    // Neun Situationen als wählbare Ansicht (11.11.): mit Skript je Bereich ein Reiter mit drei großen Karten, jede lässt sich antippen
-    // („kenne ich“), der Stand steht beim Schluss-Satz. Ohne Skript stehen alle neun untereinander. Liest nichts, speichert nichts.
-    let nr = 0;
-    const gruppen = F.bekannt.gruppen;
-    return `<div class="wahl erscheint" data-wahl>
-<div class="wahl-leiste" data-wahl-leiste hidden><div class="wahl-reiter" role="tablist" aria-label="Bereich wählen">${gruppen.map((g, i) => `<button type="button" class="wahl-knopf" role="tab" id="wahl-reiter-${g.bereich}" aria-controls="wahl-${g.bereich}" aria-selected="${i === 0}"><span class="nr">${e(B[g.bereich].nr)}</span>${e(B[g.bereich].name)}<span class="wahl-marke" aria-hidden="true"></span></button>`).join('')}</div></div>
-${gruppen.map((g) => `<div class="wahl-feld" data-wahl-feld id="wahl-${g.bereich}"><h3 class="gruppe-titel"><span class="nr">${e(B[g.bereich].nr)}</span>${e(B[g.bereich].name)}</h3><ul class="momente">${g.momente.map((m) => `<li><span class="moment-nr">${String(++nr).padStart(2, '0')}</span><span class="moment-text">${t(m)}</span></li>`).join('')}</ul></div>`).join('\n')}
-</div>`;
-  })()}
-<div class="momente-schluss erscheint" data-wahl-schluss><p>${(([erster, ...rest]) => `<b>${t(erster)}.</b> ${t(rest.join('. '))}`)(F.bekannt.schluss.split('. '))}</p>${erstKnopf()}<p class="wahl-stand" data-wahl-stand aria-live="polite" hidden></p></div>
-</div></section>
-
-${(() => {
-    const liste = F.bekannt.gruppen.filter((g) => g.zahl).map((g) => { const z = Z?.zahlen.find((y) => y.id === g.zahl); if (!z) throw new Error(`Zahl ${g.zahl} zu den Situationen fehlt in inhalt/zahlen.json`); return { wert: z.wert, text: z.kurz ?? z.satz, link: z.url, quelle: `${z.quelle}, ${String(z.datum).slice(0, 4)}`, etikett: B[g.bereich].name, nr: B[g.bereich].nr }; });
-    return liste.length ? belegBand(liste, { h2: F.bekannt.belege_titel ?? 'Was Studien zeigen' }) : '';
-  })()}
-
-<section class="abschnitt" id="warum-wir" aria-labelledby="warum-titel"><div class="w">
-${abKopf({ marke: 'Warum wir', h2: 'Wir sitzen mit in Ihrem Team.', lead: F.warum_lead ?? 'Vier Unterschiede, an denen Sie uns messen können.', id: 'warum-titel' })}
-<div class="warum">${teamGrafik()}
-${raster(F.warum_wir.map((w) => ({ titel: w.titel, text: w.text, unter: w.beleg })), 2)}</div>
-</div></section>
-
-${fragen(F.einwaende.filter((x) => /Wer arbeitet|Was kostet|Verkaufsgespräch/.test(x.f)), F.einwaende_titel ?? 'Bevor Sie fragen', { id: 'einwaende', marke: F.einwaende_marke ?? 'Fragen', mehr: true })}
-
-<section class="abschnitt band sand" id="events" aria-labelledby="events-titel"><div class="w">
-<div class="events-buehne">
-<div class="events-text erscheint">${vorzeile(F.events.titel)}<h2 id="events-titel">${e(F.events.start_ruhig)}</h2><p class="lead">${t(F.events.start_text ?? F.events.text)}</p>
-<div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten')}${textlink('/events/', `Zum ${F.events.abend.name}`)}</div><p class="leise klein-text" data-mk="termin-naechster" hidden></p>${familieZeile()}<p class="familie-zeile"><a class="unterstrichen" href="/podcast/">${e(F.events.podcast_hinweis)}</a></p></div>
-<div class="events-bild">${tafel()}</div>
+<section class="abschnitt" id="community" aria-labelledby="community-titel"><div class="w">
+${abKopf({ marke: K.community.marke, h2: K.community.h2, id: 'community-titel' })}
+<div class="community erscheint">
+<div class="community-karte"><h3>${e(K.community.abend.titel)}</h3><p>${t(K.community.abend.text)}</p>${anfrageKnopf('events', F.events.betreff, K.community.abend.knopf, 'zweit')}</div>
+<div class="community-karte"><h3>${e(K.community.podcast.titel)}</h3><p>${t(K.community.podcast.text)}</p>${textlink('/podcast/', K.community.podcast.link)}</div>
+<div class="community-karte"><h3>${e(K.community.newsletter.titel)}</h3><p>${t(K.community.newsletter.text)}</p><a class="knopf zweit" href="${NEWSLETTER_ZIEL}">${e(K.community.newsletter.knopf)} ${PFEIL}</a></div>
 </div>
 </div></section>
 
-<section class="abschnitt" id="wissen" aria-labelledby="wissen-titel"><div class="w">
-${abKopf({ marke: 'Wissen', h2: 'Aus unserer Arbeit.', ruhig: 'Zum Nachlesen.', lead: 'Ratgeber zu Vertrieb, Sichtbarkeit und Innovation: wie wir vorgehen, worauf es ankommt, mit Quellen.', id: 'wissen-titel' })}
-${wissenListe(W.artikel.slice(0, 3))}
-<div class="knoepfe erscheint">${textlink('/kostenlos/#ratgeber', 'Alle Ratgeber')}${textlink('/preise/', 'Alle Preise')}</div>
-</div></section>
+${fragen(K.fragen, K.fragen_titel, { id: 'einwaende', marke: 'Fragen', hinweis: K.fragen_hinweis, mehr: true })}
 
-${schlussakt({ quelle: 'start_ende' })}`,
+<section class="schlussakt dunkel" id="finale" aria-labelledby="schluss-titel"><div class="w">
+${ZEICHEN('zeichen schluss-bild erscheint')}<div class="schluss-kopf erscheint">${ZEICHEN('zeichen schluss-zeichen')}<h2 id="schluss-titel" class="glanz">${e(K.finale.h2)}</h2>
+<div class="kurz-aktion"><div class="kurz-haupt">${erstKnopf('gross')}${mikro}</div></div></div>
+</div></section>
+<a class="knopf cta cta-unten" href="${erstLink()}" data-cta-unten>${e(F.erstgespraech.name)} ${PFEIL}</a>`;
+  })()}`,
     });
   }
 
@@ -1909,7 +1918,7 @@ export function pruefen(seiten) {
     if (/\son[a-z]+="/.test(s.html)) fehler.push(`${s.pfad}: Ereignis-Attribut`);
     if (/<(script|img|link|iframe|source|video)\b[^>]*\s(src|href)="https?:/.test(s.html.replace(/<link rel="(canonical|alternate)"[^>]*>/g, ''))) fehler.push(`${s.pfad}: fremde Quelle`);
     // Formulare nur „Vorlage per E-Mail anfordern“ (31.10.): ohne action/method, nur auf den Vorschau-Seiten der Vorlagen.
-    for (const f of s.html.match(/<form\b[^>]*>/g) ?? []) if (!(/^<form class="anfordern-form" data-unterlage="[a-z0-9-]+" novalidate hidden>$/.test(f) && s.pfad.startsWith('kostenlos/vorlagen/')) && !(/^<form class="anfordern-form bestell-form" data-baustein="[a-z0-9-]+" novalidate hidden>$/.test(f) && s.pfad.startsWith('bausteine/'))) fehler.push(`${s.pfad}: Formular`);
+    for (const f of s.html.match(/<form\b[^>]*>/g) ?? []) if (!(/^<form class="anfordern-form" data-unterlage="[a-z0-9-]+" novalidate hidden>$/.test(f) && s.pfad.startsWith('kostenlos/vorlagen/')) && !(/^<form class="anfordern-form bestell-form" data-baustein="[a-z0-9-]+" novalidate hidden>$/.test(f) && s.pfad.startsWith('bausteine/')) && !(s.pfad === 'index.html' && /^<form class="(nl" id="newsletter" data-newsletter|wahl-innen gast" id="gastForm") novalidate>$/.test(f))) fehler.push(`${s.pfad}: Formular`); // Startseite: das Newsletter-Formular der Fahrt (Szene 11) und der Gastwunsch (Szene 12), beide ohne eigenes Senden (js/haus.js)
     platzhalter += (s.html.match(/class="ph"/g) ?? []).length;
     for (const [, href] of s.html.matchAll(/\shref="([^"]+)"/g)) {
       if (href.startsWith('/assets/vorlagen/') && !existsSync(join(ORDNER, href))) { fehler.push(`${s.pfad}: Vorlage fehlt ${href}`); continue; }
@@ -1936,7 +1945,7 @@ export function pruefen(seiten) {
     } catch (err) { fehler.push(`${s.pfad}: strukturierte Daten ungültig (${err.message})`); }
     if (s.bild && !existsSync(join(ORDNER, s.bild.datei))) fehler.push(`${s.pfad}: Vorschaubild fehlt (node bilder.mjs)`);
   }
-  for (const datei of ['css/fokus.css', 'css/haus.css', 'js/haus.js', 'js/lenis.min.js', 'css/film.css', 'js/frueh.js', 'js/seite.js', 'js/film.js', 'js/szene.js', 'js/rechner.js', 'js/unterlage.js', 'js/app-wege.js', 'js/bestellung.js', 'js/inhalt.js', 'assets/zeichen.svg', 'assets/schriften/schibsted-grotesk-latin.woff2', 'assets/bild/logo.png', 'assets/bild/apple-touch-icon.png', 'assets/bild/icon-192.png', 'assets/bild/icon-512.png', 'favicon.ico']) if (!existsSync(join(ORDNER, datei))) fehler.push(`fehlt: ${datei}${/bild|favicon/.test(datei) ? ' (node bilder.mjs)' : ''}`);
+  for (const datei of ['css/fokus.css', 'css/haus.css', 'js/haus.js', 'js/haus-frueh.js', 'css/film.css', 'js/frueh.js', 'js/seite.js', 'js/film.js', 'js/szene.js', 'js/rechner.js', 'js/unterlage.js', 'js/app-wege.js', 'js/bestellung.js', 'js/inhalt.js', 'assets/zeichen.svg', 'assets/schriften/schibsted-grotesk-latin.woff2', 'assets/bild/logo.png', 'assets/bild/apple-touch-icon.png', 'assets/bild/icon-192.png', 'assets/bild/icon-512.png', 'favicon.ico']) if (!existsSync(join(ORDNER, datei))) fehler.push(`fehlt: ${datei}${/bild|favicon/.test(datei) ? ' (node bilder.mjs)' : ''}`);
   return { fehler, platzhalter };
 }
 
@@ -2016,7 +2025,7 @@ function lauf() {
   // Vorlage nie zusätzlich öffentlich. Beim Prüfen wird nur verglichen.
   for (const d of [...vorlagenVerteilen(vorlagenListe(q), nurPruefen), ...bausteineVerteilen(bausteineListe(q), nurPruefen)]) { abweichend++; console.log(`${nurPruefen ? 'weicht ab' : 'verteilt'}: ${d}`); }
   // „Das Haus“: Stile und Skript entstehen aus haus/ (wie die Seiten: beim Prüfen nur vergleichen)
-  for (const [pfad, text] of [['css/haus.css', seiten.haus.css], ['js/haus.js', seiten.haus.js], ['js/lenis.min.js', seiten.haus.lenis], ['js/lenis-LICENSE.txt', seiten.haus.lenisLizenz]]) {
+  for (const [pfad, text] of [['css/haus.css', seiten.haus.css], ['js/haus.js', seiten.haus.js], ['js/haus-frueh.js', seiten.haus.frueh]]) {
     const zielDatei = join(ORDNER, pfad);
     if (existsSync(zielDatei) && readFileSync(zielDatei, 'utf8') === text) continue;
     abweichend++;
