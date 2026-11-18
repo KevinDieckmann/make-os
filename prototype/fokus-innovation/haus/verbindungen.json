@@ -1,0 +1,28 @@
+{
+  "_hinweis": "„Spielt zusammen mit“: wie die Etagen ineinandergreifen. Je Etage (Kennung wie in haus.json) ein bis zwei Verbindungen; zu = Ziel-Etagen, satz = der eine Satz dazu (wörtlich vorgegeben, nichts dazuerfinden). Eine Quelle für die Kacheln auf den Unterseiten (bau.py: teil_mit) und für die kleinen Knöpfe in der Tafel der Fahrt (Platzhalter {{mit:<etage>}} in 2-body.html).",
+  "eg": [
+    { "zu": ["08", "28"], "satz": "Der Check liefert zwei Werte: Sichtbarkeit und Vertrieb." }
+  ],
+  "08": [
+    { "zu": ["28"], "satz": "Anfragen von Ihrer Website landen direkt im CRM, mit dem Ihr Vertrieb arbeitet." },
+    { "zu": ["15"], "satz": "Der Pressebereich liegt auf Ihrer Website." }
+  ],
+  "15": [
+    { "zu": ["08", "28"], "satz": "Anlässe wie Produktstart oder neuer Markt werden mit Website, Videos und Vertrieb abgestimmt." },
+    { "zu": ["dach"], "satz": "Bühnen und Auftritte stehen im Themenplan." }
+  ],
+  "21": [
+    { "zu": ["15"], "satz": "Auftritte in anderen Podcasts und auf Bühnen plant die PR." }
+  ],
+  "28": [
+    { "zu": ["08"], "satz": "Anfragen von Ihrer Website landen direkt im CRM, mit dem Ihr Vertrieb arbeitet." },
+    { "zu": ["dach"], "satz": "Dazu kommen Abende in kleiner Runde für neue Kontakte." }
+  ],
+  "35": [
+    { "zu": ["eg"], "satz": "Der Innovations-Check ist der zweite kostenlose Einstieg neben dem Check im Erdgeschoss." }
+  ],
+  "dach": [
+    { "zu": ["08"], "satz": "Die Kamera läuft mit: Aus einem Abend werden Film und Beiträge." },
+    { "zu": ["28"], "satz": "Jeder Auftritt ist ein Anlass zum Nachfassen." }
+  ]
+}

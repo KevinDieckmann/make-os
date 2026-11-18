@@ -19,7 +19,7 @@ if (!ziel || !existsSync(ziel)) { console.error('Aufruf: node ausliefern.mjs <zi
 
 if (!nurPruefen) {
   execFileSync('rsync', ['-a', '--delete', '--exclude', '*.mjs', '--exclude', 'inhalt/', '--exclude', '*.md', '--exclude', 'dateien/',
-    '--exclude', 'werkzeug/', '--exclude', 'assets/logo-vorschlaege/', QUELLE + '/', ziel.replace(/\/+$/, '') + '/'], { stdio: 'inherit' });
+    '--exclude', 'werkzeug/', '--exclude', 'haus/', '--exclude', 'assets/logo-vorschlaege/', QUELLE + '/', ziel.replace(/\/+$/, '') + '/'], { stdio: 'inherit' });
 }
 
 const dateien = (ordner, endung, liste = []) => {

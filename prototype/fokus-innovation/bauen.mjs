@@ -19,6 +19,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buehne, videoAbschnitt, BILD_JE_GRUPPE } from './problembilder.mjs';
 import { bereichGrafik, teamGrafik, tuerZeichen, belegBahn, markenZeichen } from './grafiken.mjs';
+import { hausBauen } from './haus/haus-bau.mjs';
 
 export const ORDNER = dirname(fileURLToPath(import.meta.url));
 const REPO = join(ORDNER, '..', '..');
@@ -67,6 +68,8 @@ const istPlatzhalter = (s) => /\[\[KEVIN:/.test(String(s ?? ''));
 /** Wie t(), aber ohne BEGRIFFE — für Namen, die wörtlich stehen müssen (Titel der Bausteine, Firmierung des Verkäufers). */
 const wort = (s) => e(platz(s)).replace(/\[\[KEVIN: ([^\]]*)\]\]/g, (_, x) => `<span class="ph">[[KEVIN: ${x}]]</span>`);
 const stempel = (datei) => createHash('sha256').update(readFileSync(join(ORDNER, datei))).digest('hex').slice(0, 10);
+/** Versionsstempel aus dem Inhalt (für Dateien, die dieser Lauf erst schreibt: „Das Haus“). */
+const stempelText = (text) => createHash('sha256').update(text).digest('hex').slice(0, 10);
 const PFEIL = '<svg class="pfeil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
 // Marke MAKE Innovation, Zeichen „Durchbruch“ (Spur · Wand · Kern, 09.11.2026). Pfade aus dem Markenpaket (01-logo/svg) — nie von Hand ändern.
 const MARKE_PFAD = {
@@ -207,10 +210,11 @@ export function seitenBauen(q = quellen()) {
   const angebot = (id) => inhalt.angebote.find((a) => a.id === id);
   const startBereiche = Object.fromEntries(inhalt.startseite.find((s) => s.id === 'bereiche').bereiche.map((b) => [b.name.toLowerCase(), b.angebote]));
   // Sichtbarkeit erzählt in der Reihenfolge der Arbeit: erst die Positionierung, dann Homepage, dann Videos.
-  const REIHENFOLGE = { sichtbarkeit: ['positionierung', 'pr-kommunikation', 'homepage-landing', 'homepage-story', 'homepage-cinematic', 'erklaervideo', 'videostory', 'video-serie'] };
+  const REIHENFOLGE = { sichtbarkeit: ['positionierung', 'pr-kommunikation', 'homepage-landing', 'homepage-story', 'homepage-cinematic', 'erklaervideo', 'videostory', 'video-serie', 'social-media'] };
   const rang = (b, id) => { const i = (REIHENFOLGE[b] ?? []).indexOf(id); return i < 0 ? 99 : i; };
   const produkteIn = (b) => (startBereiche[b] ?? []).map(angebot).filter(Boolean).sort((x, y) => rang(b, x.id) - rang(b, y.id));
-  const produktPfad = (a) => `/${a.bereich.toLowerCase()}/${a.id}/`;
+  /** Adresse eines Angebots. Angebote ohne eigene Seite (18.11.: Scoping-Workshop, Abendpartner) tragen `anker`: den Abschnitt, in dem sie stehen. */
+  const produktPfad = (a) => a.anker ?? `/${a.bereich.toLowerCase()}/${a.id}/`;
   const faqVon = (ids) => ids.map((id) => inhalt.faq.find((f) => f.id === id)).filter(Boolean);
   /** Gemeinsame Antworten auf den Bereich zuschneiden (Rabatt, Kündigung). */
   const zuschneiden = (liste, k) => liste.map((f) => (F.fragen_zuschnitt[k]?.[f.id] ? { ...f, a: F.fragen_zuschnitt[k][f.id] } : f));
@@ -238,6 +242,11 @@ export function seitenBauen(q = quellen()) {
    *  Listen, Angebotsseiten, Preisseite, llms.txt; was erst startet, hat noch keinen. Der volle Preis steht nur in den Daten. */
   const preisKurz = (a) => (bald(a) ? 'Anfrage starten' : `ab ${erster(a)}${monatlich(a) ? ' / Monat' : ''}`);
   const preisVoll = (a) => (bald(a) ? 'Preis auf Anfrage' : `ab ${erster(a)}`);
+  /** Angebote in Stufen (S, M, L): Name ohne „S, M, L“; Preis je Stufe immer „ab“, bei Monatspreisen mit „im Monat“. */
+  const stufenName = (a) => a.name.replace(/ S, M, L$/, '');
+  const stufenPreis = (a, s) => `ab ${s.preis.replace(/^ab /, '').replace(/ €$/, '')}\u00a0€${monatlich(a) ? ' im Monat' : ''}`;
+  /** Die Stufen als Zeilen mit Inhalt und Preis (Preisblatt): nur für Stufen mit Punkten (Social Media), nicht für die Positionierung. */
+  const stufenDaten = (a) => (a.stufen?.every((s) => s.punkte) ? `<dl class="daten stufen-daten erscheint">${a.stufen.map((s) => `<div><dt>${e(stufenName(a))} ${e(s.name)}</dt><dd class="stufe-inhalt">${s.punkte.map(e).join(' · ')}</dd><dd class="stufe-betrag">${e(stufenPreis(a, s))}</dd></div>`).join('')}</dl>` : '');
   /** Preis mit Markierung für js/inhalt.js (31.10., Bereich „Website“ in MAKE OS): ohne Antwort der App bleibt dieser Text stehen. */
   const mkPreis = (a, text) => (a && !bald(a) ? `<span data-mk="preis:${e(a.id)}">${e(text)}</span>` : e(text));
   const anbieter = seite.anbieter[seite.anbieter_aktiv];
@@ -377,11 +386,13 @@ export function seitenBauen(q = quellen()) {
   const NAV = [
     { key: 'leistungen', name: 'Leistungen', href: '/preise/', bereiche: BEREICHE },
     { key: 'events', name: 'Events', href: '/events/' },
+    { key: 'podcast', name: 'Podcast', href: '/podcast/' },
     { key: 'kostenlos', name: 'Kostenlos', href: '/kostenlos/' },
     { key: 'ueber-uns', name: 'Über uns', href: '/ueber-uns/' },
   ];
-  const kopf = (aktiv) => `<a class="sprung" href="#inhalt">Zum Inhalt</a>
-<header class="kopf"><div class="w kopf-innen">
+  /** `haus` (Startseite): „Zum Inhalt“ führt hinter die Fahrt, und der Kopf steht von Anfang an hell auf dunkel über der Szene (js/haus.js schaltet weiter). */
+  const kopf = (aktiv, haus = false) => `<a class="sprung" href="${haus ? '#einstieg' : '#inhalt'}">Zum Inhalt</a>
+<header class="kopf${haus ? ' ueber-film' : ''}"><div class="w kopf-innen">
 <a class="marke" href="/" aria-label="MAKE Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a>
 <nav class="haupt-nav" aria-label="Hauptmenü">${NAV.map((n) => {
     const cur = n.key === aktiv ? ' aria-current="page"' : '';
@@ -396,7 +407,7 @@ export function seitenBauen(q = quellen()) {
 <a class="knopf klein kopf-check" href="${erstLink()}">${e(F.erstgespraech.name)}</a>
 <details class="menue"><summary><span class="striche" aria-hidden="true"></span>Menü</summary><nav class="menue-blatt" aria-label="Menü">
 ${BEREICHE.map((b) => `<p class="menue-gruppe">${e(F.bereiche[b].name)}</p><a href="/${b}/">Überblick ${e(F.bereiche[b].name)}</a>${navUnter(b).map(([h, name]) => `<a href="${h}">${e(name)}</a>`).join('')}${bausteineVon(b) ? `<a href="${bausteineVon(b)}">Bausteine zum Selbermachen</a>` : ''}`).join('\n')}
-<p class="menue-gruppe">MAKE Innovation</p><a href="/events/">Events</a><a href="/kostenlos/">Kostenlos</a><a href="/preise/">Preise</a><a href="/ueber-uns/">Über uns</a><a href="/kontakt/">Kontakt</a>
+<p class="menue-gruppe">MAKE Innovation</p><a href="/events/">Events</a><a href="/podcast/">Podcast</a><a href="/kostenlos/">Kostenlos</a><a href="/preise/">Preise</a><a href="/ueber-uns/">Über uns</a><a href="/kontakt/">Kontakt</a>
 ${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Oder: Innovations-Check, 10 Minuten</span> ${PFEIL}</a>
 </nav></details>
 </div></header>`;
@@ -408,7 +419,7 @@ ${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Ode
 <p><a ${anfrageAttr('kontakt', 'Anfrage')}>Nachricht schreiben</a><br><a href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a><br>${seite.kontakt.adresse.map(t).join('<br>')}</p><p class="fuss-familie">Auch von uns: ${FAM.marken.map((m) => `<a href="${e(m.url)}">${e(m.name)}</a>`).join(' · ')}</p></div>
 ${fussSpalte('Leistungen', [...BEREICHE.map((b) => [`/${b}/`, F.bereiche[b].name]), ['/innovations-check/', 'Innovations-Check'], ['/preise/', 'Preise'], ...(BS_LISTE.length ? [['/bausteine/', 'Bausteine']] : [])])}
 ${fussSpalte('Kostenlos', [['/kostenlos/#checks', 'Checks'], ['/kostenlos/#ratgeber', 'Ratgeber'], ...(Z ? [['/kostenlos/zahlen/', 'Zahlen']] : []), ...(VL ? [['/kostenlos/#vorlagen', 'Vorlagen']] : []), ['/fragen/', 'Häufige Fragen'], ['/begriffe/', 'Begriffe']])}
-${fussSpalte('MAKE Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über uns'], ['/kontakt/', 'Kontakt'], ['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
+${fussSpalte('MAKE Innovation', [['/events/', 'Events'], ['/podcast/', 'Podcast'], ['/ueber-uns/', 'Über uns'], ['/kontakt/', 'Kontakt'], ['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
 </div>
 <div class="fuss-unten"><span>© 2026 ${e(anbieter.name)}${anbieter.name.startsWith(F.marke.name) ? '' : ` · ${e(F.marke.name)} ist eine Marke der ${e(anbieter.name)}`}</span><span>Keine Cookies, kein Tracking. Alle Preise netto zuzüglich Umsatzsteuer, für Unternehmen.</span></div>
 </div></footer>`;
@@ -452,7 +463,7 @@ ${fussSpalte('MAKE Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über 
     return { ...basis, name: a.name, price: zahl(a.preis), priceSpecification: spez({ price: zahl(a.preis) }) };
   };
 
-  const rahmen = ({ pfad, titel: titelText, beschreibung, aktiv = '', main, film = false, klasse = '', schema = [], seitenTyp = 'WebPage', artikel = null, fragenListe = [], krumen = null, geaendertAm = SEO.stand }) => {
+  const rahmen = ({ pfad, titel: titelText, beschreibung, aktiv = '', main, film = false, haus = null, klasse = '', schema = [], seitenTyp = 'WebPage', artikel = null, fragenListe = [], krumen = null, geaendertAm = SEO.stand }) => {
     const ohneSuche = pfad === '404.html';
     const url = absolut(webPfad(pfad));
     const bild = absolut(`/assets/bild/og/${bildName(pfad)}.png`);
@@ -490,19 +501,19 @@ ${artikel ? `<meta property="article:published_time" content="${artikel.veroeffe
 <title>${e(titelText)}</title>
 <meta name="description" content="${e(beschreibung)}">
 <meta name="robots" content="${robots}">
-${suche}<meta name="theme-color" content="${film ? '#0B0C0F' : '#F6F4F0'}">
+${suche}<meta name="theme-color" content="${film || haus ? '#0B0C0F' : '#F6F4F0'}">
 <link rel="icon" href="/assets/zeichen.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/assets/bild/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preload" href="/assets/schriften/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/fokus.css?v=${stempel('css/fokus.css')}">
-${film ? `<link rel="stylesheet" href="/css/film.css?v=${stempel('css/film.css')}">\n` : ''}<script src="/js/frueh.js?v=${stempel('js/frueh.js')}"></script>
+${film ? `<link rel="stylesheet" href="/css/film.css?v=${stempel('css/film.css')}">\n` : ''}${haus ? `<link rel="stylesheet" href="/css/haus.css?v=${stempelText(haus.css)}">\n` : ''}<script src="/js/frueh.js?v=${stempel('js/frueh.js')}"></script>
 <script src="/js/seite.js?v=${stempel('js/seite.js')}" defer></script>
-${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}${main.includes('data-unterlage') ? `<script src="/js/unterlage.js?v=${stempel('js/unterlage.js')}" defer></script>\n` : ''}${main.includes('data-baustein') ? `<script src="/js/bestellung.js?v=${stempel('js/bestellung.js')}" defer></script>\n` : ''}${main.includes('data-mk=') ? `<script src="/js/inhalt.js?v=${stempel('js/inhalt.js')}" defer></script>\n` : ''}<script src="/js/app-wege.js?v=${stempel('js/app-wege.js')}" defer></script>\n<script type="application/ld+json">${ldJson}</script>
+${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${haus ? `<script src="/js/lenis.min.js?v=${stempelText(haus.lenis)}" defer></script>\n<script type="module" src="/js/haus.js?v=${stempelText(haus.js)}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}${main.includes('data-unterlage') ? `<script src="/js/unterlage.js?v=${stempel('js/unterlage.js')}" defer></script>\n` : ''}${main.includes('data-baustein') ? `<script src="/js/bestellung.js?v=${stempel('js/bestellung.js')}" defer></script>\n` : ''}${main.includes('data-mk=') ? `<script src="/js/inhalt.js?v=${stempel('js/inhalt.js')}" defer></script>\n` : ''}<script src="/js/app-wege.js?v=${stempel('js/app-wege.js')}" defer></script>\n<script type="application/ld+json">${ldJson}</script>
 </head>
 <body${klasse ? ` class="${klasse}"` : ''}>
-${kopf(aktiv)}
+${kopf(aktiv, !!haus)}
 <main id="inhalt">
 ${main}
 </main>
@@ -570,8 +581,8 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
   // ── Bausteine für Vertrauen (29.10.): Arbeitsprobe, Muster, Risiko, Rechner ──
   /** Arbeitsprobe (31.10., Prüfung „Gestaltung“: zeigen statt beschreiben): diese Website auf Rechner und Handy, daneben was sie ausmacht. */
   const arbeitsprobe = () => `<section class="abschnitt" aria-labelledby="probe-titel"><div class="w"><div class="probe">
-<div class="probe-text erscheint">${vorzeile('Arbeitsprobe')}<h2 id="probe-titel">${e(F.arbeitsprobe.titel)}</h2><p class="lead">${t(F.arbeitsprobe.text)}</p>${punkte(F.arbeitsprobe.punkte)}<div class="knoepfe">${textlink('/', 'Zur Startseite mit dem Film')}</div></div>
-<figure class="probe-buehne erscheint"><div class="geraet laptop"><img src="/assets/bild/arbeitsprobe/rechner.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="Die Startseite von MAKE Innovation am Rechner: das Logo, der Satz „Innovation braucht Umsetzung.“ und zwei Knöpfe"></div><div class="geraet handy"><img src="/assets/bild/arbeitsprobe/handy.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Seite „In den Markt“ auf dem Handy mit Überschrift und Grafik zum Problem"></div><figcaption class="leise klein-text">Diese Website, gebaut wie Ihre: am Rechner und auf dem Handy.</figcaption></figure>
+<div class="probe-text erscheint">${vorzeile('Arbeitsprobe')}<h2 id="probe-titel">${e(F.arbeitsprobe.titel)}</h2><p class="lead">${t(F.arbeitsprobe.text)}</p>${punkte(F.arbeitsprobe.punkte)}<div class="knoepfe">${textlink('/', 'Zur Startseite mit der Geschichte')}</div></div>
+<figure class="probe-buehne erscheint"><div class="geraet laptop"><img src="/assets/bild/arbeitsprobe/rechner.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="Die Startseite von MAKE Innovation am Rechner: Etage 08, der Raum von MAKE Studios, daneben die Pakete für Websites"></div><div class="geraet handy"><img src="/assets/bild/arbeitsprobe/handy.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Dieselbe Stelle der Startseite auf dem Handy: oben der Raum von MAKE Studios, darunter die Pakete für Websites"></div><figcaption class="leise klein-text">Diese Website, gebaut wie Ihre: am Rechner und auf dem Handy.</figcaption></figure>
 </div></div></section>`;
   const musterPositionierung = () => {
     const M = F.muster_positionierung;
@@ -646,10 +657,22 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
   };
   const itemListe = (name, eintraege) => ({ '@type': 'ItemList', name, numberOfItems: eintraege.length, itemListElement: eintraege.map(([url, n], i) => ({ '@type': 'ListItem', position: i + 1, url: absolut(url), name: n })) });
 
-  // ── Startseite: der Film (kurz, mit „Überspringen“), dann der Einstieg mit zwei Türen und ruhige Abschnitte auf Papier ──
+  // ── Startseite: „Das Haus“ (18.11.): die Scroll-Geschichte als Auftakt, danach der Einstieg mit zwei Türen und ruhige Abschnitte auf Papier.
+  //    Quellen in haus/, gebaut von haus/haus-bau.mjs. Der frühere Film (css/film.css, js/film.js, js/szene.js) wird nicht mehr geladen. ──
   {
-    const fl = F.film;
-    const block = (name, b, extra = '', unter = '') => `<div class="block" data-block="${name}" aria-hidden="true"><div class="film-text"><p class="film-titel">${b.titel.split("|").map((z) => `<span class="zeile" data-woerter>${e(z)}</span>`).join("")}</p><p class="film-satz">${e(b.satz)}</p>${unter}</div>${extra}</div>`;
+    /** Linkziele des Hauses (haus/ziele.json) über die Helfer der Website: eine Stelle für Erstgespräch, Checks und Anfragen. */
+    const hausZiel = (wert) => {
+      if (wert === 'erstgespraech') return { href: erstLink() };
+      if (wert === 'check:sichtbarkeit') return { href: checkThema('sichtbarkeit', 'haus') };
+      if (wert === 'check:innovation') return { href: check('haus') };
+      if (wert === 'anfrage:einladung') return { href: '/anfrage?anlass=events', mail: mail(F.events.betreff) };
+      if (wert === 'anfrage:abendpartner') return { href: '/anfrage?anlass=angebot-abendpartner', mail: mail(F.events.abend.partner_betreff) };
+      if (wert === 'anfrage:podcast') return { href: `/anfrage?anlass=${F.podcast.anlass}`, mail: mail(F.podcast.betreff) };
+      if (wert.startsWith('angebot:')) { const a = angebot(wert.slice(8)); return a ? { href: produktPfad(a) } : null; }
+      return wert.startsWith('/') ? { href: wert } : null;
+    };
+    const HAUS = hausBauen({ angebot, produktPfad, monatlich, kurzname: (id) => F.kurznamen[id], ziel: hausZiel });
+    seiten.haus = HAUS;
     /** Ein Bereich der Startseite (31.10.): links Name und Satz, rechts das Problem und „Womit anfangen“ — die Lagen des Wegweisers
      *  dieses Bereichs mit Einstieg und Preis. Ersetzt den eigenen Wegweiser-Abschnitt und die Angebots-Kurzliste (keine Dopplung). */
     const lagenVon = (k) => [...F.wegweiser.markt, ...F.wegweiser.unternehmen].filter((z) => (z.bereich ?? (z.angebot ? angebot(z.angebot).bereich.toLowerCase() : z.gruppe ? 'sichtbarkeit' : 'innovation')) === k);
@@ -671,27 +694,12 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
       seo: 'start',
       bildTitel: F.start.titel,
       bildVorzeile: 'Vertrieb · Sichtbarkeit · Innovation',
-      film: true,
+      haus: HAUS,
       klasse: 'start',
-      main: `<section class="film" id="start" aria-label="${e(F.marke.claim)}">
-<div class="buehne">
-<canvas class="szene" aria-hidden="true"></canvas>
-<div class="ersatz" aria-hidden="true">${ZEICHEN('zeichen gross')}</div>
-<p class="sr">${[fl.laerm, fl.fokus, fl.luecke, fl.momentum, fl.durchbruch].map((b) => `${e(b.titel.replace(/\|/g, " "))} ${e(b.satz)}`).join(' ')}</p>
-<div class="aufgaben" aria-hidden="true">${F.aufgaben.map((x) => `<span class="aufgabe">${e(x)}</span>`).join('')}</div>
-${block('laerm', fl.laerm, `<span class="hinweis" aria-hidden="true">Scrollen<span class="hinweis-strich"></span></span>`)}
-${block('fokus', fl.fokus)}
-${block('luecke', fl.luecke)}
-${block('momentum', fl.momentum)}
-${block('durchbruch', fl.durchbruch)}
-<div class="block" data-block="ende"><div class="ende-anker" aria-hidden="true"></div><div class="ende-logo" aria-hidden="true"><svg class="ende-wort" viewBox="-65.3 81.8 130.6 31.4"><path d="${MARKE_PFAD.stapelWort}"/></svg><svg class="ende-unter" viewBox="-65.3 123.4 130.6 9"><path d="${MARKE_PFAD.stapelUnter}"/></svg></div><div class="ende-text"><p class="ende-claim" aria-hidden="true">${e(F.marke.claim).replace(/(\S+)$/, '<em>$1</em>')}</p><div class="ende-knoepfe dunkel">${erstKnopf()}${passenderKnopf(undefined, 'film_ende')}</div></div></div>
-<div class="faden" aria-hidden="true"><span class="faden-licht"></span>${'<i class="faden-punkt"></i>'.repeat(6)}</div>
-<a class="ueberspringen" href="#einstieg">Film überspringen</a>
-</div>
-</section>
+      main: `${HAUS.markup}
 
 <section class="held start-held" id="einstieg" aria-labelledby="start-titel"><div class="w start-raster">
-<div class="start-titel erscheint">${vorzeile(F.start.vorzeile)}<h1 id="start-titel" class="glanz">${titel(F.start.titel, F.start.ruhig)}</h1></div>
+<div class="start-titel erscheint">${vorzeile(F.start.vorzeile)}<h2 id="start-titel" class="glanz held-titel">${titel(F.start.titel, F.start.ruhig)}</h2></div>
 <div class="start-zeile erscheint"><p class="lead">${t(F.start.lead)}</p>
 <div class="knoepfe">${erstKnopf()}${passenderKnopf(undefined, 'start_held')}</div></div>
 <nav class="tueren erscheint" aria-label="Ihr Anliegen">${F.tueren.map((d) => `<a href="${d.pfad ?? `#${d.id}`}">${tuerZeichen(d.id)}<span class="nr">${e(d.etikett)}</span><b>${e(d.titel)}</b><span class="index-satz">${t(d.text)}</span>${PFEIL}</a>`).join('')}</nav>
@@ -742,7 +750,7 @@ ${fragen(F.einwaende.filter((x) => /Wer arbeitet|Was kostet|Verkaufsgespräch/.t
 <section class="abschnitt band sand" id="events" aria-labelledby="events-titel"><div class="w">
 <div class="events-buehne">
 <div class="events-text erscheint">${vorzeile(F.events.titel)}<h2 id="events-titel">${e(F.events.start_ruhig)}</h2><p class="lead">${t(F.events.start_text ?? F.events.text)}</p>
-<div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten')}${textlink('/events/', 'Formate und Termine')}</div><p class="leise klein-text" data-mk="termin-naechster" hidden></p>${familieZeile()}</div>
+<div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten')}${textlink('/events/', `Zum ${F.events.abend.name}`)}</div><p class="leise klein-text" data-mk="termin-naechster" hidden></p>${familieZeile()}<p class="familie-zeile"><a class="unterstrichen" href="/podcast/">${e(F.events.podcast_hinweis)}</a></p></div>
 <div class="events-bild">${tafel()}</div>
 </div>
 </div></section>
@@ -757,6 +765,22 @@ ${schlussakt({ quelle: 'start_ende' })}`,
     });
   }
 
+  /**
+   * Innovation in drei Schritten (Kevin 18.11.): Check, Workshop, Projekt. Namen und Preise kommen aus der Preisliste, die Sätze aus
+   * fokus.json › bereiche.innovation.schritt_texte. Als Zeilen mit Link (Bereichsseite, dort liegt der Anker des Workshops) oder als Weg ohne Links.
+   */
+  const schritteDaten = () => {
+    const ws = angebot('scoping-workshop'), up = angebot('umsetzungsprojekte');
+    const st = B.innovation.schritt_texte;
+    return [
+      { id: null, name: 'Innovations-Check', text: st.check, preis: 'kostenlos', a: null, link: `href="/innovations-check/"` },
+      { id: 'scoping-workshop', name: ws.name, text: st.workshop, preis: preisKurz(ws), a: ws, link: anfrageAttr('angebot-scoping-workshop', `Anfrage: ${ws.name}`) },
+      { id: null, name: 'Umsetzungsprojekt', text: st.projekt, preis: preisKurz(up), a: up, link: `href="${produktPfad(up)}"` },
+    ];
+  };
+  const dreiSchritte = () => `<ol class="zeilen schritt-zeilen erscheint" aria-label="Drei Schritte: Check, Workshop, Projekt">${schritteDaten().map((x, i) => `<li${x.id ? ` id="${x.id}"` : ''}><a ${x.link}><span class="z-name"><span class="nr">${String(i + 1).padStart(2, '0')}</span>${e(x.name)}</span><span class="z-text">${t(x.text)}</span><span class="z-preis">${mkPreis(x.a, x.preis)}</span>${PFEIL}</a></li>`).join('')}</ol>`;
+  const dreiSchritteWeg = () => weg(schritteDaten().map((x) => ({ titel: x.name, text: `${x.preis.replace(/^./, (c) => c.toUpperCase())}. ${x.text}` })), { etiketten: ['01', '02', '03'], label: 'Drei Schritte: Check, Workshop, Projekt' });
+
   // ── Bereichsseiten ──
   for (const k of BEREICHE) {
     const b = B[k];
@@ -765,7 +789,9 @@ ${schlussakt({ quelle: 'start_ende' })}`,
     const checkZeile = k === 'innovation' ? `<li><a href="/innovations-check/"><span class="z-name">Innovations-Check</span><span class="z-text">In rund 10 Minuten sehen Sie, wo Ihr Unternehmen steht.</span><span class="z-preis">kostenlos</span>${PFEIL}</a></li>`
       : klein ? `<li><a href="${checkThema(k, `${k}_angebote`)}"><span class="z-name">${e(klein.name)}</span><span class="z-text">${e(klein.text)}</span><span class="z-preis">kostenlos · ${klein.minuten} Min.</span>${PFEIL}</a></li>` : '';
     const angeboteHtml = gruppen.map((g, gi) => `<div class="angebot-gruppe" id="${anker(g.name || g.liste[0].name)}">${g.name ? `<h3 class="gruppe-titel">${e(g.name)}</h3>` : ''}
-<ul class="zeilen erscheint">${gi === 0 ? checkZeile : ''}${g.liste.map((a) => `<li><a href="${produktPfad(a)}"><span class="z-name">${e(a.name)}${bald(a) ? ' <span class="marke-bald">Bald</span>' : ''}</span><span class="z-text">${t(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? (a.enthalten ?? [])[0] ?? '')}</span><span class="z-preis">${mkPreis(a, preisKurz(a))}</span>${PFEIL}</a></li>`).join('')}</ul></div>`).join('\n');
+<ul class="zeilen erscheint">${gi === 0 ? checkZeile : ''}${g.liste.map((a) => `<li><a href="${produktPfad(a)}"><span class="z-name">${e(a.name)}${bald(a) ? ' <span class="marke-bald">Bald</span>' : ''}</span><span class="z-text">${t(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? (a.enthalten ?? [])[0] ?? '')}</span><span class="z-preis">${mkPreis(a, preisKurz(a))}</span>${PFEIL}</a></li>`).join('')}</ul>${g.liste.map(stufenDaten).join('')}</div>`).join('\n');
+    // Innovation (18.11.): keine Liste, sondern der Weg in drei Schritten — Check, Workshop, Projekt.
+    const angeboteTeil = k === 'innovation' ? dreiSchritte() : angeboteHtml;
 
     const vergleich = k === 'vertrieb' ? (() => {
       const hos = angebot('head-of-sales'), cso = angebot('cso');
@@ -810,7 +836,7 @@ ${raster(b.felder, 4)}
     const liste = produkteIn(k);
     const fuerWen = F.fuer_wen.filter((w) => new RegExp(b.name).test(w.einstieg)).map((w) => w.titel).join(', ');
     const m = markeVon(k);
-    const blickZeilen = [['Für wen', fuerWen], ['Einstieg', { vertrieb: `Erstgespräch, kostenlos, oder der Tagesworkshop ab ${erster(angebot('tagesworkshop'))}`, sichtbarkeit: 'Erstgespräch, kostenlos, oder direkt die Positionierung S', innovation: 'Innovations-Check, kostenlos, rund 10 Minuten' }[k]], ['Preise', k === 'innovation' ? 'Check kostenlos, Umsetzungsprojekte zum Festpreis nach Absprache' : 'netto, ab-Preis bei jedem Angebot']].filter(([, v]) => v).map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('');
+    const blickZeilen = [['Für wen', fuerWen], ['Einstieg', { vertrieb: `Erstgespräch, kostenlos, oder der Tagesworkshop ab ${erster(angebot('tagesworkshop'))}`, sichtbarkeit: 'Erstgespräch, kostenlos, oder direkt die Positionierung S', innovation: 'Innovations-Check, kostenlos, rund 10 Minuten' }[k]], ['Preise', k === 'innovation' ? `Check kostenlos, Scoping-Workshop ab ${erster(angebot('scoping-workshop'))}, Umsetzungsprojekt ab ${erster(angebot('umsetzungsprojekte'))}, netto` : 'netto, ab-Preis bei jedem Angebot']].filter(([, v]) => v).map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('');
     neu(`${k}/index.html`, {
       seo: k,
       bildVorzeile: `${b.nr} · ${b.name}`,
@@ -847,8 +873,8 @@ ${videoAbschnitt(VIDEOS[k])}
 ${bereichGrafik(k)}</div></div></section>
 ${b.beleg ? belegBand([F.belege[b.beleg]], { h2: F.bekannt.belege_titel ?? 'Was Studien zeigen', id: 'beleg-titel' }) : ''}
 
-<section class="abschnitt" id="angebote" aria-labelledby="angebote-titel"><div class="w">${abKopf({ marke: 'Angebote', h2: `${b.name}: was wir für Sie tun`, lead: F.angebote_lead[k], id: 'angebote-titel' })}
-${angeboteHtml}
+<section class="abschnitt" id="angebote" aria-labelledby="angebote-titel"><div class="w">${abKopf({ marke: 'Angebote', h2: k === 'innovation' ? b.schritte_titel : `${b.name}: was wir für Sie tun`, lead: F.angebote_lead[k], id: 'angebote-titel' })}
+${angeboteTeil}
 ${netto}</div></section>
 
 ${vergleich}
@@ -895,6 +921,7 @@ ${schlussakt({ quelle: `${gs.pfad}_ende`, bereich: k })}`,
 
   // ── Produktseiten ──
   for (const a of inhalt.angebote) {
+    if (a.anker) continue; // steht als Abschnitt auf einer anderen Seite (Scoping-Workshop, Abendpartner)
     const k = a.bereich.toLowerCase();
     const b = B[k];
     const pb = produktBlatt(a);
@@ -907,7 +934,7 @@ ${schlussakt({ quelle: `${gs.pfad}_ende`, bereich: k })}`,
     const zusatz = homepage ? inhalt.zusatzoptionen.filter((z) => /Homepage/.test(z.fuer) && !(groesstes && z.name === 'Upgrade')) : [];
     const zusatzPreis = (z) => { for (const m of String(z.preis).matchAll(/([+\d.,]+ €) bei ([^,]+)/g)) if (m[2].split(/ und /).some((n) => a.name.endsWith(n.trim()))) return m[1]; return z.preis; };
     const geschwister = a.gruppe ? produkteIn(k).filter((x) => x.gruppe === a.gruppe && x.id !== a.id) : [];
-    const weitere = geschwister.length ? geschwister : produkteIn(k).filter((x) => x.id !== a.id);
+    const weitere = geschwister.length ? geschwister : produkteIn(k).filter((x) => x.id !== a.id && !x.anker);
     const nichtEnthalten = pb?.nicht_enthalten ?? a.nicht_enthalten;
     const fragenListe = zuschneiden(pb ? [...pb.fragen.filter((f) => !/Kundenstimmen-Videos/.test(f.frage)).map((f) => ({ f: f.frage, a: f.antwort })), ...faqVon(['sind-die-preise-netto'])] : faqVon(seite.produkt_faq[a.id] ?? []), k);
     const regeln = [...(a.regeln ?? []), inhalt.konditionen[0]];
@@ -930,18 +957,18 @@ ${pb.katalog ? `<section class="abschnitt" aria-labelledby="katalog-titel"><div 
 <section class="abschnitt" aria-labelledby="konditionen-titel"><div class="w">${abKopf({ marke: 'Konditionen', h2: 'Preis und Konditionen', id: 'konditionen-titel' })}
 <div class="zwei-teile"><div class="erscheint">${datenTabelle([...pb.konditionen, ...(abs?.kondition && !pb.konditionen.some(([x]) => x === 'Ihr Risiko') ? [['Ausstieg', abs.kondition]] : [])])}${netto}</div>
 <div class="erscheint"><h3 class="gruppe-titel">Was wir von Ihnen brauchen</h3>${punkte(pb.mitwirkung)}${nichtEnthalten ? `<h3 class="gruppe-titel">Nicht enthalten</h3>${punkte(nichtEnthalten, 'punkte nicht')}` : ''}${pb.abgrenzung ? `<h3 class="gruppe-titel">Abgrenzung</h3><p class="leise">${t(pb.abgrenzung)}</p>` : ''}</div></div></div></section>`
-      : `<section class="abschnitt" aria-labelledby="inhalt-titel"><div class="w">${abKopf({ marke: 'Leistung', h2: 'Was drin ist', lead: a.fuer_wen, id: 'inhalt-titel' })}
-${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class="spalte"><span class="etikett">Workshop: ${e(s.workshop)}</span><h3>Positionierung ${e(s.name)}</h3><p class="stufe-preis">ab ${e(s.preis.replace(/^ab /, ''))}</p><p>${t(s.ergebnis)}</p></div>`).join('')}</div>${netto}` : ''}
-<div class="zwei-teile">${a.enthalten ? `<div class="erscheint"><h3 class="gruppe-titel">Enthalten</h3>${punkte(a.enthalten)}</div>` : ''}
-<div class="erscheint">${nichtEnthalten ? `<h3 class="gruppe-titel">Nicht enthalten</h3>${punkte(nichtEnthalten, 'punkte nicht')}` : ''}<h3 class="gruppe-titel">Gut zu wissen</h3>${punkte(regeln)}</div></div>
+      : `<section class="abschnitt" aria-labelledby="inhalt-titel"><div class="w">${abKopf({ marke: 'Leistung', h2: 'Was drin ist', lead: a.stufen ? null : a.fuer_wen, id: 'inhalt-titel' })}
+${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class="spalte">${s.workshop ? `<span class="etikett">Workshop: ${e(s.workshop)}</span>` : ''}<h3>${e(stufenName(a))} ${e(s.name)}</h3><p class="stufe-preis">${e(stufenPreis(a, s))}</p>${s.ergebnis ? `<p>${t(s.ergebnis)}</p>` : ''}${s.punkte ? punkte(s.punkte) : ''}</div>`).join('')}</div>${netto}` : ''}
+<div class="zwei-teile">${a.enthalten ? `<div class="erscheint"><h3 class="gruppe-titel">Enthalten</h3>${punkte(a.enthalten)}</div>` : nichtEnthalten ? `<div class="erscheint"><h3 class="gruppe-titel">Nicht enthalten</h3>${punkte(nichtEnthalten, 'punkte nicht')}</div>` : ''}
+<div class="erscheint">${a.enthalten && nichtEnthalten ? `<h3 class="gruppe-titel">Nicht enthalten</h3>${punkte(nichtEnthalten, 'punkte nicht')}` : ''}<h3 class="gruppe-titel">Gut zu wissen</h3>${punkte(regeln)}</div></div>
 </div></section>`;
 
     const zuArtikeln = artikelZu((x) => x.angebote.includes(a.id));
     // Ergebnis in einem Satz: bei Paketen (Websites, Videos) das Versprechen des Pakets, sonst das erste Ergebnis des Produktblatts.
-    const ergebnisSatz = pb?.familie ? pb.versprechen : pb?.ergebnis?.[0] ?? (a.stufen ? 'Ihre Positionierung in Sätzen, die Ihr Team und Ihre Website sofort verwenden können.' : (a.enthalten ?? [])[0]);
+    const ergebnisSatz = pb?.familie ? pb.versprechen : pb?.ergebnis?.[0] ?? (a.stufen?.[0]?.ergebnis ? 'Ihre Positionierung in Sätzen, die Ihr Team und Ihre Website sofort verwenden können.' : (a.enthalten ?? [])[0]);
     const leadText = F.kurztexte[a.id] ?? pb?.versprechen ?? a.fuer_wen ?? b.satz;
     // Gesamtcheck 31.10.: die Zeile „Ergebnis“ nur, wenn sie etwas Neues sagt — nicht den Lead wörtlich, nicht einen Punkt, der unten ohnehin steht.
-    const ergebnisZeile = ergebnisSatz && klar(ergebnisSatz) !== klar(leadText) && !(pb?.ergebnis ?? []).includes(ergebnisSatz) ? ergebnisSatz : null;
+    const ergebnisZeile = ergebnisSatz && klar(ergebnisSatz) !== klar(leadText) && !(pb?.ergebnis ?? []).includes(ergebnisSatz) && !(!pb && (a.enthalten ?? []).includes(ergebnisSatz)) ? ergebnisSatz : null;
     neu(`${k}/${a.id}/index.html`, {
       seo: a.id,
       bildVorzeile: `${b.name}${a.gruppe && a.gruppe !== a.name ? ` · ${a.gruppe}` : ''}`,
@@ -959,9 +986,11 @@ ${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class
 <div class="erscheint">${brotkrumen([[`/${k}/`, b.name], [null, a.name]])}${vorzeile(`${b.name}${a.gruppe ? ` · ${a.gruppe}` : ''}${istBald ? ' · Bald' : ''}`)}<h1 id="held-titel" class="glanz">${e(F.titel_h1?.[a.id] ?? a.name)}</h1><p class="lead">${t(leadText)}</p></div>
 <aside class="preis-kasten erscheint" aria-label="Preis"><p class="etikett">Preis</p><p class="betrag glanz">${mkPreis(a, preisVoll(a))}</p><p class="zusatz">${istBald ? 'Haben Sie ein Vorhaben? Melden Sie sich, wir sprechen darüber' : `${e(a.preis_zusatz ?? '')}${a.preis_zusatz ? ' · ' : ''}netto zuzüglich Umsatzsteuer`}</p>${F.umfang[a.id] ? `<p class="umfang">${e(F.umfang[a.id])}</p>` : ''}<div class="knoepfe senkrecht">${terminKnopf}${zweitKnopf}</div></aside>
 </div></section>
-${blick([['Für wen', pb?.fuer ? null : a.fuer_wen], ['Ergebnis', ergebnisZeile], ['Umfang', F.umfang[a.id]], ...(istBald ? [['Start', 'in Kürze, Anfrage schon jetzt möglich']] : [])])}
+${blick([['Für wen', pb?.fuer ? null : a.fuer_wen], ['Ergebnis', ergebnisZeile], ['Umfang', F.umfang[a.id]], ...(F.blick?.[a.id] ?? []), ...(istBald ? [['Start', 'in Kürze, Anfrage schon jetzt möglich']] : [])])}
 ${mandat ? risiko() : abs ? risiko(abs.punkte, F.risiko.titel_absicherung) : ''}
 ${blattHtml}
+${a.id === 'umsetzungsprojekte' ? `<section class="abschnitt" aria-labelledby="schritte-titel"><div class="w">${abKopf({ marke: 'Ablauf', h2: B.innovation.schritte_titel, lead: B.innovation.schritte_lead, id: 'schritte-titel' })}
+${dreiSchritteWeg()}<div class="knoepfe erscheint">${anfrageKnopf('angebot-scoping-workshop', `Anfrage: ${angebot('scoping-workshop').name}`, 'Scoping-Workshop anfragen', 'zweit')}${textlink('/innovations-check/', 'So funktioniert der Check')}</div>${netto}</div></section>` : ''}
 ${a.id === 'positionierung' ? musterPositionierung() : ''}
 ${a.gruppe === 'Homepage-Pakete' ? arbeitsprobe() : ''}
 ${zusatz.length ? `<section class="abschnitt" aria-labelledby="zusatz-titel"><div class="w">${abKopf({ marke: 'Zusatzoptionen', h2: 'Dazu buchbar', id: 'zusatz-titel' })}<dl class="daten erscheint">${zusatz.map((z) => `<div><dt>${e(z.name)}<span class="leise">${e(z.name === 'Express' && a.id !== 'homepage-landing' ? 'halbe Lieferzeit' : z.leistung)}</span></dt><dd>${e(zusatzPreis(z))}</dd></div>`).join('')}</dl></div></section>` : ''}
@@ -1006,29 +1035,70 @@ ${schlussakt({ quelle: 'check_seite_ende', h2: 'Bereit?', lead: 'Kurz in rund 10
   }
 
   // ── Events (bis 30.10. „Abend“; Caddy leitet /abend/ hierher um) ──
-  neu('events/index.html', {
-    seo: 'events',
-    bildVorzeile: F.events.titel,
-    bildTitel: F.events.satz,
-    aktiv: 'events',
-    main: `<section class="held sand" aria-labelledby="held-titel"><div class="w held-raster mitte">
-<div class="erscheint">${brotkrumen([[null, 'Events']])}${vorzeile(F.events.titel)}<h1 id="held-titel" class="glanz">${titel(F.events.start_titel[0], F.events.start_titel.slice(1).join('|'))}</h1><p class="lead" data-mk="text:events.einleitung">${t(F.events.held_text ?? F.events.text)}</p>
-<div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten')}</div><p class="leise klein-text">${e(F.events.kosten)} · <span data-mk="termin-naechster">Termine folgen</span></p>${familieZeile()}</div>
-<div class="events-tafel">${tafel()}<p class="etikett">Formate</p><ul class="felder-liste erscheint">${F.events.formate.map((f) => `<li>${e(f.titel)}</li>`).join('')}</ul></div>
+  {
+    const AB = F.events.abend;
+    const partner = angebot('abendpartner');
+    const einladung = (art = '') => anfrageKnopf('events', F.events.betreff, 'Einladung erhalten', art);
+    const partnerKnopf = (art = 'zweit') => anfrageKnopf('angebot-abendpartner', AB.partner_betreff, AB.partner_knopf, art);
+    const tb = AB.tabelle;
+    // Die zwei Rollen als Vergleich (am Handy stehen die Zeilen untereinander, jede Zelle mit ihrem Spaltennamen).
+    const rollenTabelle = `<figure class="tabelle-figur erscheint"><div class="tabelle-huelle"><table class="vergleich text rollen-tabelle"><caption class="sr">${e(tb.titel)}</caption><thead><tr>${tb.kopf.map((x) => `<th scope="col">${x ? e(x) : '<span class="sr">Merkmal</span>'}</th>`).join('')}</tr></thead><tbody>${tb.zeilen.map(([m, ...w]) => `<tr><th scope="row">${e(m)}</th>${w.map((v, n) => `<td data-name="${e(tb.kopf[n + 1])}">${t(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div><figcaption class="leise klein-text">${t(tb.hinweis)}</figcaption></figure>`;
+    neu('events/index.html', {
+      seo: 'events',
+      bildVorzeile: F.events.titel,
+      bildTitel: `${AB.titel} ${AB.ruhig}`,
+      aktiv: 'events',
+      schema: [{ '@type': 'Service', '@id': `${absolut('/events/')}#abendpartner-leistung`, name: partner.name, serviceType: 'Events', description: klar(F.kurztexte.abendpartner), provider: { '@id': ORG }, areaServed: organisation.areaServed, url: absolut(produktPfad(partner)), offers: angebotDaten(partner) }],
+      main: `<section class="held sand" aria-labelledby="held-titel"><div class="w held-raster mitte">
+<div class="erscheint">${brotkrumen([[null, 'Events']])}${vorzeile(F.events.titel)}<h1 id="held-titel" class="glanz">${titel(AB.titel, AB.ruhig)}</h1><p class="lead">${t(AB.lead)}</p>
+<div class="knoepfe">${einladung()}${partnerKnopf()}</div><p class="leise klein-text">${e(F.events.kosten)} · <span data-mk="termin-naechster">Termine folgen</span></p>${familieZeile()}</div>
+<div class="events-tafel">${tafel()}<p class="etikett">Am Abend</p><ul class="felder-liste erscheint">${AB.merkmale.map((x) => `<li>${e(x)}</li>`).join('')}</ul></div>
 </div></section>
 
-<section class="abschnitt" aria-labelledby="formate-titel"><div class="w">${abKopf({ marke: 'Formate', h2: 'So kommen wir zusammen.', lead: F.events.formate_hinweis, id: 'formate-titel' })}
-${raster(F.events.formate, Math.min(4, F.events.formate.length))}</div></section>
+<section class="abschnitt" id="ablauf" aria-labelledby="ablauf-titel"><div class="w">${abKopf({ marke: 'Ablauf', h2: AB.ablauf_titel, lead: AB.ablauf_lead, id: 'ablauf-titel' })}
+<div class="zwei-teile"><div class="erscheint">${zeitplan(AB.ablauf)}</div>
+<div class="erscheint"><h3 class="gruppe-titel">${e(AB.regeln_titel)}</h3>${punkte(AB.regeln)}<h3 class="gruppe-titel">Termine</h3><ul class="termine-liste" data-mk="events" hidden></ul><p data-mk="text:events.termine">${t(F.events.termine)}</p></div></div></div></section>
 
-<section class="abschnitt" aria-labelledby="art-titel"><div class="w">${abKopf({ marke: 'So sind unsere Events', h2: `${F.events.merkmale.map((m, i) => (i ? m.titel.toLowerCase() : m.titel)).join(', ').replace(/, ([^,]+)$/, ' und $1')}.`, id: 'art-titel' })}
+<section class="abschnitt" id="abendpartner" aria-labelledby="rollen-titel"><div class="w">${abKopf({ marke: 'Rollen', h2: AB.rollen_titel, lead: AB.rollen_lead, id: 'rollen-titel' })}
+${rollenTabelle}
+<div class="knoepfe erscheint">${einladung()}${partnerKnopf()}</div></div></section>
+
+<section class="abschnitt" aria-labelledby="art-titel"><div class="w">${abKopf({ marke: AB.haltung.marke, h2: AB.haltung.titel, lead: AB.haltung.lead, id: 'art-titel' })}
 ${raster(F.events.merkmale, 3)}</div></section>
+
+<section class="abschnitt" aria-labelledby="formate-titel"><div class="w">${abKopf({ marke: 'Weitere Formate', h2: 'So kommen wir zusammen.', lead: F.events.formate_hinweis, id: 'formate-titel' })}
+<p class="lead events-einleitung erscheint" data-mk="text:events.einleitung">${t(F.events.held_text ?? F.events.text)}</p>
+${raster(F.events.formate, Math.min(4, F.events.formate.length))}</div></section>
 
 <section class="abschnitt" aria-labelledby="gast-titel"><div class="w">${abKopf({ marke: 'Gastgeberin', h2: 'Malin bringt Menschen zusammen.', lead: F.team.find((p) => p.kuerzel === 'MA').text, id: 'gast-titel' })}
 <div class="zwei-teile"><div class="erscheint"><h3 class="gruppe-titel">Warum wir Events machen</h3><p>${t(F.events.warum)}</p></div>
-<div class="erscheint"><h3 class="gruppe-titel">Termine</h3><ul class="termine-liste" data-mk="events" hidden></ul><p data-mk="text:events.termine">${t(F.events.termine)}</p><div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten', 'zweit')}</div></div></div></div></section>
+<div class="erscheint"><h3 class="gruppe-titel">${e(F.podcast.name)} · ${e(F.podcast.zusatz)}</h3><p>${t(F.podcast.text)}</p><div class="knoepfe">${textlink('/podcast/', 'Zum Podcast')}</div></div></div></div></section>
 
+${fragen(AB.fragen, AB.fragen_titel)}
 ${schlussakt({ quelle: 'events_ende' })}`,
-  });
+    });
+  }
+
+  // ── Podcast (Kevin 18.11.): „Fokus Innovation“ ist nur der Name des Podcasts. Es gibt genau eine Aussage und einen Aufruf. ──
+  {
+    const P = F.podcast;
+    const gastKnopf = (art = '') => anfrageKnopf(P.anlass, P.betreff, P.knopf, art);
+    // Zwei Plätze an einem Tisch, eine Linie verbindet sie: das Gespräch (Formen und Klassen der Tafel).
+    const gespraech = `<svg class="tafel gespraech erscheint" viewBox="0 0 400 180" role="img" aria-label="${e(P.bild_alt)}"><rect class="tisch" x="128" y="46" width="144" height="88" rx="6"/><path class="faden" pathLength="1" d="M100 90 C 160 40, 240 140, 300 90"/><circle class="platz gastgeberin" cx="86" cy="90" r="14"/><circle class="platz" cx="314" cy="90" r="14"/></svg>`;
+    neu('podcast/index.html', {
+      seo: 'podcast',
+      bildVorzeile: P.vorzeile,
+      bildTitel: `${P.name}. ${P.zusatz}.`,
+      aktiv: 'podcast',
+      schema: [{ '@type': 'PodcastSeries', '@id': `${absolut('/podcast/')}#podcast`, name: P.name, description: klar(P.text), url: absolut('/podcast/'), inLanguage: 'de-DE', publisher: { '@id': ORG } }],
+      main: `<section class="held sand" aria-labelledby="held-titel"><div class="w held-raster mitte">
+<div class="erscheint">${brotkrumen([[null, 'Podcast']])}${vorzeile(P.vorzeile)}<h1 id="held-titel" class="glanz">${titel(P.name, P.zusatz)}</h1><p class="lead">${t(P.text)}</p></div>
+<div class="events-tafel">${gespraech}</div>
+</div></section>
+
+<section class="abschnitt" id="gast" aria-labelledby="gast-titel"><div class="w"><div class="kasten erscheint"><div>${vorzeile(P.aufruf_marke)}<h2 id="gast-titel">${e(P.aufruf_titel)}</h2></div><div><p class="lead">${t(P.aufruf_text)}</p><div class="knoepfe">${gastKnopf()}${textlink('/events/', `Zum ${F.events.abend.name}`)}</div></div></div></div></section>`,
+    });
+  }
 
   // ── Über uns ──
   neu('ueber-uns/index.html', {
@@ -1529,6 +1599,7 @@ ${schlussakt({ quelle: 'begriffe_ende' })}`,
       ['einstieg', 'Einstieg und Innovations-Check', faqVon(seite.check_faq)],
       ['vertrieb', 'Vertrieb', [...zuschneiden(faqVon(['was-ist-der-unterschied-zwischen-head', 'was-kostet-der-tagesworkshop-und-was']), 'vertrieb'), ...ausBlatt('head-of-sales', /Unterschied/), ...ausBlatt('cso', /Unterschied|Investoren/)]],
       ['sichtbarkeit', 'Homepages und Videos', [...faqVon(['wie-schnell-ist-meine-homepage-fertig', 'kann-ich-spaeter-auf-ein-groesseres', 'sind-eure-videos-ki-generiert']), ...ausBlatt('homepage-story', /Wie schnell|größeres Paket/), ...ausBlatt('video-serie', /Kundenstimmen-Videos/)]],
+      ['events', F.events.abend.name, F.events.abend.fragen],
       ['vertraege', 'Preise und Verträge', faqVon(['sind-die-preise-netto', 'gibt-es-rabatt', 'wie-lange-laufen-die-vertraege'])],
     ];
     START.faq = gruppen.flatMap(([k, n, liste]) => liste.map((x) => ({ frage: klar(x.f), antwort: klar(x.a), bereich: k, gruppe: n })));
@@ -1548,13 +1619,15 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
 
   // ── Preise: alles auf einer Seite ──
   {
-    const frei = [[erstLink(), F.erstgespraech.name, '30 Minuten per Video. Wir klären, ob und womit wir helfen können.'], ['/kostenlos/#checks', 'Zwei Checks', 'Sichtbarkeit und Vertrieb in einem, Innovation im anderen. Ergebnis sofort.'], ['/events/', F.events.titel, 'Auf Einladung, für Gäste kostenlos.']];
-    const angeboteAlle = BEREICHE.flatMap(produkteIn);
+    const frei = [[erstLink(), F.erstgespraech.name, '30 Minuten per Video. Wir klären, ob und womit wir helfen können.'], ['/kostenlos/#checks', 'Zwei Checks', 'Sichtbarkeit und Vertrieb in einem, Innovation im anderen. Ergebnis sofort.'], ['/events/', F.events.abend.name, 'Jeden Monat in Berlin. Auf Einladung, für Gäste und Kunden kostenlos.']];
+    const AB = F.events.abend;
+    const partner = angebot('abendpartner');
+    const angeboteAlle = [...BEREICHE.flatMap(produkteIn), partner];
     // Karten statt Tabellen (31.10., Prüfung Gestaltung): je Angebot Name, Preis, ein Satz, drei Punkte. Der Einstieg je Bereich ist markiert.
     const EINSTIEG = { sichtbarkeit: 'positionierung', vertrieb: 'tagesworkshop' };
     const karte = (a, k) => {
       const pb = produktBlatt(a);
-      const pkt = (a.enthalten ?? pb?.immer ?? pb?.bausteine?.map((x) => x.name) ?? []).slice(0, 3);
+      const pkt = (a.enthalten ?? pb?.immer ?? pb?.bausteine?.map((x) => x.name) ?? a.stufen?.map((x) => `${stufenName(a)} ${x.name} · ${stufenPreis(a, x)}`) ?? []).slice(0, 3);
       return `<li class="preis-karte${EINSTIEG[k] === a.id ? ' einstieg' : ''}"><a href="${produktPfad(a)}">${EINSTIEG[k] === a.id ? '<span class="marke-einstieg">Guter Einstieg</span>' : ''}<h3>${e(F.titel_h1?.[a.id] ?? a.name)}${bald(a) ? ' <span class="marke-bald">Bald</span>' : ''}</h3><p class="karte-preis glanz">${mkPreis(a, preisKurz(a))}</p><p class="karte-zusatz">${e(bald(a) ? 'Festpreis mit klarem Umfang, vorab vereinbart' : [a.preis_zusatz, F.umfang[a.id]].filter(Boolean).join(' · '))}</p><p class="karte-satz">${t(F.kurztexte[a.id] ?? pb?.versprechen ?? a.fuer_wen ?? '')}</p>${pkt.length ? punkte(pkt) : ''}<span class="textlink"><span>Mehr erfahren</span> ${PFEIL}</span></a></li>`;
     };
     const karten = (liste, k) => `<ul class="preis-karten erscheint">${liste.map((a) => karte(a, k)).join('')}</ul>`;
@@ -1562,6 +1635,7 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
     // Homepages und Erklärvideos, also Sichtbarkeit“): Innovation oben als Fokus-Block, dann Vertrieb, dann Sichtbarkeit; Kostenlos unten.
     // Gilt NUR hier — der Rest der Website behält 01 Sichtbarkeit · 02 Vertrieb · 03 Innovation.
     const PREISE_REIHE = ['innovation', 'vertrieb', 'sichtbarkeit'];
+    const rolleKarte = (h, n, preis, z) => `<li class="preis-karte"><a href="${h}"><h3>${e(n)}</h3><p class="karte-preis">${e(preis)}</p><p class="karte-satz">${t(z)}</p><span class="textlink"><span>Mehr erfahren</span> ${PFEIL}</span></a></li>`;
     const freiKarte = (h, n, z) => `<li class="preis-karte"><a href="${h}"><h3>${e(n)}</h3><p class="karte-preis">kostenlos</p><p class="karte-satz">${e(z)}</p><span class="textlink"><span>Mehr erfahren</span> ${PFEIL}</span></a></li>`;
     const kondition = (x) => { const [k, ...v] = String(x).split(': '); return v.length ? `<div><dt>${e(k)}</dt><dd>${t(v.join(': '))}</dd></div>` : `<div><dt>${/Nutzungsrecht/.test(x) ? 'Nutzungsrecht' : /netto/.test(x) ? 'Preise' : 'Allgemein'}</dt><dd>${t(x)}</dd></div>`; };
     neu('preise/index.html', {
@@ -1572,13 +1646,15 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
       schema: [{ '@type': 'OfferCatalog', '@id': `${absolut('/preise/')}#katalog`, name: 'Preise von MAKE Innovation', numberOfItems: angeboteAlle.length, itemListElement: angeboteAlle.filter((a) => !bald(a)).flatMap((a) => [angebotDaten(a)].flat().map((o) => ({ ...o, itemOffered: { '@type': 'Service', name: a.name, url: absolut(produktPfad(a)) } }))) }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, 'Preise']])}${vorzeile('Preise')}<h1 id="held-titel" class="glanz">${titel('Alle Preise.', 'Offen und netto.')}</h1><p class="lead">Jeder Preis gilt für den beschriebenen Umfang. Den genauen Festpreis bekommen Sie vor dem Start schriftlich, ohne Abrechnung nach Stunden. Die Details stehen auf der Seite des Angebots.</p>
-<nav class="az breit" aria-label="Auf dieser Seite">${PREISE_REIHE.map((k) => `<a href="#preise-${k}">${e(B[k].name)}</a>`).join('')}${BS_LISTE.length ? '<a href="#preise-bausteine">Bausteine</a>' : ''}<a href="#kostenlos-titel">Kostenlos</a><a href="#konditionen-titel">Konditionen</a></nav></div>
+<nav class="az breit" aria-label="Auf dieser Seite">${PREISE_REIHE.map((k) => `<a href="#preise-${k}">${e(B[k].name)}</a>`).join('')}<a href="#preise-events">Events</a>${BS_LISTE.length ? '<a href="#preise-bausteine">Bausteine</a>' : ''}<a href="#kostenlos-titel">Kostenlos</a><a href="#konditionen-titel">Konditionen</a></nav></div>
 ${buehne('festpreis', VIDEOS.preise)}
 </div></section>
 <section class="abschnitt dunkel preis-fokus" aria-labelledby="preise-innovation"><div class="w">${abKopf({ marke: 'Unser Ziel · Innovation', h2: 'Wir rücken Innovation in den Fokus.', lead: `${B.innovation.satz} Der Weg dorthin führt oft über Vertrieb und Sichtbarkeit, deshalb stehen diese Preise gleich darunter.`, id: 'preise-innovation' })}
 <ul class="preis-karten erscheint"><li class="preis-karte einstieg"><a href="${check('preise_fokus')}"><span class="marke-einstieg">Guter Einstieg</span><h3>Innovations-Check</h3><p class="karte-preis">kostenlos</p><p class="karte-satz">Wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche.</p>${punkte(['Kurz: 20 Fragen in rund 10 Minuten, Ergebnis sofort', 'Ausführlich: rund 25 Minuten, Bericht per E‑Mail', 'Danach: das kostenlose Erstgespräch'])}<span class="textlink"><span>Check starten</span> ${PFEIL}</span></a></li>${karten(produkteIn('innovation'), 'innovation').replace(/^<ul class="preis-karten erscheint">|<\/ul>$/g, '')}</ul></div></section>
 ${PREISE_REIHE.filter((k) => k !== 'innovation').map((k) => `<section class="abschnitt" aria-labelledby="preise-${k}"><div class="w">${abKopf({ marke: B[k].name, h2: B[k].paar, lead: F.angebote_lead[k], id: `preise-${k}` })}
 ${gruppenIn(k).map((g, _, alle) => `${alle.length > 1 && g.name ? `<h3 class="gruppe-titel">${e(g.name)}</h3>` : ''}${karten(g.liste, k)}`).join('\n')}${k === 'sichtbarkeit' ? `<h3 class="gruppe-titel">Dazu buchbar</h3><dl class="daten erscheint">${inhalt.zusatzoptionen.map((z) => `<div><dt>${e(z.name)}<span class="leise">${e(z.fuer)}: ${e(z.leistung)}</span></dt><dd>${e(z.preis)}</dd></div>`).join('')}${aufAnfrage('sichtbarkeit')}</dl>` : ''}</div></section>`).join('\n')}
+<section class="abschnitt" aria-labelledby="preise-events"><div class="w">${abKopf({ marke: AB.preise.marke, h2: AB.preise.titel, lead: AB.preise.lead, id: 'preise-events' })}
+<ul class="preis-karten erscheint">${rolleKarte('/events/', AB.tabelle.kopf[1], 'kostenlos', AB.preise.gast)}${karte(partner, 'events')}</ul></div></section>
 ${BS_LISTE.length ? `<section class="abschnitt" id="preise-bausteine" aria-labelledby="preise-bausteine-titel"><div class="w">${abKopf({ marke: 'Einzeln kaufen', h2: 'Bausteine zum Selbermachen.', lead: `Teile aus unserer Arbeit als fertiges Paket: Anleitung, ausgefülltes Beispiel, Bögen. Ab ${(Math.min(...BS_LISTE.map((b) => b.preis)) / 100).toLocaleString('de-DE')}\u00a0€ netto, auf Rechnung.`, id: 'preise-bausteine-titel' })}<ul class="preis-karten erscheint">${[BS_LISTE.find((b) => b.paket), ...BS_LISTE.filter((b) => !b.paket).sort((x, y) => x.preis - y.preis).slice(0, 1), BS_LISTE.find((b) => b.bereich === 'innovation')].filter((b, i, l) => b && l.indexOf(b) === i).map(bausteinKarte).join('')}</ul><div class="knoepfe erscheint">${textlink('/bausteine/', `Alle ${BS_LISTE.length} Bausteine`)}</div></div></section>` : ''}
 <section class="abschnitt" aria-labelledby="kostenlos-titel"><div class="w">${abKopf({ marke: 'Der Einstieg', h2: 'Kostenlos', lead: 'Erstgespräch, Innovations-Check und das Gespräch danach kosten nichts und verpflichten zu nichts.', id: 'kostenlos-titel' })}
 <ul class="preis-karten frei erscheint">${frei.map(([h, n, z]) => freiKarte(h, n, z)).join('')}</ul></div></section>
@@ -1608,7 +1684,11 @@ ${schlussakt({ quelle: 'preise_ende' })}`,
 
   // llms.txt (Vorschlag llmstxt.org): kurzer Wegweiser für KI-Assistenten, dazu llms-full.txt mit allen Inhalten als Klartext.
   const mdLink = (n, p) => `[${n}](${absolut(p)})`;
-  const angebotMd = (a) => `- ${mdLink(a.name, produktPfad(a))}: ${bald(a) ? 'bald, Anfrage schon jetzt möglich, Preis auf Anfrage' : `ab ${erster(a)} netto${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}`}. ${klar(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? '')}${bald(a) ? ' Startet in Kürze.' : ''}`;
+  const angebotMd = (a) => `- ${mdLink(a.name, produktPfad(a))}: ${bald(a) ? 'bald, Anfrage schon jetzt möglich, Preis auf Anfrage' : `ab ${erster(a)} netto${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}`}. ${klar(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? '')}${bald(a) ? ' Startet in Kürze.' : ''}${a.stufen?.every((x) => x.punkte) ? ` Pakete: ${a.stufen.map((x) => `${x.name} ${stufenPreis(a, x)} (${x.punkte.join(', ')})`).join('; ')}.` : ''}`;
+  // Fokus Abend und Podcast (18.11.) als Klartext: dieselben Angaben wie auf /events/ und /podcast/.
+  const AB = F.events.abend;
+  const abendMd = `${AB.name}: ${klar(AB.ruhig)} ${klar(AB.lead)} ${AB.regeln.join('. ')}.\n\nAblauf: ${AB.ablauf.zeilen.map(([w, n, z]) => `${w} ${n}${z ? ` ${z}` : ''}`).join(' · ')}.\n\nRollen:\n${AB.tabelle.kopf.slice(1).map((r, i) => `- ${r}: ${AB.tabelle.zeilen.map(([m, ...w]) => `${m}: ${klar(w[i])}`).join('; ')}`).join('\n')}\n\n${klar(AB.tabelle.hinweis)}`;
+  const podcastMd = `${klar(F.podcast.text)} ${klar(F.podcast.aufruf_titel)} ${klar(F.podcast.aufruf_text)}`;
   const faktenMd = [...F.fakten, ['Betreiber', `${anbieter.name}, ${anbieter.adresse.map(klar).join(', ')}`], ['Kontakt', seite.kontakt.mail]].map(([k, v]) => `- ${k}: ${klar(v)}`).join('\n');
   const familieMd = `${klar(FAM.dach_satz)}\n\n${FAM.marken.map((m) => `- [${m.name}](${m.url}): ${klar(m.satz)} Thema: ${m.thema}. ${m.dort} stehen dort, Preise und Umfang bei ${F.marke.name}.`).join('\n')}\n- ${F.marke.name}: KI, Abläufe, Daten, Software und der Innovations-Check, dazu die Preise aller Angebote.`;
   const leistungenMd = BEREICHE.map((k) => `### ${B[k].name}: ${B[k].paar}\n\n${markeVon(k) ? `Dieses Thema liefert die Marke [${markeVon(k).name}](${markeVon(k).url}). Hier stehen Preise und Umfang.\n\n` : ''}${klar(B[k].kurz)}\n\n${k === 'innovation' ? `- ${mdLink('Innovations-Check', '/innovations-check/')}: kostenlos, rund 10 Minuten. ${klar(F.check.text)}\n` : ''}${produkteIn(k).map(angebotMd).join('\n')}`).join('\n\n');
@@ -1641,7 +1721,8 @@ ${W.artikel.map((a) => `- ${mdLink(a.titel, artikelPfad(a))}: ${klar(a.beschreib
 - ${mdLink('Alle Preise', '/preise/')}: jedes Angebot mit Preis und Konditionen
 - ${mdLink('Häufige Fragen', '/fragen/')}: Check, Vertrieb, Homepages, Videos, Verträge
 - ${mdLink('Begriffe von A bis Z', '/begriffe/')}: ${W.begriffe.length} Begriffe aus Vertrieb, Sichtbarkeit und KI
-- ${mdLink(F.events.titel, '/events/')}: ${klar(F.events.text)}
+- ${mdLink(`${AB.name} und Events`, '/events/')}: ${klar(F.events.text)} Abendpartner ab ${erster(angebot('abendpartner'))} netto je Abend.
+- ${mdLink(`Podcast ${F.podcast.name}`, '/podcast/')}: ${klar(F.podcast.text)}
 - ${mdLink('Über uns', '/ueber-uns/')}: Leitidee, Team, Werte
 - ${mdLink('Kontakt', '/kontakt/')}: ${seite.kontakt.mail}
 
@@ -1685,6 +1766,22 @@ Was wir nicht sind: ${F.nicht.map((x) => `${x.titel} (${klar(x.text)})`).join(';
 ${leistungenMd}
 
 Zahlung und Konditionen: ${inhalt.konditionen.map(klar).join('; ')}.
+
+## Events: ${AB.name}
+
+Quelle: ${absolut('/events/')}
+
+${abendMd}
+
+${AB.fragen.map((f) => `Frage: ${klar(f.f)}\nAntwort: ${klar(f.a)}`).join('\n\n')}
+
+Weitere Formate: ${F.events.formate.map((x) => `${x.titel} (${klar(x.text)})`).join('; ')}. ${klar(F.events.termine)}
+
+## Podcast: ${F.podcast.name}
+
+Quelle: ${absolut('/podcast/')}
+
+${podcastMd}
 
 ## Häufige Fragen
 
@@ -1730,11 +1827,59 @@ ${W.artikel.map(artikelMd).join('\n\n')}
 
 // ── Prüfen: Regeln der Seite ─────────────────────────────────────────────────────────────────────────────────────────
 const SPERRWOERTER = [
-  [/\bMAKE\b(?!\s+(Innovation|INNOVATION|Studios|Revenue)\b)/, 'MAKE nur als „MAKE Innovation“, „MAKE Studios“ oder „MAKE Revenue“'], [/Fokus\x20Innovation|FOKUS\x20INNOVATION|fokusinnovation/i, 'alter Markenname „Fokus\u00a0Innovation“'],
+  [/\bMAKE\b(?!\s+(Innovation|INNOVATION|Studios|Revenue)\b)/, 'MAKE nur als „MAKE Innovation“, „MAKE Studios“ oder „MAKE Revenue“'],
   [/Make Innovation|MAKE Innovations\b/, 'Schreibweise „MAKE Innovation“'], [/KEMARIS/, 'KEMARIS'], [/Make\.One/i, 'Make.One'], [/\bConnect\b/i, 'Connect (nicht erwähnen)'],
   [/MAKE OS|Make OS/i, 'Name der eigenen Software'], [/\b(führend|revolutionär|disruptiv|einzigartig|Gamechanger)\b/i, 'Superlativ'],
   [/Made in Germany|Deutschland first/i, 'Nationalstolz-Vokabular'], [/Investor(en)?-?(zugang|zugänge|kontakte)/i, 'Investoren nur im Gespräch'],
 ];
+/**
+ * „Fokus Innovation“ (Kevin 18.11.): früher der Name dieser Website, heute NUR noch der Name des Podcasts. Erlaubt ist genau die Schreibweise
+ * „Fokus Innovation“, und nur in Verbindung mit „Podcast“ (im selben Textblock, höchstens 60 Zeichen davor oder danach). Gesperrt bleibt alles
+ * andere: andere Schreibweisen und die alte Adresse, jede Nennung ohne Podcast, und jede Form als Firmen- oder Seitenname („… GmbH“, „© 2026 …“,
+ * „Marke/Agentur …“). „Fokus Abend“ ist der Name des monatlichen Abends und kein Sperrwort.
+ */
+const FOKUS_NAME = /fokus[\s ·.-]*innovation/gi;
+const FOKUS_FIRMA_DAVOR = /(©\s*\d{4}\s*|\b(Marke|Agentur|Firma|Unternehmen|Website|Anbieter|Betreiber)(\s+der)?\s+)$/i;
+const FOKUS_FIRMA_DANACH = /^\s*(GmbH|UG\b|AG\b|e\.\s?K\.|ist eine (Marke|Agentur|Firma)|·\s*(Events|Agentur|Website)\b)/;
+export function fokusNameFehler(text) {
+  const fehler = new Set();
+  for (const zeile of String(text).split('\n')) {
+    for (const m of zeile.matchAll(FOKUS_NAME)) {
+      const davor = zeile.slice(Math.max(0, m.index - 60), m.index), danach = zeile.slice(m.index + m[0].length, m.index + m[0].length + 60);
+      if (m[0] !== 'Fokus Innovation') fehler.add(`alter Markenname oder alte Adresse „${m[0]}“`);
+      else if (FOKUS_FIRMA_DAVOR.test(davor) || FOKUS_FIRMA_DANACH.test(danach)) fehler.add('„Fokus Innovation“ als Firmen- oder Seitenname (nur der Podcast heißt so)');
+      else if (!/Podcast/.test(davor + danach)) fehler.add('„Fokus Innovation“ ohne Bezug zum Podcast (nur der Podcast heißt so)');
+    }
+  }
+  return [...fehler];
+}
+/** Wo ein Name der Firma oder der Website steht, darf der Name des Podcasts nie stehen: Titel, Kopf-Angaben, Organisation und Website in den Daten. */
+function fokusAlsSeitenname(s) {
+  const fehler = [];
+  const trifft = (x) => new RegExp(FOKUS_NAME.source, 'i').test(String(x ?? ''));
+  const istPodcast = s.pfad === 'podcast/index.html';
+  const titel = s.html.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? '';
+  if (trifft(titel) && !(istPodcast && /Podcast/.test(titel))) fehler.push('„Fokus Innovation“ im Seitentitel');
+  for (const [, name, wert] of s.html.matchAll(/<meta (?:property|name)="(og:site_name|application-name|apple-mobile-web-app-title|author|publisher)" content="([^"]*)"/g)) if (trifft(wert)) fehler.push(`„Fokus Innovation“ als Name der Website (${name})`);
+  // Jedes Attribut (Beschreibung, Vorschautitel, Bildtext, aria-label): nur zusammen mit „Podcast“ im selben Wert.
+  for (const [, attr, wert] of s.html.matchAll(/\s(content|aria-label|alt|title)="([^"]*)"/g)) if (trifft(wert) && !/Podcast/.test(wert)) fehler.push(`„Fokus Innovation“ ohne Podcast im Attribut ${attr}`);
+  const ld = s.html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  if (ld) {
+    try {
+      const namen = (k) => [k?.name, k?.alternateName, k?.legalName, k?.slogan].flat().filter(Boolean);
+      for (const knoten of JSON.parse(ld[1])['@graph']) {
+        const typ = [knoten['@type']].flat();
+        if (typ.some((x) => /^(Organization|ProfessionalService|LocalBusiness|WebSite|Person|Brand)$/.test(x))) {
+          if ([...namen(knoten), ...[knoten.brand, knoten.subOrganization, knoten.publisher].flat().filter((x) => x && typeof x === 'object').flatMap(namen)].some(trifft)) fehler.push(`„Fokus Innovation“ als Name in den strukturierten Daten (${typ.join(', ')})`);
+        } else if (!typ.includes('PodcastSeries')) {
+          const texte = []; (function sammle(v) { if (typeof v === 'string') texte.push(v); else if (v && typeof v === 'object') Object.values(v).forEach(sammle); })(knoten);
+          if (texte.some((x) => trifft(x) && !/Podcast/.test(x))) fehler.push(`„Fokus Innovation“ ohne Podcast in den strukturierten Daten (${typ.join(', ')})`);
+        }
+      }
+    } catch { /* ungültige Daten meldet die Prüfung der strukturierten Daten */ }
+  }
+  return fehler;
+}
 export function pruefen(seiten) {
   const fehler = [];
   const pfade = new Set(seiten.map((s) => s.pfad));
@@ -1748,6 +1893,10 @@ export function pruefen(seiten) {
     // Die eigene Adresse (fokus.json › domain) ist kein Sperrwort: läuft die Seite noch auf fokusinnovation.de, steht sie in Sitemap und llms.txt.
     const ohneFirmierung = [...(seiten.firmierungen ?? []).map((n) => e(n)), ...(seiten.domain ? [seiten.domain] : [])].reduce((x, n) => x.split(n).join(' '), sichtbar);
     for (const [re, was] of SPERRWOERTER) if (re.test(ohneFirmierung)) fehler.push(`${s.pfad}: ${was}`);
+    // Name des Podcasts: je Textblock prüfen (Blöcke trennen, Auszeichnungen im Satz nicht), damit „Podcast“ aus dem Menü keine fremde Stelle deckt.
+    const bloecke = s.datei ? s.html : [...(seiten.firmierungen ?? []).map((n) => e(n)), ...(seiten.domain ? [seiten.domain] : [])].reduce((x, n) => x.split(n).join(' '), s.html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '\n').replace(/\s+/g, ' ').replace(/<\/?(span|b|strong|em|i|a|cite|abbr|time|br)\b[^>]*>/g, ' ').replace(/<[^>]+>/g, '\n'));
+    for (const was of fokusNameFehler(s.datei ? ohneFirmierung : bloecke)) fehler.push(`${s.pfad}: ${was}`);
+    if (!s.datei) for (const was of fokusAlsSeitenname(s)) fehler.push(`${s.pfad}: ${was}`);
     if (/\bZoe\b/.test(sichtbar) && !/KI-Assistentin/.test(sichtbar)) fehler.push(`${s.pfad}: Zoe ohne Kennzeichnung als KI-Assistentin`);
     if (/\{(preis|ab|zusatz):/.test(s.html)) fehler.push(`${s.pfad}: Platzhalter nicht ersetzt`);
     // Markenfamilie (11.11.): Ist die Seite für Suchmaschinen freigegeben, darf nirgends mehr eine Vorschau-Adresse stehen (Bots sähen tote Links).
@@ -1787,7 +1936,7 @@ export function pruefen(seiten) {
     } catch (err) { fehler.push(`${s.pfad}: strukturierte Daten ungültig (${err.message})`); }
     if (s.bild && !existsSync(join(ORDNER, s.bild.datei))) fehler.push(`${s.pfad}: Vorschaubild fehlt (node bilder.mjs)`);
   }
-  for (const datei of ['css/fokus.css', 'css/film.css', 'js/frueh.js', 'js/seite.js', 'js/film.js', 'js/szene.js', 'js/rechner.js', 'js/unterlage.js', 'js/app-wege.js', 'js/bestellung.js', 'js/inhalt.js', 'assets/zeichen.svg', 'assets/schriften/schibsted-grotesk-latin.woff2', 'assets/bild/logo.png', 'assets/bild/apple-touch-icon.png', 'assets/bild/icon-192.png', 'assets/bild/icon-512.png', 'favicon.ico']) if (!existsSync(join(ORDNER, datei))) fehler.push(`fehlt: ${datei}${/bild|favicon/.test(datei) ? ' (node bilder.mjs)' : ''}`);
+  for (const datei of ['css/fokus.css', 'css/haus.css', 'js/haus.js', 'js/lenis.min.js', 'css/film.css', 'js/frueh.js', 'js/seite.js', 'js/film.js', 'js/szene.js', 'js/rechner.js', 'js/unterlage.js', 'js/app-wege.js', 'js/bestellung.js', 'js/inhalt.js', 'assets/zeichen.svg', 'assets/schriften/schibsted-grotesk-latin.woff2', 'assets/bild/logo.png', 'assets/bild/apple-touch-icon.png', 'assets/bild/icon-192.png', 'assets/bild/icon-512.png', 'favicon.ico']) if (!existsSync(join(ORDNER, datei))) fehler.push(`fehlt: ${datei}${/bild|favicon/.test(datei) ? ' (node bilder.mjs)' : ''}`);
   return { fehler, platzhalter };
 }
 
@@ -1866,6 +2015,14 @@ function lauf() {
   // Vorlagen verteilen (31.10.): kurze öffentlich nach assets/vorlagen, lange nur nach unterlagen/ (+ katalog.json für die App) — und eine lange
   // Vorlage nie zusätzlich öffentlich. Beim Prüfen wird nur verglichen.
   for (const d of [...vorlagenVerteilen(vorlagenListe(q), nurPruefen), ...bausteineVerteilen(bausteineListe(q), nurPruefen)]) { abweichend++; console.log(`${nurPruefen ? 'weicht ab' : 'verteilt'}: ${d}`); }
+  // „Das Haus“: Stile und Skript entstehen aus haus/ (wie die Seiten: beim Prüfen nur vergleichen)
+  for (const [pfad, text] of [['css/haus.css', seiten.haus.css], ['js/haus.js', seiten.haus.js], ['js/lenis.min.js', seiten.haus.lenis], ['js/lenis-LICENSE.txt', seiten.haus.lenisLizenz]]) {
+    const zielDatei = join(ORDNER, pfad);
+    if (existsSync(zielDatei) && readFileSync(zielDatei, 'utf8') === text) continue;
+    abweichend++;
+    if (nurPruefen) console.log(`weicht ab: ${pfad}`); else writeFileSync(zielDatei, text);
+  }
+  for (const h of seiten.haus.hinweise) console.log(`Haus, Name weicht ab (geduldet): ${h}`);
   for (const s of seiten) {
     const zielDatei = join(ORDNER, s.pfad);
     const vorher = existsSync(zielDatei) ? readFileSync(zielDatei, 'utf8') : null;

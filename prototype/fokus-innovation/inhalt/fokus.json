@@ -128,7 +128,7 @@
       "nr": "01",
       "name": "Sichtbarkeit",
       "paar": "Gesehen werden.",
-      "satz": "Positionierung, Homepages, Videos, PR und Kommunikation, auf Anfrage auch Social Media. Damit Kunden Sie finden und schnell verstehen, was Sie machen.",
+      "satz": "Positionierung, Homepages, Videos, Social Media, PR und Kommunikation. Damit Kunden Sie finden und schnell verstehen, was Sie machen.",
       "problem": "Besucher verstehen in fünf Sekunden nicht, was Sie machen und warum sie Sie anrufen sollten. In Medien und auf Bühnen Ihrer Branche kommen andere zu Wort, und Anfragen bleiben aus.",
       "weg": [
         "Unklare Botschaft, kaum bekannt, kaum Anfragen",
@@ -161,14 +161,8 @@
         "titel": "Netzwerk und Events",
         "text": "Manche Kunden lernt man am besten persönlich kennen. Wir laden Sie zu unseren Events ein und stellen Kontakte her, wo es passt. Was Sie dafür brauchen, besprechen wir im Gespräch."
       },
-      "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo} sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.",
-      "auf_anfrage": [
-        {
-          "name": "Social Media",
-          "leistung": "Redaktionsplan und Beiträge, Reels und Kurzvideos, Kommentare und Nachrichten beantworten. Den Umfang legen wir im Erstgespräch fest.",
-          "preis": "auf Anfrage"
-        }
-      ]
+      "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo}, Social Media ab {ab:social-media} im Monat sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.",
+      "auf_anfrage": []
     },
     "vertrieb": {
       "nr": "02",
@@ -255,7 +249,7 @@
         },
         {
           "titel": "Unser Weg",
-          "text": "Der Innovations-Check zeigt Ihre Stufe. Im Erstgespräch legen wir die drei Abläufe mit dem größten Hebel fest. In Umsetzungsprojekten ordnen wir Abläufe und Daten und führen KI ein, bis es läuft."
+          "text": "Der Innovations-Check zeigt Ihre Stufe. Im Scoping-Workshop klären wir Umfang, Abläufe und Daten, bevor gebaut wird. Im Umsetzungsprojekt ordnen wir Abläufe und Daten und führen KI ein, bis es läuft."
         },
         {
           "titel": "Ergebnis",
@@ -269,7 +263,15 @@
         "text": "KI ist nur so gut wie die Daten, auf die sie zugreift. Wir bringen mit Ihnen Wissen, Abläufe und Daten an einen Ort, auf den sie sich verlassen kann.",
         "betreff": "Interesse: KI-Brain"
       },
-      "kurz": "Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im Erstgespräch die drei wichtigsten Abläufe fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.",
+      "kurz": "Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Der Weg hat drei Schritte: der kostenlose Innovations-Check, der Scoping-Workshop ab {preis:scoping-workshop}, der auf das Projekt angerechnet wird, und das Umsetzungsprojekt ab {preis:umsetzungsprojekte}, alles netto.",
+      "schritte_titel": "Drei Schritte: Check, Workshop, Projekt.",
+      "schritte_lead": "Der Check zeigt, wo Sie stehen. Im Workshop klären wir Umfang, Abläufe und Daten. Im Projekt führen wir KI und Software ein, bis sie im Alltag genutzt werden.",
+      "schritt_texte": {
+        "hinweis": "Ein Satz je Schritt (Kevin 18.11.). Namen und Preise kommen aus makeinnovation/inhalt/inhalt.json.",
+        "check": "In rund 10 Minuten sehen Sie, wo Ihr Unternehmen steht.",
+        "workshop": "Umfang, Abläufe und Daten klären, bevor gebaut wird. Wird auf das Projekt angerechnet.",
+        "projekt": "KI und Software einführen, bis sie im Alltag genutzt werden, mit klarem Umfang, vorab vereinbart."
+      },
       "felder": [
         {
           "titel": "Abläufe und Strukturen",
@@ -298,19 +300,15 @@
   "events": {
     "titel": "MAKE Innovation · Events",
     "satz": "Verschiedene Formate. Ein Fokus. Menschen zusammenbringen, die Neues umsetzen.",
-    "text": "Kuratiert und auf Einladung: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir planen verschiedene Formate, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.",
-    "kosten": "Für Gäste kostenlos",
+    "text": "Jeden Monat der Fokus Abend in Berlin mit 30 bis 40 Gästen, die Neues umsetzen. Dazu weitere Formate, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Kuratiert und auf Einladung, für Gäste und Kunden kostenlos. Malin ist Gastgeberin.",
+    "kosten": "Für Gäste und Kunden kostenlos",
     "termine": "Termine, Orte und Formate stehen in jeder Einladung. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste.",
     "betreff": "MAKE Innovation · Events · Gästeliste",
-    "formate_hinweis": "Diese Formate planen wir. Welches wann stattfindet, steht in der Einladung.",
+    "formate_hinweis": "Neben dem Fokus Abend planen wir diese Formate. Welches wann stattfindet, steht in der Einladung.",
     "formate": [
       {
         "titel": "Gesprächsrunde",
         "text": "Ein kleiner Kreis spricht offen über ein Thema, das gerade viele beschäftigt. Was gesagt wird, bleibt im Raum, und jeder kommt zu Wort."
-      },
-      {
-        "titel": "Impulsabend",
-        "text": "Kurze Beiträge aus der Praxis: Wer Neues umgesetzt hat, zeigt, was funktioniert hat und was nicht. Danach ist Zeit für Gespräche."
       },
       {
         "titel": "Workshop",
@@ -342,7 +340,173 @@
     ],
     "start_ruhig": "Menschen zusammenbringen, die Neues umsetzen.",
     "held_text": "Wir bringen Menschen zusammen, die Neues umsetzen: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir laden gezielt ein, zur Gesprächsrunde im kleinen Kreis ebenso wie zum Workshop. Gastgeberin ist Malin.",
-    "start_text": "Kleine Runden für Gründer und Unternehmer, die gerade etwas Neues aufbauen. Für Gäste kostenlos, auf Einladung."
+    "start_text": "Jeden Monat laden wir in Berlin zum Fokus Abend ein: 30 bis 40 Gäste, die Neues umsetzen, zwei Impulse, Thementische und offenes Netzwerken. Für Gäste und Kunden kostenlos, auf Einladung.",
+    "podcast_hinweis": "Zum Podcast Fokus Innovation",
+    "abend": {
+      "hinweis": "Der monatliche Abend (Kevin 18.11.): Name, Angaben, Ablauf, Rollen und Fragen bestätigt. Der Preis des Abendpartners steht nur in makeinnovation/inhalt/inhalt.json (Angebot abendpartner). Termine gibt es noch keine.",
+      "name": "Fokus Abend",
+      "titel": "Fokus Abend.",
+      "ruhig": "Jeden Monat in Berlin.",
+      "lead": "30 bis 40 Gäste, die Neues umsetzen: zwei Impulse à 15 Minuten, Thementische in 2 Runden, offenes Netzwerken und gezielte Vorstellungen. Die Kamera läuft mit.",
+      "merkmale": [
+        "2 Impulse à 15 Minuten",
+        "Thementische in 2 Runden",
+        "Offenes Netzwerken",
+        "Gezielte Vorstellungen"
+      ],
+      "ablauf_titel": "Der Abend",
+      "ablauf_lead": "Von 18:30 bis 22:00 Uhr: zwei kurze Impulse, dann sprechen Sie an Thementischen und im offenen Netzwerken.",
+      "ablauf": {
+        "zeilen": [
+          [
+            "18:30",
+            "Ankommen",
+            ""
+          ],
+          [
+            "19:00",
+            "Begrüßung",
+            ""
+          ],
+          [
+            "19:10",
+            "Impuls",
+            "von einem Unternehmer, der umgesetzt hat"
+          ],
+          [
+            "19:30",
+            "Impuls",
+            "von einem Experten"
+          ],
+          [
+            "19:50",
+            "Thementische",
+            "in 2 Runden"
+          ],
+          [
+            "20:40",
+            "Offenes Netzwerken",
+            ""
+          ],
+          [
+            "22:00",
+            "Ende",
+            ""
+          ]
+        ]
+      },
+      "regeln_titel": "Am Abend gilt",
+      "regeln": [
+        "Kein Verkaufsvortrag",
+        "Keine Teilnehmerlisten",
+        "Fotos nur mit Einwilligung"
+      ],
+      "rollen_titel": "Gast oder Abendpartner.",
+      "rollen_lead": "Zwei Rollen am Abend. Für Gäste und Kunden ist er kostenlos, Abendpartner begleiten einen Abend und bekommen danach einen Partnerbericht.",
+      "tabelle": {
+        "titel": "Die zwei Rollen am Fokus Abend im Vergleich",
+        "kopf": [
+          "",
+          "Gast",
+          "Abendpartner"
+        ],
+        "zeilen": [
+          [
+            "Preis",
+            "kostenlos, auf Einladung",
+            "ab {preis:abendpartner} je Abend"
+          ],
+          [
+            "Sichtbarkeit",
+            "als Gast dabei",
+            "Logo und Nennung auf Einladung und Anmeldeseite, Begrüßung 3 Minuten, Beitrag im Nachbericht"
+          ],
+          [
+            "Vorstellungen",
+            "Thementische und offenes Netzwerken",
+            "Thementische und offenes Netzwerken"
+          ],
+          [
+            "Bericht",
+            "Dankesmail mit 3 Gedanken",
+            "Partnerbericht in 3 Werktagen, dazu 15 Minuten Feedback-Gespräch"
+          ],
+          [
+            "Verkauf am Abend",
+            "nein",
+            "nein"
+          ]
+        ],
+        "hinweis": "Alle Preise netto. Kein Verkaufsvortrag. Keine Teilnehmerlisten. Fotos nur mit Einwilligung."
+      },
+      "partner_knopf": "Abendpartner anfragen",
+      "partner_betreff": "Anfrage: Abendpartner beim Fokus Abend",
+      "haltung": {
+        "marke": "Haltung",
+        "titel": "Ehrlich gesagt",
+        "lead": "Wir versprechen keine Leads. Wir versprechen einen guten Abend mit den richtigen Menschen und einen Bericht mit Zahlen, Branchen und Eindrücken."
+      },
+      "fragen_titel": "Fragen zum Fokus Abend",
+      "fragen": [
+        {
+          "f": "Was kostet der Abend für Gäste?",
+          "a": "Nichts. Für Gäste und Kunden ist der Abend immer kostenlos."
+        },
+        {
+          "f": "Darf ich als Partner etwas vorstellen?",
+          "a": "Sie begrüßen 3 Minuten und stehen auf Einladung, Anmeldeseite und im Nachbericht. Einen Verkaufsvortrag gibt es nicht."
+        },
+        {
+          "f": "Bekomme ich die Teilnehmerliste?",
+          "a": "Nein. Gästedaten geben wir nicht weiter. Im Partnerbericht sehen Sie Zahlen, Branchen und Eindrücke."
+        },
+        {
+          "f": "Wo findet der Abend statt?",
+          "a": "Bei wechselnden Partnern in Berlin. Ort und Thema stehen in der Einladung."
+        },
+        {
+          "f": "Wie oft gibt es den Abend?",
+          "a": "Jeden Monat, mit 30 bis 40 Gästen."
+        },
+        {
+          "f": "Werden Fotos gemacht?",
+          "a": "Nur mit Einwilligung. Darauf weisen wir bei der Anmeldung und am Eingang hin."
+        }
+      ],
+      "preise": {
+        "marke": "Events",
+        "titel": "Fokus Abend.",
+        "lead": "Jeden Monat in Berlin. Für Gäste und Kunden kostenlos, Unternehmen können einen Abend als Partner begleiten.",
+        "gast": "Auf Einladung. Danach bekommen Sie eine Dankesmail mit 3 Gedanken."
+      }
+    }
+  },
+  "blick": {
+    "hinweis": "Zusätzliche Zeilen im Band unter dem Kopf einer Angebotsseite: [Begriff, Text]. Preise nur als Platzhalter.",
+    "umsetzungsprojekte": [
+      [
+        "Einstieg",
+        "Innovations-Check, kostenlos"
+      ],
+      [
+        "Davor",
+        "Scoping-Workshop ab {preis:scoping-workshop}, wird auf das Projekt angerechnet"
+      ]
+    ]
+  },
+  "podcast": {
+    "hinweis": "Der Podcast (Kevin 18.11.). Es gibt genau diese Aussage und diesen Aufruf: kein Rhythmus, kein Startdatum, keine Plattformen, keine Folgen. „Fokus Innovation“ ist nur der Name des Podcasts, nie der Firma oder der Website (der Prüfer in bauen.mjs achtet darauf).",
+    "name": "Fokus Innovation",
+    "zusatz": "Der Podcast",
+    "vorzeile": "Podcast",
+    "text": "Fokus Innovation ist unser Podcast. Hier stellen wir Innovationen aus Deutschland vor: Menschen, die etwas Neues gebaut haben, erzählen, was es kann und wie es dazu kam.",
+    "aufruf_marke": "Gast vorschlagen",
+    "aufruf_titel": "Sie haben etwas Neues gebaut?",
+    "aufruf_text": "Schlagen Sie sich oder jemanden vor, der hier sitzen sollte.",
+    "knopf": "Als Gast vorschlagen",
+    "anlass": "podcast-gast",
+    "betreff": "Podcast Fokus Innovation: Gast vorschlagen",
+    "bild_alt": "Zwei Menschen sitzen sich an einem Tisch gegenüber und sprechen miteinander"
   },
   "warum_wir": [
     {
@@ -383,7 +547,7 @@
       "titel": "Mittelstand, der Neues einführt",
       "richtung": "Innovation ins Unternehmen bringen",
       "text": "Sie wollen KI und neue Werkzeuge nicht nur ausprobieren, sondern im Alltag nutzen.",
-      "einstieg": "Der Innovations-Check, danach KI und Datenbasis in Umsetzungsprojekten. Bei Bedarf auch Vertrieb."
+      "einstieg": "Der Innovations-Check, danach der Scoping-Workshop und KI und Datenbasis im Umsetzungsprojekt. Bei Bedarf auch Vertrieb."
     }
   ],
   "werte": [
@@ -477,7 +641,10 @@
   "kurztexte": {
     "hinweis": "Ein Satz je Angebot in den Listen, wo das Produktblatt keinen hat.",
     "positionierung": "In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.",
-    "umsetzungsprojekte": "Wir ordnen zuerst Abläufe und Daten und führen dann KI und Software ein, bis Ihr Team sie im Alltag nutzt. Jedes Projekt bekommt einen Festpreis und einen klaren Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an.",
+    "umsetzungsprojekte": "Wir ordnen zuerst Abläufe und Daten und führen dann KI und Software ein, bis sie im Alltag genutzt werden. Mit klarem Umfang, vorab vereinbart.",
+    "scoping-workshop": "Umfang, Abläufe und Daten klären, bevor gebaut wird.",
+    "social-media": "Wir betreuen Ihre sozialen Medien in drei Paketen: vom Redaktionsplan mit Texten und Reels bis zum monatlichen Dreh.",
+    "abendpartner": "Sie begleiten einen Fokus Abend als Partner: mit Logo und Nennung, einer Begrüßung von 3 Minuten und einem Partnerbericht.",
     "tagesworkshop": "Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.",
     "pr-kommunikation": "Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation."
   },
@@ -485,6 +652,8 @@
     "hinweis": "Kürzere Namen fürs Menü; auf den Seiten steht der volle Name.",
     "tagesworkshop": "Tagesworkshop",
     "umsetzungsprojekte": "Umsetzungsprojekte",
+    "social-media": "Social Media",
+    "abendpartner": "Abendpartner",
     "cso": "Chief Sales Officer"
   },
   "check": {
@@ -492,9 +661,9 @@
     "text": "Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Die kurze Fassung dauert rund 10 Minuten und zeigt das Ergebnis sofort, die ausführliche rund 25 Minuten, danach kommt der vollständige Bericht per E-Mail."
   },
   "angebote_lead": {
-    "sichtbarkeit": "Jedes Angebot hat einen Startpreis. Homepages und Videos haben feste Lieferzeiten, bei PR und Kommunikation steht der Monatspreis vor dem Start fest. Ablauf, Ergebnis und Konditionen finden Sie auf der Seite des Angebots.",
+    "sichtbarkeit": "Jedes Angebot hat einen Startpreis. Homepages und Videos haben feste Lieferzeiten, bei Social Media sowie PR und Kommunikation steht der Monatspreis vor dem Start fest. Ablauf, Ergebnis und Konditionen finden Sie auf der Seite des Angebots.",
     "vertrieb": "Monatspreise, die vor dem Start feststehen, und klare Laufzeiten von 6 oder 12 Monaten. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
-    "innovation": "Der Check ist kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Haben Sie ein Vorhaben, sprechen Sie uns an."
+    "innovation": "Der Check ist kostenlos. Im Scoping-Workshop klären wir Umfang, Abläufe und Daten, bevor gebaut wird; er wird auf das Projekt angerechnet. Das Umsetzungsprojekt hat einen klaren Umfang, vorab vereinbart."
   },
   "fragen_zuschnitt": {
     "hinweis": "Antworten aus den gemeinsamen Fragen, auf den Bereich zugeschnitten (nur gekürzt, nichts Neues).",
@@ -558,7 +727,7 @@
     ],
     [
       "Leistungen",
-      "Positionierung, Websites, Videos sowie PR und Kommunikation; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, Umsetzungsprojekte starten in Kürze; Events und Netzwerk"
+      "Positionierung, Websites, Videos, Social Media sowie PR und Kommunikation; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, vom Scoping-Workshop bis zum Umsetzungsprojekt; der monatliche Fokus Abend, weitere Events und der Podcast Fokus Innovation"
     ],
     [
       "Einstieg",
@@ -606,7 +775,7 @@
       },
       "sichtbarkeit": {
         "titel": "Sichtbarkeit: Pakete und Preise · MAKE Innovation",
-        "beschreibung": "Preisblatt Sichtbarkeit: Positionierung ab {ab:positionierung}, Homepages ab {preis:homepage-landing}, Erklärvideos ab {preis:erklaervideo}, alles netto. Beispiele und Ablauf zeigt MAKE Studios."
+        "beschreibung": "Preisblatt Sichtbarkeit: Positionierung ab {ab:positionierung}, Homepages ab {preis:homepage-landing}, Erklärvideos ab {preis:erklaervideo}, Social Media ab {ab:social-media} im Monat, alles netto."
       },
       "vertrieb": {
         "titel": "Vertrieb: Leistungen und Preise · MAKE Innovation",
@@ -614,7 +783,7 @@
       },
       "innovation": {
         "titel": "Innovation: KI, Automatisierung, Software · MAKE Innovation",
-        "beschreibung": "Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start mit dem kostenlosen Innovations-Check in rund 10 Minuten."
+        "beschreibung": "KI, Automatisierung und neue Software in drei Schritten: kostenloser Innovations-Check, Scoping-Workshop ab {preis:scoping-workshop} und Umsetzungsprojekt ab {preis:umsetzungsprojekte}, netto."
       },
       "tagesworkshop": {
         "titel": "Tagesworkshop Vertrieb und Markteintritt · MAKE Innovation",
@@ -658,7 +827,7 @@
       },
       "umsetzungsprojekte": {
         "titel": "Umsetzungsprojekte: KI und Software einführen · MAKE Innovation",
-        "beschreibung": "KI und Software einführen, bis sie im Alltag genutzt werden: Projekte mit Festpreis und klarem Umfang, vorab vereinbart. Haben Sie ein Vorhaben, sprechen Sie uns an."
+        "beschreibung": "KI und Software einführen, bis sie im Alltag genutzt werden: Umsetzungsprojekte ab {preis:umsetzungsprojekte} netto, mit klarem Umfang, vorab vereinbart."
       },
       "innovations-check": {
         "titel": "Innovations-Check: kostenlos in 10 Minuten · MAKE Innovation",
@@ -686,7 +855,7 @@
       },
       "preise": {
         "titel": "Preise: alle Angebote im Überblick · MAKE Innovation",
-        "beschreibung": "Alle Preise von MAKE Innovation auf einer Seite: Positionierung, Homepages, Videos, PR, Tagesworkshop, Head of Sales und CSO. Netto, mit Laufzeit und Lieferzeit."
+        "beschreibung": "Alle Preise auf einer Seite: Positionierung, Homepages, Videos, Social Media, PR, Vertrieb auf Zeit und Umsetzungsprojekte. Netto, mit Laufzeit und Lieferzeit."
       },
       "fragen": {
         "titel": "Häufige Fragen · MAKE Innovation",
@@ -705,8 +874,16 @@
         "beschreibung": "Studien zu Sichtbarkeit, Vertrieb und KI in deutschen Unternehmen, kurz erklärt. Jede Zahl mit Herausgeber, Jahr und Link zur Quelle."
       },
       "events": {
-        "titel": "MAKE Innovation · Events für Menschen, die Neues umsetzen",
-        "beschreibung": "Kuratiert und auf Einladung: Gesprächsrunden, Impulsabende, Workshops und Netzwerktreffen für Gründer und Mittelstand. Für Gäste kostenlos, Gastgeberin ist Malin."
+        "titel": "Fokus Abend und Events in Berlin · MAKE Innovation",
+        "beschreibung": "Fokus Abend: jeden Monat in Berlin, 30 bis 40 Gäste, zwei Impulse, Thementische und Netzwerken. Auf Einladung, für Gäste und Kunden kostenlos. Gastgeberin ist Malin."
+      },
+      "social-media": {
+        "titel": "Social Media in drei Paketen: S, M, L · MAKE Innovation",
+        "beschreibung": "Social Media S, M oder L: Redaktionsplan, Texte, Reels, Storys und Dreh, je nach Paket. Ab {ab:social-media} netto im Monat, mindestens 3 Monate, ohne bezahlte Anzeigen."
+      },
+      "podcast": {
+        "titel": "Fokus Innovation · Der Podcast von MAKE Innovation",
+        "beschreibung": "Fokus Innovation ist unser Podcast über Innovationen aus Deutschland: Menschen, die etwas Neues gebaut haben, erzählen, was es kann und wie es dazu kam."
       },
       "pr-kommunikation": {
         "titel": "PR und Kommunikation auf Zeit · MAKE Innovation",
@@ -819,11 +996,12 @@
         "bereich": "innovation"
       },
       {
+        "lage": "Sie haben ein Vorhaben, aber der Umfang ist noch offen.",
+        "angebot": "scoping-workshop"
+      },
+      {
         "lage": "Abläufe hängen an einer Person, Daten liegen verstreut.",
-        "ziel": "/innovation/umsetzungsprojekte/",
-        "name": "Umsetzungsprojekte",
-        "preis": "Anfrage starten",
-        "bereich": "innovation"
+        "angebot": "umsetzungsprojekte"
       }
     ]
   },
@@ -884,7 +1062,7 @@
         "url": "https://makestudios.de/",
         "thema": "Sichtbarkeit und Video",
         "satz": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Video, Fotos und Social Media.",
-        "anriss": "MAKE Studios baut Ihre Website, pflegt Ihr Google-Profil und macht Video und Fotos. Auf Anfrage betreuen wir auch Ihre sozialen Medien. Damit Kunden Sie finden und schnell verstehen, was Sie machen.",
+        "anriss": "MAKE Studios baut Ihre Website, pflegt Ihr Google-Profil und macht Video und Fotos. Ihre sozialen Medien betreuen wir in drei Paketen. Damit Kunden Sie finden und schnell verstehen, was Sie machen.",
         "themen": [
           "Websites",
           "Google-Profil",
@@ -928,7 +1106,7 @@
   },
   "arbeitsprobe": {
     "titel": "Diese Website ist unsere Arbeitsprobe.",
-    "text": "Scroll-Film mit eigener Szene, Texte, Ratgeber, Vorschaubilder und strukturierte Daten für Google und KI-Suchen. Die Seite kommt ohne Cookies, Tracking und fremde Dienste aus. So bauen wir auch Ihre.",
+    "text": "Scroll-Geschichte mit eigener Szene, Texte, Ratgeber, Vorschaubilder und strukturierte Daten für Google und KI-Suchen. Die Seite kommt ohne Cookies, Tracking und fremde Dienste aus. So bauen wir auch Ihre.",
     "punkte": [
       "Ein Kernsatz oben, ein klarer nächster Schritt",
       "Ohne Cookies und Tracking, kein Banner nötig",

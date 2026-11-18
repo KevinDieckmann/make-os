@@ -22,7 +22,7 @@ Online als Vorschau unter https://fokusinnovation.de (seit 26.10., noindex). Die
     - jede Frage in den Daten auch sichtbar
     - Vorschaubild vorhanden
 - `grafiken.mjs`: die gezeichneten Bewegungen (SVG) für Bereiche, Team, Einstiege und Belegzahlen.
-- `arbeitsprobe.mjs` nimmt mit Chrome die zwei Bildschirmfotos der Arbeitsprobe von der laufenden Vorschau auf (`assets/bild/arbeitsprobe/rechner.jpg` 1440 × 900 und `handy.jpg` 780 × 1688). Nach einem neuen Zeichen, Film oder Kopf einmal laufen lassen.
+- `arbeitsprobe.mjs` nimmt mit Chrome die zwei Bildschirmfotos der Arbeitsprobe von der laufenden Vorschau auf (`assets/bild/arbeitsprobe/rechner.jpg` 1440 × 900 und `handy.jpg` 780 × 1688). Beide zeigen seit 18.11. die Startseite im Raum von MAKE Studios (Etage 08, Website · Cinematic, als Standbild über `?p=0.4024&linie=website&paket=3`). Nach einem neuen Zeichen, Kopf oder einer Änderung am Haus einmal laufen lassen: `node arbeitsprobe.mjs http://localhost:<port>`.
 - `bilder.mjs` zeichnet mit Chrome ein Vorschaubild je Seite (1200 × 630), dazu Logo, Icons und favicon.ico. Nach neuen Seiten oder geänderten Titeln einmal laufen lassen.
 
 Aufruf:
@@ -101,6 +101,39 @@ Kevin: „Dach plus Innovation“. Verbindlich sind `STRUKTUR-MARKEN.md` und `SE
 - **Prüfer:** „MAKE“ ist erlaubt als MAKE Innovation, MAKE Studios, MAKE Revenue. Startseite und Preisblätter müssen zur Marke verweisen.
 - **Zeichen:** MAKE Studios trägt die Irisblende aus deren `zeichen.svg`. MAKE Revenue trägt den Kreis mit der Stufenlinie aus deren `zeichen.svg` (Minze auf dunklem Grund, Tannengrün auf Papier). Beide Zeichen zeichnet `grafiken.mjs › markenZeichen`, die Farben stehen in `css/fokus.css › Markenfamilie`.
 - **Erste Szene des Films:** Titel und Satz stehen ab dem ersten Bild da (ohne Skript, ohne Einblenden aus Deckkraft 0), damit sie als größtes sichtbares Element zählen. Die übrigen Szenen laufen wie bisher.
+
+## Ergänzungen 18.11.2026: Social Media, Innovation mit Preisen, Fokus Abend, Podcast
+Kevin: Was die Scroll-Geschichte „Das Haus“ nennt, steht auch auf den Seiten dahinter.
+- **Preise bleiben an einer Stelle** (`makeinnovation/inhalt/inhalt.json › angebote`): neu `social-media` (drei Stufen mit `punkte`), `scoping-workshop` und `abendpartner`. Angebote mit dem Feld `anker` haben keine eigene Seite, sondern stehen als Abschnitt auf einer anderen (`/innovation/#scoping-workshop`, `/events/#abendpartner`). Umsetzungsprojekte tragen kein „Coming Soon“ mehr.
+- **Social Media:** Seite `/sichtbarkeit/social-media/`, auf dem Preisblatt die drei Pakete als Zeilen unter dem Angebot (`stufenDaten`), auf `/preise/` als Karte.
+- **Innovation:** `/innovation/` zeigt statt einer Liste die drei Schritte Check, Workshop, Projekt (`dreiSchritte`, Texte in `fokus.json › bereiche.innovation.schritt_texte`); dieselben Schritte als Weg auf `/innovation/umsetzungsprojekte/`.
+- **Events:** Der monatliche Abend heißt „Fokus Abend“ (`fokus.json › events.abend`: Ablauf, Rollen als Vergleich, Fragen). Die allgemeine Einleitung mit `data-mk="text:events.einleitung"` steht jetzt über den weiteren Formaten, damit ein in der Anwendung gepflegter Text den Kopf nicht überschreibt.
+- **Podcast:** Seite `/podcast/` (`fokus.json › podcast`), Menüpunkt neben Events. Es gibt genau eine Aussage und einen Aufruf.
+- **Prüfer:** „Fokus Innovation“ ist nur noch der Name des Podcasts. Erlaubt ist genau diese Schreibweise und nur zusammen mit „Podcast“ im selben Textblock (`fokusNameFehler`). Als Firmen- oder Seitenname (Seitentitel, Name der Website, Organisation in den strukturierten Daten, „… GmbH“, „© …“) bleibt er gesperrt (`fokusAlsSeitenname`), ebenso andere Schreibweisen und die alte Adresse. „Fokus Abend“ ist kein Sperrwort.
+
+## Startseite: „Das Haus“ statt Film (18.11.2026)
+Die Scroll-Geschichte „Das Haus“ ist der Auftakt der Startseite: Auftakt auf der Dachbühne, Fahrt nach unten, sieben Halte mit Räumen, Paketschaltern, Rollen und Karten, der rote Faden, das Finale, der Kreis-Übergang in den ersten hellen Abschnitt. Dazu das Dock mit der Etagenwahl. Kopf, Fuß und alles danach sind die Website wie bisher.
+- **Quelle ist `haus/` in diesem Ordner** (der frühere Test-Ordner `prototype/make-haus/` ist eingefroren):
+  - `buehne.html` Markup der Bühne, `haus.css` Stile, `haus.js` Skript.
+  - `pakete.json` Pakete und Rollen der Räume, `haus.json` die sieben Etagen, `verbindungen.json` „Spielt zusammen mit“, `ziele.json` alle Linkziele.
+  - `lenis.min.js` (Lenis 1.3.26, MIT) mit `lenis-LICENSE.txt`.
+  - `haus-bau.mjs` baut daraus das Markup und die Dateien `css/haus.css`, `js/haus.js`, `js/lenis.min.js`. `bauen.mjs` ruft es auf; im Seitenrahmen heißt der Schalter `haus` (Startseite), er lädt Stile und Skript und setzt den Kopf von Anfang an hell auf dunkel.
+- **Eine Preisliste:** In `haus/pakete.json` stehen keine Preise. Ein Paket nennt mit `angebot` (bei Social Media dazu `stufe`) das Angebot aus `makeinnovation/inhalt/inhalt.json`; Ab-Preis und Linkziel „Zum Angebot“ kommen beim Bau von dort. Der Bau vergleicht auch die Namen und bricht ab, wenn einer nicht mehr passt; geduldete Kurzformen nennt er in der Ausgabe.
+- **Links:** nur über `haus/ziele.json`. Erstgespräch, Checks und Anfragen (Einladung, Abendpartner, Gast im Podcast) löst `bauen.mjs` mit denselben Helfern auf wie überall (`hausZiel`). Anfragen tragen `data-anfrage-mail`, auch die, die das Skript einsetzt.
+- **Sicherheitsregeln:** kein Inline-Skript, kein `<style>`, kein `style`-Attribut (auch nicht in HTML, das das Skript einsetzt). Farben je Etage stehen als Klassen in `haus.css`. Der Bau bricht ab, wenn im Markup oder Skript ein `style=` steht.
+- **Maße:** In `haus/haus.css` und `haus/haus.js` meint „rem“ die Einheit des Hauses (`--hr`, läuft mit der Fensterbreite). Der Bau setzt dafür `calc(… * var(--hr))` ein, weil die Website eine andere Wurzel-Schriftgröße hat. Regeln des Hauses gelten nur in `.haus`.
+- **Kopf über der Szene:** dieselbe dunkle Fassung wie früher beim Film (`.kopf.ueber-film`, mit `film-geht` als dunkles Glas ab der Fahrt). `html.kopf-da` rückt Etikett, Paketschalter, Karte und Etagenleiste unter den Kopf. „Zum Inhalt“ führt auf `#einstieg`.
+- **Ohne Skript und für Suchmaschinen:** dieselben Elemente als lesbare Abschnitte (Auftakt, sieben Etagen, roter Faden), je Etage in `<noscript>` die Preiszeile und die Pakete mit Link. Das eine `h1` der Seite ist der Titel des Auftakts; die Überschrift des ersten hellen Abschnitts ist jetzt `h2.held-titel` (sieht aus wie vorher).
+- **Handy, Schalterblatt (Nacharbeit 18.11.):** Das Blatt ist ein Raster: Etikett und Link („Zum Angebot“ bzw. „Mehr erfahren“) teilen sich die erste Zeile, das Etikett kürzt mit Auslassungspunkten. Solange das Blatt offen ist (`html.blatt-offen`, setzt das Skript), rückt das Dock 0,75 rem tiefer; so steht der letzte Knopf bei 390 × 844 in allen Paketen frei. In Fenstern von 768 bis 1024 Breite steht der Hinweis „Punkte antippen“ über dem Dock.
+- **Kein Vorlader:** Titel und Satz stehen ab dem ersten Bild im HTML.
+- **Auftakt mit der Mission (18.11.):** Die drei Bilder tragen „Gute Ideen / scheitern / nicht mehr“ (das `h1`), „an Sichtbarkeit, / Vertrieb / und Zugängen.“ und „Dafür / gibt es / uns.“. „Bühne für Innovation“ steht als Vorzeile über dem ersten Titel (`.hero-vor`; für Vorleser und ohne Skript als `p.sr-only` davor). Alle drei Bilder haben dieselbe Größe (`.hero .word` in `haus.css`): Maß ist die längste Zeile „an Sichtbarkeit,“ (6,71 em breit), die untere Zeile muss links vom Satz rechts unten enden. Wer eine Zeile ändert, prüft die Standbilder bei `?p=0.02`, `?p=0.10` und `?p=0.17` in 1440 × 900, 1280 × 720, 1024 × 768 und 390 × 844.
+- **Film:** `css/film.css`, `js/film.js` und `js/szene.js` lädt keine Seite mehr. Die Dateien liegen noch da (der Prüfer verlangt sie); `fokus.json › film` wird nicht mehr gelesen.
+- **Auslieferung:** `ausliefern.mjs` lässt `haus/` (Quellen) und `werkzeug/` weg.
+- **Prüfen** (Ordner `werkzeug/`):
+  - `node werkzeug/csp-server.mjs` liefert die Seite mit den Sicherheits-Kopfzeilen auf Port 3391.
+  - `node werkzeug/haus-standbilder.mjs <ziel> <profil> "name|p=0.4024|1440|900"` nimmt Standbilder auf und liest die Konsole mit. Schalter: `?p=` (Stelle 0 bis 1), `&linie=`, `&paket=`, `&punkt=`, `?etage=08`; Abfrage `ohneskript` für die Fassung ohne Skript.
+  - `node werkzeug/haus-echtlauf.mjs werkzeug/haus-echtlauf.json <ziel> <profil>` scrollt die ganze Fahrt, klickt Schalter, Karten, Dock und Menü und nennt Bildzeiten.
+  - `node werkzeug/haus-pngdiff.mjs a.png b.png` vergleicht zwei Standbilder und zeigt, wo sie abweichen.
 
 ## Offen für Kevin
 - Ratgeber lesen: Sie stehen unter Kevins Namen.

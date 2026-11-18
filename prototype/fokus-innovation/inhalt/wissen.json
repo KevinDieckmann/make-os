@@ -650,7 +650,7 @@
         {
           "h": "So arbeiten wir",
           "absaetze": [
-            "Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir Ihre Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze."
+            "Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir Ihre Top 3 fest. Im Scoping-Workshop klären wir Umfang, Abläufe und Daten, bevor gebaut wird. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, mit klarem Umfang, vorab vereinbart."
           ]
         }
       ],
@@ -665,7 +665,7 @@
         },
         {
           "f": "Was kostet es, KI einzuführen?",
-          "a": "Der Innovations-Check und das Erstgespräch sind kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Haben Sie ein Vorhaben, sprechen Sie uns an; den Preis nennen wir im Gespräch."
+          "a": "Der Innovations-Check und das Erstgespräch sind kostenlos. Der Scoping-Workshop kostet {preis:scoping-workshop} netto und wird auf das Projekt angerechnet. Umsetzungsprojekte beginnen {preis:umsetzungsprojekte} netto, mit klarem Umfang, vorab vereinbart."
         },
         {
           "faq": "was-kostet-der-innovations-check"
@@ -1152,7 +1152,7 @@
         {
           "h": "So arbeiten wir",
           "absaetze": [
-            "Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze."
+            "Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. Im Scoping-Workshop klären wir Umfang, Abläufe und Daten, bevor gebaut wird. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, mit klarem Umfang, vorab vereinbart."
           ]
         }
       ],
@@ -1569,7 +1569,7 @@
         {
           "h": "So arbeiten wir",
           "absaetze": [
-            "Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze."
+            "Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. Im Scoping-Workshop klären wir Umfang, Abläufe und Daten, bevor gebaut wird. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, mit klarem Umfang, vorab vereinbart."
           ]
         }
       ],
@@ -2539,7 +2539,7 @@
     {
       "id": "make-innovation-events",
       "name": "MAKE Innovation · Events",
-      "text": "Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Impulsabende, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.",
+      "text": "Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste und Kunden kostenlos.",
       "link": "/events/"
     },
     {

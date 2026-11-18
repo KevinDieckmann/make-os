@@ -1,0 +1,40 @@
+{
+  "_hinweis": "Die sieben Etagen, von unten nach oben. Name, Etagenzahl und Lage liest der Bau aus den Halten in buehne.html; hier steht nur: name = eigener Name (Knöpfe „Spielt zusammen mit“), akz = Akzentfarbe der Etage, preise = Muster der Preiszeile für die Fassung ohne Skript ({ab:raum.linie} bzw. {ab:raum} = kleinster Ab-Preis, {preis:raum.linie.n} = Preis des n-ten Pakets; die Zahlen kommen über pakete.json aus den Daten der Website).",
+  "etagen": [
+    {
+      "id": "eg",
+      "akz": "#A78BFA",
+      "preise": "Check kostenlos · 7 Minuten"
+    },
+    {
+      "id": "08",
+      "akz": "#FF5A1F",
+      "preise": "Website {ab:studios.website} · Video {ab:studios.video} · Social Media {ab:studios.social}"
+    },
+    {
+      "id": "15",
+      "akz": "#A78BFA",
+      "preise": "Mandat {ab:pr}"
+    },
+    {
+      "id": "21",
+      "name": "Fokus Innovation · Der Podcast",
+      "akz": "#A78BFA"
+    },
+    {
+      "id": "28",
+      "akz": "#7DB7FF",
+      "preise": "Tagesworkshop {preis:revenue.vertrieb.1} · Mandate {preis:revenue.vertrieb.2}"
+    },
+    {
+      "id": "35",
+      "akz": "#A78BFA",
+      "preise": "Innovations-Check {preis:innovation.schritte.1} · Scoping-Workshop {preis:innovation.schritte.2}"
+    },
+    {
+      "id": "dach",
+      "akz": "#A78BFA",
+      "preise": "Für Gäste und Kunden {preis:dach.gast.1} · Abendpartner {preis:dach.partner.1}"
+    }
+  ]
+}

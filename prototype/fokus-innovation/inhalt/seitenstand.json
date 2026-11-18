@@ -48,20 +48,20 @@
     "datum": "2026-11-13"
   },
   "begriffe/index.html": {
-    "hash": "86d24ecc26eb0d44",
-    "datum": "2026-11-11"
+    "hash": "00b5384830209421",
+    "datum": "2026-11-18"
   },
   "datenschutz/index.html": {
     "hash": "44e7061b8dc6ef29",
     "datum": "2026-11-13"
   },
   "events/index.html": {
-    "hash": "080101e3f8c14526",
-    "datum": "2026-11-12"
+    "hash": "30b2ef6a39253cc8",
+    "datum": "2026-11-18"
   },
   "fragen/index.html": {
-    "hash": "299b37d170d02e33",
-    "datum": "2026-11-13"
+    "hash": "cef857e55919b9ea",
+    "datum": "2026-11-18"
   },
   "impressum/index.html": {
     "hash": "0bc323d302e4da48",
@@ -72,24 +72,24 @@
     "datum": "2026-11-13"
   },
   "index.html": {
-    "hash": "1343be15775147f7",
-    "datum": "2026-11-13"
+    "hash": "3cf441cb80649ff7",
+    "datum": "2026-11-18"
   },
   "innovation/index.html": {
-    "hash": "2831e0d2afa4945e",
-    "datum": "2026-11-11"
+    "hash": "3d494b76a912bef3",
+    "datum": "2026-11-18"
   },
   "innovation/umsetzungsprojekte/index.html": {
-    "hash": "6b82d49c58627d72",
-    "datum": "2026-11-11"
+    "hash": "4ffab92dee7eee70",
+    "datum": "2026-11-18"
   },
   "innovations-check/index.html": {
     "hash": "93794dfdc4950b3f",
     "datum": "2026-11-11"
   },
   "ins-unternehmen/index.html": {
-    "hash": "7d19c33521c824c4",
-    "datum": "2026-11-11"
+    "hash": "f6fb3b1b4d6db970",
+    "datum": "2026-11-18"
   },
   "kontakt/index.html": {
     "hash": "4c6afc7cc58c914e",
@@ -131,81 +131,89 @@
     "hash": "be85efdf23126fd8",
     "datum": "2026-11-13"
   },
+  "podcast/index.html": {
+    "hash": "7ffef24ad76021c0",
+    "datum": "2026-11-18"
+  },
   "preise/index.html": {
-    "hash": "547b3a8e3665e5cd",
-    "datum": "2026-11-13"
+    "hash": "5963f234db5dc54f",
+    "datum": "2026-11-18"
   },
   "sichtbarkeit/erklaervideo/index.html": {
-    "hash": "b757b0080fe46f62",
-    "datum": "2026-11-13"
+    "hash": "0759ab145201b7c3",
+    "datum": "2026-11-18"
   },
   "sichtbarkeit/homepage-cinematic/index.html": {
-    "hash": "2732fc1fed023fed",
-    "datum": "2026-11-13"
+    "hash": "982b90bcaf0d92da",
+    "datum": "2026-11-18"
   },
   "sichtbarkeit/homepage-landing/index.html": {
-    "hash": "e76f87082eb78522",
-    "datum": "2026-11-13"
+    "hash": "db4f94d38bca5277",
+    "datum": "2026-11-18"
   },
   "sichtbarkeit/homepage-story/index.html": {
-    "hash": "2334745cbbd5cbac",
-    "datum": "2026-11-13"
+    "hash": "36bcf67f83300093",
+    "datum": "2026-11-18"
   },
   "sichtbarkeit/homepages/index.html": {
     "hash": "5f2402a6c6e5fdd7",
     "datum": "2026-11-13"
   },
   "sichtbarkeit/index.html": {
-    "hash": "c2779aa1dec5e640",
-    "datum": "2026-11-13"
+    "hash": "29bfd021de651d6f",
+    "datum": "2026-11-18"
   },
   "sichtbarkeit/positionierung/index.html": {
-    "hash": "c48723a55b2cb252",
-    "datum": "2026-11-13"
+    "hash": "5df04eb36ed7c6f8",
+    "datum": "2026-11-18"
   },
   "sichtbarkeit/pr-kommunikation/index.html": {
-    "hash": "56c1941e80765f42",
-    "datum": "2026-11-13"
+    "hash": "4f51f6ded916b4cd",
+    "datum": "2026-11-18"
+  },
+  "sichtbarkeit/social-media/index.html": {
+    "hash": "cdcff861c1e55821",
+    "datum": "2026-11-18"
   },
   "sichtbarkeit/video-serie/index.html": {
-    "hash": "3fdf4771e7da90df",
-    "datum": "2026-11-13"
+    "hash": "be23039c7bdfd2c4",
+    "datum": "2026-11-18"
   },
   "sichtbarkeit/videos/index.html": {
     "hash": "102ec90d0bda1a08",
     "datum": "2026-11-13"
   },
   "sichtbarkeit/videostory/index.html": {
-    "hash": "b5089c23655bf123",
-    "datum": "2026-11-13"
+    "hash": "36ff11d84a96ab10",
+    "datum": "2026-11-18"
   },
   "ueber-uns/index.html": {
-    "hash": "6a8032ea079baccc",
-    "datum": "2026-11-13"
+    "hash": "a9c49b4e1c2f74c1",
+    "datum": "2026-11-18"
   },
   "vertrieb/cso/index.html": {
-    "hash": "37b7b195e6dcfa74",
-    "datum": "2026-11-13"
+    "hash": "9289b692d244e006",
+    "datum": "2026-11-18"
   },
   "vertrieb/head-of-sales/index.html": {
-    "hash": "875fc6d5fcb469bd",
-    "datum": "2026-11-13"
+    "hash": "faa3900a2e336abd",
+    "datum": "2026-11-18"
   },
   "vertrieb/index.html": {
     "hash": "9f06e03a59d8fa17",
     "datum": "2026-11-13"
   },
   "vertrieb/tagesworkshop/index.html": {
-    "hash": "9ac0094f532c8652",
-    "datum": "2026-11-13"
+    "hash": "2c5b73f5ed6dbc70",
+    "datum": "2026-11-18"
   },
   "wissen/erklaervideo-fuer-unternehmen/index.html": {
     "hash": "85a0c2abc623a765",
     "datum": "2026-11-13"
   },
   "wissen/erste-30-tage-mit-ki/index.html": {
-    "hash": "2a9e425e9359787f",
-    "datum": "2026-11-11"
+    "hash": "7472ad3da2011f18",
+    "datum": "2026-11-18"
   },
   "wissen/fuenf-vertriebszahlen/index.html": {
     "hash": "6552250890c12a07",
@@ -220,12 +228,12 @@
     "datum": "2026-11-13"
   },
   "wissen/ki-anwendungsfaelle-finden/index.html": {
-    "hash": "7e9a3b2fbe27e5e3",
-    "datum": "2026-11-11"
+    "hash": "299b1f2dc49351c7",
+    "datum": "2026-11-18"
   },
   "wissen/ki-im-mittelstand-einfuehren/index.html": {
-    "hash": "fb83ee755205b2d8",
-    "datum": "2026-11-11"
+    "hash": "7000456163f0b2ea",
+    "datum": "2026-11-18"
   },
   "wissen/kundenstimmen-die-ueberzeugen/index.html": {
     "hash": "141115c71567d84a",

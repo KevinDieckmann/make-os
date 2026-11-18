@@ -111,6 +111,7 @@
       "erklaervideo",
       "videostory",
       "video-serie",
+      "social-media",
       "positionierung",
       "pr-kommunikation",
       "fokus-innovation"
@@ -119,8 +120,8 @@
     {
      "name": "Innovation",
      "satz": "Neues im Unternehmen einführen, bis es genutzt wird.",
-     "status": "Coming Soon",
      "angebote": [
+      "scoping-workshop",
       "umsetzungsprojekte"
      ]
     }
@@ -418,6 +419,52 @@
    ]
   },
   {
+   "id": "social-media",
+   "bereich": "Sichtbarkeit",
+   "gruppe": "Social Media",
+   "name": "Social Media S, M, L",
+   "preis": "990 / 1.490 / 2.490 €",
+   "preis_zusatz": "pro Monat, mindestens 3 Monate",
+   "stufen": [
+    {
+     "name": "S",
+     "preis": "990 €",
+     "punkte": [
+      "Redaktionsplan",
+      "Texte für Ihre Beiträge",
+      "2 Reels im Monat",
+      "Bilder liefern Sie"
+     ]
+    },
+    {
+     "name": "M",
+     "preis": "1.490 €",
+     "punkte": [
+      "Alles aus S",
+      "2 Reels je Woche aus Ihrem Material"
+     ]
+    },
+    {
+     "name": "L",
+     "preis": "2.490 €",
+     "punkte": [
+      "Alles aus M",
+      "3 Storys je Woche",
+      "1 Dreh im Monat",
+      "Kommentare und Nachrichten beantworten"
+     ]
+    }
+   ],
+   "fuer_wen": "Für Unternehmen, die in den sozialen Medien regelmäßig sichtbar sein wollen, ohne Beiträge selbst zu planen und zu schreiben.",
+   "nicht_enthalten": [
+    "Bezahlte Anzeigen"
+   ],
+   "regeln": [
+    "Der genaue Monatspreis richtet sich nach dem Umfang und steht vor dem Start fest"
+   ],
+   "cta": "Gespräch vereinbaren"
+  },
+  {
    "id": "fokus-innovation",
    "bereich": "Sichtbarkeit",
    "name": "Fokus Innovation",
@@ -431,12 +478,21 @@
    "cta": "Anmelden"
   },
   {
+   "id": "scoping-workshop",
+   "bereich": "Innovation",
+   "name": "Scoping-Workshop",
+   "preis": "ab 1.900 €",
+   "preis_zusatz": "einmalig, wird auf das Projekt angerechnet",
+   "anker": "/innovation/#scoping-workshop",
+   "fuer_wen": "Umfang, Abläufe und Daten klären, bevor gebaut wird.",
+   "cta": "Workshop anfragen"
+  },
+  {
    "id": "umsetzungsprojekte",
    "bereich": "Innovation",
    "name": "Umsetzungsprojekte: KI und Software einführen",
    "preis": "ab 9.990 €",
    "preis_zusatz": "Projekt-Festpreis mit klarem Umfang vorab",
-   "status": "Coming Soon",
    "enthalten": [
     "Abläufe aufnehmen und ordnen, bevor etwas automatisiert wird",
     "Datenbasis aufbauen: Wissen, Abläufe und Daten an einem Ort",
@@ -444,7 +500,24 @@
     "Prozesse bauen, die ohne die Geschäftsführung laufen",
     "eigene Werkzeuge entwickeln"
    ],
-   "cta": "Anfrage stellen / Warteliste"
+   "cta": "Erstgespräch vereinbaren"
+  },
+  {
+   "id": "abendpartner",
+   "bereich": "Events",
+   "name": "Abendpartner beim Fokus Abend",
+   "preis": "ab 1.990 €",
+   "preis_zusatz": "je Abend",
+   "anker": "/events/#abendpartner",
+   "fuer_wen": "Für Unternehmen, die einen Fokus Abend als Partner begleiten.",
+   "enthalten": [
+    "Logo und Nennung auf Einladung und Anmeldeseite",
+    "Begrüßung 3 Minuten",
+    "Beitrag im Nachbericht",
+    "Partnerbericht in 3 Werktagen",
+    "15 Minuten Feedback-Gespräch"
+   ],
+   "cta": "Abendpartner anfragen"
   }
  ],
  "zusatzoptionen": [

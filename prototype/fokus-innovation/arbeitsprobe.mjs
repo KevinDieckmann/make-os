@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // ─── MAKE Innovation · Arbeitsprobe (11.11.2026) ────────────────────────────────────────────────────────────────────
 // Die zwei Bildschirmfotos im Abschnitt „Diese Website ist unsere Arbeitsprobe“ (Sichtbarkeit, Homepage-Pakete):
-//   assets/bild/arbeitsprobe/rechner.jpg  1440 × 900   das Endbild des Films der Startseite (Zeichen, Claim, zwei Knöpfe)
-//   assets/bild/arbeitsprobe/handy.jpg     780 × 1688  die Seite „In den Markt“ am Handy (390 × 844, doppelte Auflösung)
-// Aufgenommen mit einem unsichtbaren Chrome von der laufenden Vorschau, ohne Pakete. Nach einem neuen Zeichen, Film oder Kopf einmal
-// laufen lassen:
+//   assets/bild/arbeitsprobe/rechner.jpg  1440 × 900   die Startseite („Das Haus“) im Raum von MAKE Studios, Etage 08, Linie Website, Paket Cinematic
+//   assets/bild/arbeitsprobe/handy.jpg     780 × 1688  dieselbe Stelle am Handy (390 × 844, doppelte Auflösung)
+// Die Stelle kommt als Standbild über die Adresse (?p=…&linie=…&paket=…, siehe LIESMICH › Startseite: „Das Haus“).
+// Aufgenommen mit einem unsichtbaren Chrome von der laufenden Vorschau, ohne Pakete. Nach einem neuen Zeichen, Kopf oder einer Änderung am Haus
+// einmal laufen lassen:
 //   node prototype/fokus-innovation/arbeitsprobe.mjs [http://localhost:3019]
 // Chrome-Pfad notfalls über CHROME=… setzen. Größe und Dateinamen stehen so auch in bauen.mjs › arbeitsprobe().
 
@@ -38,7 +39,8 @@ async function bild({ datei, pfad, breite, hoehe, mass, handy, vorher, wartezeit
   await cdp('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: mass, mobile: handy });
   await cdp('Emulation.setTouchEmulationEnabled', { enabled: handy, maxTouchPoints: handy ? 5 : 1 });
   await cdp('Page.navigate', { url: `${BASIS}${pfad}` });
-  await warte(3000);
+  for (let i = 0; i < 80 && !(await wert("document.documentElement.dataset.bereit === '1'")); i++) await warte(150); // das Haus meldet, wenn das Standbild steht
+  await warte(1500);
   if (vorher) await wert(vorher);
   await warte(wartezeit);
   const r = await cdp('Page.captureScreenshot', { format: 'jpeg', quality: guete });
@@ -49,11 +51,10 @@ async function bild({ datei, pfad, breite, hoehe, mass, handy, vorher, wartezeit
 try {
   mkdirSync(ZIEL, { recursive: true });
   await cdp('Page.enable'); await cdp('Runtime.enable');
-  // Rechner: ans Ende des Films scrollen (die Bühne füllt dann genau das Fenster) und warten, bis Claim und Knöpfe stehen.
-  await bild({ datei: 'rechner.jpg', pfad: '/', breite: 1440, hoehe: 900, mass: 1, handy: false, guete: 88, wartezeit: 5000,
-    vorher: '(() => { const f = document.querySelector(".film"); scrollTo(0, f.offsetHeight - innerHeight); })()' });
-  // Handy: „In den Markt“ von oben; warten, bis das Problem-Bild von „Heute“ nach „Mit uns“ gewechselt hat.
-  await bild({ datei: 'handy.jpg', pfad: '/in-den-markt/', breite: 390, hoehe: 844, mass: 2, handy: true, guete: 84, wartezeit: 6000 });
+  // Beide Bilder: der Raum von MAKE Studios (Etage 08) mit dem Paketschalter auf Website · Cinematic. Zum Angebot der Homepage-Pakete passt das am besten.
+  const STELLE = '/?p=0.4024&linie=website&paket=3';
+  await bild({ datei: 'rechner.jpg', pfad: STELLE, breite: 1440, hoehe: 900, mass: 1, handy: false, guete: 88, wartezeit: 2500 });
+  await bild({ datei: 'handy.jpg', pfad: STELLE, breite: 390, hoehe: 844, mass: 2, handy: true, guete: 84, wartezeit: 2500 });
 } finally {
   chrome.kill('SIGKILL');
   await warte(600);
