@@ -33,6 +33,7 @@ export interface Anlass { anlass: string; titel: string; vorschlag: string }
 export function anlassVon(roh: unknown, katalog: { baustein?: string | null; vorlage?: string | null } = {}): Anlass | null {
   if (typeof roh !== 'string' || !ANLASS_OK.test(roh)) return null;
   if (roh === 'events') return { anlass: roh, titel: 'Einladung zu den Events', vorschlag: 'Bitte nehmen Sie mich in die Einladungsliste für Ihre Events auf.' };
+  if (roh === 'podcast-gast') return { anlass: roh, titel: 'Gast für den Podcast vorschlagen', vorschlag: '' };
   if (roh === 'frage') return { anlass: roh, titel: 'Eine Frage', vorschlag: '' };
   if (/^angebot-[a-z0-9-]+$/.test(roh)) return { anlass: roh, titel: 'Anfrage zu einem Angebot', vorschlag: '' };
   if (/^baustein-[a-z0-9-]+$/.test(roh)) return { anlass: roh, titel: katalog.baustein ? `Baustein bestellen: ${katalog.baustein}` : 'Baustein bestellen', vorschlag: 'Ich möchte diesen Baustein bestellen. Firma und Rechnungsanschrift:' };

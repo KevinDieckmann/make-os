@@ -19,6 +19,8 @@ export interface EingangDaten {
   /** Unterlage: Kennung im Katalog und der Newsletter-Wunsch (Häkchen mit passender Fassung). */
   unterlageId?: string;
   newsletter?: boolean;
+  /** Newsletter über die Website: gewünschte Themen (optional). */
+  themen?: ('podcast' | 'events' | 'updates')[];
   /** Feste Kennungen der Anfrage im CRM — ein zweiter Versuch legt nichts doppelt an (lib/crm/anfrage-anlegen.ts `ids`). */
   ids?: { kontakt: string; followUp: string };
 }

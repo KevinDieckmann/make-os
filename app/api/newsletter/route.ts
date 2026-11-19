@@ -1,6 +1,8 @@
 // ─── Newsletter-Anmeldung über die Website — die öffentliche Schnittstelle (30.10., Branch `newsletter-anmeldung`) ─────────────────────
 // OHNE Sitzung erreichbar (middleware.ts `NEWSLETTER_OFFEN`: nur /newsletter und POST /api/newsletter). Handelt nie als Person.
-// POST { aktion: 'anmelden', email, vorname?, einwilligung: true, fassung, stempel, webseite (Honigtopf, leer) }
+// GET  → { ok: true, aktiv } bzw. mit aktiv: true zusätzlich { stempel, fassung, wortlaut } — NUR das, was das Formular der statischen Website zum
+//        Senden braucht (dasselbe, das die Seite /newsletter serverseitig einbettet); keine Personen, keine Einstellungen; gedrosselt, schreibt nichts.
+// POST { aktion: 'anmelden', email, vorname?, themen? (Liste aus podcast · events · updates), einwilligung: true, fassung, stempel, webseite (Honigtopf, leer) }
 //        → IMMER dieselbe Antwort { ok: true, text } — egal ob die Adresse bekannt, gesperrt, eingeschränkt oder schon angemeldet ist; die Arbeit
 //          (Zeile, Token, Bestätigungsmail) läuft NACH der Antwort (lib/newsletter/server.ts `anmeldungVerarbeiten`), damit auch die Zeit nichts verrät.
 // POST { aktion: 'bestaetigen', token }  → { ok: true, text } bzw. EIN neutraler Fehler (unbekannt, benutzt, abgelaufen).
@@ -12,8 +14,8 @@ import { NextResponse } from 'next/server';
 import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { ausfuellZeitOk } from '@/lib/kalender/buchung';
-import { emailSauber, vornameSauber, ANMELDUNG_TEXT, BESTAETIGT_TEXT, LINK_UNGUELTIG } from '@/lib/newsletter/regeln';
-import { stempelZeit } from '@/lib/newsletter/speicher';
+import { emailSauber, vornameSauber, themenSauber, ANMELDUNG_TEXT, BESTAETIGT_TEXT, LINK_UNGUELTIG } from '@/lib/newsletter/regeln';
+import { newsletterStempel, stempelZeit } from '@/lib/newsletter/speicher';
 import { bestaetigen, newsletterBereit, nachDerAntwort } from '@/lib/newsletter/server';
 import { EingangVoll, eingangFesthalten, eingangVerarbeiten } from '@/lib/oeffentlich/eingang-server';
 
@@ -36,6 +38,18 @@ function gedrosselt(schluessel: string) {
   return p.erlaubt ? null : antwort({ ok: false, fehler: `Zu viele Versuche auf einmal — bitte in ${Math.max(1, Math.ceil(p.warteSek / 60))} Min. noch einmal.` }, 429, { 'Retry-After': String(p.warteSek) });
 }
 
+/** Abfragen „bereit?“ je Netz und Viertelstunde frei (die Website fragt einmal je Seitenaufruf). */
+const LESEN_FREI = 60;
+
+export async function GET(req: Request) {
+  const schluessel = `newsletter-lesen:${adresseNetz(req)}`;
+  const g = gedrosselt(schluessel); if (g) return g;
+  fehlschlag(schluessel, Date.now(), LESEN_FREI);
+  const bereit = await newsletterBereit();
+  if (!bereit) return antwort({ ok: true, aktiv: false });
+  return antwort({ ok: true, aktiv: true, stempel: newsletterStempel(), fassung: bereit.fassung, wortlaut: bereit.wortlaut });
+}
+
 export async function POST(req: Request) {
   const netz = adresseNetz(req);
   const bereit = await newsletterBereit();
@@ -53,12 +67,14 @@ export async function POST(req: Request) {
     if (b.fassung !== bereit.fassung) return antwort({ ok: false, fehler: 'Der Text der Einwilligung hat sich geändert. Bitte laden Sie die Seite neu und lesen Sie ihn noch einmal.' }, 409);
     const email = emailSauber(b.email);
     if (!email) return antwort({ ok: false, fehler: 'Bitte eine gültige E-Mail-Adresse angeben.' }, 400);
+    const themen = themenSauber(b.themen);
+    if (themen === null) return antwort({ ok: false, fehler: 'Die Auswahl der Themen ist ungültig.' }, 400);
     const vorname = vornameSauber(b.vorname);
     if (vorname === null) return antwort({ ok: false, fehler: 'Bitte im Vornamen nur Buchstaben verwenden (höchstens 60).' }, 400);
     // Prüfung A (Fund 7): erst die Eingangszeile fest speichern (für JEDE gültige Anmeldung — die Antwort bleibt dieselbe), dann die Arbeit nach der
     // Antwort; Takt und Morgenlauf holen nach. Speicherfehler → 503 (nie geht eine Anmeldung still verloren).
     let id: string;
-    try { id = await eingangFesthalten('newsletter', { email, vorname: vorname ?? '' }); }
+    try { id = await eingangFesthalten('newsletter', { email, vorname: vorname ?? '', ...(themen?.length ? { themen } : {}) }); }
     catch (x) {
       if (!(x instanceof EingangVoll)) console.error('[newsletter] Eingang:', x instanceof Error ? x.message.slice(0, 120) : 'Fehler');
       return antwort({ ok: false, fehler: 'Ihre Anmeldung ließ sich gerade nicht speichern. Bitte versuchen Sie es in ein paar Minuten noch einmal.' }, 503);

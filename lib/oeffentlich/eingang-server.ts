@@ -73,7 +73,7 @@ export async function eingangVerarbeiten(id: string, jetzt = new Date(), opt: { 
       const { newsletterBereit, anmeldungVerarbeiten } = await import('@/lib/newsletter/server');
       const nl = await newsletterBereit();
       // Inzwischen ausgeschaltet: es geht nichts hinaus (die Zeile ist trotzdem erledigt — die Anmeldung gibt es so nicht mehr).
-      const r = nl ? await anmeldungVerarbeiten({ email: e.daten.email, vorname: e.daten.vorname }, nl, jetzt) : 'aus';
+      const r = nl ? await anmeldungVerarbeiten({ email: e.daten.email, vorname: e.daten.vorname, ...(e.daten.themen ? { themen: e.daten.themen } : {}) }, nl, jetzt) : 'aus';
       if (r === 'versandFehler') throw new Error('Bestätigungsmail nicht verschickt');
       await f.merke('newsletter', r);
     }
@@ -266,7 +266,7 @@ async function newsletterNachholen(jetzt: Date): Promise<{ fertig: number; offen
   const l = (await ladeAnmeldungen().catch(() => null))?.anmeldungen ?? [];
   let fertig = 0, offen = 0;
   for (const a of l.filter(x => x.versandFehler && !x.bestaetigt && !x.gesperrt && Date.parse(x.angemeldet) >= grenze && x.mails?.tag !== localDay(jetzt))) {
-    const r = await anmeldungVerarbeiten({ email: a.email, vorname: a.vorname ?? '' }, nl, jetzt).catch(() => 'versandFehler' as const);
+    const r = await anmeldungVerarbeiten({ email: a.email, vorname: a.vorname ?? '', ...(a.themen ? { themen: a.themen } : {}) }, nl, jetzt).catch(() => 'versandFehler' as const);
     if (r === 'versandFehler') offen++; else fertig++;
   }
   return { fertig, offen };

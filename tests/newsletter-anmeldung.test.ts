@@ -44,7 +44,7 @@ let drossel: typeof import('@/lib/zugang/drossel');
 let S: typeof import('@/lib/newsletter/server');
 let SP: typeof import('@/lib/newsletter/speicher');
 let R: typeof import('@/lib/newsletter/regeln');
-let oeffentlich: { POST: (r: Request) => Promise<Response> };
+let oeffentlich: { GET: (r: Request) => Promise<Response>; POST: (r: Request) => Promise<Response> };
 let intern: { GET: (r: Request) => Promise<Response>; POST: (r: Request) => Promise<Response> };
 const HAUS = 'test-haus';
 const D = 'example.invalid';
@@ -134,6 +134,43 @@ describe('anmelden: Schutz und immer dieselbe Antwort', () => {
     expect(texte.size).toBe(1);
     await S._nachlauf();
     expect(fake.gesendet).toHaveLength(0);
+  });
+  it('GET: nur an/aus + Stempel, Fassung, Wortlaut — sonst nichts; gedrosselt', async () => {
+    const lesen = async () => { const r = await oeffentlich.GET(new Request('http://test/api/newsletter')); return { status: r.status, d: await r.json(), cache: r.headers.get('cache-control') }; };
+    const vorher = { bestand: await bestand(), gesendet: fake.gesendet.length };
+    const r = await lesen();
+    const bereit = (await S.newsletterBereit())!;
+    expect(r.status).toBe(200);
+    expect(r.cache).toBe('no-store');
+    expect(Object.keys(r.d).sort()).toEqual(['aktiv', 'fassung', 'ok', 'stempel', 'wortlaut']);
+    expect(r.d).toMatchObject({ ok: true, aktiv: true, fassung: bereit.fassung, wortlaut: bereit.wortlaut });
+    expect(SP.stempelZeit(r.d.stempel)).not.toBeNull();
+    // Der Stempel aus GET reicht für die Anmeldung (nach ≥ 3 s).
+    weiter(10);
+    expect((await post({ aktion: 'anmelden', email: `get@${D}`, einwilligung: true, fassung: r.d.fassung, stempel: r.d.stempel, webseite: '' })).status).toBe(200);
+    drossel._zuruecksetzen();
+    let status = 200;
+    for (let i = 0; i < 70 && status === 200; i++) status = (await lesen()).status;
+    expect(status).toBe(429);
+    await S._nachlauf();
+    await db.saveJson('newsletter-anmeldungen', vorher.bestand); fake.gesendet.length = vorher.gesendet; // die anderen Fälle starten unberührt
+  });
+  it('themen: ungültig → 400 (nichts gespeichert), gültig → an der Anmeldung, ohne Feld → wie bisher', async () => {
+    const vorher = { bestand: await bestand(), gesendet: fake.gesendet.length };
+    for (const t of [['podcast', 'unfug'], 'podcast', [1], ['podcast', 'events', 'updates', 'podcast'], { a: 1 }]) {
+      expect((await anmeldung(`t0@${D}`, { themen: t })).status).toBe(400);
+    }
+    await S._nachlauf();
+    expect((await bestand()).anmeldungen.some(a => a.email === `t0@${D}`)).toBe(false);
+    expect((await anmeldung(`t1@${D}`, { themen: ['podcast', 'updates', 'podcast'] })).status).toBe(200);
+    expect((await anmeldung(`t2@${D}`)).status).toBe(200);
+    expect((await anmeldung(`t3@${D}`, { themen: [] })).status).toBe(200);
+    await S._nachlauf();
+    const b = (await bestand()).anmeldungen;
+    expect(b.find(a => a.email === `t1@${D}`)?.themen).toEqual(['podcast', 'updates']);
+    expect(b.find(a => a.email === `t2@${D}`)).not.toHaveProperty('themen');
+    expect(b.find(a => a.email === `t3@${D}`)).not.toHaveProperty('themen');
+    await db.saveJson('newsletter-anmeldungen', vorher.bestand); fake.gesendet.length = vorher.gesendet;
   });
   it('ohne Häkchen, falsche Adresse, Link im Vornamen, alte Fassung, zu groß → abgelehnt, nichts gespeichert', async () => {
     expect((await anmeldung(`a@${D}`, { einwilligung: false })).status).toBe(400);
@@ -361,7 +398,7 @@ describe('Datenschutz: Art. 17, Löschfrist, Verzeichnis, Kopfdaten', () => {
   });
 });
 
-describe('Middleware: nur /newsletter und POST /api/newsletter sind offen', () => {
+describe('Middleware: nur /newsletter und /api/newsletter (POST, GET) sind offen', () => {
   let middleware: typeof import('@/middleware').middleware;
   beforeAll(async () => { ({ middleware } = await import('@/middleware')); });
   const offen = (r: Response) => r.headers.get('x-middleware-next') === '1';
@@ -372,9 +409,10 @@ describe('Middleware: nur /newsletter und POST /api/newsletter sind offen', () =
     const r = await lauf('/api/newsletter', { method: 'POST', headers: { origin: 'http://localhost:3001', host: 'localhost:3001', 'x-make-user': 'kevin' } });
     expect(offen(r)).toBe(true);
     expect(r.headers.get('x-middleware-request-x-make-user')).toBeNull();
+    expect(offen(await lauf('/api/newsletter'))).toBe(true);
   });
   it('alles andere bleibt zu — auch die interne Verwaltung', async () => {
-    for (const [p, m] of [['/api/newsletter', 'GET'], ['/api/newsletter/intern', 'GET'], ['/api/newsletter/intern', 'POST'], ['/newsletter', 'POST'], ['/newsletter/x', 'GET'], ['/newsletters', 'GET'], ['/api/newsletters', 'POST']] as const) {
+    for (const [p, m] of [['/api/newsletter/x', 'GET'], ['/api/newsletter/intern', 'GET'], ['/api/newsletter/intern', 'POST'], ['/newsletter', 'POST'], ['/newsletter/x', 'GET'], ['/newsletters', 'GET'], ['/api/newsletters', 'POST']] as const) {
       const r = await lauf(p, m === 'POST' ? { method: 'POST', headers: { origin: 'http://localhost:3001', host: 'localhost:3001' } } : {});
       expect(offen(r), `${m} ${p}`).toBe(false);
     }

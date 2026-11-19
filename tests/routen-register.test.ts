@@ -50,7 +50,7 @@ const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   'website/inhalt': ['GET'],
   'website/bild/[id]': ['GET'],
   // Newsletter-Anmeldung über die Website (30.10.): nur POST, die Seite /newsletter ist kein API-Weg; ausgeschaltet 404.
-  'newsletter': ['POST'],
+  'newsletter': ['GET', 'POST'],
   'abmelden/[token]': ['GET', 'POST'],
   'konto/status': ['GET'], 'konto/anmelden': ['POST'], 'konto/einrichten': ['POST'], 'konto/beitreten': ['POST'],
   'buchung/[slug]': ['GET', 'POST'], 'buchung/[slug]/status': ['POST'],

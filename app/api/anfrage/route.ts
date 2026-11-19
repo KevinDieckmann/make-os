@@ -1,6 +1,7 @@
 // ─── Kontaktformular der Website — die öffentliche Schnittstelle (31.10., Website-Anbau) ──────────────────────────────────────────────
 // OHNE Sitzung erreichbar (middleware.ts `KONTAKTFORMULAR_OFFEN`: nur /anfrage und POST /api/anfrage). Handelt nie als Person.
-// GET  → { ok: true, aktiv } — NUR an/aus (für den Knopf auf der Website), keine Daten, kein Name, gedrosselt; schreibt nichts.
+// GET  → { ok: true, aktiv } — an/aus (für den Knopf auf der Website); ist es an, zusätzlich { stempel } (signierter Formular-Stempel für ein Formular der
+//        statischen Website). Keine Daten, kein Name, gedrosselt; schreibt nichts.
 // POST { vorname, nachname?, firma?, email, telefon?, nachricht, stempel, webseite (Honigtopf, leer) }
 //        → { ok: true, text } — dieselbe Antwort, ob die Adresse neu ist, eine vorhandene Person trifft (dann „Adresse unbestätigt“) oder der
 //          Anfrage-Weg ablehnt (Art. 18): der Gast erfährt nie, was die Kartei kennt. Der Eingang landet in Markttraktion › Marketing › Anfragen.
@@ -12,7 +13,7 @@ import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { ausfuellZeitOk } from '@/lib/kalender/buchung';
 import { DANKE_TEXT, GRENZEN, NICHT_ANGENOMMEN, eingabePruefen } from '@/lib/kontaktformular/regeln';
-import { eingangVerarbeiten, kontaktformularBereit, stempelZeit } from '@/lib/kontaktformular/server';
+import { eingangVerarbeiten, kontaktformularBereit, kontaktformularStempel, stempelZeit } from '@/lib/kontaktformular/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,8 @@ export async function GET(req: Request) {
   const p = pruefe(schluessel);
   if (!p.erlaubt) return antwort({ ok: false, fehler: 'Zu viele Abfragen.' }, 429, { 'Retry-After': String(p.warteSek) });
   fehlschlag(schluessel, Date.now(), LESEN_FREI);
-  return antwort({ ok: true, aktiv: !!(await kontaktformularBereit()) });
+  const aktiv = !!(await kontaktformularBereit());
+  return antwort(aktiv ? { ok: true, aktiv, stempel: kontaktformularStempel() } : { ok: true, aktiv });
 }
 
 export async function POST(req: Request) {

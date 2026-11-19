@@ -67,7 +67,10 @@ describe('Schalter und Verantwortlicher', () => {
     expect((await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: { ...sitzung(), 'x-make-key': 'pruef-schluessel-kontaktformular', 'x-make-person': 'kevin' }, body: JSON.stringify({ aktiv: true }) })))).status).toBe(403);
     const an = await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung(), body: JSON.stringify({ aktiv: true }) })));
     expect(an).toMatchObject({ status: 200, d: { aktiv: true } });
-    expect(await status()).toEqual({ status: 200, d: { ok: true, aktiv: true } });
+    // An: dazu der signierte Formular-Stempel für die statische Website (nur das), und er reicht zum Senden.
+    const bereit = await status();
+    expect(Object.keys(bereit.d).sort()).toEqual(['aktiv', 'ok', 'stempel']);
+    expect(S.stempelZeit(bereit.d.stempel)).not.toBeNull();
     const lesen = await json(await intern.GET!(new Request('http://test/api/kontaktformular/intern', { headers: sitzung('nurbusiness') })));
     expect(lesen.d).toMatchObject({ aktiv: true, bereit: true, pfad: '/anfrage', istInhaber: false });
     expect((await json(await intern.GET!(new Request('http://test/api/kontaktformular/intern', { headers: sitzung('malin') })))).d.istInhaber).toBe(true);
@@ -137,6 +140,7 @@ describe('Anlass aus dem Knopf der Website (01.11.)', () => {
     expect(anlassVon('events')).toMatchObject({ anlass: 'events', titel: 'Einladung zu den Events' });
     expect(anlassVon('baustein-elevator-pitch', { baustein: 'Elevator-Pitch-Baukasten' })?.titel).toBe('Baustein bestellen: Elevator-Pitch-Baukasten');
     expect(anlassVon('vorlage-unbekannt', { vorlage: null })?.titel).toBe('Vorlage anfordern');
+    expect(anlassVon('podcast-gast')).toMatchObject({ anlass: 'podcast-gast', titel: 'Gast für den Podcast vorschlagen' });
     expect(anlassVon('angebot-ki-brain')?.titel).toBe('Anfrage zu einem Angebot');
     for (const x of ['kontakt', 'EVENTS', '<b>x</b>', '../events', 'a'.repeat(61), 'angebot-', 42, null]) expect(anlassVon(x)).toBeNull();
   });

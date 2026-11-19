@@ -19,7 +19,7 @@ import { nachweisLuecken } from '@/lib/crm/einwilligung';
 import type { Aktivitaet, Kontakt } from '@/lib/make-one/crm';
 import {
   ANMELDUNGEN_MAX, MAILS_JE_TAG, TOKEN_TAGE, belegRefVon, einwilligungAus, fassungKennung, hatVolleNewsletterEinwilligung, websiteSauber, wortlautFuer,
-  anmeldungenAufraeumen, type NewsletterAnmeldung, type NewsletterEinstellungen,
+  anmeldungenAufraeumen, type NewsletterAnmeldung, type NewsletterEinstellungen, type NewsletterThema,
 } from './regeln';
 import { aendereAnmeldung, aendereAnmeldungen, ladeAnmeldungen, ladeEinstellungen, neuesToken, tokenHash, tokenIndex } from './speicher';
 
@@ -96,8 +96,8 @@ async function aufSperrliste(email: string): Promise<boolean> {
  * Eine Anmeldung verarbeiten — nach der Antwort an den Gast (siehe Kopf). `email` ist schon geprüft (`emailSauber`), `vorname` (`vornameSauber`).
  * Wirft nicht für Fachfälle; das Ergebnis sieht nur der Aufrufer (Tests, Log ohne Adresse).
  */
-export async function anmeldungVerarbeiten(eingabe: { email: string; vorname: string }, b: Bereit, jetzt = new Date()): Promise<AnmeldeErgebnis> {
-  const { email, vorname } = eingabe;
+export async function anmeldungVerarbeiten(eingabe: { email: string; vorname: string; themen?: NewsletterThema[] }, b: Bereit, jetzt = new Date()): Promise<AnmeldeErgebnis> {
+  const { email, vorname, themen } = eingabe;
   const k = await personZurAdresse(email);
   // Art. 18: eine eingeschränkte Person wird nicht verarbeitet — keine Zeile, keine Mail.
   if (k?.eingeschraenkt) return 'eingeschraenkt';
@@ -112,7 +112,7 @@ export async function anmeldungVerarbeiten(eingabe: { email: string; vorname: st
     const alt = i >= 0 ? bestand.anmeldungen[i] : undefined;
     if (!alt && bestand.anmeldungen.length >= ANMELDUNGEN_MAX) { lauf.ergebnis = 'voll'; return bestand; }
     const { tokenHash: _t, gueltigBis: _g, gesperrt: _s, versandFehler: _v, crm: _c, ...basis } = alt ?? ({} as Partial<NewsletterAnmeldung>);
-    const kopf = { ...basis, id: alt?.id ?? neueKennung('nl'), email, ...(vorname ? { vorname } : alt?.vorname ? { vorname: alt.vorname } : {}), angemeldet: jetztIso, wortlaut: b.wortlaut, fassung: b.fassung };
+    const kopf = { ...basis, id: alt?.id ?? neueKennung('nl'), email, ...(vorname ? { vorname } : alt?.vorname ? { vorname: alt.vorname } : {}), ...(themen ? { themen } : alt?.themen ? { themen: alt.themen } : {}), angemeldet: jetztIso, wortlaut: b.wortlaut, fassung: b.fassung };
     let neu: NewsletterAnmeldung;
     if (gesperrt) {
       // Gesperrt: keine Mail, kein Token — die Zeile zeigt dem Haushalt nur, dass es eine Anmeldung gab (zum Klären, Frist 30 Tage).

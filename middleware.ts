@@ -88,7 +88,7 @@ function checkOffen(pfad: string, methode: string): boolean {
   return CHECK_API.test(pfad) && methode === 'POST';
 }
 // Newsletter-Anmeldung über die Website (30.10., lib/newsletter/*, Branch `newsletter-anmeldung`): NUR die Seite `/newsletter` (GET/HEAD) und ihre EINE
-// Schnittstelle `POST /api/newsletter`. Das Token des Bestätigungslinks steht nur im Fragment (#t=…), nie im Pfad. Die Route handelt für niemanden
+// Schnittstelle `/api/newsletter` (POST = anmelden/bestätigen, GET = Formular-Angaben für die statische Website). Das Token des Bestätigungslinks steht nur im Fragment (#t=…), nie im Pfad. Die Route handelt für niemanden
 // (Köpfe gelöscht), drosselt selbst, prüft Honigtopf, Stempel und Größe; ausgeschaltet (kommt AUS) antwortet sie mit 404. Keine Ausnahme bei der
 // Origin-Prüfung (die Seite sendet von sich selbst). Die interne Verwaltung (/api/newsletter/intern) bleibt hinter der Sitzung.
 // Wächter: tests/newsletter-anmeldung.test.ts.
@@ -97,7 +97,7 @@ const NEWSLETTER_API = /^\/api\/newsletter$/;
 /** Ist dieser Weg ein offener Weg der Newsletter-Anmeldung (Pfad UND Methode)? */
 function newsletterOffen(pfad: string, methode: string): boolean {
   if (NEWSLETTER_SEITE.test(pfad)) return methode === 'GET' || methode === 'HEAD';
-  return NEWSLETTER_API.test(pfad) && methode === 'POST';
+  return NEWSLETTER_API.test(pfad) && (methode === 'POST' || methode === 'GET' || methode === 'HEAD');
 }
 // ── Kontaktformular der Website (31.10., Website-Anbau, lib/kontaktformular/*) ── eigener Block (die Homepage-Sitzung ergänzt daneben /api/unterlage).
 // NUR die Seite `/anfrage` (GET/HEAD) und ihre EINE Schnittstelle `/api/anfrage` (POST = senden, GET/HEAD = nur „an/aus“). Die Route handelt für niemanden (Köpfe gelöscht), drosselt selbst,

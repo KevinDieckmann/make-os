@@ -33,6 +33,18 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-19',
+    datum: '2026-11-19',
+    titel: 'Newsletter-Anmeldung und Gastvorschlag direkt auf der Website',
+    kurz: 'Wer sich auf der Website für den Newsletter einträgt oder einen Gast für den Podcast vorschlägt, bleibt jetzt auf der Seite — die Angaben kommen direkt bei uns an.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Bei der Newsletter-Anmeldung lässt sich wählen, was gewünscht ist (Podcast, Event-Einladungen, Updates). Die Wahl steht an der Anmeldung.', bereich: 'business' },
+        { text: 'Gastvorschläge für den Podcast landen wie jede Nachricht von der Website unter Markttraktion › Marketing › Anfragen.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-03',
     datum: '2026-11-03',
     titel: 'Rechnungen: versehentlich gestellte Rechnung zurückziehen',

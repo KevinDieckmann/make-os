@@ -32,6 +32,22 @@ export const TOKEN_OK = /^[A-Za-z0-9_-]{43}$/;
 /** Vorsatz der Fassung des Einwilligungstexts (`newsletter-einwilligung-<n>`). */
 export const FASSUNG_VORSATZ = 'newsletter-einwilligung-';
 
+/** Themen, die die Website anbietet (Podcast · Event-Einladungen · Updates) — mehr nimmt die Schnittstelle nie an. */
+export const THEMEN = ['podcast', 'events', 'updates'] as const;
+export type NewsletterThema = (typeof THEMEN)[number];
+
+/** Themenwahl prüfen (rein): fehlt → undefined (ohne Wahl), sonst eine Liste aus höchstens den drei Werten (doppelte fallen weg); alles andere → null (400, nie still verworfen). */
+export function themenSauber(roh: unknown): NewsletterThema[] | undefined | null {
+  if (roh === undefined || roh === null) return undefined;
+  if (!Array.isArray(roh) || roh.length > THEMEN.length) return null;
+  const aus: NewsletterThema[] = [];
+  for (const t of roh) {
+    if (typeof t !== 'string' || !(THEMEN as readonly string[]).includes(t)) return null;
+    if (!aus.includes(t as NewsletterThema)) aus.push(t as NewsletterThema);
+  }
+  return aus;
+}
+
 // ── Formen ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface NewsletterAnmeldung {
@@ -53,6 +69,8 @@ export interface NewsletterAnmeldung {
   versandFehler?: string;
   /** Bestätigt per Klick (ISO). */
   bestaetigt?: string;
+  /** Gewünschte Themen (nur Wahl auf der Website, optional — alte Einträge ohne Feld bleiben gültig). */
+  themen?: NewsletterThema[];
   /** Der Wortlaut, dem die Person zugestimmt hat, und seine Fassung (Nachweis Art. 7 Abs. 1). */
   wortlaut: string;
   fassung: string;
