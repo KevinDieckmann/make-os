@@ -105,12 +105,14 @@ export function hausBauen(h) {
   // ── Preise: aus den Angeboten der Website ──
   const zahl = (x) => String(x).replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '').trim();
   const wert = (a) => Number(zahl(a.preis).replace(/\./g, ''));
-  const preisZeile = (spec) => {
+  const preisTeil = (spec) => {
     const alle = spec.angebote.map((id) => { const a = h.angebot(id); if (!a) throw new Error(`Haus: Preis „${spec.label}“ nennt das Angebot „${id}“, das es in den Daten der Website nicht gibt (oder es ist ausgeblendet)`); if (!/\d/.test(a.preis)) throw new Error(`Haus: Angebot ${id} hat keinen Preis in Zahlen`); return a; });
     const klein = alle.reduce((x, y) => (wert(y) < wert(x) ? y : x));
     const zusatz = h.monatlich(klein) ? ' im Monat' : klein.preis_zusatz === 'je Abend' ? ' je Abend' : '';
     return `${spec.label} ab ${zahl(klein.preis)} €${zusatz}`;
   };
+  /** Eine Preiszeile; mit „teile“ mehrere benannte Angebote nebeneinander (jedes mit dem richtigen Namen), alles aus der einen Preisliste. */
+  const preisZeile = (spec) => (spec.teile ? spec.teile.map(preisTeil).join(' · ') : preisTeil(spec));
 
   // ── Markup der Szenen ──
   const alink = (art, name, text, extra = '') => `<a class="alink ${art}" href="${platz(name)}"${extra}>${PF}<span class="t-caption">${e(text)}</span></a>`;
@@ -118,10 +120,11 @@ export function hausBauen(h) {
   const kachelnHtml = (k) => `<ul class="sz-kacheln">${k.map((x) => `<li><b>${e(x.t)}</b>${x.d ? `<span>${e(x.d)}</span>` : ''}</li>`).join('')}</ul>`;
   const foto = (text, klasse = '') => `<div class="sz-foto${klasse}" role="img" aria-label="${e(text)}"><span>${e(text)}</span></div>`;
   const kopfHtml = (s, hid) => {
-    const E = s.etage, teile = [`<span class="sz-nr">${e(E.nr)}</span>`, `<span class="sz-name">${e(E.name)}${E.unter ? `: ${e(E.unter)}` : ''}</span>`];
-    if (E.tag) teile.push(`<span class="sz-tag">${e(E.tag)}</span>`);
-    if (s.stufe) teile.push(`<span class="sz-stufe">${e(stufeName(s.stufe))}</span>`);
-    return `<h2 class="sz-kopf" id="${hid}">${teile.join('<span class="sz-sep" aria-hidden="true"> · </span>')}</h2>`;
+    const E = s.etage, vor = [`<span class="sz-nr">${e(E.nr)}</span>`];
+    if (s.stufe) vor.push(`<span class="sz-stufe">${e(stufeName(s.stufe))}</span>`);
+    if (E.tag) vor.push(`<span class="sz-tag">${e(E.tag)}</span>`);
+    // Rangfolge: kleine Vorzeile (Etage · Stufe), darunter der Name als große Überschrift, der Teil nach dem Doppelpunkt als zweite, kleinere Zeile
+    return `<div class="sz-kopfblock"><p class="sz-vor" id="${hid}-v">${vor.join('<span class="sz-sep" aria-hidden="true"> · </span>')}</p><h2 class="sz-kopf" id="${hid}"><span class="sz-name">${e(E.name)}</span>${E.unter ? `<span class="sz-unter">${e(E.unter)}</span>` : ''}</h2></div>`;
   };
   const NEWSLETTER = `<form class="nl" id="newsletter" data-newsletter novalidate>
 <p class="nl-zeile"><label class="nl-feld"><span class="sr-only">Deine E-Mail-Adresse</span><input type="email" name="email" autocomplete="email" inputmode="email" placeholder="Deine E-Mail-Adresse" required></label><button type="submit" class="alink mehr"><span class="t-caption">Erste Folge zuerst hören</span></button></p>

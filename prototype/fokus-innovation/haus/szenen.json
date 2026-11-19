@@ -204,7 +204,7 @@
         }
       ],
       "preis": {
-        "label": "PR",
+        "label": "PR und Kommunikation",
         "angebote": [
           "pr-kommunikation"
         ]
@@ -273,11 +273,9 @@
         }
       ],
       "preis": {
-        "label": "Vertrieb",
-        "angebote": [
-          "tagesworkshop",
-          "head-of-sales",
-          "cso"
+        "teile": [
+          { "label": "Tagesworkshop", "angebote": ["tagesworkshop"] },
+          { "label": "Vertriebsleitung auf Zeit", "angebote": ["head-of-sales"] }
         ]
       },
       "foto": "[FOTO KEVIN]",

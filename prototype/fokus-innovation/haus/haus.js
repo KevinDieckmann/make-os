@@ -386,14 +386,14 @@ const insideK = (p, i) => { const [a, b] = floorRange(i), d = ((p - a) / (b - a)
 let INS = { k: 0, i: -1, F: null }, AKT = { k: 0, F: null }; // INS: der Raum, in dem die Kamera gerade steht · AKT: dasselbe oder das Dach
 let ZOOM = 1; // 1 = so viele Meter, wie der Raum vorgibt; kleiner = näher heran (je Szene, szenen.json › bild.zoom)
 /* Die freie Fläche neben dem Text: breit rechts von der Spalte, am Handy das Bild über dem Text */
-const freiFlaeche = () => (wide.matches && !S.narrow ? [innerWidth <= 1100 ? 0.49 : 0.45, 0.93] : [0, 1]);
+const freiFlaeche = () => (wide.matches && !S.narrow ? [innerWidth <= 1100 ? 0.57 : 0.47, 0.93] : [0, 1]);
 const dachK = (p) => { const [a, b] = floorRange(DACH_HALT), q = (p - a) / (b - a); return q <= 0 || q > 1 ? 0 : smooth((q - 0.48) / 0.17) * (1 - smooth((q - 0.9) / 0.085)); };
 function innenCam() {
   const F = INS.F, k = INS.k, MK = MARKE[F.key], [L, R] = freiFlaeche();
   const dRef = 6.6, zIn = 0.5, fIn = Math.min(S.w * 1.5, ((R - L) * S.w * dRef) / ((MK.breite || 4.6) * ZOOM)), mitte = (L + R) / 2; // die Breite des Raums passt in die freie Fläche
   const xIn = zoneX(F.key) - ((mitte - 0.5) * S.w * dRef) / fIn;
   cam.x = lerp(cam.x, xIn, k); cam.y = lerp(cam.y, F.base + 1.5, k); cam.z = lerp(cam.z, zIn, k);
-  S.f = lerp(S.f0, fIn, k); S.cy = lerp(S.cy, S.h * (S.narrow ? 0.2 : 0.53), k);
+  S.f = lerp(S.f0, fIn, k); S.cy = lerp(S.cy, S.h * (S.narrow ? 0.235 : 0.53), k);
 }
 function dachCam(k) { // auf dem Dach bleibt die Ansicht draußen und schwenkt zur Bühne
   const [L, R] = freiFlaeche(), [za, zb, zt] = zwischen(MARKE.dach.zz, MARKE.dach.zone.v), z = lerp(za, zb, zt) - (S.narrow ? 2.5 : 0), d = 5.6 - z;
