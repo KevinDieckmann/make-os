@@ -127,6 +127,8 @@ export function hausBauen(h) {
 <p class="nl-zeile"><label class="nl-feld"><span class="sr-only">Deine E-Mail-Adresse</span><input type="email" name="email" autocomplete="email" inputmode="email" placeholder="Deine E-Mail-Adresse" required></label><button type="submit" class="alink mehr"><span class="t-caption">Erste Folge zuerst hören</span></button></p>
 <fieldset class="nl-wahl"><legend class="sr-only">Wofür möchtest du dich eintragen?</legend>
 <label><input type="checkbox" name="wahl" value="podcast" checked><span>Podcast</span></label><label><input type="checkbox" name="wahl" value="events"><span>Event-Einladungen</span></label><label><input type="checkbox" name="wahl" value="updates"><span>Updates</span></label></fieldset>
+<label class="nl-einw" data-einw hidden><input type="checkbox" name="einwilligung"><span data-wortlaut></span></label>
+<div class="nl-falle" aria-hidden="true"><label>Webseite <input name="webseite" tabindex="-1" autocomplete="off"></label></div>
 <p class="nl-recht">Du bekommst zuerst eine Bestätigungsmail und kannst dich jederzeit abmelden. Mehr dazu im <a href="/datenschutz/">Datenschutz</a>.</p>
 <p class="nl-meldung" role="status" aria-live="polite"></p>
 </form><noscript><p class="nl-ohne"><a class="alink mehr" href="/newsletter">${PF}<span class="t-caption">Erste Folge zuerst hören</span></a></p></noscript>`;

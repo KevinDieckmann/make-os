@@ -1347,37 +1347,103 @@ addEventListener('keydown', (e) => { // Ende: ans Ende der Seite, nicht nur ans 
   if (e.key !== 'End' || STATISCH || STILL || e.target.closest?.('input, textarea, select') || document.querySelector('dialog[open]')) return;
   e.preventDefault(); root.classList.remove('snap-aktiv'); scrollTo(0, document.documentElement.scrollHeight);
 });
-/* Gast vorschlagen: die Anwendung nimmt das Formular nur mit einem Stempel ihrer eigenen Seite an. Darum öffnet das Formular hier die vorbereitete Mail der Anfrage,
-   mit den Angaben im Text; gesendet wird erst dort. Keine Kontaktdaten der vorgeschlagenen Person. */
+/* Formulare der Fahrt senden direkt an die Anwendung (gleiche Herkunft, fetch). Die Anwendung nimmt ein Formular nur mit einem signierten Stempel an
+   (mindestens 3 Sekunden alt, höchstens 2 Stunden): Der Stempel kommt per GET, beim ersten Fokus bzw. beim Öffnen. Antwortet die Anwendung nicht
+   (offline, lokal ohne Anwendung, Weg ausgeschaltet), bleibt der bisherige Weg als Rückfall. Keine Eingaben werden im Browser gespeichert. */
+const MAIL_OK = /^[^\s@<>"',;:]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,24}$/i;
+const STEMPEL_MIN_MS = 3500, STEMPEL_MAX_MS = 90 * 60 * 1000;
+const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
+/** Holt (bei Bedarf neu) die Angaben einer Schnittstelle; liefert die Antwort oder null, wenn sie nicht antwortet bzw. aus ist. */
+function stempelHolen(url) {
+  let stand = null, laufend = null;
+  const holen = () => (laufend ||= fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' } })
+    .then((r) => (r.ok ? r.json() : null)).then((j) => { stand = j && j.ok && j.aktiv && j.stempel ? { ...j, seit: Date.now() } : null; return stand; })
+    .catch(() => { stand = null; return null; }).finally(() => { laufend = null; }));
+  return {
+    /** Gültigen Stand liefern (frisch holen, wenn keiner da oder zu alt). */
+    async bereit() { if (!stand || Date.now() - stand.seit > STEMPEL_MAX_MS) await holen(); return stand; },
+    /** Wartet, bis der Stempel alt genug ist. */
+    async reif() { const d = STEMPEL_MIN_MS - (Date.now() - (stand ? stand.seit : 0)); if (d > 0) await pause(d); },
+  };
+}
+async function jsonSenden(url, body) {
+  const r = await fetch(url, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) });
+  return { r, j: await r.json().catch(() => null) };
+}
+
+/* Gast vorschlagen (Etage 5): senden an /api/anfrage mit dem Anlass „podcast-gast“. Keine Kontaktdaten der vorgeschlagenen Person.
+   Rückfall ohne Antwort der Anwendung: die vorbereitete Mail mit den Angaben im Text. */
 const gastForm = $('#gastForm'), kennt = () => gastForm.elements.namedItem('kennt').value;
+const gastApi = stempelHolen('/api/anfrage');
+gast.addEventListener('toggle', () => { if (gast.open) gastApi.bereit(); });
+gastForm.addEventListener('focusin', () => { gastApi.bereit(); }, { once: true });
 for (const r of gastForm.elements.namedItem('kennt')) r.addEventListener('change', () => { $('#gastHinweis').hidden = kennt() !== 'ja'; });
-gastForm.addEventListener('submit', (e) => {
+gastForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const f = (n) => gastForm.elements.namedItem(n).value.trim(), meldung = $('.gast-meldung', gastForm), mailOk = /^[^\s@<>"',;:]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,24}$/i;
+  const f = (n) => gastForm.elements.namedItem(n).value.trim(), meldung = $('.gast-meldung', gastForm), knopf = $('button[type="submit"]', gastForm);
   for (const n of ['name', 'email', 'gast', 'warum']) gastForm.elements.namedItem(n).removeAttribute('aria-invalid');
-  const fehlt = ['name', 'gast', 'warum'].find((n) => !f(n)) || (mailOk.test(f('email')) ? null : 'email');
+  const fehlt = ['name', 'gast', 'warum'].find((n) => !f(n)) || (MAIL_OK.test(f('email')) ? null : 'email');
   if (fehlt) { const el = gastForm.elements.namedItem(fehlt); el.setAttribute('aria-invalid', 'true'); el.focus(); meldung.textContent = 'Bitte fülle alle Felder aus (mit gültiger E-Mail-Adresse).'; return; }
-  const basis = MAILS[ZIELE['gast-vorschlagen']];
-  if (!basis) { meldung.textContent = 'Das Formular ist gerade nicht erreichbar. Bitte versuche es später noch einmal.'; return; }
-  const text = `Mein Name: ${f('name')}\nMeine E-Mail: ${f('email')}\nGast: ${f('gast')}\nWarum er oder sie passt: ${f('warum')}\nIch kenne die Person persönlich: ${kennt() === 'ja' ? 'ja' : 'nein'}`;
-  meldung.textContent = 'Dein Mailprogramm öffnet sich mit dem Vorschlag. Dort schickst du ihn ab.';
-  location.href = `${basis}${basis.includes('?') ? '&' : '?'}body=${encodeURIComponent(text)}`;
-});
-/* Newsletter (Etage 5): die Anwendung nimmt die Anmeldung nur von ihrer eigenen Seite an (Stempel, Wortlaut der Einwilligung, Bestätigungsmail). Darum führt der Knopf dorthin. */
-const nl = $('#newsletter');
-if (nl) nl.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const meldung = $('.nl-meldung', nl), feld = nl.elements.namedItem('email'), mail = feld.value.trim();
-  feld.removeAttribute('aria-invalid');
-  if (!/^[^\s@<>"',;:]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,24}$/i.test(mail)) { feld.setAttribute('aria-invalid', 'true'); feld.focus(); meldung.textContent = 'Bitte gib eine gültige E-Mail-Adresse an.'; return; }
-  meldung.textContent = 'Einen Moment …';
+  const text = `Gast: ${f('gast')}\nWarum er oder sie passt: ${f('warum')}\nIch kenne die Person persönlich: ${kennt() === 'ja' ? 'ja' : 'nein'}`;
+  const mailFallback = () => {
+    const basis = MAILS[ZIELE['gast-vorschlagen']];
+    if (!basis) { meldung.textContent = 'Das Formular ist gerade nicht erreichbar. Bitte versuche es später noch einmal.'; return; }
+    meldung.textContent = 'Dein Mailprogramm öffnet sich mit dem Vorschlag. Dort schickst du ihn ab.';
+    location.href = `${basis}${basis.includes('?') ? '&' : '?'}body=${encodeURIComponent(`Mein Name: ${f('name')}\nMeine E-Mail: ${f('email')}\n${text}`)}`;
+  };
+  if (knopf.disabled) return;
+  knopf.disabled = true; knopf.setAttribute('aria-busy', 'true'); meldung.textContent = 'Einen Moment …';
   try {
-    const r = await fetch(ZIELE.newsletter, { method: 'HEAD', cache: 'no-store', redirect: 'error' });
-    if (!r.ok) throw new Error('aus');
-    meldung.textContent = 'Weiter zur Anmeldung: Dort bestätigst du deine Adresse.';
-    location.assign(ZIELE.newsletter);
-  } catch (_) { meldung.textContent = 'Die Anmeldung ist gerade nicht erreichbar. Bitte versuche es später noch einmal.'; }
+    const st = await gastApi.bereit();
+    if (!st) return mailFallback();
+    await gastApi.reif();
+    const teile = f('name').split(/\s+/), nachname = teile.length > 1 ? teile.pop() : '';
+    const { r, j } = await jsonSenden('/api/anfrage', { vorname: teile.join(' '), ...(nachname ? { nachname } : {}), email: f('email'), nachricht: text, anlass: 'podcast-gast', stempel: st.stempel, webseite: '' });
+    if (r.ok && j && j.ok) {
+      meldung.textContent = 'Danke für deinen Vorschlag. Wir melden uns bei dir.';
+      for (const n of ['gast', 'warum']) gastForm.elements.namedItem(n).value = '';
+      return;
+    }
+    if (r.status === 404) return mailFallback();
+    meldung.textContent = (j && j.fehler) || 'Das hat leider nicht geklappt. Bitte versuche es gleich noch einmal.';
+  } catch (_) { meldung.textContent = 'Keine Verbindung. Bitte prüfe dein Netz und versuche es noch einmal.'; }
+  finally { knopf.disabled = false; knopf.removeAttribute('aria-busy'); }
 });
+/* Newsletter (Etage 5): beim ersten Fokus holt das Formular Stempel, Fassung und Wortlaut der Einwilligung aus der Anwendung und zeigt den Wortlaut samt
+   Häkchen. Gesendet wird mit E-Mail, Einwilligung, Fassung, Stempel und der Themenwahl; die Anwendung schickt die Bestätigungsmail (Double-Opt-in).
+   Rückfall: die Anmeldeseite der Anwendung (/newsletter). */
+const nl = $('#newsletter');
+if (nl) {
+  const nlApi = stempelHolen('/api/newsletter'), meldung = $('.nl-meldung', nl), einw = $('[data-einw]', nl), knopf = $('button[type="submit"]', nl);
+  const zeige = async () => {
+    const st = await nlApi.bereit();
+    if (st && st.wortlaut && einw.hidden) { $('[data-wortlaut]', einw).textContent = st.wortlaut; einw.hidden = false; }
+    return st;
+  };
+  nl.addEventListener('focusin', zeige, { once: true });
+  if ('IntersectionObserver' in window) { const io = new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) { io.disconnect(); zeige(); } }, { rootMargin: '40% 0px' }); io.observe(nl); }
+  nl.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const feld = nl.elements.namedItem('email'), mail = feld.value.trim(), haken = nl.elements.namedItem('einwilligung');
+    feld.removeAttribute('aria-invalid'); haken.removeAttribute('aria-invalid');
+    if (!MAIL_OK.test(mail)) { feld.setAttribute('aria-invalid', 'true'); feld.focus(); meldung.textContent = 'Bitte gib eine gültige E-Mail-Adresse an.'; return; }
+    if (knopf.disabled) return;
+    knopf.disabled = true; knopf.setAttribute('aria-busy', 'true'); meldung.textContent = 'Einen Moment …';
+    try {
+      const st = await zeige();
+      if (!st) { meldung.textContent = 'Die Anmeldung läuft gerade über die Seite unseres Newsletters. Du wirst weitergeleitet.'; await pause(1200); location.assign(ZIELE.newsletter); return; }
+      if (!haken.checked) { haken.setAttribute('aria-invalid', 'true'); haken.focus(); meldung.textContent = 'Bitte setze das Häkchen: Ohne deine Einwilligung können wir dir den Newsletter nicht schicken.'; return; }
+      await nlApi.reif();
+      const themen = [...nl.querySelectorAll('input[name="wahl"]:checked')].map((x) => x.value);
+      const { r, j } = await jsonSenden('/api/newsletter', { aktion: 'anmelden', email: mail, themen, einwilligung: true, fassung: st.fassung, stempel: st.stempel, webseite: nl.elements.namedItem('webseite').value });
+      if (r.ok && j && j.ok) { meldung.textContent = j.text || 'Fast geschafft: Bitte bestätige deine Anmeldung über den Link in der E-Mail, die wir dir geschickt haben.'; feld.value = ''; haken.checked = false; return; }
+      if (r.status === 404) { meldung.textContent = 'Die Anmeldung ist gerade nicht erreichbar. Du kannst es später noch einmal versuchen.'; return; }
+      if (r.status === 409) { await nlApi.bereit(); }
+      meldung.textContent = (j && j.fehler) || 'Das hat leider nicht geklappt. Bitte versuche es gleich noch einmal.';
+    } catch (_) { meldung.textContent = 'Keine Verbindung. Bitte prüfe dein Netz und versuche es noch einmal.'; }
+    finally { knopf.disabled = false; knopf.removeAttribute('aria-busy'); }
+  });
+}
 
 /* ── „Weniger Bewegung“: jede Szene bekommt ihr ruhiges Bild, wenn sie ins Bild kommt (ein Standbild der Zeichnung) ── */
 function bilderMalen() {
