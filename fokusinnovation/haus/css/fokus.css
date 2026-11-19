@@ -413,6 +413,7 @@ html.menue-offen { overflow: hidden; }
 .preis-kasten .betrag { margin-top: 10px; font-size: clamp(2rem, 3.4vw, 2.8rem); font-weight: 600; letter-spacing: -.03em; line-height: 1.05; color: var(--tinte); }
 .preis-kasten .zusatz { margin-top: 10px; color: var(--tinte-leise); font-size: .95rem; }
 .preis-kasten .knoepfe { margin-top: 24px; }
+.preis-kasten .preis-sprechen { margin-top: 12px; }
 
 .recht { max-width: 46rem; padding-top: 28px; border-top: 1px solid var(--tinte); }
 .recht h2 { margin: 40px 0 12px; font-size: 1.2rem; letter-spacing: -.01em; }
@@ -1524,3 +1525,30 @@ html.menue-offen { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .knopf.cta-unten, html:not(.cta-unten-da) .knopf.cta-unten { transition: none; } }
 
 #finale .schluss-bild .kern, #finale .schluss-zeichen .kern { fill: var(--akzent); filter: drop-shadow(0 0 26px rgba(167, 139, 250, .45)); }
+
+.schlussakt.erst .schluss-bild .kern, .schlussakt.erst .schluss-zeichen .kern { fill: var(--akzent); filter: drop-shadow(0 0 26px rgba(167, 139, 250, .45)); }
+.geschichte { display: grid; gap: 20px; max-width: 52rem; padding: clamp(24px, 3vw, 40px); border: 1.5px dashed var(--haar-mittel); border-radius: 12px; background: var(--papier-hell); }
+.geschichte-platz { font-size: 1.25rem; }
+.leitfragen { display: grid; gap: 6px; color: var(--tinte-leise); font-size: .95rem; }
+.leitfragen li::before { content: "· "; }
+.personen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rinne); }
+.person-karte { display: grid; gap: 18px; align-content: start; max-width: 36rem; scroll-margin-top: calc(var(--kopf) + 20px); }
+.person-karte h3 { margin-top: 6px; font-size: 1.5rem; letter-spacing: -.02em; }
+.person-karte p { color: var(--tinte-text); }
+.team-satz { max-width: 44rem; margin-top: clamp(28px, 3vw, 44px); padding-top: 18px; border-top: 1px solid var(--tinte); font-size: 1.15rem; font-weight: 500; color: var(--tinte); }
+@media (max-width: 860px) { .personen { grid-template-columns: minmax(0, 1fr); } }
+.naechster { margin-top: 24px; font-size: 1.15rem; font-weight: 600; color: var(--tinte); }
+.regeln-kurz { margin-top: 16px; }
+.regeln-kurz li { font-weight: 500; }
+.events-tafel .regeln-kurz { display: flex; }
+.gastgeberin { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--rinne); align-items: start; }
+.gastgeberin h3 { margin-top: 6px; font-size: 1.5rem; letter-spacing: -.02em; }
+.gastgeberin .gruppe-titel { margin-top: 28px; font-size: 1.05rem; }
+.gastgeberin p { color: var(--tinte-text); }
+.preis-kasten .je { font-size: .5em; font-weight: 500; color: var(--tinte-leise); letter-spacing: 0; }
+@media (max-width: 860px) { .gastgeberin { grid-template-columns: minmax(0, 1fr); } }
+.absender { margin: -6px 0 18px; font-size: .9rem; font-weight: 500; letter-spacing: .02em; color: var(--tinte-leise); }
+.person-karte .foto-platz, .gastgeberin .foto-platz { max-width: 22rem; aspect-ratio: 4 / 5; }
+@media (min-width: 1100px) { .schlussakt.erst .w { min-height: clamp(18rem, 24vw, 22rem); } }
+.person-karte h3 + p, .gastgeberin h3 + p { margin-top: 10px; }
+@media (max-width: 860px) { .person-karte .foto-platz, .gastgeberin .foto-platz { aspect-ratio: 16 / 10; max-width: none; } }

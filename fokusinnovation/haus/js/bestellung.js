@@ -42,12 +42,12 @@
       const feld = (n) => form.elements.namedItem(n);
       const wert = (n) => (feld(n) ? feld(n).value.trim() : '');
       for (const el of form.querySelectorAll('[aria-invalid]')) el.removeAttribute('aria-invalid');
-      const pflicht = [['vorname', 'Bitte Ihren Vornamen angeben.'], ['nachname', 'Bitte Ihren Nachnamen angeben.'], ['firma', 'Bitte die Firma angeben.'], ['email', 'Bitte eine gültige E-Mail-Adresse angeben.'], ['strasse', 'Bitte Straße und Hausnummer angeben.'], ['plz', 'Bitte die Postleitzahl angeben.'], ['ort', 'Bitte den Ort angeben.'], ['land', 'Bitte das Land angeben.']];
+      const pflicht = [['vorname', 'Bitte gib deinen Vornamen an.'], ['nachname', 'Bitte gib deinen Nachnamen an.'], ['firma', 'Bitte die Firma angeben.'], ['email', 'Bitte eine gültige E-Mail-Adresse angeben.'], ['strasse', 'Bitte Straße und Hausnummer angeben.'], ['plz', 'Bitte die Postleitzahl angeben.'], ['ort', 'Bitte den Ort angeben.'], ['land', 'Bitte das Land angeben.']];
       for (const [n, text] of pflicht) {
         if (!wert(n) || (n === 'email' && !EMAIL_OK.test(wert(n)))) { feld(n).setAttribute('aria-invalid', 'true'); feld(n).focus(); return sage(text); }
       }
-      if (!feld('unternehmer').checked) return sage('Bausteine gibt es nur für Unternehmen. Bitte bestätigen Sie, dass Sie für Ihr Unternehmen bestellen.');
-      if (!feld('bedingungen').checked) return sage('Bitte stimmen Sie den Bestellbedingungen zu.');
+      if (!feld('unternehmer').checked) return sage('Bausteine gibt es nur für Unternehmen. Bitte bestätige, dass du für dein Unternehmen bestellst.');
+      if (!feld('bedingungen').checked) return sage('Bitte stimm den Bestellbedingungen zu.');
       knopf.disabled = true;
       knopf.setAttribute('aria-busy', 'true');
       sage('Einen Moment …');
@@ -58,15 +58,15 @@
         const j = await r.json().catch(() => null);
         if (r.ok && j && j.ok) {
           form.hidden = true;
-          fertig.querySelector('[data-fertig-text]').textContent = j.text || 'Danke! Ihre Bestellung ist eingegangen. Rechnung und Download-Link schicken wir Ihnen nach kurzer Prüfung per E-Mail.';
+          fertig.querySelector('[data-fertig-text]').textContent = j.text || 'Danke! Deine Bestellung ist eingegangen. Rechnung und Download-Link schicken wir dir nach kurzer Prüfung per E-Mail.';
           fertig.hidden = false;
           fertig.focus();
           return;
         }
         if (r.status === 404 && !(j && j.fehler)) return zeigeErsatz();
-        sage((j && j.fehler) || 'Das hat leider nicht geklappt. Bitte versuchen Sie es gleich noch einmal.');
+        sage((j && j.fehler) || 'Das hat leider nicht geklappt. Bitte versuch es gleich noch einmal.');
       } catch {
-        sage('Keine Verbindung. Bitte prüfen Sie Ihr Netz und versuchen Sie es noch einmal.');
+        sage('Keine Verbindung. Bitte prüf dein Netz und versuch es noch einmal.');
       } finally {
         knopf.disabled = false;
         knopf.removeAttribute('aria-busy');
