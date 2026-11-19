@@ -211,6 +211,10 @@ button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
 .nl-wahl, .gast-wahl { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: calc(.3 * var(--hr)) calc(1.2 * var(--hr)); }
 .nl-wahl label, .gast-wahl label { display: inline-flex; align-items: center; gap: calc(.55 * var(--hr)); min-height: 44px; font-size: calc(.9375 * var(--hr)); cursor: pointer; }
 .nl-wahl input, .gast-wahl input { width: calc(1.2 * var(--hr)); height: calc(1.2 * var(--hr)); accent-color: var(--akz); flex: none; }
+.nl-einw { display: flex; align-items: flex-start; gap: calc(.55 * var(--hr)); font-size: calc(.8125 * var(--hr)); line-height: 1.45; color: var(--fg-85); max-width: calc(29 * var(--hr)); cursor: pointer; }
+.nl-einw[hidden] { display: none; }
+.nl-einw input { width: calc(1.2 * var(--hr)); height: calc(1.2 * var(--hr)); accent-color: var(--akz); flex: none; margin-top: calc(.1 * var(--hr)); }
+.nl-falle { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .nl-recht { font-size: calc(.8125 * var(--hr)); line-height: 1.4; color: var(--fg-85); max-width: calc(29 * var(--hr)); }
 .nl-recht a { text-decoration: underline; text-underline-offset: .2em; display: inline-block; padding: calc(.95 * var(--hr)) calc(.3 * var(--hr)); margin: calc(-.95 * var(--hr)) calc(-.3 * var(--hr)); }
 .nl-meldung { min-height: 1.2em; font-size: calc(.875 * var(--hr)); color: var(--akz); }
