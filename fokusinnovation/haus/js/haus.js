@@ -72,7 +72,7 @@ const PED = { x: 0.2, z: 4.4, h: 1.05 };
 const STOOL = { x: -4.01, z: 6.9, h: 0.74 };
 const TABLE = { x: 0.3, z: 6.4, h: 0.78 };
 const STAGE = { x0: -4.6, x1: 4.6, y: 0.5, z0: 6.4, z1: 11, zc: 8.6 }, TRUSS = { x: 4.9, z: 10.2, h: 5.4 };
-const DT = [[5.6, 3.6], [7.7, 6.3]];
+const DT = [[-4.1, 2.5], [-5.5, 5.3]];
 const AKZ = { studios: '#FF5A1F', revenue: '#7DB7FF', lav: '#A78BFA' };
 const FLOORS = [
   { n: 0, id: 'eg', key: 'strasse', base: GROUND, y1: 6.9, eye: 2.7, z1: 10, solid: true, innen: true },
@@ -90,30 +90,32 @@ let sceneDirty = true;
 const STUFE = { fundament: '167,139,250', wachstum: '125,183,255', skalieren: '255,90,31' };
 const MARKE = {
   strasse: { i: 0, rgb: WARM, tief: '120,100,80', licht: 0.001, breite: 6.6, zx: [1.3, 2.9], z0: 1, kern: [[PED.x, PED.h, PED.z], [PED.x, PED.h, PED.z]] },
-  innovation: { i: 1, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, zx: [-3.5, -0.2, 3.45], z0: 1, kern: [[-2.3, 1.0, 6.4], [1.4, 1.0, 6.4], [3.4, 1.0, 6.3]] },
-  studios: { i: 2, rgb: '255,90,31', tief: '255,90,31', zx: [3.4, -0.07, -3.6], z0: 1, kern: [[2.88, 0.74, 6.4], [0.085, 0.9, 6.2], [STOOL.x, STOOL.h, STOOL.z]] },
-  pr: { i: 3, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, breite: 5.4, zx: [-4.35, -2.1, 0.35, 2.55, 4.2], z0: 1, kern: [[-3.05, 1.0, 6.3], [-0.55, 1.0, 6.3], [1.95, 1.0, 6.3], [4.15, 1.0, 6.3], [2.75, 1.0, 6.3]] },
-  revenue: { i: 4, rgb: '125,183,255', tief: '23,70,158', zx: [-3.6, -0.55, 3.4], z0: 1, kern: [[-3.31, 1.0, 6.6], [-0.53, 1.0, 6.8], [2.84, 1.0, 6.8]] },
-  podcast: { i: 5, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, breite: 6.2, zx: [TABLE.x], z0: 0, kern: [[TABLE.x, TABLE.h, TABLE.z]] },
-  dach: { i: 6, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, aussen: true, zx: [3.8, -0.5], z0: 0, zz: [-16.5, -13.2], kern: [[0, 0, 0]] },
+  innovation: { i: 1, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, zx: [-3.5, -0.2, 3.45], z0: 1, kern: [[0.4, 0.78, 7.75], [0.4, 0.78, 7.75], [0.4, 0.78, 7.75]] },
+  studios: { i: 2, rgb: '255,90,31', tief: '255,90,31', zx: [3.4, 0.0, -3.6], z0: 1, kern: [[2.88, 0.74, 6.4], [-0.515, 0.9, 6.2], [STOOL.x, STOOL.h, STOOL.z]] },
+  pr: { i: 3, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, breite: 5.4, zx: [-4.35, -1.25, 0.35, 2.9, 4.2], z0: 1, kern: [[-3.05, 1.0, 6.3], [-1.3, 1.0, 6.3], [1.6, 1.0, 7.0], [3.5, 1.0, 6.9], [3.5, 1.0, 6.9]] },
+  revenue: { i: 4, rgb: '125,183,255', tief: '23,70,158', zx: [-3.6, -0.95, 3.4], breite: 5.2, z0: 1, kern: [[-3.31, 1.0, 6.6], [-0.85, 1.0, 6.4], [2.84, 1.0, 6.8]] },
+  podcast: { i: 5, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, breite: 6.2, zx: [TABLE.x, 3.5], z0: 0, kern: [[TABLE.x, TABLE.h, TABLE.z], [2.45, 0.62, 7.3]] },
+  dach: { i: 6, rgb: '167,139,250', tief: '95,75,182', licht: 0.3, aussen: true, zx: [-0.7, -0.5], z0: 0, zz: [-14.4, -13.2], kern: [[0, 0, 0]] },
 };
 const FIG = {
   studios: [
-    [[1.79, 7.8, {}], [4.1, 7.2, { seat: true }], [4.9, 6.3, { flip: true, bob: true }]],
-    [[-2.09, 7.9, { bob: true }], [-0.48, 7.3, { seat: true }], [1.22, 7.9, { flip: true }], [-1.19, 6.2, {}], [1.39, 6.2, { flip: true, bob: true }]],
-    [[-3.38, 6.1, { bob: true }], [-1.6, 7.0, { seat: true }], [-4.84, 7.6, {}], [-2.19, 7.6, { flip: true }]],
+    [[-1.45, 7.2, { seat: true }], [0.3, 8.2, { walk: 0, steh: true, prop: 'zeig' }], [1.65, 6.9, { bob: true, s: 0.98 }]],
+    [],
+    [],
   ],
   pr: [
-    [[-3.5, 7.7, { bob: true }]],
-    [[-3.3, 7.3, {}], [-0.75, 7.7, { flip: true, bob: true }]],
-    [[-0.95, 7.9, {}], [1.6, 7.3, { flip: true, bob: true }]],
-    [[1.35, 7.9, { bob: true }], [3.75, 7.3, { flip: true }]],
-    [[3.35, 7.9, {}], [5.7, 7.4, { flip: true, bob: true }]],
+    [[-3.7, 7.5, { walk: 0, steh: true, prop: 'schreib' }], [-0.1, 7.6, { walk: 0, steh: true, prop: 'halte' }],
+      [1.15, 7.05, { walk: 0, steh: true, prop: 'zeig' }], [2.05, 7.1, { walk: 0, steh: true, flip: true }],
+      [3.0, 6.85, { walk: 0, steh: true }], [4.05, 6.9, { walk: 0, steh: true, flip: true, prop: 'halte' }], [3.45, 7.7, { s: 0.96, bob: true }]],
+    [],
+    [],
+    [],
+    [],
   ],
-  podcast: [[[TABLE.x - 1.3, TABLE.z, { profil: true }], [TABLE.x + 1.3, TABLE.z, { profil: true, flip: true, s: 0.97 }], [3.75, 7.5, { seat: true }]]],
-  innovation: [[[-2.95, 7.7, { flip: true }], [-1.0, 7.9, { bob: true }], [2.0, 7.9, {}], [4.75, 7.2, { seat: true }], [5.75, 7.9, { flip: true, bob: true }]]],
+  podcast: [[[TABLE.x - 1.3, TABLE.z, { profil: true }], [TABLE.x + 1.3, TABLE.z, { profil: true, flip: true, s: 0.97 }], [-2.3, 7.4, { seat: true }]]],
+  innovation: [[[-1.3, 6.8, { seat: true }], [-0.25, 6.7, { seat: true, bob: true, s: 0.97 }], [0.85, 6.85, { seat: true }], [2.0, 7.75, { profil: true, flip: true, ohneKH: true }], [-2.4, 8.3, { walk: 0, steh: true, prop: 'zeig' }]]],
   dach: [[[DT[0][0], DT[0][1], {}], [DT[1][0], DT[1][1], {}]], [[2.5, 9.6, {}], [-2.4, 8.25, {}]]],
-  revenue: [[[-4.19, 7.6, { flip: true }], [-2.3, 7.6, {}], [-1.33, 6.2, { bob: true }], [0.56, 7.6, { flip: true }], [1.47, 7.6, {}], [3.5, 6.4, { profil: true, ohneKH: true }], [5.55, 7.8, { bob: true }]]],
+  revenue: [[[-3.45, 7.75, { profil: true }], [-1.55, 7.75, { profil: true, flip: true, s: 0.97 }], [0.55, 8.0, { walk: 0, steh: true, prop: 'zeig' }]]],
 };
 for (const key in MARKE) {
   const MK = MARKE[key], fig = FIG[key] || [[]]; MK.key = key;
@@ -255,6 +257,38 @@ function buildTextures() {
     box(400, 330, 230, 120); box(730, 330, 230, 120); pfeil(g, 515, 220, 515, 320, 18); pfeil(g, 845, 220, 845, 320, 18); pfeil(g, 640, 390, 720, 390, 18);
     box(560, 520, 240, 110); pfeil(g, 845, 460, 760, 512, 18); pfeil(g, 515, 460, 600, 512, 18);
     g.lineWidth = 5; g.beginPath(); g.moveTo(80, 330); g.lineTo(300, 330); g.moveTo(80, 372); g.lineTo(260, 372); g.moveTo(80, 414); g.lineTo(290, 414); g.moveTo(1010, 380); g.lineTo(1230, 380); g.moveTo(1010, 422); g.lineTo(1180, 422); g.stroke();
+  });
+  TEX.radar = tex(900, 760, 21, (g, R, bar) => {
+    g.fillStyle = '#0c0c13'; g.fillRect(0, 0, 900, 760); g.fillStyle = '#191822'; g.fillRect(0, 0, 900, 40); bar(26, 14, 130, 12, pale(0.45));
+    const cx = 290, cy = 380, rr = 240, pt = (i, f) => [cx + Math.sin((i * 2 * Math.PI) / 5) * rr * f, cy - Math.cos((i * 2 * Math.PI) / 5) * rr * f];
+    const weg = (fs) => { g.beginPath(); fs.forEach((f, i) => { const q = pt(i, f); if (i) g.lineTo(q[0], q[1]); else g.moveTo(q[0], q[1]); }); g.closePath(); };
+    g.strokeStyle = pale(0.32); g.lineWidth = 3; g.lineJoin = 'round';
+    for (const f of [0.34, 0.67, 1]) { weg([f, f, f, f, f]); g.stroke(); }
+    for (let i = 0; i < 5; i++) { const q = pt(i, 1); g.beginPath(); g.moveTo(cx, cy); g.lineTo(q[0], q[1]); g.stroke(); }
+    weg([0.84, 0.5, 0.7, 0.36, 0.78]); g.fillStyle = 'rgba(139,92,246,.5)'; g.fill(); g.strokeStyle = '#CDC0FF'; g.lineWidth = 6; g.stroke();
+    weg([0.5, 0.62, 0.45, 0.7, 0.4]); g.strokeStyle = pale(0.5); g.lineWidth = 3; g.setLineDash([12, 9]); g.stroke(); g.setLineDash([]);
+    [0.88, 0.62, 0.78, 0.4, 0.54].forEach((v, k) => { bar(580, 150 + k * 96, 280, 18, pale(0.12)); bar(580, 150 + k * 96, 280 * v, 18, k === 0 ? '#A78BFA' : pale(0.5)); });
+    bar(580, 120, 110, 10, pale(0.4));
+  });
+  TEX.plan = tex(900, 620, 22, (g, R, bar) => {
+    g.fillStyle = '#d9d5e4'; g.fillRect(0, 0, 900, 620); g.fillStyle = '#5F4BB6'; g.fillRect(0, 0, 900, 70); bar(34, 26, 240, 16, 'rgba(255,255,255,.9)');
+    const ink = '#262433'; g.lineJoin = 'round';
+    [0, 1, 2, 3].forEach((i) => { const x = 40 + i * 205, on = i === 1; g.fillStyle = on ? '#5F4BB6' : 'rgba(38,36,51,.16)'; g.beginPath(); g.moveTo(x, 130); g.lineTo(x + 170, 130); g.lineTo(x + 205, 200); g.lineTo(x + 170, 270); g.lineTo(x, 270); g.lineTo(x + 35, 200); g.closePath(); g.fill(); bar(x + 56, 184, 90, 12, on ? 'rgba(255,255,255,.9)' : 'rgba(38,36,51,.5)'); bar(x + 56, 210, 60, 9, on ? 'rgba(255,255,255,.6)' : 'rgba(38,36,51,.3)'); });
+    [[0.2, 0.52], [0.34, 0.72], [0.18, 0.4], [0.26, 0.64]].forEach(([a, b], j) => { const y = 330 + j * 66; bar(40, y, 90, 12, 'rgba(38,36,51,.4)'); bar(160 + a * 640, y - 2, (b - a) * 640 * 0.9, 24, j === 1 ? '#5F4BB6' : 'rgba(38,36,51,.28)', 5); });
+    g.strokeStyle = ink; g.lineWidth = 6; g.lineCap = 'round'; pfeil(g, 760, 560, 840, 560, 16);
+  });
+  TEX.themen = tex(900, 760, 31, (g, R, bar) => {
+    g.fillStyle = '#d9d5e4'; g.fillRect(0, 0, 900, 760); g.fillStyle = '#5F4BB6'; g.fillRect(0, 0, 900, 78); bar(36, 30, 260, 16, 'rgba(255,255,255,.9)');
+    const n = [4, 3, 4, 3];
+    for (let i = 0; i < 4; i++) {
+      const x = 28 + i * 215; g.fillStyle = 'rgba(38,36,51,.1)'; g.fillRect(x, 100, 200, 640); bar(x + 14, 114, 90, 12, 'rgba(38,36,51,.5)');
+      for (let j = 0; j < n[i]; j++) { const y = 152 + j * 146, on = j === (i * 2) % n[i]; g.fillStyle = on ? '#5F4BB6' : 'rgba(255,255,255,.7)'; g.beginPath(); g.roundRect(x + 12, y, 176, 122, 8); g.fill(); bar(x + 26, y + 20, 100, 11, on ? 'rgba(255,255,255,.9)' : 'rgba(38,36,51,.5)'); bar(x + 26, y + 46, 140, 8, on ? 'rgba(255,255,255,.6)' : 'rgba(38,36,51,.28)'); bar(x + 26, y + 66, 110, 8, on ? 'rgba(255,255,255,.6)' : 'rgba(38,36,51,.28)'); g.fillStyle = on ? '#EFEAFB' : 'rgba(95,75,182,.55)'; g.beginPath(); g.arc(x + 160, y + 100, 9, 0, 7); g.fill(); }
+    }
+  });
+  TEX.stempel = tex(800, 700, 41, (g, R, bar) => {
+    g.fillStyle = '#ece8f5'; g.fillRect(0, 0, 800, 700); g.fillStyle = '#5F4BB6'; g.fillRect(0, 0, 800, 120); bar(44, 44, 300, 18, 'rgba(255,255,255,.92)'); bar(44, 76, 190, 10, 'rgba(255,255,255,.55)');
+    for (let j = 0; j < 3; j++) for (let i = 0; i < 4; i++) { const n = j * 4 + i, on = n < 7, x = 120 + i * 190, y = 230 + j * 150; g.beginPath(); g.arc(x, y, 58, 0, 7); if (on) { g.fillStyle = '#5F4BB6'; g.fill(); g.fillStyle = '#EFEAFB'; g.beginPath(); g.moveTo(x - 22, y + 2); g.lineTo(x - 6, y + 18); g.lineTo(x + 24, y - 16); g.lineWidth = 9; g.strokeStyle = '#EFEAFB'; g.lineCap = 'round'; g.lineJoin = 'round'; g.stroke(); } else { g.lineWidth = 6; g.strokeStyle = 'rgba(38,36,51,.4)'; g.setLineDash([12, 10]); g.stroke(); g.setLineDash([]); } }
+    bar(44, 660, 220, 14, 'rgba(38,36,51,.3)');
   });
   TEX.flow = tex(800, 480, 4, (g, R, bar) => {
     g.fillStyle = '#0c0c13'; g.fillRect(0, 0, 800, 480); g.strokeStyle = pale(0.45); g.lineWidth = 4; g.lineJoin = 'round'; g.lineCap = 'round';
@@ -464,13 +498,14 @@ function sil(px, pz, o = {}) {
   }
   if (o.walk !== undefined) {
     const ph = o.walk, col = ctx.fillStyle; ctx.strokeStyle = col; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    const legAt = (f) => { const a = 0.42 * Math.sin(f), bend = 0.1 + 0.6 * Math.max(0, Math.cos(f)), kx = Math.sin(a) * 47, ky = 101 - Math.cos(a) * 47; return [kx, ky, kx + Math.sin(a - bend) * 46, ky - Math.cos(a - bend) * 46]; };
+    const legAt = o.steh ? () => [0, 54, 0, 8] : (f) => { const a = 0.42 * Math.sin(f), bend = 0.1 + 0.6 * Math.max(0, Math.cos(f)), kx = Math.sin(a) * 47, ky = 101 - Math.cos(a) * 47; return [kx, ky, kx + Math.sin(a - bend) * 46, ky - Math.cos(a - bend) * 46]; };
     const near = legAt(ph), far = legAt(ph + Math.PI);
     ctx.translate(0, 5.5 - Math.min(near[3], far[3]));
     const leg = ([kx, ky, fx, fy]) => { ctx.lineWidth = 12.5; ctx.beginPath(); ctx.moveTo(0, 101); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke(); ctx.beginPath(); ctx.ellipse(fx + 4.5, fy - 2, 8, 3.6, 0, 0, 7); ctx.fill(); };
     const arm = (f, prop) => {
       let a = -0.36 * Math.sin(f), fore = a + 0.28;
       if (prop === 'tasche') { a *= 0.3; fore = a + 0.05; } else if (prop === 'telefon') { a = 0.3; fore = 2.05; }
+      else if (prop === 'zeig') { a = 1.45; fore = 1.75; } else if (prop === 'schreib') { a = 1.05; fore = 1.65; } else if (prop === 'halte') { a = 0.75; fore = 1.9; } else if (o.steh) { a = 0.1; fore = 0.35; }
       const ex = 1 + Math.sin(a) * 30, ey = 150 - Math.cos(a) * 30, hx = ex + Math.sin(fore) * 27, hy = ey - Math.cos(fore) * 27;
       ctx.lineWidth = 8.5; ctx.beginPath(); ctx.moveTo(1, 150); ctx.lineTo(ex, ey); ctx.lineTo(hx, hy); ctx.stroke();
       if (prop === 'tasche') { ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx, hy - 7); ctx.stroke(); ctx.beginPath(); ctx.roundRect(hx - 12, hy - 28, 24, 21, 3); ctx.fill(); }
@@ -534,6 +569,25 @@ function stehtisch(x, h, z) {
   schatten(x - 0.42, x + 0.42, z - 0.42, z + 0.42);
   fillZ(x - 0.045, x + 0.045, 0, h, z, '#101016'); fillZ(x - 0.3, x + 0.3, 0, 0.045, z, '#101016');
   box(x - 0.36, x + 0.36, h - 0.05, h, z - 0.36, z + 0.36, '#8a88a0', '#262532', '#2b2a38');
+}
+function tisch(x0, x1, z0, z1, h, col) {
+  schatten(x0 - 0.1, x1 + 0.1, z0 - 0.1, z1 + 0.2);
+  for (const [x, z] of [[x0 + 0.08, z0 + 0.08], [x1 - 0.14, z0 + 0.08], [x0 + 0.08, z1 - 0.14], [x1 - 0.14, z1 - 0.14]]) box(x, x + 0.06, 0, h, z, z + 0.06, '#111', '#101016', '#16151e');
+  box(x0, x1, h - 0.05, h, z0, z1, col || M.top, M.front, M.side);
+}
+function laptop(x, y, z, w = 0.46) {
+  box(x - w / 2, x + w / 2, y, y + 0.02, z - 0.15, z + 0.15, '#3a3849', '#16151e', '#1b1a25');
+  const q = [[x - w / 2, y + 0.02, z + 0.14], [x + w / 2, y + 0.02, z + 0.14], [x + w / 2, y + 0.3, z + 0.2], [x - w / 2, y + 0.3, z + 0.2]];
+  poly(q, '#1a1736');
+  const r = rectZ(x - w / 2 + 0.03, x + w / 2 - 0.03, y + 0.06, y + 0.27, z + 0.17);
+  if (r) { ctx.fillStyle = `rgba(${LAVH},.55)`; ctx.fillRect(r[0] + r[2] * 0.08, r[1] + r[3] * 0.18, r[2] * 0.5, Math.max(1, r[3] * 0.1)); ctx.fillStyle = `rgba(${LAV},.85)`; ctx.fillRect(r[0] + r[2] * 0.08, r[1] + r[3] * 0.5, r[2] * 0.8, Math.max(1, r[3] * 0.28)); }
+  glow(x, y + 0.2, z + 0.1, 0.8, [[0, `rgba(${LAV},.22)`], [1, `rgba(${LAV},0)`]]);
+}
+function flach(x0, x1, z0, z1, y, fill) { return poly([[x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1]], fill); }
+function tafel(x0, x1, y0, y1, z, tx, rahmen, a = 1) {
+  const d = rectZ(x0, x1, y0, y1, z); if (!d || !tx) return null;
+  const b = Math.max(1.5, d[2] * 0.01); ctx.fillStyle = rahmen || '#07070c'; ctx.fillRect(d[0] - b, d[1] - b, d[2] + 2 * b, d[3] + 2 * b);
+  ctx.globalAlpha = a; ctx.drawImage(tx, d[0], d[1], d[2], d[3]); ctx.globalAlpha = 1; return d;
 }
 function platz(x, z, k, rgb, a = 1) {
   if (a < 0.02) return; ctx.globalAlpha = a;
@@ -650,24 +704,31 @@ function room(F, t) {
     box(PED.x - 0.32, PED.x + 0.32, 0, PED.h, PED.z - 0.32, PED.z + 0.32, '#77777d', lg([0, PED.h, 0], [0, 0, 0], [[0, '#3c3c41'], [1, '#1d1d20']]), N.side);
   } else if (key === 'studios') {
     const MK = MARKE.studios, BR = MK ? MK.rgb : '255,90,31', dark = '#07070c', zw = z1 - 0.06, rk = (l, r) => (MK ? MK.rolle[l][r].v : 1), an = (l) => (MK ? 0.25 + 0.75 * Math.max(...MK.rolle[l].map((s) => s.v)) : 1);
-    const lk = (l) => (MK ? lerp(1, MK.linieK[l].v, INS.F === F ? INS.k : 0) : 1);
-    const pl = rectZ(1.45, 3.25, 1.05, 2.9, zw);
-    if (pl) {
-      ctx.fillStyle = 'rgba(8,8,13,.6)'; ctx.fillRect(pl[0], pl[1], pl[2], pl[3]);
-      for (let j = 0; j < 4; j++) for (let i = 0; i < 5; i++) { const on = (i * 4 + j) % 7 === 3, x = pl[0] + pl[2] * (0.04 + i * 0.192), y = pl[1] + pl[3] * (0.06 + j * 0.235), w = pl[2] * 0.165, hh = pl[3] * 0.19; ctx.fillStyle = on ? AKZ.studios : pale(0.14); ctx.fillRect(x, y, w, hh); ctx.fillStyle = on ? 'rgba(255,255,255,.9)' : pale(0.26); ctx.fillRect(x + w * 0.12, y + hh * 0.2, w * 0.5, Math.max(1, hh * 0.1)); }
+    {
+      const hx = 1.65, hz = 8.3;
+      seg([hx, 0, hz], [hx, 0.8, hz], dark, lwAt(hz, 0.05)); fillZ(hx - 0.4, hx + 0.4, 0, 0.05, hz, dark);
+      const ph = rectZ(hx - 0.42, hx + 0.42, 0.78, 2.55, hz);
+      if (ph) {
+        const [rx, ry, rw, rh] = ph;
+        ctx.fillStyle = '#050509'; ctx.beginPath(); ctx.roundRect(rx, ry, rw, rh, rw * 0.07); ctx.fill();
+        ctx.fillStyle = sgr(0, ry, 0, ry + rh, [[0, '#2a1a14'], [1, '#17111c']]); ctx.fillRect(rx + rw * 0.05, ry + rh * 0.03, rw * 0.9, rh * 0.94);
+        ctx.fillStyle = 'rgba(255,90,31,.5)'; ctx.fillRect(rx + rw * 0.05, ry + rh * 0.03, rw * 0.9, rh * 0.5);
+        const cx = rx + rw / 2, cy = ry + rh * 0.28, r = rw * 0.2;
+        ctx.fillStyle = 'rgba(246,244,240,.92)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+        ctx.fillStyle = AKZ.studios; ctx.beginPath(); ctx.moveTo(cx - r * 0.32, cy - r * 0.48); ctx.lineTo(cx + r * 0.55, cy); ctx.lineTo(cx - r * 0.32, cy + r * 0.48); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = pale(0.28); ctx.fillRect(rx + rw * 0.12, ry + rh * 0.47, rw * 0.76, Math.max(1, rh * 0.012)); ctx.fillStyle = '#fff'; ctx.fillRect(rx + rw * 0.12, ry + rh * 0.47, rw * 0.34, Math.max(1, rh * 0.012));
+        for (let j = 0; j < 3; j++) { const y = ry + rh * (0.55 + j * 0.14); ctx.fillStyle = pale(0.14); ctx.fillRect(rx + rw * 0.1, y, rw * 0.3, rh * 0.11); ctx.fillStyle = pale(0.34); ctx.fillRect(rx + rw * 0.46, y + rh * 0.015, rw * 0.4, Math.max(1, rh * 0.016)); ctx.fillStyle = pale(0.16); ctx.fillRect(rx + rw * 0.46, y + rh * 0.055, rw * 0.28, Math.max(1, rh * 0.014)); }
+      }
+      glow(hx, 1.7, hz - 0.05, 2.0, [[0, `rgba(${BR},${0.2 * an(0)})`], [1, `rgba(${BR},0)`]]);
     }
-    const ph = rectZ(3.5, 4.15, 0.95, 2.55, zw);
-    if (ph) {
-      ctx.fillStyle = '#050509'; ctx.beginPath(); ctx.roundRect(ph[0], ph[1], ph[2], ph[3], ph[2] * 0.1); ctx.fill(); ctx.fillStyle = '#16151e'; ctx.fillRect(ph[0] + ph[2] * 0.06, ph[1] + ph[3] * 0.04, ph[2] * 0.88, ph[3] * 0.92);
-      for (let j = 0; j < 3; j++) for (let i = 0; i < 2; i++) { ctx.fillStyle = i === 1 && j === 1 ? AKZ.studios : pale(0.17); ctx.fillRect(ph[0] + ph[2] * (0.1 + i * 0.42), ph[1] + ph[3] * (0.1 + j * 0.27), ph[2] * 0.38, ph[3] * 0.24); }
-    }
-    glow(2.6, 2.0, zw, 3.4, [[0, `rgba(${BR},${0.11 * an(0)})`], [1, `rgba(${BR},0)`]]);
-    shade(-1.4, 1.4, 7.6, 8.65);
-    for (const x of [-1.25, 1.15]) box(x, x + 0.1, 0, 0.74, 7.85, 8.45, '#111', '#101016', '#16151e');
-    box(-1.3, 1.3, 0.74, 0.8, 7.75, 8.55, M.top, M.front, M.side);
-    fillZ(-0.1, 0.1, 0.8, 1.0, 8.5, '#0a0a10');
-    const m = fillZ(-1.25, 1.25, 0.98, 2.5, 8.5, '#05050a'); if (m && TEX.web) ctx.drawImage(TEX.web, m[0] + m[2] * 0.02, m[1] + m[3] * 0.035, m[2] * 0.96, m[3] * 0.93);
-    glow(0, 1.7, 8.45, 2.8, [[0, `rgba(${LAV},${0.15 * an(1)})`], [1, `rgba(${LAV},0)`]]);
+    const wx = -1.45;
+    shade(wx - 1.4, wx + 1.4, 7.6, 8.65);
+    for (const x of [wx - 1.25, wx + 1.15]) box(x, x + 0.1, 0, 0.74, 7.85, 8.45, '#111', '#101016', '#16151e');
+    box(wx - 1.3, wx + 1.3, 0.74, 0.8, 7.75, 8.55, M.top, M.front, M.side);
+    fillZ(wx - 0.1, wx + 0.1, 0.8, 1.0, 8.5, '#0a0a10');
+    const m = fillZ(wx - 1.05, wx + 1.05, 0.98, 2.4, 8.5, '#05050a'); if (m && TEX.web) ctx.drawImage(TEX.web, m[0] + m[2] * 0.02, m[1] + m[3] * 0.035, m[2] * 0.96, m[3] * 0.93);
+    glow(wx, 1.7, 8.45, 2.8, [[0, `rgba(${LAV},${0.15 * an(1)})`], [1, `rgba(${LAV},0)`]]);
+    laptop(wx + 0.55, 0.8, 7.85, 0.42);
     const bz = z1 - 0.45, bx0 = -5.6, bx1 = -3.3;
     for (const x of [bx0 - 0.16, bx1 + 0.16]) { seg([x, 0, bz + 0.12], [x, 3.22, bz + 0.12], dark, lwAt(bz, 0.05)); seg([x - 0.35, 0, bz + 0.12], [x + 0.35, 0, bz + 0.12], dark, lwAt(bz, 0.05)); }
     const paper = (pts, a, b, c0, c1) => poly(pts, lg(a, b, [[0, c0], [1, c1]]));
@@ -685,21 +746,22 @@ function room(F, t) {
     fg.addColorStop(0, '#fff8ec'); fg.addColorStop(0.45, '#e9dfd6'); fg.addColorStop(0.8, '#b3a9c0'); fg.addColorStop(1, '#8f869f');
     if (poly([f0, f1, f2, f3], fg)) { ctx.strokeStyle = '#0a0a10'; ctx.lineWidth = lwAt(sz, 0.06); ctx.stroke(); }
     glow(sx + 0.3, 2.05, sz - 0.3, 1.6, [[0, `rgba(${WARM},.28)`], [1, `rgba(${WARM},0)`]]);
-    platz(4.1, 7.2, rk(0, 1), BR, lk(0)); platz(-1.6, 7.0, rk(2, 1), BR, lk(2));
-    hocker(2.88, 0.74, 6.4); hocker(STOOL.x, STOOL.h, STOOL.z);
-    schatten(-0.3, 0.47, 5.8, 6.6); box(-0.2, 0.37, 0, 0.9, 5.9, 6.5, '#8a88a0', lg([0, 0.9, 0], [0, 0, 0], [[0, '#3c3a4c'], [1, '#1d1c26']]), '#262532');
+    hocker(STOOL.x, STOOL.h, STOOL.z);
+    schatten(-0.9, -0.13, 5.8, 6.6); box(-0.8, -0.23, 0, 0.9, 5.9, 6.5, '#8a88a0', lg([0, 0.9, 0], [0, 0, 0], [[0, '#3c3a4c'], [1, '#1d1c26']]), '#262532');
     if (MK) figuren('studios');
-    ctx.globalAlpha = 0.3 + 0.7 * lk(2); tripod(-5.33, 5.3, 1.45); ctx.globalAlpha = 1;
+    ctx.globalAlpha = 1; tripod(-5.33, 5.3, 1.45); ctx.globalAlpha = 1;
+    softbox(2.75, 7.0, 1.2); tripod(2.15, 7.3, 1.2);
   } else if (key === 'pr') {
     const MK = MARKE.pr, zw = z1 - 0.06, an = (l) => (MK ? 0.3 + 0.7 * MK.linieK[l].v : 1), VI = '#5F4BB6', dunkel = '#0a0a10';
     const matt = (r, l) => { if (r && an(l) < 0.98) { ctx.fillStyle = `rgba(8,8,14,${0.62 * (1 - an(l))})`; ctx.fillRect(r[0], r[1], r[2], r[3]); } };
-    const kw = rectZ(-3.4, -0.75, 0.85, 3.05, zw); if (kw && TEX.pr) { ctx.drawImage(TEX.pr, 0, 0, TEX.pr.width * 0.47, TEX.pr.height, kw[0], kw[1], kw[2], kw[3]); matt(kw, 1); }
-    glow(-2.1, 1.9, z1 - 0.05, 3.2, [[0, `rgba(${LAV},${0.1 * an(1)})`], [1, `rgba(${LAV},0)`]]);
-    shade(-2.75, -1.05, 7.65, 8.5); box(-2.65, -1.15, 0, 0.86, 7.75, 8.4, M.top, M.front, M.side);
-    for (const [x, on] of [[-2.5, 0], [-1.9, 1]]) {
-      poly([[x, 0.87, 8.02], [x + 0.28, 0.87, 8.1], [x + 0.28, 1.3, 8.2], [x, 1.3, 8.12]], on ? '#ebe6f6' : '#cdc8da'); poly([[x + 0.28, 0.87, 8.1], [x + 0.56, 0.87, 8.02], [x + 0.56, 1.3, 8.12], [x + 0.28, 1.3, 8.2]], on ? '#d5cfe6' : '#b6b1c6');
-      fillZ(x + 0.04, x + 0.22, 1.16, 1.21, 8.0, on ? VI : 'rgba(0,0,0,.32)'); fillZ(x + 0.04, x + 0.2, 1.02, 1.05, 8.0, 'rgba(0,0,0,.22)'); fillZ(x + 0.33, x + 0.52, 0.98, 1.2, 8.0, 'rgba(0,0,0,.2)');
-    }
+    tafel(-3.5, -1.65, 1.0, 2.85, zw, TEX.themen, '#3a3849', 0.55 + 0.45 * an(1));
+    glow(-2.6, 1.9, z1 - 0.05, 3.2, [[0, `rgba(${LAV},${0.14 * an(1)})`], [1, `rgba(${LAV},0)`]]);
+    tisch(-3.5, -1.65, 7.0, 7.95, 0.86);
+    poly([[-3.15, 0.87, 7.45], [-2.7, 0.87, 7.58], [-2.7, 1.42, 7.7], [-3.15, 1.42, 7.57]], '#ebe6f6'); poly([[-2.7, 0.87, 7.58], [-2.25, 0.87, 7.45], [-2.25, 1.42, 7.57], [-2.7, 1.42, 7.7]], '#cfc8e2');
+    fillZ(-3.08, -2.78, 1.12, 1.36, 7.6, '#5F4BB6'); fillZ(-3.08, -2.84, 1.0, 1.05, 7.6, 'rgba(38,36,51,.45)'); fillZ(-3.08, -2.9, 0.92, 0.96, 7.6, 'rgba(38,36,51,.3)');
+    fillZ(-2.6, -2.34, 1.28, 1.33, 7.6, 'rgba(38,36,51,.5)'); fillZ(-2.6, -2.4, 1.16, 1.2, 7.6, 'rgba(38,36,51,.3)'); fillZ(-2.6, -2.36, 1.06, 1.1, 7.6, 'rgba(38,36,51,.3)'); fillZ(-2.6, -2.45, 0.96, 1.0, 7.6, 'rgba(38,36,51,.3)');
+    flach(-1.98, -1.72, 7.1, 7.9, 0.878, '#f2efe7'); flach(-1.95, -1.75, 7.18, 7.3, 0.88, 'rgba(20,20,30,.75)');
+    for (const z of [7.4, 7.52, 7.64, 7.76]) flach(-1.95, -1.75, z, z + 0.05, 0.88, 'rgba(20,20,30,.3)');
     const tx = -5.2, tz = 8.3, lwE = lwAt(tz, 0.04);
     seg([tx - 0.45, 2.45, tz], [tx - 0.62, 0, tz - 0.1], dunkel, lwE); seg([tx + 0.45, 2.45, tz], [tx + 0.62, 0, tz - 0.1], dunkel, lwE); seg([tx, 2.45, tz + 0.04], [tx, 0, tz + 0.6], dunkel, lwE);
     const tp = fillZ(tx - 0.62, tx + 0.62, 1.0, 2.52, tz, '#cfcbd9');
@@ -719,7 +781,10 @@ function room(F, t) {
     seg([0.42, 1.12, 7.75], [0.42, 1.38, 7.75], dunkel, lwAt(7.75, 0.03)); fillZ(0.36, 0.48, 1.36, 1.54, 7.75, '#2b2a38'); fillZ(0.36, 0.48, 1.46, 1.54, 7.74, `rgba(${LAVH},.8)`);
     oy -= 0.16;
     glow(0.4, 1.9, 7.8, 2.4, [[0, `rgba(${WARM},${0.24 * an(2)})`], [1, `rgba(${WARM},0)`]]);
-    const kal = rectZ(1.8, 3.4, 1.05, 2.8, zw);
+    ctx.globalCompositeOperation = 'lighter';
+    poly([[0.2, y1 - 0.02, 7.7], [0.6, y1 - 0.02, 7.7], [1.25, 0.17, 8.0], [-0.45, 0.17, 8.0]], lg([0, y1, 7.8], [0, 0, 7.8], [[0, `rgba(${WARM},.0)`], [0.3, `rgba(${WARM},${0.12 * an(2)})`], [1, `rgba(${WARM},${0.2 * an(2)})`]]));
+    ctx.globalCompositeOperation = 'source-over';
+    const kal = MK && MK.zone.v < 1.6 ? null : rectZ(2.4, 3.9, 1.05, 2.8, zw);
     if (kal) {
       const [rx, ry, rw, rh] = kal; ctx.fillStyle = '#d8d4e3'; ctx.fillRect(rx, ry, rw, rh); ctx.fillStyle = '#3b2a78'; ctx.fillRect(rx, ry, rw, rh * 0.13);
       ctx.fillStyle = 'rgba(246,244,240,.85)'; ctx.fillRect(rx + rw * 0.07, ry + rh * 0.045, rw * 0.3, Math.max(1, rh * 0.04));
@@ -730,8 +795,8 @@ function room(F, t) {
       }
       matt(kal, 3);
     }
-    glow(2.6, 1.9, z1 - 0.1, 2.4, [[0, `rgba(${LAV},${0.14 * an(3)})`], [1, `rgba(${LAV},0)`]]);
-    const au = rectZ(3.75, 5.25, 1.0, 2.75, zw);
+    glow(3.15, 1.9, z1 - 0.1, 2.4, [[0, `rgba(${LAV},${0.14 * an(3)})`], [1, `rgba(${LAV},0)`]]);
+    const au = rectZ(4.15, 5.65, 1.0, 2.75, zw);
     if (au) {
       const [rx, ry, rw, rh] = au; ctx.fillStyle = '#e4e0ef'; ctx.fillRect(rx, ry, rw, rh); ctx.fillStyle = VI; ctx.fillRect(rx, ry, rw, rh * 0.2);
       ctx.fillStyle = 'rgba(246,244,240,.9)'; ctx.fillRect(rx + rw * 0.08, ry + rh * 0.065, rw * 0.5, Math.max(1, rh * 0.05));
@@ -742,34 +807,63 @@ function room(F, t) {
       ctx.moveTo(cx, cy + 2 * u); ctx.lineTo(cx + 11 * u, cy + 12 * u); ctx.lineTo(cx + 7 * u, cy + 24 * u); ctx.moveTo(cx, cy + 2 * u); ctx.lineTo(cx - 10 * u, cy + 10 * u); ctx.lineTo(cx - 17 * u, cy + 20 * u); ctx.stroke(); ctx.lineCap = 'butt';
       ctx.fillStyle = 'rgba(38,36,51,.3)'; ctx.fillRect(rx + rw * 0.1, ry + rh * 0.88, rw * 0.62, Math.max(1, rh * 0.035));
     }
-    glow(4.5, 1.9, z1 - 0.1, 2.2, [[0, `rgba(${LAV},.16)`], [1, `rgba(${LAV},0)`]]);
-    shade(4.0, 5.6, 7.55, 8.5); box(4.1, 5.5, 0, 0.92, 7.65, 8.4, M.top, M.front, M.side);
-    box(4.55, 4.85, 0.92, 0.98, 7.85, 8.1, '#3a3849', '#16151e', '#1b1a25');
-    poly([[4.5, 0.97, 7.95], [4.9, 0.97, 7.95], [4.9, 1.35, 8.05], [4.5, 1.35, 8.05]], '#f1ecfb');
-    for (let j = 0; j < 2; j++) for (let i = 0; i < 4; i++) { const q = P(4.56 + i * 0.09, 1.1 + j * 0.12, 7.99), r = Math.max(1.2, (0.032 * S.f) / (7.99 - cam.z)); ctx.fillStyle = j * 4 + i < 5 ? VI : 'rgba(38,36,51,.28)'; ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, 7); ctx.fill(); }
-    glow(4.8, 1.25, 7.9, 1.7, [[0, `rgba(${LAV},.22)`], [1, `rgba(${LAV},0)`]]);
+    glow(4.9, 1.9, z1 - 0.1, 2.2, [[0, `rgba(${LAV},.16)`], [1, `rgba(${LAV},0)`]]);
+    tafel(0.65, 2.15, 0.95, 2.6, zw, TEX.stempel, '#3a3849');
+    glow(1.4, 1.8, z1 - 0.1, 2.4, [[0, `rgba(${LAV},.2)`], [1, `rgba(${LAV},0)`]]);
     if (MK) { MK.kern.forEach(([x, hh, z], l) => { const a = MK.linieK[l].v; if (a > 0.02) { ctx.globalAlpha = a; stehtisch(x, hh, z); ctx.globalAlpha = 1; } }); figuren('pr'); }
   } else if (key === 'podcast') {
     const MK = MARKE.podcast, zw = z1 - 0.06;
-    const d = rectZ(-4.4, 4.6, 0.55, 3.15, zw); if (d && TEX.akustik) ctx.drawImage(TEX.akustik, d[0], d[1], d[2], d[3]);
-    const nz = z1 - 0.1, np = P(TABLE.x - 0.3, 2.42, nz), ns = (0.4 * S.f) / Math.max(NEAR, nz - cam.z);
-    glow(TABLE.x - 0.3, 2.42, nz, 3.3, [[0, `rgba(${LAV},.3)`], [1, `rgba(${LAV},0)`]]);
-    if (ns > 4) {
-      ctx.save(); ctx.font = FONT(600, ns); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.letterSpacing = `${(ns * 0.16).toFixed(1)}px`;
-      ctx.shadowColor = 'rgba(167,139,250,1)'; ctx.shadowBlur = ns * 0.6; ctx.fillStyle = '#f3eeff';
-      ctx.fillText('FOKUS', np[0] + ns * 0.08, np[1] - ns * 0.62); ctx.fillText('INNOVATION', np[0] + ns * 0.08, np[1] + ns * 0.62); ctx.restore();
+    const d = rectZ(-4.4, 5.95, 0.55, 3.15, zw); if (d && TEX.akustik) ctx.drawImage(TEX.akustik, d[0], d[1], d[2], d[3]);
+    if (!TEX.neon && document.fonts && document.fonts.check('600 40px "Schibsted Grotesk"')) {
+      TEX.neon = tex(1300, 520, 9, (g) => {
+        g.font = FONT(600, 150); g.textAlign = 'center'; g.textBaseline = 'middle'; g.letterSpacing = '22px'; g.lineJoin = 'round';
+        const zeilen = [['FOKUS', 650, 150], ['INNOVATION', 650, 360]];
+        g.strokeStyle = '#2a2838'; g.lineWidth = 3;
+        for (const [x, y] of [[170, 150], [650, 105], [1110, 150], [150, 360], [650, 315], [1140, 360]]) { g.beginPath(); g.moveTo(x, y - 44); g.lineTo(x, y - 8); g.stroke(); g.fillStyle = '#2f2d3c'; g.fillRect(x - 7, y - 10, 14, 14); }
+        for (const [w, a, bl] of [[26, 0.1, 50], [14, 0.28, 26]]) { g.save(); g.shadowColor = 'rgba(167,139,250,1)'; g.shadowBlur = bl; g.strokeStyle = `rgba(167,139,250,${a})`; g.lineWidth = w; for (const [t, x, y] of zeilen) g.strokeText(t, x, y); g.restore(); }
+        g.save(); g.shadowColor = 'rgba(205,192,255,1)'; g.shadowBlur = 14; g.strokeStyle = '#f6f1ff'; g.lineWidth = 5; for (const [t, x, y] of zeilen) g.strokeText(t, x, y); g.restore();
+      });
     }
-    fillZ(3.42, 4.18, 2.6, 2.92, z1 - 0.08, '#08080d'); fillZ(3.5, 4.1, 2.67, 2.85, z1 - 0.09, `rgba(${LAVH},.95)`);
-    glow(3.8, 2.76, z1 - 0.1, 1.7, [[0, `rgba(${LAV},.5)`], [1, `rgba(${LAV},0)`]]);
+    glow(2.5, 2.45, z1 - 0.1, 3.0, [[0, `rgba(${LAV},.26)`], [1, `rgba(${LAV},0)`]]);
+    if (TEX.neon) { const nr = rectZ(1.5, 3.5, 1.95, 3.0, z1 - 0.1); if (nr) { ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(TEX.neon, nr[0], nr[1], nr[2], nr[3]); ctx.globalCompositeOperation = 'source-over'; } }
+    fillZ(3.72, 4.48, 2.6, 2.92, z1 - 0.08, '#08080d'); fillZ(3.8, 4.4, 2.67, 2.85, z1 - 0.09, `rgba(${LAVH},.95)`);
+    glow(4.1, 2.76, z1 - 0.1, 1.7, [[0, `rgba(${LAV},.5)`], [1, `rgba(${LAV},0)`]]);
     poly([[TABLE.x - 3, 0.006, TABLE.z - 1.5], [TABLE.x + 3, 0.006, TABLE.z - 1.5], [TABLE.x + 2.7, 0.006, TABLE.z + 1.5], [TABLE.x - 2.7, 0.006, TABLE.z + 1.5]], 'rgba(58,54,88,.5)');
     glow(TABLE.x, 1.6, TABLE.z + 0.6, 3.2, [[0, `rgba(${WARM},.2)`], [1, `rgba(${WARM},0)`]]);
-    platz(3.75, 7.5, 1, MK ? MK.rgb : LAV);
+    platz(-2.3, 7.4, 1, MK ? MK.rgb : LAV);
     const tc = P(TABLE.x, TABLE.h, TABLE.z), trx = (0.82 * S.f) / (TABLE.z - cam.z), tryy = Math.max(2, Math.abs(P(TABLE.x, TABLE.h, TABLE.z - 0.82)[1] - P(TABLE.x, TABLE.h, TABLE.z + 0.82)[1]) / 2), th = (0.06 * S.f) / (TABLE.z - cam.z);
     fillZ(TABLE.x - 0.06, TABLE.x + 0.06, 0, TABLE.h, TABLE.z, '#101016'); fillZ(TABLE.x - 0.34, TABLE.x + 0.34, 0, 0.05, TABLE.z, '#101016');
     ctx.fillStyle = '#1c1b26'; ctx.beginPath(); ctx.ellipse(tc[0], tc[1] + th, trx, tryy, 0, 0, 7); ctx.fill(); ctx.fillRect(tc[0] - trx, tc[1], trx * 2, th);
     ctx.fillStyle = '#5f5d74'; ctx.beginPath(); ctx.ellipse(tc[0], tc[1], trx, tryy, 0, 0, 7); ctx.fill();
     if (MK) figuren('podcast');
-    softbox(-2.5, 5.9, 1.0); softbox(2.2, 5.4, 1.0); tripod(-1.25, 5.1, 1.15);
+    hocker(2.45, 0.62, 7.3);
+    softbox(-3.6, 5.9, 1.0); tripod(-3.0, 5.1, 1.15);
+    {
+      const cx = 3.45, cz = 7.7;
+      ctx.globalCompositeOperation = 'lighter';
+      poly([[cx - 0.2, y1 - 0.02, cz - 0.1], [cx + 0.2, y1 - 0.02, cz - 0.1], [cx + 1.15, 0.01, cz + 0.2], [cx - 1.15, 0.01, cz + 0.2]], lg([0, y1, cz], [0, 0, cz], [[0, `rgba(${WARM},0)`], [0.35, `rgba(${WARM},.1)`], [1, `rgba(${WARM},.22)`]]));
+      poly([[cx - 1.0, 0.007, cz - 0.9], [cx + 1.0, 0.007, cz - 0.9], [cx + 0.85, 0.007, cz + 0.75], [cx - 0.85, 0.007, cz + 0.75]], `rgba(${LAV},.16)`);
+      ctx.globalCompositeOperation = 'source-over';
+      schatten(cx - 0.4, cx + 0.4, cz - 0.4, cz + 0.4);
+      for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(cx + dx * 0.27 - 0.025, cx + dx * 0.27 + 0.025, 0, 0.44, cz + dz * 0.25 - 0.025, cz + dz * 0.25 + 0.025, '#111', '#101016', '#16151e');
+      box(cx - 0.32, cx + 0.32, 0.44, 0.52, cz - 0.3, cz + 0.3, '#8b86c0', '#4a4680', '#3d396b');
+      box(cx - 0.32, cx + 0.32, 0.52, 1.18, cz + 0.26, cz + 0.34, '#8b86c0', '#5b57a0', '#3d396b');
+      box(cx - 0.38, cx - 0.32, 0.52, 0.78, cz - 0.3, cz + 0.3, '#8b86c0', '#4a4680', '#3d396b'); box(cx + 0.32, cx + 0.38, 0.52, 0.78, cz - 0.3, cz + 0.3, '#8b86c0', '#4a4680', '#3d396b');
+      glow(cx, 1.0, cz, 1.5, [[0, `rgba(${WARM},.2)`], [1, `rgba(${WARM},0)`]]);
+      ctx.globalAlpha = clamp01(MARKE.podcast.zone.v * 1.6); softbox(1.7, 6.2, 1.1); ctx.globalAlpha = 1; softbox(5.0, 6.2, 1.1); tripod(4.3, 5.2, 1.2);
+      const hx = 5.35, hz = 8.4;
+      seg([hx, 0, hz], [hx, 0.7, hz], '#07070c', lwAt(hz, 0.05)); fillZ(hx - 0.4, hx + 0.4, 0, 0.05, hz, '#07070c');
+      const ph = rectZ(hx - 0.46, hx + 0.46, 0.68, 2.6, hz);
+      if (ph) {
+        const [rx, ry, rw, rh] = ph; ctx.fillStyle = '#050509'; ctx.beginPath(); ctx.roundRect(rx, ry, rw, rh, rw * 0.06); ctx.fill();
+        for (let j = 0; j < 3; j++) {
+          const y = ry + rh * (0.04 + j * 0.318), hh = rh * 0.29; ctx.fillStyle = sgr(0, y, 0, y + hh, [[0, j === 1 ? '#5F4BB6' : '#2a2650'], [1, '#17142c']]); ctx.fillRect(rx + rw * 0.05, y, rw * 0.9, hh);
+          ctx.fillStyle = 'rgba(246,244,240,.9)'; const px = rx + rw * 0.5, py = y + hh * 0.46, r = hh * 0.2; ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill(); ctx.fillStyle = '#5F4BB6'; ctx.beginPath(); ctx.moveTo(px - r * 0.3, py - r * 0.5); ctx.lineTo(px + r * 0.55, py); ctx.lineTo(px - r * 0.3, py + r * 0.5); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = pale(0.3); ctx.fillRect(rx + rw * 0.1, y + hh * 0.86, rw * 0.8, Math.max(1, hh * 0.03)); ctx.fillStyle = '#fff'; ctx.fillRect(rx + rw * 0.1, y + hh * 0.86, rw * (0.2 + 0.2 * j), Math.max(1, hh * 0.03));
+        }
+      }
+      glow(hx, 1.7, hz - 0.05, 2.0, [[0, `rgba(${LAV},.2)`], [1, `rgba(${LAV},0)`]]);
+    }
     for (const s of [-1, 1]) {
       const bx = TABLE.x + s * 0.5, lw = lwAt(TABLE.z, 0.035);
       seg([bx, TABLE.h, TABLE.z], [bx + s * 0.08, 1.62, TABLE.z], '#0a0a10', lw); seg([bx + s * 0.08, 1.62, TABLE.z], [bx + s * 0.3, 1.34, TABLE.z], '#0a0a10', lw);
@@ -779,11 +873,11 @@ function room(F, t) {
     const MK = MARKE.revenue, BL = '125,183,255', TB = '23,70,158', zw = z1 - 0.07, rk = (r) => (MK ? MK.rolle[0][r].v : 1);
     const bw = rectZ(-MX, MX, 0, y1, z1 - 0.025);
     if (bw) { ctx.fillStyle = sgr(0, bw[1], 0, bw[1] + bw[3], [[0, `rgba(${TB},.62)`], [1, `rgba(${TB},.24)`]]); ctx.fillRect(bw[0], bw[1], bw[2], bw[3]); }
-    const d = rectZ(-3.3, -1.1, 1.14, 2.3, zw), kK = 0.35 + 0.65 * rk(1);
+    const d = rectZ(-3.45, -1.45, 1.2, 2.35, zw), kK = 0.35 + 0.65 * rk(1);
     if (d) { const b = Math.max(1.5, d[2] * 0.008); ctx.fillStyle = '#030306'; ctx.fillRect(d[0] - b, d[1] - b, d[2] + 2 * b, d[3] + 2 * b); if (TEX.kpi) { ctx.globalAlpha = kK; ctx.drawImage(TEX.kpi, d[0], d[1], d[2], d[3]); ctx.globalAlpha = 1; } }
     glow(-2.2, 1.75, z1 - 0.1, 4.2, [[0, `rgba(${BL},${0.14 * kK})`], [1, `rgba(${BL},0)`]]);
     poly([[-3.3, 0, z1 - 0.4], [-1.1, 0, z1 - 0.4], [-0.7, 0, z1 - 3.0], [-3.7, 0, z1 - 3.0]], lg([0, 0, z1 - 0.4], [0, 0, z1 - 3.0], [[0, `rgba(${BL},${0.18 * kK})`], [1, `rgba(${BL},0)`]]));
-    const pb = rectZ(-0.15, 1.25, 1.05, 2.5, zw), kP = 0.35 + 0.65 * rk(3);
+    const pb = rectZ(0.15, 1.65, 1.0, 2.6, zw), kP = 0.35 + 0.65 * rk(3);
     if (pb) {
       ctx.fillStyle = 'rgba(6,8,14,.78)'; ctx.fillRect(pb[0], pb[1], pb[2], pb[3]); ctx.globalAlpha = kP;
       [5, 4, 3, 2, 2].forEach((n, i) => { const last = i === 4, x = pb[0] + pb[2] * (0.04 + i * 0.192), w = pb[2] * 0.165; ctx.fillStyle = last ? AKZ.revenue : pale(0.4); ctx.fillRect(x, pb[1] + pb[3] * 0.06, w * 0.6, Math.max(1, pb[3] * 0.025)); for (let q = 0; q < n; q++) { const y = pb[1] + pb[3] * (0.14 + q * 0.165); ctx.fillStyle = last ? AKZ.revenue : pale(0.15); ctx.fillRect(x, y, w, pb[3] * 0.13); ctx.fillStyle = last ? 'rgba(255,255,255,.9)' : pale(0.28); ctx.fillRect(x + w * 0.12, y + pb[3] * 0.035, w * 0.5, Math.max(1, pb[3] * 0.018)); } });
@@ -811,7 +905,10 @@ function room(F, t) {
       ctx.beginPath(); ctx.moveTo(rx + rw * 0.08, ry + rh * 0.88); ctx.lineTo(rx + rw * 0.9, ry + rh * 0.66); ctx.moveTo(rx + rw * 0.82, ry + rh * 0.64); ctx.lineTo(rx + rw * 0.9, ry + rh * 0.66); ctx.lineTo(rx + rw * 0.85, ry + rh * 0.74); ctx.stroke();
       if (kS < 0.98) { ctx.fillStyle = `rgba(8,10,16,${0.6 * (1 - kS)})`; ctx.fillRect(rx, ry, rw, rh); }
     }
-    stehtisch(-3.31, 1.0, 6.6); stehtisch(-0.53, 1.0, 6.8); stehtisch(2.84, 1.0, 6.8);
+    stehtisch(-0.85, 1.0, 6.4);
+    tisch(-3.2, -1.85, 7.25, 8.0, 0.76);
+    box(-2.7, -2.55, 0.76, 0.785, 7.45, 7.75, '#1d1c26', '#101016', '#16151e'); fillZ(-2.68, -2.57, 0.765, 0.78, 7.44, `rgba(${LAV},.7)`); glow(-2.62, 0.85, 7.6, 0.6, [[0, `rgba(${BL},.3)`], [1, `rgba(${BL},0)`]]);
+    box(-2.3, -2.05, 0.76, 0.775, 7.4, 7.75, '#e9e4f3', '#bdb7cf', '#a8a2bc');
     if (MK) {
       figuren('revenue');
       ctx.globalAlpha = 0.25 + 0.6 * rk(5); sil(4.7, 6.4, { profil: true, flip: true, ohneKH: true, col: '#161a26' }); ctx.globalAlpha = 1;
@@ -831,14 +928,17 @@ function room(F, t) {
       weg([0.84, 0.5, 0.68, 0.36, 0.74]); ctx.fillStyle = 'rgba(139,92,246,.55)'; ctx.fill(); ctx.strokeStyle = `rgba(${LAVH},.95)`; ctx.lineWidth = Math.max(1, rw * 0.014); ctx.stroke();
     }
     glow(-3.9, 1.7, 8.25, 2.7, [[0, `rgba(${LAV},.22)`], [1, `rgba(${LAV},0)`]]);
-    const d = rectZ(-2.1, 1.7, 0.8, 2.97, zw), kW = 0.42 + 0.58 * rk(1);
-    if (d) { const b = Math.max(1.5, d[2] * 0.012); ctx.fillStyle = '#3a3849'; ctx.fillRect(d[0] - b, d[1] - b, d[2] + 2 * b, d[3] + 2 * b); if (TEX.board) { ctx.globalAlpha = kW; ctx.drawImage(TEX.board, d[0], d[1], d[2], d[3]); ctx.globalAlpha = 1; } }
-    fillZ(-2.1, 1.7, 0.7, 0.76, z1 - 0.12, '#55536a');
-    const kP = 0.3 + 0.7 * rk(2), m = fillZ(1.9, 3.55, 1.38, 2.86, z1 - 0.08, '#05050a');
-    if (m && TEX.flow) { ctx.globalAlpha = kP; ctx.drawImage(TEX.flow, m[0] + m[2] * 0.02, m[1] + m[3] * 0.035, m[2] * 0.96, m[3] * 0.93); ctx.globalAlpha = 1; }
-    glow(2.75, 2.1, z1 - 0.1, 2.8, [[0, `rgba(${LAV},${0.18 * kP})`], [1, `rgba(${LAV},0)`]]);
+    tafel(-2.05, 0.0, 0.95, 2.75, zw, TEX.radar, '#3a3849');
+    glow(-1.0, 1.85, z1 - 0.1, 3.0, [[0, `rgba(${LAV},.2)`], [1, `rgba(${LAV},0)`]]);
+    tafel(0.3, 2.4, 1.2, 2.62, zw, TEX.plan, '#3a3849');
+    glow(1.35, 1.9, z1 - 0.1, 2.4, [[0, `rgba(${WARM},.1)`], [1, `rgba(${WARM},0)`]]);
+    const m = fillZ(2.75, 4.2, 1.38, 2.7, z1 - 0.08, '#05050a');
+    if (m && TEX.flow) ctx.drawImage(TEX.flow, m[0] + m[2] * 0.02, m[1] + m[3] * 0.035, m[2] * 0.96, m[3] * 0.93);
+    tisch(-1.75, 1.65, 7.35, 8.15, 0.76);
+    laptop(-0.85, 0.76, 7.55); laptop(1.05, 0.76, 7.6);
+    box(-0.1, 0.22, 0.76, 0.78, 7.55, 7.85, '#e9e4f3', '#bdb7cf', '#a8a2bc');
     platz(4.75, 7.2, rk(3), MK ? MK.rgb : LAV);
-    if (MK) { for (const [x, hh, z] of MK.kern) stehtisch(x, hh, z); figuren('innovation'); }
+    if (MK) figuren('innovation');
   }
   for (const x of [SHAFT.x0, SHAFT.x1]) seg([x, 0, SHAFT.z], [x, y1, SHAFT.z], `rgba(${LAV},.3)`, 1);
   ctx.restore(); oy = 0;
@@ -880,6 +980,7 @@ function walkers(t) {
     const x = ((((x0 + v * T + 18) % 36) + 36) % 36) - 18;
     sil(x, z, { s, flip: v < 0, bob, prop, col: '#07070b', walk: T * Math.abs(v) * 5.4 + i * 2.1 + 1.25 });
   });
+  sil(-1.05, -0.7, { s: 1.0, col: '#07070b', rim: 0.55, rimCol: WARM, kante: 0.35, kanteCol: WARM });
   lamp();
   oy = 0;
 }
@@ -999,8 +1100,7 @@ function terrace() {
     tisch(x, z);
     if (g[0] > 0.02) { ctx.globalAlpha = g[0]; fillZ(x + 0.08, x + 0.3, 1.13, 1.42, z - 0.05, '#efeaf8'); fillZ(x + 0.11, x + 0.27, 1.33, 1.37, z - 0.06, '#5F4BB6'); fillZ(x + 0.11, x + 0.24, 1.24, 1.27, z - 0.06, 'rgba(38,36,51,.4)'); ctx.globalAlpha = 1; }
   };
-  thementisch(DT[1][0], DT[1][1]); sil(7.05, 6.1, GT); sil(8.35, 6.5, { ...GT, flip: true, bob: true, s: 0.96 }); sil(7.7, 7.1, { ...GT, s: 0.98 });
-  sil(-4.7, 5.7, G); sil(-4.0, 6.0, { ...G, flip: true, bob: true, s: 0.95 });
+  thementisch(DT[1][0], DT[1][1]); sil(DT[1][0] - 0.7, DT[1][1] - 0.1, { ...GT, walk: 0, steh: true, prop: 'zeig' }); sil(DT[1][0] + 0.7, DT[1][1], { ...GT, walk: 0, steh: true, flip: true, s: 0.96 });
   [5.3, 4.2, 3.1].forEach((z, r) => {
     for (const side of [-1, 1]) for (let i = 0; i < 3; i++) {
       const x = side * (0.95 + i * 1.04), id = r * 6 + i * 2 + (side > 0 ? 1 : 0);
@@ -1009,8 +1109,8 @@ function terrace() {
       box(x - 0.26, x + 0.26, 0.44, 0.84, z - 0.28, z - 0.22, '#4a4860', '#22212c', '#262532'); fillZ(x - 0.26, x + 0.26, 0.815, 0.84, z - 0.281, `rgba(${WARM},.22)`);
     }
   });
-  if (g[0] > 0.02) { ctx.globalAlpha = g[0]; sil(5.75, 4.4, { ...GT, s: 0.97 }); ctx.globalAlpha = 1; }
-  thementisch(DT[0][0], DT[0][1]); sil(4.95, 3.5, GT); sil(6.25, 3.8, { ...GT, flip: true, bob: true, s: 0.96 });
+  if (g[0] > 0.02) { ctx.globalAlpha = g[0]; sil(DT[0][0] + 0.1, DT[0][1] + 0.75, { ...GT, s: 0.97, bob: true }); ctx.globalAlpha = 1; }
+  thementisch(DT[0][0], DT[0][1]); sil(DT[0][0] - 0.7, DT[0][1], { ...GT, walk: 0, steh: true }); sil(DT[0][0] + 0.7, DT[0][1] - 0.1, { ...GT, walk: 0, steh: true, flip: true, prop: 'halte', s: 0.97 });
   tripod(1.2, 1.9, 1.6);
 }
 function roof(p) {
@@ -1111,6 +1211,7 @@ function ansicht(s) {
   const ka = keyVon(A), kb = keyVon(B), za = A.zone ?? (ka ? MARKE[ka].z0 : 0), zb = B.zone ?? (kb ? MARKE[kb].z0 : 0);
   if (ka && ka === kb) MARKE[ka].zone.v = lerp(za, zb, t); else { if (ka) MARKE[ka].zone.v = za; if (kb) MARKE[kb].zone.v = zb; }
   ZOOM = lerp(A.zoom ?? 1, B.zoom ?? 1, t);
+  MARKE.podcast.zone.v = clamp01((1 - ZOOM) / 0.3);
   return v;
 }
 const sS = new Spring(0, FOLGE, sceneDirty0, 0.0004);
