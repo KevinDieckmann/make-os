@@ -100,7 +100,7 @@ const MARKE = {
 };
 const FIG = {
   studios: [
-    [[-1.45, 7.2, { seat: true }], [0.3, 8.2, { walk: 0, steh: true, prop: 'zeig' }], [1.65, 6.9, { bob: true, s: 0.98 }]],
+    [[-1.45, 7.2, { seat: true }], [0.95, 8.2, { walk: 0, steh: true, prop: 'zeig' }], [1.65, 6.9, { bob: true, s: 0.98 }]],
     [],
     [],
   ],
@@ -116,7 +116,7 @@ const FIG = {
   podcast: [[[TABLE.x - 1.3, TABLE.z, { profil: true }], [TABLE.x + 1.3, TABLE.z, { profil: true, flip: true, s: 0.97 }], [-2.3, 7.4, { seat: true }]]],
   innovation: [[[-1.3, 6.8, { seat: true }], [-0.25, 6.7, { seat: true, bob: true, s: 0.97 }], [0.85, 6.85, { seat: true }], [2.0, 7.75, { profil: true, flip: true, ohneKH: true }], [-2.4, 8.3, { walk: 0, steh: true, prop: 'zeig' }]]],
   dach: [[[DT[0][0], DT[0][1], {}], [DT[1][0], DT[1][1], {}]], [[2.5, 9.6, {}], [-2.4, 8.25, {}]]],
-  revenue: [[[-3.45, 7.75, { profil: true }], [-1.55, 7.75, { profil: true, flip: true, s: 0.97 }], [0.55, 8.0, { walk: 0, steh: true, prop: 'zeig' }]]],
+  revenue: [[[-3.45, 7.75, { profil: true }], [-1.55, 7.75, { profil: true, flip: true, s: 0.97 }], [1.15, 8.0, { walk: 0, steh: true, prop: 'zeig' }]]],
 };
 for (const key in MARKE) {
   const MK = MARKE[key], fig = FIG[key] || [[]]; MK.key = key;
@@ -376,6 +376,7 @@ function buildKeys() {
 }
 const insideK = (p, i) => { const [a, b] = floorRange(i), d = ((p - a) / (b - a) - TRAVEL_PART) / (1 - TRAVEL_PART); return d <= 0 || d >= 1 ? 0 : smooth((d - 0.08) / 0.22) * (1 - smooth((d - 0.78) / 0.18)); };
 let INS = { k: 0, i: -1, F: null }, AKT = { k: 0, F: null };
+let NCY = 0.235, NDZ = 2.5, NCYD = 0.19, NZF = 1;
 let ZOOM = 1;
 const freiFlaeche = () => (wide.matches && !S.narrow ? [innerWidth <= 1100 ? 0.57 : 0.47, 0.93] : [0, 1]);
 const dachK = (p) => { const [a, b] = floorRange(DACH_HALT), q = (p - a) / (b - a); return q <= 0 || q > 1 ? 0 : smooth((q - 0.48) / 0.17) * (1 - smooth((q - 0.9) / 0.085)); };
@@ -384,11 +385,12 @@ function innenCam() {
   const dRef = 6.6, zIn = 0.5, fIn = Math.min(S.w * 1.5, ((R - L) * S.w * dRef) / ((MK.breite || 4.6) * ZOOM)), mitte = (L + R) / 2;
   const xIn = zoneX(F.key) - ((mitte - 0.5) * S.w * dRef) / fIn;
   cam.x = lerp(cam.x, xIn, k); cam.y = lerp(cam.y, F.base + 1.5, k); cam.z = lerp(cam.z, zIn, k);
-  S.f = lerp(S.f0, fIn, k); S.cy = lerp(S.cy, S.h * (S.narrow ? 0.235 : 0.53), k);
+  S.f = lerp(S.f0, fIn, k); S.cy = lerp(S.cy, S.h * (S.narrow ? NCY : 0.53), k);
 }
 function dachCam(k) {
-  const [L, R] = freiFlaeche(), [za, zb, zt] = zwischen(MARKE.dach.zz, MARKE.dach.zone.v), z = lerp(za, zb, zt) - (S.narrow ? 2.5 : 0), d = 5.6 - z;
+  const [L, R] = freiFlaeche(), [za, zb, zt] = zwischen(MARKE.dach.zz, MARKE.dach.zone.v), z = lerp(za, zb, zt) - (S.narrow ? NDZ : 0), d = 5.6 - z;
   cam.x = lerp(cam.x, zoneX('dach') - (((L + R) / 2 - 0.5) * S.w * d) / S.f, k); cam.z = lerp(cam.z, z, k);
+  if (S.narrow) { S.cy = lerp(S.cy, S.h * NCYD, k); S.f = lerp(S.f, S.f * NZF, k); }
 }
 function camera(p) {
   S.f = S.f0; INS.k = 0;
@@ -483,7 +485,7 @@ function sil(px, pz, o = {}) {
     ctx.save(); const sh = ctx.createRadialGradient(sx, sy + 2 * k, 0, sx, sy + 2 * k, 44 * k); sh.addColorStop(0, 'rgba(0,0,0,.55)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.translate(sx, sy + 2 * k); ctx.scale(1, 0.16); ctx.translate(-sx, -(sy + 2 * k)); ctx.fillStyle = sh; ctx.beginPath(); ctx.arc(sx, sy + 2 * k, 44 * k, 0, 7); ctx.fill(); ctx.restore();
   }
-  ctx.save(); ctx.translate(sx, sy); ctx.scale((o.flip ? -1 : 1) * k, -k); if (o.seat) ctx.translate(0, -94);
+  ctx.save(); ctx.translate(sx, sy); ctx.scale((o.flip ? -1 : 1) * k, -k); if (o.seat) { ctx.translate(0, -94); if (!o.profil) ctx.scale(0.8, 1); }
   ctx.fillStyle = o.col || '#0b0b11';
   if (o.profil) {
     if (o.umriss) ctx.fillStyle = `rgba(${o.umriss},.3)`;
@@ -607,7 +609,8 @@ function platz(x, z, k, rgb, a = 1) {
 }
 function figuren(key) {
   const MK = MARKE[key], BR = MK.rgb, list = [], drin = INS.F && INS.F.key === key ? INS.k : 0;
-  FIG[key].forEach((L, l) => { const a = lerp(1, MK.linieK[l].v, drin); if (a > 0.02) L.forEach(([x, z, o], r) => list.push([x, z, o, MK.rolle[l][r].v, a])); });
+  const weg = key === 'podcast' ? 1 - MARKE.podcast.zone.v : 1;
+  FIG[key].forEach((L, l) => { const a = lerp(1, MK.linieK[l].v, drin) * weg; if (a > 0.02) L.forEach(([x, z, o], r) => list.push([x, z, o, MK.rolle[l][r].v, a])); });
   if (KERN && KERN.im === key) list.push([0, KERN.z, null, 0, 1]);
   list.sort((a, b) => b[1] - a[1]);
   for (const [x, z, o, k, a] of list) {
@@ -619,7 +622,10 @@ function figuren(key) {
       glow(x, 1.3, z, 1.3, [[0, `rgba(${BR},${0.15 * k * a})`], [1, `rgba(${BR},0)`]]);
       ctx.globalAlpha = k * a;
       sil(x, z, { ...o, col: '#0b0b11', rim: 0.8, rimCol: BR, kante: 0.75, kanteCol: BR });
-      if (o.seat) box(x - 0.26, x + 0.26, 0.44, 0.9, z - 0.3, z - 0.24, '#3a3849', '#1b1a25', '#1c1b25');
+      if (o.seat) {
+        box(x - 0.15, x + 0.15, 0.5, 0.86, z - 0.3, z - 0.27, '#4a4860', '#262433', '#1c1b25');
+        box(x - 0.13, x - 0.1, 0, 0.5, z - 0.3, z - 0.27, '#111', '#17161f', '#17161f'); box(x + 0.1, x + 0.13, 0, 0.5, z - 0.3, z - 0.27, '#111', '#17161f', '#17161f');
+      }
     }
     if (k < 0.98) { ctx.globalAlpha = (1 - k) * a; sil(x, z, { ...o, umriss: BR }); }
     ctx.globalAlpha = 1;
@@ -758,11 +764,16 @@ function room(F, t) {
     tafel(-3.5, -1.65, 1.0, 2.85, zw, TEX.themen, '#3a3849', 0.55 + 0.45 * an(1));
     glow(-2.6, 1.9, z1 - 0.05, 3.2, [[0, `rgba(${LAV},${0.14 * an(1)})`], [1, `rgba(${LAV},0)`]]);
     tisch(-3.5, -1.65, 7.0, 7.95, 0.86);
-    poly([[-3.15, 0.87, 7.45], [-2.7, 0.87, 7.58], [-2.7, 1.42, 7.7], [-3.15, 1.42, 7.57]], '#ebe6f6'); poly([[-2.7, 0.87, 7.58], [-2.25, 0.87, 7.45], [-2.25, 1.42, 7.57], [-2.7, 1.42, 7.7]], '#cfc8e2');
-    fillZ(-3.08, -2.78, 1.12, 1.36, 7.6, '#5F4BB6'); fillZ(-3.08, -2.84, 1.0, 1.05, 7.6, 'rgba(38,36,51,.45)'); fillZ(-3.08, -2.9, 0.92, 0.96, 7.6, 'rgba(38,36,51,.3)');
-    fillZ(-2.6, -2.34, 1.28, 1.33, 7.6, 'rgba(38,36,51,.5)'); fillZ(-2.6, -2.4, 1.16, 1.2, 7.6, 'rgba(38,36,51,.3)'); fillZ(-2.6, -2.36, 1.06, 1.1, 7.6, 'rgba(38,36,51,.3)'); fillZ(-2.6, -2.45, 0.96, 1.0, 7.6, 'rgba(38,36,51,.3)');
-    flach(-1.98, -1.72, 7.1, 7.9, 0.878, '#f2efe7'); flach(-1.95, -1.75, 7.18, 7.3, 0.88, 'rgba(20,20,30,.75)');
-    for (const z of [7.4, 7.52, 7.64, 7.76]) flach(-1.95, -1.75, z, z + 0.05, 0.88, 'rgba(20,20,30,.3)');
+    {
+      const mx = (x) => -3.4 + (x + 3.15) * 1.45, my = (y) => 0.87 + (y - 0.87) * 1.5;
+      poly([[mx(-3.15), 0.87, 7.45], [mx(-2.7), 0.87, 7.58], [mx(-2.7), my(1.42), 7.7], [mx(-3.15), my(1.42), 7.57]], '#f4f0fb'); poly([[mx(-2.7), 0.87, 7.58], [mx(-2.25), 0.87, 7.45], [mx(-2.25), my(1.42), 7.57], [mx(-2.7), my(1.42), 7.7]], '#d6cfe9');
+      seg([mx(-2.7), 0.87, 7.58], [mx(-2.7), my(1.42), 7.7], 'rgba(38,30,80,.85)', lwAt(7.6, 0.025));
+      for (const [a, b, c, d] of [[[mx(-3.15), 0.87, 7.45], [mx(-2.7), 0.87, 7.58]], [[mx(-2.7), 0.87, 7.58], [mx(-2.25), 0.87, 7.45]], [[mx(-3.15), my(1.42), 7.57], [mx(-2.7), my(1.42), 7.7]], [[mx(-2.7), my(1.42), 7.7], [mx(-2.25), my(1.42), 7.57]]]) seg(a, b, 'rgba(38,30,80,.7)', lwAt(7.6, 0.014));
+      fillZ(mx(-3.08), mx(-2.78), my(1.12), my(1.36), 7.6, '#5F4BB6'); fillZ(mx(-3.08), mx(-2.84), my(1.0), my(1.05), 7.6, 'rgba(38,36,51,.55)'); fillZ(mx(-3.08), mx(-2.9), my(0.92), my(0.96), 7.6, 'rgba(38,36,51,.4)');
+      fillZ(mx(-2.6), mx(-2.34), my(1.28), my(1.33), 7.6, 'rgba(38,36,51,.6)'); fillZ(mx(-2.6), mx(-2.4), my(1.16), my(1.2), 7.6, 'rgba(38,36,51,.4)'); fillZ(mx(-2.6), mx(-2.36), my(1.06), my(1.1), 7.6, 'rgba(38,36,51,.4)'); fillZ(mx(-2.6), mx(-2.45), my(0.96), my(1.0), 7.6, 'rgba(38,36,51,.4)');
+      flach(-2.08, -1.7, 7.05, 7.95, 0.878, '#f6f3ea'); flach(-2.04, -1.74, 7.12, 7.34, 0.88, 'rgba(20,20,30,.85)');
+      for (const z of [7.42, 7.55, 7.68, 7.81]) flach(-2.04, -1.74, z, z + 0.07, 0.88, 'rgba(20,20,30,.4)');
+    }
     const tx = -5.2, tz = 8.3, lwE = lwAt(tz, 0.04);
     seg([tx - 0.45, 2.45, tz], [tx - 0.62, 0, tz - 0.1], dunkel, lwE); seg([tx + 0.45, 2.45, tz], [tx + 0.62, 0, tz - 0.1], dunkel, lwE); seg([tx, 2.45, tz + 0.04], [tx, 0, tz + 0.6], dunkel, lwE);
     const tp = fillZ(tx - 0.62, tx + 0.62, 1.0, 2.52, tz, '#cfcbd9');
@@ -851,7 +862,7 @@ function room(F, t) {
       box(cx - 0.32, cx + 0.32, 0.52, 1.18, cz + 0.26, cz + 0.34, '#8b86c0', '#5b57a0', '#3d396b');
       box(cx - 0.38, cx - 0.32, 0.52, 0.78, cz - 0.3, cz + 0.3, '#8b86c0', '#4a4680', '#3d396b'); box(cx + 0.32, cx + 0.38, 0.52, 0.78, cz - 0.3, cz + 0.3, '#8b86c0', '#4a4680', '#3d396b');
       glow(cx, 1.0, cz, 1.5, [[0, `rgba(${WARM},.2)`], [1, `rgba(${WARM},0)`]]);
-      ctx.globalAlpha = clamp01(MARKE.podcast.zone.v * 1.6); softbox(1.7, 6.2, 1.1); ctx.globalAlpha = 1; softbox(5.0, 6.2, 1.1); tripod(4.3, 5.2, 1.2);
+      ctx.globalAlpha = clamp01(MARKE.podcast.zone.v * 1.6); softbox(1.8, 8.0, 1.2); ctx.globalAlpha = 1; softbox(5.0, 6.2, 1.1); tripod(4.3, 5.2, 1.2);
       const hx = 5.35, hz = 8.4;
       seg([hx, 0, hz], [hx, 0.7, hz], '#07070c', lwAt(hz, 0.05)); fillZ(hx - 0.4, hx + 0.4, 0, 0.05, hz, '#07070c');
       const ph = rectZ(hx - 0.46, hx + 0.46, 0.68, 2.6, hz);
@@ -1181,7 +1192,7 @@ function drawScene(v, t) {
   walkers(t);
 }
 function snap(c) { if (!STILL) return; c.style.visibility = 'hidden'; c.parentElement.style.background = `url(${c.toDataURL('image/jpeg', 0.9)}) center / cover no-repeat`; }
-const SZ = [{"id":"eingang","art":"eingang","stufe":null,"p":0.03},{"id":"problem","art":"problem","stufe":null,"p":0.25,"kam":{"x":-3,"y":-142.2,"z":-36,"cy":0.62},"ue":"blende"},{"id":"fahrt","art":"fahrt","stufe":null,"p":0.864,"pz":0.864,"ue":"blende"},{"id":"eg","art":"etage","stufe":"fundament","p":0.2993,"ue":"blende"},{"id":"tresen","art":"tresen","stufe":"fundament","p":0.3231,"zone":1},{"id":"e1","art":"etage","stufe":"fundament","p":0.40013,"zone":1},{"id":"e2","art":"etage","stufe":"wachstum","p":0.47713,"zone":1},{"id":"e3a","art":"etage","stufe":"wachstum","p":0.55413,"zone":1},{"id":"e3b","art":"etage","stufe":"wachstum","p":0.55413,"zone":3},{"id":"e4","art":"etage","stufe":"wachstum","p":0.63113,"zone":1},{"id":"e5a","art":"etage","stufe":"skalieren","p":0.70813,"zone":0},{"id":"e5b","art":"etage","stufe":"skalieren","p":0.70813,"zone":0,"zoom":0.7},{"id":"dach","art":"etage","stufe":"skalieren","p":0.7874,"zone":0},{"id":"pakete","art":"pakete","stufe":null,"p":0.864},{"id":"finale","art":"finale","stufe":null,"p":0.93}];
+const SZ = [{"id":"eingang","art":"eingang","stufe":null,"p":0.03},{"id":"problem","art":"problem","stufe":null,"p":0.25,"kam":{"x":-3,"y":-142.2,"z":-36,"cy":0.62},"ue":"blende"},{"id":"fahrt","art":"fahrt","stufe":null,"p":0.864,"pz":0.864,"ue":"blende"},{"id":"eg","art":"etage","stufe":"fundament","p":0.2993,"ue":"blende","cyn":0.32},{"id":"tresen","art":"tresen","stufe":"fundament","p":0.3231,"zone":1,"cyn":0.37},{"id":"e1","art":"etage","stufe":"fundament","p":0.40013,"zone":1},{"id":"e2","art":"etage","stufe":"wachstum","p":0.47713,"zone":1},{"id":"e3a","art":"etage","stufe":"wachstum","p":0.55413,"zone":1},{"id":"e3b","art":"etage","stufe":"wachstum","p":0.55413,"zone":3},{"id":"e4","art":"etage","stufe":"wachstum","p":0.63113,"zone":1},{"id":"e5a","art":"etage","stufe":"skalieren","p":0.70813,"zone":0},{"id":"e5b","art":"etage","stufe":"skalieren","p":0.70813,"zone":0,"zoom":0.7},{"id":"dach","art":"etage","stufe":"skalieren","p":0.7874,"zone":0,"dz":4.4,"cyd":0.21,"fzd":1.5},{"id":"pakete","art":"pakete","stufe":null,"p":0.864},{"id":"finale","art":"finale","stufe":null,"p":0.93}];
 const N = SZ.length, KREIS = 0.5;
 const kopf = $('.kopf');
 const track = $('#top'), star = $('#star'), starTint = $('#starTint'), skip = $('#ueberspringen');
@@ -1230,7 +1241,8 @@ function ansicht(s) {
   for (const key in MARKE) MARKE[key].zone.v = MARKE[key].z0;
   const ka = keyVon(A), kb = keyVon(B), za = A.zone ?? (ka ? MARKE[ka].z0 : 0), zb = B.zone ?? (kb ? MARKE[kb].z0 : 0);
   if (ka && ka === kb) MARKE[ka].zone.v = lerp(za, zb, t); else { if (ka) MARKE[ka].zone.v = za; if (kb) MARKE[kb].zone.v = zb; }
-  ZOOM = lerp(A.zoom ?? 1, B.zoom ?? 1, t);
+  ZOOM = lerp((S.narrow ? A.zoomn ?? A.zoom : A.zoom) ?? 1, (S.narrow ? B.zoomn ?? B.zoom : B.zoom) ?? 1, t);
+  NCY = lerp(A.cyn ?? 0.235, B.cyn ?? 0.235, t); NDZ = lerp(A.dz ?? 2.5, B.dz ?? 2.5, t); NCYD = lerp(A.cyd ?? 0.19, B.cyd ?? 0.19, t); NZF = lerp(A.fzd ?? 1, B.fzd ?? 1, t);
   MARKE.podcast.zone.v = clamp01((1 - ZOOM) / 0.3);
   return v;
 }

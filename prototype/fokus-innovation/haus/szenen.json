@@ -72,7 +72,8 @@
       },
       "bild": {
         "p": 0.2993,
-        "ue": "blende"
+        "ue": "blende",
+        "cyn": 0.32
       }
     },
     {
@@ -102,7 +103,8 @@
       "zeile": "Kevin und Malin leiten jedes Projekt persönlich.",
       "bild": {
         "p": 0.3231,
-        "zone": 1
+        "zone": 1,
+        "cyn": 0.37
       }
     },
     {
@@ -274,8 +276,18 @@
       ],
       "preis": {
         "teile": [
-          { "label": "Tagesworkshop", "angebote": ["tagesworkshop"] },
-          { "label": "Vertriebsleitung auf Zeit", "angebote": ["head-of-sales"] }
+          {
+            "label": "Tagesworkshop",
+            "angebote": [
+              "tagesworkshop"
+            ]
+          },
+          {
+            "label": "Vertriebsleitung auf Zeit",
+            "angebote": [
+              "head-of-sales"
+            ]
+          }
         ]
       },
       "foto": "[FOTO KEVIN]",
@@ -374,7 +386,10 @@
       },
       "bild": {
         "p": 0.7874,
-        "zone": 0
+        "zone": 0,
+        "dz": 4.4,
+        "cyd": 0.21,
+        "fzd": 1.5
       }
     },
     {

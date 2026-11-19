@@ -1062,7 +1062,7 @@ ${weg(F.check_einstieg, { etiketten: ['01', '02', '03'], label: 'Der Check in dr
 <div class="erscheint"><h3 class="gruppe-titel">Deine Daten</h3>${punkte(['Deine Antworten liegen auf unserem eigenen Server in Deutschland.', 'Zoe stellt die Fragen mit festen Texten. Deine Antworten gehen an kein KI-Modell.', 'Kontaktdaten gibst du nur an, wenn du deinen Bericht oder ein Gespräch willst.', 'Ohne Kontaktdaten löschen wir die Antworten nach 30 Tagen.'])}<p class="leise klein-text">${t(start.gespraech.regel)}</p></div></div></div></section>
 
 ${fragen(faqVon(seite.check_faq))}
-${schlussakt({ quelle: 'check_seite_ende', h2: 'Bereit?', lead: 'Kurz in rund 10 Minuten oder ausführlich in rund 25: Danach weißt du, wo dein Unternehmen steht.', knoepfe: `${checkKnopf('check_seite_ende')}${erstKnopf('zweit', 'Lieber direkt sprechen')}`, stufen: F.check_einstieg })}`,
+${schlussakt({ quelle: 'check_seite_ende', h2: 'Bereit?', lead: 'Kurz in rund 10 Minuten oder ausführlich in rund 25: Danach weißt du, wo dein Unternehmen steht.', knoepfe: `${checkKnopf('check_seite_ende')}${erstKnopf('zweit')}`, stufen: F.check_einstieg })}`,
     });
   }
 

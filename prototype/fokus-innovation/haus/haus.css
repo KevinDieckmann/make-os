@@ -434,6 +434,16 @@ button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
   .sz-eingang .sz-titel { font-size: 4.6rem; } .sz-titel-final { font-size: 4.4rem; }
 }
 
+/* Keine automatische Silbentrennung in Kacheln und Karten: lange Wörter wie „Kundenbindung“ bleiben ganz.
+   Wo drei Spalten für sie zu eng werden (Tablet quer, kleine Laptops), stehen Kacheln und Tresen-Karten untereinander als Zeilen. */
+.sz-kacheln b, .sz-kacheln span, .weiche b, .sz-name, .sz-unter, .sz-kopf { hyphens: manual; -webkit-hyphens: manual; overflow-wrap: normal; }
+@media (min-width: 768px) and (max-width: 1260px) and (min-aspect-ratio: 9/10) {
+  .sz-kacheln, .sz-kacheln:not(:has(li span)), .sz-weichen { grid-template-columns: 1fr; gap: .4rem; flex: none; max-height: none; }
+  .sz-kacheln li { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 .7rem; padding: .6rem .9rem; border-top-width: 1px; border-left: 3px solid var(--akz); }
+  .weiche { flex-direction: row; align-items: center; justify-content: space-between; min-height: 3.3rem; padding: .5rem .9rem; border-top-width: 1px; border-left: 3px solid var(--akz); }
+  .weiche svg { align-self: center; }
+  .sz-foto-gross { min-height: 3.6rem; max-height: 4.4rem; }
+}
 /* Kopf der Website über der Szene: hell auf dunkel; über Szene 1 durchsichtig, danach dunkles Glas, im hellen Teil wie überall (das Skript schaltet) */
 html:not(.fahrt-aus) .start .kopf { position: fixed; left: 0; right: 0; }
 html:not(.fahrt-aus) .start .sprung { position: fixed; }
@@ -490,12 +500,38 @@ html:not(.js) .ueberspringen { position: static; margin: 5rem 2.5rem 0; }
   .sz-pakete .sz-pakete { bottom: 9rem; }
   .sz-zusagen { bottom: 5rem; font-size: .6875rem; }
   .sz-pakete .sz-leise { bottom: .3rem; font-size: .8125rem; line-height: 1.3; }
+  /* Etagen am Handy: die Tafel bleibt klein, damit die Zeichnung darüber Platz hat (Bild mindestens etwa ein Drittel bis zwei Fünftel der Höhe).
+     Kacheln als Zeilen (Name und Zusatz nebeneinander), „Das nimmst du mit“ mit der Überschrift in der ersten Zeile, engere Abstände. */
+  .sz-etage .sz-innen, .sz-tresen .sz-innen { gap: .4rem; padding: .7rem 1.3rem .85rem; }
+  .sz-etage .sz-kopf, .sz-tresen .sz-kopf { gap: .1rem; }
+  .sz-vor { line-height: 1.1; }
+  .sz-name { font-size: 1.6rem; line-height: 1.05; }
+  .sz-unter { font-size: .95rem; line-height: 1.15; }
+  .sz-satz { font-size: max(15px, .86rem); line-height: 1.36; }
+  .sz-mit { font-size: max(15px, .84rem); line-height: 1.33; padding-left: .7rem; }
+  .sz-cap { display: inline; margin: 0 .5em 0 0; }
+  .sz-kacheln, .sz-kacheln:not(:has(li span)) { gap: .3rem; }
+  .sz-kacheln li { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: flex-start; gap: 0 .65rem; padding: .35rem .75rem; min-height: 44px; align-content: center; }
+  .sz-kacheln b { font-size: max(15px, .9rem); line-height: 1.25; }
+  .sz-kacheln span { font-size: max(14px, .8rem); line-height: 1.25; }
+  .weiche { min-height: 2.65rem; padding: .35rem .8rem; }
+  .sz-weichen { gap: .3rem; }
+  .sz-preis b { font-size: 1rem; line-height: 1.25; }
+  .sz-zeile { line-height: 1.35; }
+  .sz-foto-gross { min-height: 3rem; max-height: 3.4rem; }
+  .sz-fuss { gap: 0 1rem; }
+  .alink.mehr { min-height: 44px; padding: .35rem 1rem; }
+  .sz-leise { min-height: 44px; }
 }
 @media (max-width: 767.98px) and (max-height: 740px), (max-width: 1100px) and (max-aspect-ratio: 9/10) and (max-height: 740px) {
-  .sz-etage .sz-innen, .sz-tresen .sz-innen { max-height: 78dvh; gap: .5rem; padding-top: .8rem; }
+  .sz-etage .sz-innen, .sz-tresen .sz-innen { max-height: 72dvh; gap: .4rem; padding-top: .65rem; padding-bottom: .7rem; }
   .sz-mit { display: none; }
-  .sz-kacheln li { padding: .4rem .8rem; }
+  .sz-kacheln, .sz-kacheln:not(:has(li span)) { display: flex; flex-wrap: wrap; gap: .3rem; } /* ganz niedrige Fenster: die Kacheln als Marken in Reihen */
+  .sz-kacheln li { padding: .3rem .7rem; min-height: 0; flex: 0 1 auto; }
   .sz-kacheln span { display: none; }
+  .nl-wahl, .gast-wahl { gap: 0 .7rem; } .nl-wahl label { min-height: 44px; gap: .35rem; font-size: 14px; } .nl-wahl input { width: 1.05rem; height: 1.05rem; }
+  .nl { gap: .45rem; } .nl-recht { line-height: 1.3; }
+  .sz-vor { font-size: 12px; }
   .sz-name { font-size: 1.6rem; } .sz-unter { font-size: .95rem; }
   .sz-foto-gross { min-height: 2.6rem; max-height: 3rem; }
   .sz-satz { font-size: max(15px, .875rem); line-height: 1.38; }
