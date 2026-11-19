@@ -19,6 +19,7 @@ const span = (p, [a, b]) => clamp01((p - a) / (b - a));
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeInOutSine = (t) => (1 - Math.cos(t * Math.PI)) / 2;
 const easeOutQuint = (t) => 1 - Math.pow(1 - t, 5);
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 const live = new Set();
 class Spring {
   constructor(v, cfg, on = null, precision = 0.0005) { this.v = v; this.to = v; this.from = v; this.vel = 0; this.cfg = cfg; this.on = on; this.pr = precision; this.t = 0; }
@@ -43,7 +44,7 @@ class Spring {
     if (this.on) this.on(this.v);
   }
 }
-const FOLGE = { tension: 120, friction: 26 };
+const FOLGE = { tension: 700, friction: 53 };
 const EINFLUG = { duration: 3200, easing: easeOutQuint };
 const readers = [], painters = [];
 let lastT = performance.now();
@@ -99,7 +100,7 @@ const MARKE = {
 };
 const FIG = {
   studios: [
-    [[-1.45, 7.2, { seat: true }], [0.3, 8.2, { walk: 0, steh: true, prop: 'zeig' }], [1.65, 6.9, { bob: true, s: 0.98 }]],
+    [[-1.45, 7.2, { seat: true }], [0.95, 8.2, { walk: 0, steh: true, prop: 'zeig' }], [1.65, 6.9, { bob: true, s: 0.98 }]],
     [],
     [],
   ],
@@ -115,7 +116,7 @@ const FIG = {
   podcast: [[[TABLE.x - 1.3, TABLE.z, { profil: true }], [TABLE.x + 1.3, TABLE.z, { profil: true, flip: true, s: 0.97 }], [-2.3, 7.4, { seat: true }]]],
   innovation: [[[-1.3, 6.8, { seat: true }], [-0.25, 6.7, { seat: true, bob: true, s: 0.97 }], [0.85, 6.85, { seat: true }], [2.0, 7.75, { profil: true, flip: true, ohneKH: true }], [-2.4, 8.3, { walk: 0, steh: true, prop: 'zeig' }]]],
   dach: [[[DT[0][0], DT[0][1], {}], [DT[1][0], DT[1][1], {}]], [[2.5, 9.6, {}], [-2.4, 8.25, {}]]],
-  revenue: [[[-3.45, 7.75, { profil: true }], [-1.55, 7.75, { profil: true, flip: true, s: 0.97 }], [0.55, 8.0, { walk: 0, steh: true, prop: 'zeig' }]]],
+  revenue: [[[-3.45, 7.75, { profil: true }], [-1.55, 7.75, { profil: true, flip: true, s: 0.97 }], [1.15, 8.0, { walk: 0, steh: true, prop: 'zeig' }]]],
 };
 for (const key in MARKE) {
   const MK = MARKE[key], fig = FIG[key] || [[]]; MK.key = key;
@@ -375,6 +376,7 @@ function buildKeys() {
 }
 const insideK = (p, i) => { const [a, b] = floorRange(i), d = ((p - a) / (b - a) - TRAVEL_PART) / (1 - TRAVEL_PART); return d <= 0 || d >= 1 ? 0 : smooth((d - 0.08) / 0.22) * (1 - smooth((d - 0.78) / 0.18)); };
 let INS = { k: 0, i: -1, F: null }, AKT = { k: 0, F: null };
+let NCY = 0.235, NDZ = 2.5, NCYD = 0.19, NZF = 1;
 let ZOOM = 1;
 const freiFlaeche = () => (wide.matches && !S.narrow ? [innerWidth <= 1100 ? 0.57 : 0.47, 0.93] : [0, 1]);
 const dachK = (p) => { const [a, b] = floorRange(DACH_HALT), q = (p - a) / (b - a); return q <= 0 || q > 1 ? 0 : smooth((q - 0.48) / 0.17) * (1 - smooth((q - 0.9) / 0.085)); };
@@ -383,11 +385,12 @@ function innenCam() {
   const dRef = 6.6, zIn = 0.5, fIn = Math.min(S.w * 1.5, ((R - L) * S.w * dRef) / ((MK.breite || 4.6) * ZOOM)), mitte = (L + R) / 2;
   const xIn = zoneX(F.key) - ((mitte - 0.5) * S.w * dRef) / fIn;
   cam.x = lerp(cam.x, xIn, k); cam.y = lerp(cam.y, F.base + 1.5, k); cam.z = lerp(cam.z, zIn, k);
-  S.f = lerp(S.f0, fIn, k); S.cy = lerp(S.cy, S.h * (S.narrow ? 0.235 : 0.53), k);
+  S.f = lerp(S.f0, fIn, k); S.cy = lerp(S.cy, S.h * (S.narrow ? NCY : 0.53), k);
 }
 function dachCam(k) {
-  const [L, R] = freiFlaeche(), [za, zb, zt] = zwischen(MARKE.dach.zz, MARKE.dach.zone.v), z = lerp(za, zb, zt) - (S.narrow ? 2.5 : 0), d = 5.6 - z;
+  const [L, R] = freiFlaeche(), [za, zb, zt] = zwischen(MARKE.dach.zz, MARKE.dach.zone.v), z = lerp(za, zb, zt) - (S.narrow ? NDZ : 0), d = 5.6 - z;
   cam.x = lerp(cam.x, zoneX('dach') - (((L + R) / 2 - 0.5) * S.w * d) / S.f, k); cam.z = lerp(cam.z, z, k);
+  if (S.narrow) { S.cy = lerp(S.cy, S.h * NCYD, k); S.f = lerp(S.f, S.f * NZF, k); }
 }
 function camera(p) {
   S.f = S.f0; INS.k = 0;
@@ -482,7 +485,7 @@ function sil(px, pz, o = {}) {
     ctx.save(); const sh = ctx.createRadialGradient(sx, sy + 2 * k, 0, sx, sy + 2 * k, 44 * k); sh.addColorStop(0, 'rgba(0,0,0,.55)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.translate(sx, sy + 2 * k); ctx.scale(1, 0.16); ctx.translate(-sx, -(sy + 2 * k)); ctx.fillStyle = sh; ctx.beginPath(); ctx.arc(sx, sy + 2 * k, 44 * k, 0, 7); ctx.fill(); ctx.restore();
   }
-  ctx.save(); ctx.translate(sx, sy); ctx.scale((o.flip ? -1 : 1) * k, -k); if (o.seat) ctx.translate(0, -94);
+  ctx.save(); ctx.translate(sx, sy); ctx.scale((o.flip ? -1 : 1) * k, -k); if (o.seat) { ctx.translate(0, -94); if (!o.profil) ctx.scale(0.8, 1); }
   ctx.fillStyle = o.col || '#0b0b11';
   if (o.profil) {
     if (o.umriss) ctx.fillStyle = `rgba(${o.umriss},.3)`;
@@ -606,7 +609,8 @@ function platz(x, z, k, rgb, a = 1) {
 }
 function figuren(key) {
   const MK = MARKE[key], BR = MK.rgb, list = [], drin = INS.F && INS.F.key === key ? INS.k : 0;
-  FIG[key].forEach((L, l) => { const a = lerp(1, MK.linieK[l].v, drin); if (a > 0.02) L.forEach(([x, z, o], r) => list.push([x, z, o, MK.rolle[l][r].v, a])); });
+  const weg = key === 'podcast' ? 1 - MARKE.podcast.zone.v : 1;
+  FIG[key].forEach((L, l) => { const a = lerp(1, MK.linieK[l].v, drin) * weg; if (a > 0.02) L.forEach(([x, z, o], r) => list.push([x, z, o, MK.rolle[l][r].v, a])); });
   if (KERN && KERN.im === key) list.push([0, KERN.z, null, 0, 1]);
   list.sort((a, b) => b[1] - a[1]);
   for (const [x, z, o, k, a] of list) {
@@ -618,7 +622,10 @@ function figuren(key) {
       glow(x, 1.3, z, 1.3, [[0, `rgba(${BR},${0.15 * k * a})`], [1, `rgba(${BR},0)`]]);
       ctx.globalAlpha = k * a;
       sil(x, z, { ...o, col: '#0b0b11', rim: 0.8, rimCol: BR, kante: 0.75, kanteCol: BR });
-      if (o.seat) box(x - 0.26, x + 0.26, 0.44, 0.9, z - 0.3, z - 0.24, '#3a3849', '#1b1a25', '#1c1b25');
+      if (o.seat) {
+        box(x - 0.15, x + 0.15, 0.5, 0.86, z - 0.3, z - 0.27, '#4a4860', '#262433', '#1c1b25');
+        box(x - 0.13, x - 0.1, 0, 0.5, z - 0.3, z - 0.27, '#111', '#17161f', '#17161f'); box(x + 0.1, x + 0.13, 0, 0.5, z - 0.3, z - 0.27, '#111', '#17161f', '#17161f');
+      }
     }
     if (k < 0.98) { ctx.globalAlpha = (1 - k) * a; sil(x, z, { ...o, umriss: BR }); }
     ctx.globalAlpha = 1;
@@ -757,11 +764,16 @@ function room(F, t) {
     tafel(-3.5, -1.65, 1.0, 2.85, zw, TEX.themen, '#3a3849', 0.55 + 0.45 * an(1));
     glow(-2.6, 1.9, z1 - 0.05, 3.2, [[0, `rgba(${LAV},${0.14 * an(1)})`], [1, `rgba(${LAV},0)`]]);
     tisch(-3.5, -1.65, 7.0, 7.95, 0.86);
-    poly([[-3.15, 0.87, 7.45], [-2.7, 0.87, 7.58], [-2.7, 1.42, 7.7], [-3.15, 1.42, 7.57]], '#ebe6f6'); poly([[-2.7, 0.87, 7.58], [-2.25, 0.87, 7.45], [-2.25, 1.42, 7.57], [-2.7, 1.42, 7.7]], '#cfc8e2');
-    fillZ(-3.08, -2.78, 1.12, 1.36, 7.6, '#5F4BB6'); fillZ(-3.08, -2.84, 1.0, 1.05, 7.6, 'rgba(38,36,51,.45)'); fillZ(-3.08, -2.9, 0.92, 0.96, 7.6, 'rgba(38,36,51,.3)');
-    fillZ(-2.6, -2.34, 1.28, 1.33, 7.6, 'rgba(38,36,51,.5)'); fillZ(-2.6, -2.4, 1.16, 1.2, 7.6, 'rgba(38,36,51,.3)'); fillZ(-2.6, -2.36, 1.06, 1.1, 7.6, 'rgba(38,36,51,.3)'); fillZ(-2.6, -2.45, 0.96, 1.0, 7.6, 'rgba(38,36,51,.3)');
-    flach(-1.98, -1.72, 7.1, 7.9, 0.878, '#f2efe7'); flach(-1.95, -1.75, 7.18, 7.3, 0.88, 'rgba(20,20,30,.75)');
-    for (const z of [7.4, 7.52, 7.64, 7.76]) flach(-1.95, -1.75, z, z + 0.05, 0.88, 'rgba(20,20,30,.3)');
+    {
+      const mx = (x) => -3.4 + (x + 3.15) * 1.45, my = (y) => 0.87 + (y - 0.87) * 1.5;
+      poly([[mx(-3.15), 0.87, 7.45], [mx(-2.7), 0.87, 7.58], [mx(-2.7), my(1.42), 7.7], [mx(-3.15), my(1.42), 7.57]], '#f4f0fb'); poly([[mx(-2.7), 0.87, 7.58], [mx(-2.25), 0.87, 7.45], [mx(-2.25), my(1.42), 7.57], [mx(-2.7), my(1.42), 7.7]], '#d6cfe9');
+      seg([mx(-2.7), 0.87, 7.58], [mx(-2.7), my(1.42), 7.7], 'rgba(38,30,80,.85)', lwAt(7.6, 0.025));
+      for (const [a, b, c, d] of [[[mx(-3.15), 0.87, 7.45], [mx(-2.7), 0.87, 7.58]], [[mx(-2.7), 0.87, 7.58], [mx(-2.25), 0.87, 7.45]], [[mx(-3.15), my(1.42), 7.57], [mx(-2.7), my(1.42), 7.7]], [[mx(-2.7), my(1.42), 7.7], [mx(-2.25), my(1.42), 7.57]]]) seg(a, b, 'rgba(38,30,80,.7)', lwAt(7.6, 0.014));
+      fillZ(mx(-3.08), mx(-2.78), my(1.12), my(1.36), 7.6, '#5F4BB6'); fillZ(mx(-3.08), mx(-2.84), my(1.0), my(1.05), 7.6, 'rgba(38,36,51,.55)'); fillZ(mx(-3.08), mx(-2.9), my(0.92), my(0.96), 7.6, 'rgba(38,36,51,.4)');
+      fillZ(mx(-2.6), mx(-2.34), my(1.28), my(1.33), 7.6, 'rgba(38,36,51,.6)'); fillZ(mx(-2.6), mx(-2.4), my(1.16), my(1.2), 7.6, 'rgba(38,36,51,.4)'); fillZ(mx(-2.6), mx(-2.36), my(1.06), my(1.1), 7.6, 'rgba(38,36,51,.4)'); fillZ(mx(-2.6), mx(-2.45), my(0.96), my(1.0), 7.6, 'rgba(38,36,51,.4)');
+      flach(-2.08, -1.7, 7.05, 7.95, 0.878, '#f6f3ea'); flach(-2.04, -1.74, 7.12, 7.34, 0.88, 'rgba(20,20,30,.85)');
+      for (const z of [7.42, 7.55, 7.68, 7.81]) flach(-2.04, -1.74, z, z + 0.07, 0.88, 'rgba(20,20,30,.4)');
+    }
     const tx = -5.2, tz = 8.3, lwE = lwAt(tz, 0.04);
     seg([tx - 0.45, 2.45, tz], [tx - 0.62, 0, tz - 0.1], dunkel, lwE); seg([tx + 0.45, 2.45, tz], [tx + 0.62, 0, tz - 0.1], dunkel, lwE); seg([tx, 2.45, tz + 0.04], [tx, 0, tz + 0.6], dunkel, lwE);
     const tp = fillZ(tx - 0.62, tx + 0.62, 1.0, 2.52, tz, '#cfcbd9');
@@ -850,7 +862,7 @@ function room(F, t) {
       box(cx - 0.32, cx + 0.32, 0.52, 1.18, cz + 0.26, cz + 0.34, '#8b86c0', '#5b57a0', '#3d396b');
       box(cx - 0.38, cx - 0.32, 0.52, 0.78, cz - 0.3, cz + 0.3, '#8b86c0', '#4a4680', '#3d396b'); box(cx + 0.32, cx + 0.38, 0.52, 0.78, cz - 0.3, cz + 0.3, '#8b86c0', '#4a4680', '#3d396b');
       glow(cx, 1.0, cz, 1.5, [[0, `rgba(${WARM},.2)`], [1, `rgba(${WARM},0)`]]);
-      ctx.globalAlpha = clamp01(MARKE.podcast.zone.v * 1.6); softbox(1.7, 6.2, 1.1); ctx.globalAlpha = 1; softbox(5.0, 6.2, 1.1); tripod(4.3, 5.2, 1.2);
+      ctx.globalAlpha = clamp01(MARKE.podcast.zone.v * 1.6); softbox(1.8, 8.0, 1.2); ctx.globalAlpha = 1; softbox(5.0, 6.2, 1.1); tripod(4.3, 5.2, 1.2);
       const hx = 5.35, hz = 8.4;
       seg([hx, 0, hz], [hx, 0.7, hz], '#07070c', lwAt(hz, 0.05)); fillZ(hx - 0.4, hx + 0.4, 0, 0.05, hz, '#07070c');
       const ph = rectZ(hx - 0.46, hx + 0.46, 0.68, 2.6, hz);
@@ -1180,7 +1192,7 @@ function drawScene(v, t) {
   walkers(t);
 }
 function snap(c) { if (!STILL) return; c.style.visibility = 'hidden'; c.parentElement.style.background = `url(${c.toDataURL('image/jpeg', 0.9)}) center / cover no-repeat`; }
-const SZ = [{"id":"eingang","art":"eingang","stufe":null,"p":0.03},{"id":"problem","art":"problem","stufe":null,"p":0.25,"kam":{"x":-3,"y":-142.2,"z":-36,"cy":0.62},"ue":"blende"},{"id":"fahrt","art":"fahrt","stufe":null,"p":0.864,"pz":0.864,"ue":"blende"},{"id":"eg","art":"etage","stufe":"fundament","p":0.2993,"ue":"blende"},{"id":"tresen","art":"tresen","stufe":"fundament","p":0.3231,"zone":1},{"id":"e1","art":"etage","stufe":"fundament","p":0.40013,"zone":1},{"id":"e2","art":"etage","stufe":"wachstum","p":0.47713,"zone":1},{"id":"e3a","art":"etage","stufe":"wachstum","p":0.55413,"zone":1},{"id":"e3b","art":"etage","stufe":"wachstum","p":0.55413,"zone":3},{"id":"e4","art":"etage","stufe":"wachstum","p":0.63113,"zone":1},{"id":"e5a","art":"etage","stufe":"skalieren","p":0.70813,"zone":0},{"id":"e5b","art":"etage","stufe":"skalieren","p":0.70813,"zone":0,"zoom":0.7},{"id":"dach","art":"etage","stufe":"skalieren","p":0.7874,"zone":0},{"id":"pakete","art":"pakete","stufe":null,"p":0.864},{"id":"finale","art":"finale","stufe":null,"p":0.93}];
+const SZ = [{"id":"eingang","art":"eingang","stufe":null,"p":0.03},{"id":"problem","art":"problem","stufe":null,"p":0.25,"kam":{"x":-3,"y":-142.2,"z":-36,"cy":0.62},"ue":"blende"},{"id":"fahrt","art":"fahrt","stufe":null,"p":0.864,"pz":0.864,"ue":"blende"},{"id":"eg","art":"etage","stufe":"fundament","p":0.2993,"ue":"blende","cyn":0.32},{"id":"tresen","art":"tresen","stufe":"fundament","p":0.3231,"zone":1,"cyn":0.37},{"id":"e1","art":"etage","stufe":"fundament","p":0.40013,"zone":1},{"id":"e2","art":"etage","stufe":"wachstum","p":0.47713,"zone":1},{"id":"e3a","art":"etage","stufe":"wachstum","p":0.55413,"zone":1},{"id":"e3b","art":"etage","stufe":"wachstum","p":0.55413,"zone":3},{"id":"e4","art":"etage","stufe":"wachstum","p":0.63113,"zone":1},{"id":"e5a","art":"etage","stufe":"skalieren","p":0.70813,"zone":0},{"id":"e5b","art":"etage","stufe":"skalieren","p":0.70813,"zone":0,"zoom":0.7},{"id":"dach","art":"etage","stufe":"skalieren","p":0.7874,"zone":0,"dz":4.4,"cyd":0.21,"fzd":1.5},{"id":"pakete","art":"pakete","stufe":null,"p":0.864},{"id":"finale","art":"finale","stufe":null,"p":0.93}];
 const N = SZ.length, KREIS = 0.5;
 const kopf = $('.kopf');
 const track = $('#top'), star = $('#star'), starTint = $('#starTint'), skip = $('#ueberspringen');
@@ -1188,16 +1200,35 @@ const panels = SZ.map((s) => $('#szene-' + s.id));
 const etagenNav = $('#etagen'), stufenNav = $('#stufen'), wahl = $('#etagenwahl'), gast = $('#gastwunsch');
 const KURZ = () => document.getElementById('kurz') || document.getElementById('einstieg');
 const spurTop = () => track.getBoundingClientRect().top + scrollY;
-const szeneY = (i) => (STATISCH ? Math.round(panels[i].getBoundingClientRect().top + scrollY - 8) : Math.round(spurTop() + i * innerHeight));
-let animLaeuft = false;
-function szeneZu(i, sofort) {
-  const kurz = i >= N && KURZ(), y = kurz ? Math.round(KURZ().getBoundingClientRect().top + scrollY) : szeneY(Math.max(0, Math.min(N - 1, i))), von = scrollY, d = y - von;
-  if (Math.abs(d) < 2) return;
-  root.classList.remove('snap-aktiv');
-  if (sofort || STATISCH || reduce) { scrollTo(0, y); return; }
-  const dauer = i >= N ? 1200 : Math.min(1500, 520 + 120 * Math.abs(d / innerHeight)), t0 = performance.now(); animLaeuft = true;
-  const schritt = (now) => { const k = Math.min(1, (now - t0) / dauer); scrollTo(0, von + d * easeInOutSine(k)); if (k < 1) requestAnimationFrame(schritt); else animLaeuft = false; };
-  requestAnimationFrame(schritt);
+const rastEls = $$('.snap', track);
+let SZL = innerHeight;
+function messen() { const l = rastEls.length > 1 ? rastEls[1].getBoundingClientRect().top - rastEls[0].getBoundingClientRect().top : 0; SZL = l > 50 ? l : innerHeight; }
+messen();
+const szeneY = (i) => (STATISCH ? Math.round(panels[i].getBoundingClientRect().top + scrollY - 8) : Math.round(spurTop() + i * SZL));
+const kurzY = () => { const k = KURZ(); return Math.round(k ? k.getBoundingClientRect().top + scrollY : spurTop() + track.offsetHeight); };
+let fahrt = null;
+let eigenY = -1, eigenOffen = false;
+let geste = false, gesteY = 0, basis = 0;
+let cssAn = false;
+function cssRasten(an) { if (an === cssAn) return; cssAn = an; root.classList.toggle('rast-fest', an); }
+function fahrtAus() { fahrt = null; }
+function fahre(y, dauer, kurve, ziel = null) {
+  y = Math.max(0, Math.min(y, root.scrollHeight - innerHeight));
+  if (Math.abs(y - scrollY) < 1) { fahrt = null; return; }
+  cssRasten(false);
+  fahrt = { von: scrollY, y, t0: performance.now(), dauer, kurve, ziel }; geste = false;
+}
+readers.push((now) => {
+  if (!fahrt) return;
+  const k = Math.min(1, Math.max(0, (now - fahrt.t0) / fahrt.dauer));
+  eigenY = k < 1 ? fahrt.von + (fahrt.y - fahrt.von) * fahrt.kurve(k) : fahrt.y; eigenOffen = true;
+  scrollTo(0, eigenY);
+  if (k >= 1) fahrt = null;
+});
+function szeneZu(i, sofort, dauer, kurve) {
+  const kurz = i >= N, y = kurz ? kurzY() : szeneY(Math.max(0, Math.min(N - 1, i)));
+  if (sofort || STATISCH || reduce) { fahrtAus(); if (Math.abs(y - scrollY) >= 2) { cssRasten(false); scrollTo(0, y); } return; }
+  fahre(y, dauer ?? (kurz ? 1200 : Math.min(1500, 520 + 120 * Math.abs((y - scrollY) / SZL))), kurve ?? easeInOutSine, Math.max(0, Math.min(N, i)));
 }
 const szeneNr = (w) => { const n = /^\d+$/.test(w) ? +w - 1 : SZ.findIndex((s) => s.id === w); return n >= 0 && n < N ? n : -1; };
 const sceneDirty0 = () => { sceneDirty = true; };
@@ -1210,7 +1241,8 @@ function ansicht(s) {
   for (const key in MARKE) MARKE[key].zone.v = MARKE[key].z0;
   const ka = keyVon(A), kb = keyVon(B), za = A.zone ?? (ka ? MARKE[ka].z0 : 0), zb = B.zone ?? (kb ? MARKE[kb].z0 : 0);
   if (ka && ka === kb) MARKE[ka].zone.v = lerp(za, zb, t); else { if (ka) MARKE[ka].zone.v = za; if (kb) MARKE[kb].zone.v = zb; }
-  ZOOM = lerp(A.zoom ?? 1, B.zoom ?? 1, t);
+  ZOOM = lerp((S.narrow ? A.zoomn ?? A.zoom : A.zoom) ?? 1, (S.narrow ? B.zoomn ?? B.zoom : B.zoom) ?? 1, t);
+  NCY = lerp(A.cyn ?? 0.235, B.cyn ?? 0.235, t); NDZ = lerp(A.dz ?? 2.5, B.dz ?? 2.5, t); NCYD = lerp(A.cyd ?? 0.19, B.cyd ?? 0.19, t); NZF = lerp(A.fzd ?? 1, B.fzd ?? 1, t);
   MARKE.podcast.zone.v = clamp01((1 - ZOOM) / 0.3);
   return v;
 }
@@ -1223,7 +1255,11 @@ const etagenLinks = $$('a', etagenNav), stufenLinks = $$('a', stufenNav);
 const schmal = matchMedia('(max-width: 767.98px), (max-width: 1100px) and (max-aspect-ratio: 9/10)');
 function zeigeSzene(a) {
   aktiv = a;
-  panels.forEach((el, i) => el.classList.toggle('an', i === a));
+  panels.forEach((el, i) => {
+    el.classList.toggle('an', i === a);
+    if (STATISCH) return;
+    el.inert = i !== a; if (i === a) el.removeAttribute('aria-hidden'); else el.setAttribute('aria-hidden', 'true');
+  });
   const st = stufeVon(a), sichtbar = a >= 3 && a <= 13;
   etagenNav.classList.toggle('an', sichtbar); stufenNav.classList.toggle('an', sichtbar || a === 13);
   etagenLinks.forEach((l) => { const jetzt = l.dataset.szenen.split(' ').includes(SZ[a].id); l.classList.toggle('jetzt', jetzt); if (jetzt) l.setAttribute('aria-current', 'step'); else l.removeAttribute('aria-current'); l.parentElement.hidden = schmal.matches && !!st && l.dataset.stufe !== st; if (schmal.matches && !st) l.parentElement.hidden = true; });
@@ -1233,13 +1269,26 @@ function zeigeSzene(a) {
     if (jetzt) l.setAttribute('aria-current', 'step'); else l.removeAttribute('aria-current');
   });
 }
-readers.push(() => {
+const tafelO = new Array(N).fill(-1);
+function tafeln(lage) {
+  for (let i = 0; i < N; i++) {
+    const d = lage - i, a = Math.abs(d), t = a <= 0.3 ? 0 : a >= 0.5 ? 1 : (a - 0.3) / 0.2;
+    const o = Math.round((1 - t * t * (3 - 2 * t)) * 200) / 200;
+    if (o === tafelO[i]) continue; tafelO[i] = o;
+    const el = panels[i];
+    el.style.setProperty('--tafel', String(o)); el.style.transform = o < 1 && o > 0 ? `translate3d(0,${(-Math.sign(d) * (1 - o) * 14).toFixed(1)}px,0)` : '';
+    el.classList.toggle('zeigt', o > 0);
+  }
+}
+painters.push(() => { if (!STATISCH && !STILL) tafeln(sS.v); });
+let inFahrt = true;
+readers.push((now) => {
   const bb = track.getBoundingClientRect(), h = innerHeight;
   if (STATISCH) { kopfSetzen(bb.bottom <= (kopf ? kopf.offsetHeight : 0) * 0.6 ? 'hell' : 'glas'); return; }
-  roh = STILL ? 0 : Math.min(N - 1 + KREIS, Math.max(0, -bb.top / h));
+  roh = STILL ? 0 : Math.min(N - 1 + KREIS, Math.max(0, -bb.top / SZL));
   const a = Math.min(N - 1, Math.max(0, Math.round(Math.min(roh, N - 1))));
   if (a !== aktiv) zeigeSzene(a);
-  root.classList.toggle('snap-aktiv', !STILL && !animLaeuft && bb.bottom > 2);
+  inFahrt = !STILL && bb.bottom > 2;
   if (!marke && roh >= N - 1 - 0.02) { marke = true; try { localStorage.setItem('make-fahrt', '1'); } catch (_) {  } }
   if (!STILL) sS.set(Math.min(roh, N - 1));
   const c = clamp01((roh - (N - 1)) / KREIS);
@@ -1247,7 +1296,79 @@ readers.push(() => {
   star.style.transform = `scale(${0.012 + Math.pow(c, 4) * 3.2})`; starTint.setAttribute('opacity', easeInOutSine(span(c, [0.2, 1])));
   canvasAn = c < 0.98 && bb.bottom > 0 && bb.top < h;
   kopfSetzen(bb.bottom <= (kopf ? kopf.offsetHeight : 0) * 0.6 || c > 0.97 ? 'hell' : roh < 0.5 ? 'szene' : 'glas');
+  if (!STILL) rasten(now);
 });
+const RUHE = 140, RUHE_UNKLAR = 700;
+const SCHWELLE = 0.12, SCHWELLE_PX = 90;
+const SCHWELLE_DURCH = 0.35;
+const grob = matchMedia('(pointer: coarse)');
+let tast = grob.matches;
+let letzteRegung = performance.now() + 600, letzteEingabe = 0, letzterScroll = 0, letztY = scrollY, dir = 0, unklar = false;
+let zeigerUnten = false, fingerUnten = false, haltSzene = -1;
+const feldAktiv = () => { const el = document.activeElement; return !!el && el !== document.body && el.matches('input, textarea, select, [contenteditable]'); };
+const gesperrt = () => root.classList.contains('menue-offen') || !!document.querySelector('dialog[open]');
+function regung(eingabe) { const t = performance.now(); letzteRegung = t; if (eingabe) letzteEingabe = t; }
+function gesteBeginn(y0) {
+  if (geste) return; geste = true;
+  if (fahrt && fahrt.zurueck) return;
+  gesteY = y0; basis = fahrt && fahrt.ziel != null ? Math.min(N - 1, fahrt.ziel) : Math.max(0, Math.min(N - 1, Math.round((y0 - spurTop()) / SZL)));
+}
+function rastZiel(y, oben, ende) {
+  const s = (y - oben) / SZL, letzte = N - 1, px = Math.min(SCHWELLE * SZL, SCHWELLE_PX), weg = y - gesteY;
+  if (s > letzte) {
+    const yL = szeneY(letzte);
+    if (dir < 0) return ende - y <= px ? ende : yL;
+    return y - yL <= px ? yL : ende;
+  }
+  const b = Math.max(0, Math.min(letzte, basis)), sz = (i) => szeneY(Math.max(0, Math.min(letzte, i)));
+  if (!dir) return sz(Math.round(s));
+  if (weg * dir <= px) return Math.abs(weg) <= px ? sz(b) : sz(dir > 0 ? Math.ceil(s - 1e-4) : Math.floor(s + 1e-4));
+  const o = dir > 0 ? Math.floor(s + 1e-4) : Math.ceil(s - 1e-4);
+  if (dir * (o - b) <= 0) return sz(b + dir);
+  return sz(dir * (s - o) > SCHWELLE_DURCH ? o + dir : o);
+}
+function rasten(now) {
+  if (STATISCH || reduce || fahrt || zeigerUnten || fingerUnten) return;
+  const y = scrollY, oben = spurTop(), ende = kurzY(), still = now - letzteRegung;
+  const drin = y >= oben - 1 && y < ende - 1, s = (y - oben) / SZL, n = Math.round(s), aufSzene = drin && n <= N - 1 && Math.abs(y - szeneY(n)) <= 1;
+  if ((aufSzene || !drin) && still > 60) { haltSzene = aufSzene ? n : -1; dir = 0; geste = false; }
+  if (tast) {
+    if (still > 120) { if (!cssAn && aufSzene) cssRasten(true); else if (cssAn && !drin) cssRasten(false); }
+    if (cssAn) return;
+  }
+  if (!drin || aufSzene || still < (unklar ? RUHE_UNKLAR : RUHE) || document.hidden) return;
+  if (gesperrt() || feldAktiv()) return;
+  if (!geste) { gesteY = y; basis = Math.max(0, Math.min(N - 1, n)); dir = 0; }
+  const ziel = rastZiel(y, oben, ende), weg = Math.abs(ziel - y);
+  if (weg < 1) return;
+  const amEnde = ziel >= ende - 1 || s > N - 1, nr = ziel >= ende - 1 ? N : Math.round((ziel - oben) / SZL), zurueck = !amEnde && nr === basis && Math.abs(y - gesteY) <= Math.min(SCHWELLE * SZL, SCHWELLE_PX);
+  fahre(ziel, amEnde ? 420 + 260 * Math.min(1, weg / (1.4 * SZL)) : 280 + 180 * Math.min(1, weg / (0.8 * SZL)), easeOutCubic, nr);
+  if (fahrt) fahrt.zurueck = zurueck;
+}
+addEventListener('scroll', () => {
+  const y = scrollY, t = performance.now();
+  if (eigenOffen && Math.abs(y - eigenY) <= 2) { eigenOffen = !!fahrt; letztY = y; return; }
+  gesteBeginn(letztY);
+  if (y !== letztY) dir = y > letztY ? 1 : -1;
+  letztY = y; haltSzene = -1;
+  if (fahrt) fahrtAus();
+  if (t - letzterScroll > 200) unklar = !fingerUnten && t - letzteEingabe > 300;
+  letzterScroll = letzteRegung = t;
+}, { passive: true });
+addEventListener('wheel', (e) => {
+  if (e.ctrlKey) return;
+  gesteBeginn(letztY); regung(true); fahrtAus();
+  if (tast) { tast = false; cssRasten(false); }
+}, { passive: true });
+addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; zeigerUnten = true; gesteBeginn(letztY); regung(true); fahrtAus(); }, { passive: true, capture: true });
+for (const typ of ['pointerup', 'pointercancel']) addEventListener(typ, (e) => { if (e.pointerType === 'touch') return; zeigerUnten = false; regung(true); }, { passive: true, capture: true });
+addEventListener('pointermove', (e) => { if (zeigerUnten && e.buttons === 0) { zeigerUnten = false; regung(true); } }, { passive: true, capture: true });
+addEventListener('touchstart', () => { fingerUnten = true; tast = true; gesteBeginn(letztY); regung(true); fahrtAus(); }, { passive: true, capture: true });
+for (const typ of ['touchend', 'touchcancel']) addEventListener(typ, (e) => { if (!e.touches.length) fingerUnten = false; regung(true); }, { passive: true, capture: true });
+addEventListener('blur', () => { zeigerUnten = false; fingerUnten = false; });
+document.addEventListener('click', (e) => {
+  if (!cssAn) return; const a = e.target.closest?.('a[href*="#"]'); if (a && !a.getAttribute('href').startsWith('#szene-')) cssRasten(false);
+}, true);
 function kopfSetzen(lage) {
   if (!kopf || lage === kopfLage) return; kopfLage = lage;
   kopf.classList.toggle('ueber-film', lage !== 'hell'); kopf.classList.toggle('film-geht', lage === 'glas');
@@ -1262,13 +1383,13 @@ painters.push((now) => {
 function markeSetzen() { try { localStorage.setItem('make-fahrt', '1'); } catch (_) {  } }
 function ueberspringen(e) {
   if (e) e.preventDefault();
-  markeSetzen(); const k = KURZ();
-  scrollTo({ top: k ? Math.round(k.getBoundingClientRect().top + scrollY) : Math.round(spurTop() + track.offsetHeight), behavior: 'auto' });
+  markeSetzen(); fahrtAus(); cssRasten(false);
+  scrollTo({ top: kurzY(), behavior: 'auto' });
 }
 skip.addEventListener('click', ueberspringen);
 addEventListener('keydown', (e) => {
   if (e.key !== 'Escape' || document.querySelector('dialog[open]') || e.target.closest?.('input, textarea, select')) return;
-  if (root.classList.contains('snap-aktiv') && !STILL) ueberspringen(e);
+  if (inFahrt && !STATISCH && !STILL) ueberspringen(e);
 });
 function zu(dlg) { if (dlg.open) dlg.close(); }
 for (const dlg of [wahl, gast]) {
@@ -1287,26 +1408,20 @@ document.addEventListener('click', (e) => {
   else if (w === 'weiter') szeneZu(Math.max(0, aktiv) + 1);
   else if (w === 'gast') { if (!gast.open) gast.showModal(); }
 });
-let letztesRad = 0, radSumme = 0, radBereit = true, letzterZug = 0, letztesDy = 0;
-addEventListener('wheel', (e) => {
-  if (STATISCH || STILL || e.ctrlKey || e.metaKey || e.shiftKey || track.getBoundingClientRect().bottom <= 2 || document.querySelector('dialog[open]')) return;
-  if (Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
-  e.preventDefault();
-  const now = performance.now(), dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * innerHeight : e.deltaY, neu = now - letztesRad > 130;
-  letztesRad = now;
-  if (neu) { radBereit = true; radSumme = 0; }
-  else if (!radBereit && !animLaeuft && now - letzterZug > 950 && Math.abs(dy) >= Math.abs(letztesDy) && Math.abs(dy) > 8) { radBereit = true; radSumme = 0; }
-  letztesDy = dy;
-  if (!radBereit || animLaeuft) return;
-  radSumme += dy;
-  if (Math.abs(radSumme) < 20) return;
-  radBereit = false; letzterZug = now;
-  const s = Math.min(roh, N - 1 + KREIS), ziel = radSumme > 0 ? Math.floor(s + 0.01) + 1 : Math.ceil(s - 0.01) - 1;
-  szeneZu(Math.max(0, Math.min(N, ziel)));
-}, { passive: false });
 addEventListener('keydown', (e) => {
-  if (e.key !== 'End' || STATISCH || STILL || e.target.closest?.('input, textarea, select') || document.querySelector('dialog[open]')) return;
-  e.preventDefault(); root.classList.remove('snap-aktiv'); scrollTo(0, document.documentElement.scrollHeight);
+  if (STATISCH || STILL || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key, vor = k === 'ArrowDown' || k === 'PageDown' || (k === ' ' && !e.shiftKey), zurueck = k === 'ArrowUp' || k === 'PageUp' || (k === ' ' && e.shiftKey);
+  if (!vor && !zurueck && k !== 'Home' && k !== 'End') return;
+  if (gesperrt() || e.target.closest?.('input, textarea, select, [contenteditable]') || (k === ' ' && e.target.closest?.('button, a, summary'))) return;
+  const y = scrollY, oben = spurTop(), ende = kurzY();
+  if (k === 'End') { e.preventDefault(); fahrtAus(); cssRasten(false); regung(true); scrollTo(0, root.scrollHeight); return; }
+  if (y > ende + 1 || (y >= ende - 1 && !zurueck) || y < oben - 1) return;
+  e.preventDefault(); regung(true);
+  if (k === 'Home') { szeneZu(0, false, 450, easeOutCubic); return; }
+  if (e.repeat && fahrt && (performance.now() - fahrt.t0) / fahrt.dauer < 0.7) return;
+  const s = (y - oben) / SZL;
+  const ziel = fahrt && fahrt.ziel != null ? fahrt.ziel + (vor ? 1 : -1) : s > N - 1 + 0.02 ? (vor ? N : N - 1) : vor ? Math.floor(s + 0.02) + 1 : Math.ceil(s - 0.02) - 1;
+  szeneZu(Math.max(0, Math.min(N, ziel)), false, 450, easeOutCubic);
 });
 const MAIL_OK = /^[^\s@<>"',;:]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,24}$/i;
 const STEMPEL_MIN_MS = 3500, STEMPEL_MAX_MS = 90 * 60 * 1000;
@@ -1409,7 +1524,16 @@ if (!STATISCH && !STILL) {
   new Spring(0, EINFLUG, (v) => { introK = v; sceneDirty = true; }).set(1);
 }
 let rz = 0;
-addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { sizeScene(); zeigeSzene(aktiv); if (STATISCH) panels.forEach((el) => { el.style.backgroundImage = ''; }); }); });
+let rzHalt = -1;
+addEventListener('resize', () => {
+  if (!rz) rzHalt = fahrt ? -1 : haltSzene;
+  cancelAnimationFrame(rz); rz = requestAnimationFrame(() => {
+    rz = 0; messen(); sizeScene(); zeigeSzene(aktiv); if (STATISCH) panels.forEach((el) => { el.style.backgroundImage = ''; });
+    if (STATISCH || STILL) return;
+    if (fahrt && fahrt.ziel != null) fahrt.y = fahrt.ziel >= N ? kurzY() : szeneY(fahrt.ziel);
+    else if (rzHalt >= 0 && !cssAn && Math.abs(scrollY - szeneY(rzHalt)) >= 1) { eigenY = szeneY(rzHalt); eigenOffen = true; scrollTo(0, eigenY); }
+  });
+});
 requestAnimationFrame(frame);
 const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]);
 (async () => {
@@ -1417,7 +1541,7 @@ const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r,
   buildTextures(); sceneDirty = true;
   const ETAGE = { eg: 'eg', tresen: 'tresen', 1: 'e1', 2: 'e2', 3: 'e3a', 4: 'e4', 5: 'e5a', dach: 'dach' };
   const ziel = QUERY.get('szene') || ETAGE[(QUERY.get('etage') || '').toLowerCase()] || (location.hash.startsWith('#szene-') ? location.hash.slice(7) : '');
-  if (ziel && !STILL && !STATISCH) { const i = szeneNr(ziel); if (i >= 0) { scrollTo(0, szeneY(i)); sS.set(i, { immediate: true }); } }
+  if (ziel && !STILL && !STATISCH) { const i = szeneNr(ziel); if (i >= 0) { messen(); fahrtAus(); scrollTo(0, szeneY(i)); sS.set(i, { immediate: true }); } }
   if (STATISCH) bilderMalen();
   root.dataset.bereit = '1';
 })();
