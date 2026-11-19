@@ -129,7 +129,7 @@ html.still-s .track { height: 100vh; height: 100dvh; }
 .seq canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .seq-shade { position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(130% 95% at 50% 45%, transparent 52%, rgb(5 6 9 / .6) 100%), linear-gradient(to bottom, rgb(5 6 9 / .4), transparent 24%, transparent 68%, rgb(5 6 9 / .55)); }
-.grain { position: absolute; inset: 0; pointer-events: none; opacity: .08; mix-blend-mode: overlay; background-size: 160px 160px; }
+.grain { position: absolute; inset: 0; pointer-events: none; opacity: .045; background-size: 160px 160px; }
 
 /* Raststellen: je Szene eine. Am Rechner (Maus, Trackpad) rastet nichts per CSS: Dort scrollt die Seite frei, haus.js gleitet erst im Stillstand auf die nächste Szene.
    Mit dem Finger rastet der Browser selbst (html.rast-fest). Die Klasse setzt haus.js nur im Stillstand auf einer Raststelle und löst sie erst im Stand nach der Fahrt,
@@ -163,6 +163,7 @@ html.fahrt-aus .kopf { position: sticky; }
 /* Die Deckkraft (--tafel) setzt haus.js nach der Scroll-Lage: Überblendung zwischen zwei Szenen. Sie liegt auf der Tafel selbst, nicht auf der Szene:
    So bleibt der unscharfe, dunkle Grund der Tafel auch halb durchsichtig erhalten, der Text ist bis zuletzt lesbar. Bedienbar ist nur .an. */
 .sz > .sz-innen { opacity: var(--tafel, 1); }
+.sz.zeigt > .sz-innen { will-change: opacity, transform; }
 .sz-innen { position: absolute; pointer-events: auto; }
 .sz h1, .sz h2 { text-wrap: balance; }
 
@@ -185,23 +186,23 @@ html.fahrt-aus .kopf { position: sticky; }
 .sz-textlink:hover { border-bottom-color: var(--foreground); }
 
 /* ── Szene 1: Eingang ── */
-.sz-eingang .sz-innen { left: 2.5rem; right: 2.5rem; top: 0; bottom: 0; pointer-events: none; }
-.sz-eingang .sz-titel { position: absolute; left: 0; top: calc(var(--kopf) + 4.5rem); max-width: 46rem; font-size: 5.6rem; line-height: .98; letter-spacing: var(--tracking-display); font-weight: 500; text-shadow: 0 0 3rem rgb(5 6 9 / .55); }
-.sz-eingang .sz-pitch { position: absolute; left: 0; bottom: 8.5rem; max-width: 28rem; font-size: 1.1875rem; line-height: 1.5; color: var(--fg-95); text-shadow: 0 0 1.2rem rgb(5 6 9 / .8); }
-.sz-hinweis { position: absolute; left: 0; bottom: 2.5rem; display: inline-flex; align-items: center; gap: .8rem; min-height: 44px; pointer-events: auto; font-size: .9375rem; color: var(--fg-95); text-shadow: 0 0 1rem rgb(5 6 9 / .8); }
+.sz-eingang .sz-innen { left: 2.5rem; right: 2.5rem; top: 0; bottom: 0; pointer-events: none; background: radial-gradient(58rem 30rem at 16% 30%, rgb(5 6 9 / .5), rgb(5 6 9 / 0) 70%), radial-gradient(36rem 16rem at 12% 84%, rgb(5 6 9 / .55), rgb(5 6 9 / 0) 70%); }
+.sz-eingang .sz-titel { position: absolute; left: 0; top: calc(var(--kopf) + 4.5rem); max-width: 46rem; font-size: 5.6rem; line-height: .98; letter-spacing: var(--tracking-display); font-weight: 500; text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
+.sz-eingang .sz-pitch { position: absolute; left: 0; bottom: 8.5rem; max-width: 28rem; font-size: 1.1875rem; line-height: 1.5; color: var(--fg-95); text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
+.sz-hinweis { position: absolute; left: 0; bottom: 2.5rem; display: inline-flex; align-items: center; gap: .8rem; min-height: 44px; pointer-events: auto; font-size: .9375rem; color: var(--fg-95); text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
 .sz-pfeil { width: 1.4rem; height: 1.4rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; animation: hinweis 2.2s ease-in-out infinite; }
 @keyframes hinweis { 0%, 100% { translate: 0 0; } 50% { translate: 0 .35rem; } }
 html.statisch .sz-pfeil { animation: none; }
 
 /* ── Szene 2: Das Problem ── */
-.sz-problem .sz-innen { inset: 0; pointer-events: none; }
-.sz-problem .sz-links { position: absolute; left: 2.5rem; top: calc(var(--kopf) + 4.5rem); max-width: 40rem; font-size: 3rem; line-height: 1.08; letter-spacing: var(--tracking-title); font-weight: 500; text-shadow: 0 0 2.4rem rgb(5 6 9 / .85), 0 0 .5rem rgb(5 6 9 / .5); }
-.sz-problem .sz-rechts { position: absolute; right: 2.5rem; bottom: 4rem; width: 24rem; font-size: 1.1875rem; line-height: 1.5; color: var(--fg-95); text-shadow: 0 0 1.4rem rgb(5 6 9 / .85); }
+.sz-problem .sz-innen { inset: 0; pointer-events: none; background: radial-gradient(52rem 28rem at 18% 30%, rgb(5 6 9 / .6), rgb(5 6 9 / 0) 70%), radial-gradient(34rem 16rem at 86% 86%, rgb(5 6 9 / .6), rgb(5 6 9 / 0) 70%); }
+.sz-problem .sz-links { position: absolute; left: 2.5rem; top: calc(var(--kopf) + 4.5rem); max-width: 40rem; font-size: 3rem; line-height: 1.08; letter-spacing: var(--tracking-title); font-weight: 500; text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
+.sz-problem .sz-rechts { position: absolute; right: 2.5rem; bottom: 4rem; width: 24rem; font-size: 1.1875rem; line-height: 1.5; color: var(--fg-95); text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
 
 /* ── Szene 3: Für klein bis groß ── */
 .sz-fahrt .sz-innen { left: 2.5rem; top: calc(var(--kopf) + 4.5rem); max-width: 40rem; display: flex; flex-direction: column; gap: 1.6rem; padding: 1.5rem 1.7rem 1.6rem; border-radius: .4rem; background: rgb(11 14 16 / .86); pointer-events: none; }
 .sz-kopf-klein { font-size: .8125rem; letter-spacing: var(--tracking-caps); text-transform: uppercase; font-weight: 500; color: var(--fg-85); }
-.sz-lead { font-size: 1.6rem; line-height: 1.32; letter-spacing: var(--tracking-title); font-weight: 500; text-shadow: 0 0 2rem rgb(5 6 9 / .85); }
+.sz-lead { font-size: 1.6rem; line-height: 1.32; letter-spacing: var(--tracking-title); font-weight: 500; text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
 .sz-stufenzeile { display: flex; flex-wrap: wrap; gap: .6rem; }
 .sz-stufenzeile li { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem 1rem; border: 1px solid var(--fg-30); border-radius: 2rem; font-size: .9375rem; background: rgb(11 14 16 / .6); }
 .sz-stufenzeile li::before { content: ""; width: .6rem; height: .6rem; border-radius: 50%; background: var(--c); }
@@ -214,12 +215,12 @@ html.statisch .sz-pfeil { animation: none; }
 .sz-e4 { --akz: var(--raw-hellblau); }
 /* Die Tafel steht über die ganze Höhe, der Inhalt beginnt oben und bildet einen Block; der Rahmen-Knopf sitzt in jeder Etage am Boden der Tafel (an derselben Stelle). */
 .sz-etage .sz-innen, .sz-tresen .sz-innen { left: 0; top: 0; bottom: auto; min-height: 47rem; max-height: 100dvh; width: 45%; display: flex; flex-direction: column; justify-content: flex-start; gap: 1.4rem; padding: calc(var(--kopf) + 1.7rem) 1.6rem 2.4rem 4.7rem;
-  background: rgb(13 15 19 / .82); backdrop-filter: blur(34px); -webkit-backdrop-filter: blur(34px); border-right: 1px solid var(--fg-08); border-bottom: 1px solid var(--fg-12); overflow: hidden; }
+  background: rgb(13 15 19 / .97); border-right: 1px solid var(--fg-08); border-bottom: 1px solid var(--fg-12); overflow: hidden; }
 .sz-etage .sz-fuss, .sz-tresen .sz-fuss { margin-top: auto; }
 .sz-tresen .sz-zeile { margin-top: auto; }
 .sz-kopfblock { display: flex; flex-direction: column; gap: .7rem; }
-.sz-e4 .sz-innen { background: color-mix(in srgb, var(--raw-tiefblau) 17%, rgb(11 13 17 / .82)); border-right-color: rgb(125 183 255 / .45); }
-.sz-e2 .sz-innen { background: color-mix(in srgb, #FF5A1F 8%, rgb(11 13 17 / .8)); border-right-color: rgb(255 90 31 / .4); }
+.sz-e4 .sz-innen { background: color-mix(in srgb, var(--raw-tiefblau) 17%, rgb(11 13 17 / .97)); border-right-color: rgb(125 183 255 / .45); }
+.sz-e2 .sz-innen { background: color-mix(in srgb, #FF5A1F 8%, rgb(11 13 17 / .97)); border-right-color: rgb(255 90 31 / .4); }
 .sz-kopf { font-size: 1.7rem; line-height: 1.14; letter-spacing: var(--tracking-title); font-weight: 500; }
 .sz-etage .sz-kopf, .sz-tresen .sz-kopf { display: flex; flex-direction: column; gap: .45rem; }
 .sz-vor { display: flex; flex-wrap: wrap; align-items: center; font-size: max(12px, .875rem); line-height: 1.2; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: var(--fg-70); }
@@ -285,7 +286,7 @@ button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
 .sz-pakete .sz-kopf-klein { position: absolute; left: 5.4rem; top: calc(var(--kopf) + 2.4rem); }
 .sz-pakete .sz-lead { position: absolute; left: 5.4rem; top: calc(var(--kopf) + 4.4rem); max-width: 34rem; }
 .sz-pakete .sz-pakete { position: absolute; left: 5.4rem; right: 5.6rem; bottom: 8rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem; pointer-events: auto; }
-.fs-paket { position: relative; display: flex; flex-direction: column; gap: .7rem; padding: 1.2rem 1.3rem 1.3rem; border: 1px solid var(--fg-18); border-top: 3px solid var(--c); border-radius: .25rem; background: rgb(13 15 19 / .82); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); --akz: var(--c); }
+.fs-paket { position: relative; display: flex; flex-direction: column; gap: .7rem; padding: 1.2rem 1.3rem 1.3rem; border: 1px solid var(--fg-18); border-top: 3px solid var(--c); border-radius: .25rem; background: rgb(13 15 19 / .94); --akz: var(--c); }
 .fs-paket.ist-empfohlen { border: 2px solid var(--c); border-top-width: 3px; background: color-mix(in srgb, var(--c) 12%, rgb(13 15 19 / .88)); }
 .fs-paket-emp { position: absolute; right: 1rem; top: -.75rem; padding: .15rem .7rem; border-radius: 1rem; background: var(--c); color: var(--raw-nacht); font-size: .6875rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
 .fs-paket h3 { font-size: 1.5rem; font-weight: 500; letter-spacing: var(--tracking-title); }
@@ -294,17 +295,17 @@ button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
 .fs-paket-punkte li { position: relative; padding-left: 1rem; font-size: .9375rem; line-height: 1.35; color: var(--fg-95); }
 .fs-paket-punkte li::before { content: ""; position: absolute; left: 0; top: .5em; width: .4rem; height: .4rem; background: var(--c); }
 .fs-paket-ab { font-size: .9375rem; font-weight: 600; letter-spacing: .02em; color: var(--foreground); padding-top: .5rem; border-top: 1px solid var(--fg-12); }
-.sz-zusagen { position: absolute; left: 5.4rem; right: 5.6rem; bottom: 4.4rem; font-size: .9375rem; line-height: 1.4; color: var(--fg-95); text-shadow: 0 0 1rem rgb(5 6 9 / .9); }
+.sz-zusagen { position: absolute; left: 5.4rem; right: 5.6rem; bottom: 4.4rem; font-size: .9375rem; line-height: 1.4; color: var(--fg-95); text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
 .sz-pakete .sz-leise { position: absolute; left: 5.4rem; bottom: 1.4rem; margin: 0; pointer-events: auto; }
 .sz-pakete .sz-textlink { font-size: .9375rem; }
 
 /* ── Szene 15: Finale ── */
 .sz-finale .sz-innen { inset: 0; pointer-events: none; }
 .sz-finale .sz-innen::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgb(11 14 16 / .86) 0, rgb(11 14 16 / .72) 34%, rgb(11 14 16 / 0) 62%); }
-.sz-titel-final { position: absolute; left: 2.5rem; top: 50%; translate: 0 -50%; max-width: 44rem; font-size: 5.2rem; line-height: 1; letter-spacing: var(--tracking-display); font-weight: 500; text-shadow: 0 0 2rem rgb(5 6 9 / .8), 0 0 .4rem rgb(5 6 9 / .5); }
+.sz-titel-final { position: absolute; left: 2.5rem; top: 50%; translate: 0 -50%; max-width: 44rem; font-size: 5.2rem; line-height: 1; letter-spacing: var(--tracking-display); font-weight: 500; text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
 .sz-finale .sz-foto { position: absolute; right: 2.5rem; top: calc(var(--kopf) + 4.6rem); width: 17rem; height: 13rem; }
 .sz-final-knopf { position: absolute; left: 2.5rem; bottom: 6.8rem; pointer-events: auto; }
-.sz-mikro { position: absolute; left: 2.5rem; bottom: 4.2rem; font-size: .9375rem; color: var(--fg-95); text-shadow: 0 0 1rem rgb(5 6 9 / .9); }
+.sz-mikro { position: absolute; left: 2.5rem; bottom: 4.2rem; font-size: .9375rem; color: var(--fg-95); text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
 
 /* ── Leisten: links die Etagen, rechts die drei Stufen (ab Szene 4 sichtbar) ── */
 .etagen, .fahrt-stufen { position: absolute; z-index: 20; opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility 0s linear .3s; }
@@ -330,7 +331,7 @@ button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
 
 /* ── Fahrt überspringen: klein, kontrastreich, ab der ersten Sekunde da ── */
 .ueberspringen { position: absolute; z-index: 40; right: 2.5rem; top: calc(var(--kopf) + .8rem); display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; padding: 0 1rem 0 1.15rem; border: 1px solid var(--fg-30); border-radius: 2rem;
-  background: rgb(11 14 16 / .78); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--foreground); font-size: .875rem; font-weight: 500; transition: background-color var(--duration-fast), border-color var(--duration-fast); }
+  background: rgb(11 14 16 / .78); color: var(--foreground); font-size: .875rem; font-weight: 500; transition: background-color var(--duration-fast), border-color var(--duration-fast); }
 .ueberspringen:hover { background: rgb(29 32 39 / .95); border-color: var(--fg-70); }
 .ueberspringen svg { width: 1rem; height: 1rem; }
 
@@ -496,7 +497,7 @@ html:not(.js) .ueberspringen { position: static; margin: 5rem 2.5rem 0; }
   .seq-shade { background: radial-gradient(130% 95% at 50% 45%, transparent 52%, rgb(5 6 9 / .6) 100%), linear-gradient(to bottom, rgb(5 6 9 / .82) 0, rgb(5 6 9 / .5) 8.5rem, transparent 14rem), linear-gradient(to bottom, transparent 68%, rgb(5 6 9 / .55)); } /* Stufen-Reihe und Etagenmarke liegen über der Zeichnung: der Streifen dahinter ist abgedunkelt, damit nichts Wichtiges darunter liegt */
   .etagen a { background: rgb(11 14 16 / .66); color: var(--foreground); margin-bottom: .2rem; }
   .sz-fahrt .sz-innen { padding: 1rem 1.1rem 1.1rem; background: rgb(11 14 16 / .92); border-radius: .4rem; left: 1rem; right: 1rem; }
-  .sz-problem .sz-links { text-shadow: 0 0 1.4rem rgb(5 6 9 / .95), 0 0 .3rem rgb(5 6 9 / .8); }
+  .sz-problem .sz-links { text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
   .sz-pakete .sz-pakete { bottom: 9rem; }
   .sz-zusagen { bottom: 5rem; font-size: .6875rem; }
   .sz-pakete .sz-leise { bottom: .3rem; font-size: .8125rem; line-height: 1.3; }
