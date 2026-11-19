@@ -19,6 +19,7 @@ const span = (p, [a, b]) => clamp01((p - a) / (b - a));
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeInOutSine = (t) => (1 - Math.cos(t * Math.PI)) / 2;
 const easeOutQuint = (t) => 1 - Math.pow(1 - t, 5);
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 const live = new Set();
 class Spring {
   constructor(v, cfg, on = null, precision = 0.0005) { this.v = v; this.to = v; this.from = v; this.vel = 0; this.cfg = cfg; this.on = on; this.pr = precision; this.t = 0; }
@@ -43,7 +44,7 @@ class Spring {
     if (this.on) this.on(this.v);
   }
 }
-const FOLGE = { tension: 120, friction: 26 };
+const FOLGE = { tension: 700, friction: 53 };
 const EINFLUG = { duration: 3200, easing: easeOutQuint };
 const readers = [], painters = [];
 let lastT = performance.now();
@@ -1188,16 +1189,35 @@ const panels = SZ.map((s) => $('#szene-' + s.id));
 const etagenNav = $('#etagen'), stufenNav = $('#stufen'), wahl = $('#etagenwahl'), gast = $('#gastwunsch');
 const KURZ = () => document.getElementById('kurz') || document.getElementById('einstieg');
 const spurTop = () => track.getBoundingClientRect().top + scrollY;
-const szeneY = (i) => (STATISCH ? Math.round(panels[i].getBoundingClientRect().top + scrollY - 8) : Math.round(spurTop() + i * innerHeight));
-let animLaeuft = false;
-function szeneZu(i, sofort) {
-  const kurz = i >= N && KURZ(), y = kurz ? Math.round(KURZ().getBoundingClientRect().top + scrollY) : szeneY(Math.max(0, Math.min(N - 1, i))), von = scrollY, d = y - von;
-  if (Math.abs(d) < 2) return;
-  root.classList.remove('snap-aktiv');
-  if (sofort || STATISCH || reduce) { scrollTo(0, y); return; }
-  const dauer = i >= N ? 1200 : Math.min(1500, 520 + 120 * Math.abs(d / innerHeight)), t0 = performance.now(); animLaeuft = true;
-  const schritt = (now) => { const k = Math.min(1, (now - t0) / dauer); scrollTo(0, von + d * easeInOutSine(k)); if (k < 1) requestAnimationFrame(schritt); else animLaeuft = false; };
-  requestAnimationFrame(schritt);
+const rastEls = $$('.snap', track);
+let SZL = innerHeight;
+function messen() { const l = rastEls.length > 1 ? rastEls[1].getBoundingClientRect().top - rastEls[0].getBoundingClientRect().top : 0; SZL = l > 50 ? l : innerHeight; }
+messen();
+const szeneY = (i) => (STATISCH ? Math.round(panels[i].getBoundingClientRect().top + scrollY - 8) : Math.round(spurTop() + i * SZL));
+const kurzY = () => { const k = KURZ(); return Math.round(k ? k.getBoundingClientRect().top + scrollY : spurTop() + track.offsetHeight); };
+let fahrt = null;
+let eigenY = -1, eigenOffen = false;
+let geste = false, gesteY = 0, basis = 0;
+let cssAn = false;
+function cssRasten(an) { if (an === cssAn) return; cssAn = an; root.classList.toggle('rast-fest', an); }
+function fahrtAus() { fahrt = null; }
+function fahre(y, dauer, kurve, ziel = null) {
+  y = Math.max(0, Math.min(y, root.scrollHeight - innerHeight));
+  if (Math.abs(y - scrollY) < 1) { fahrt = null; return; }
+  cssRasten(false);
+  fahrt = { von: scrollY, y, t0: performance.now(), dauer, kurve, ziel }; geste = false;
+}
+readers.push((now) => {
+  if (!fahrt) return;
+  const k = Math.min(1, Math.max(0, (now - fahrt.t0) / fahrt.dauer));
+  eigenY = k < 1 ? fahrt.von + (fahrt.y - fahrt.von) * fahrt.kurve(k) : fahrt.y; eigenOffen = true;
+  scrollTo(0, eigenY);
+  if (k >= 1) fahrt = null;
+});
+function szeneZu(i, sofort, dauer, kurve) {
+  const kurz = i >= N, y = kurz ? kurzY() : szeneY(Math.max(0, Math.min(N - 1, i)));
+  if (sofort || STATISCH || reduce) { fahrtAus(); if (Math.abs(y - scrollY) >= 2) { cssRasten(false); scrollTo(0, y); } return; }
+  fahre(y, dauer ?? (kurz ? 1200 : Math.min(1500, 520 + 120 * Math.abs((y - scrollY) / SZL))), kurve ?? easeInOutSine, Math.max(0, Math.min(N, i)));
 }
 const szeneNr = (w) => { const n = /^\d+$/.test(w) ? +w - 1 : SZ.findIndex((s) => s.id === w); return n >= 0 && n < N ? n : -1; };
 const sceneDirty0 = () => { sceneDirty = true; };
@@ -1223,7 +1243,11 @@ const etagenLinks = $$('a', etagenNav), stufenLinks = $$('a', stufenNav);
 const schmal = matchMedia('(max-width: 767.98px), (max-width: 1100px) and (max-aspect-ratio: 9/10)');
 function zeigeSzene(a) {
   aktiv = a;
-  panels.forEach((el, i) => el.classList.toggle('an', i === a));
+  panels.forEach((el, i) => {
+    el.classList.toggle('an', i === a);
+    if (STATISCH) return;
+    el.inert = i !== a; if (i === a) el.removeAttribute('aria-hidden'); else el.setAttribute('aria-hidden', 'true');
+  });
   const st = stufeVon(a), sichtbar = a >= 3 && a <= 13;
   etagenNav.classList.toggle('an', sichtbar); stufenNav.classList.toggle('an', sichtbar || a === 13);
   etagenLinks.forEach((l) => { const jetzt = l.dataset.szenen.split(' ').includes(SZ[a].id); l.classList.toggle('jetzt', jetzt); if (jetzt) l.setAttribute('aria-current', 'step'); else l.removeAttribute('aria-current'); l.parentElement.hidden = schmal.matches && !!st && l.dataset.stufe !== st; if (schmal.matches && !st) l.parentElement.hidden = true; });
@@ -1233,13 +1257,26 @@ function zeigeSzene(a) {
     if (jetzt) l.setAttribute('aria-current', 'step'); else l.removeAttribute('aria-current');
   });
 }
-readers.push(() => {
+const tafelO = new Array(N).fill(-1);
+function tafeln(lage) {
+  for (let i = 0; i < N; i++) {
+    const d = lage - i, a = Math.abs(d), t = a <= 0.3 ? 0 : a >= 0.5 ? 1 : (a - 0.3) / 0.2;
+    const o = Math.round((1 - t * t * (3 - 2 * t)) * 200) / 200;
+    if (o === tafelO[i]) continue; tafelO[i] = o;
+    const el = panels[i];
+    el.style.setProperty('--tafel', String(o)); el.style.transform = o < 1 && o > 0 ? `translate3d(0,${(-Math.sign(d) * (1 - o) * 14).toFixed(1)}px,0)` : '';
+    el.classList.toggle('zeigt', o > 0);
+  }
+}
+painters.push(() => { if (!STATISCH && !STILL) tafeln(sS.v); });
+let inFahrt = true;
+readers.push((now) => {
   const bb = track.getBoundingClientRect(), h = innerHeight;
   if (STATISCH) { kopfSetzen(bb.bottom <= (kopf ? kopf.offsetHeight : 0) * 0.6 ? 'hell' : 'glas'); return; }
-  roh = STILL ? 0 : Math.min(N - 1 + KREIS, Math.max(0, -bb.top / h));
+  roh = STILL ? 0 : Math.min(N - 1 + KREIS, Math.max(0, -bb.top / SZL));
   const a = Math.min(N - 1, Math.max(0, Math.round(Math.min(roh, N - 1))));
   if (a !== aktiv) zeigeSzene(a);
-  root.classList.toggle('snap-aktiv', !STILL && !animLaeuft && bb.bottom > 2);
+  inFahrt = !STILL && bb.bottom > 2;
   if (!marke && roh >= N - 1 - 0.02) { marke = true; try { localStorage.setItem('make-fahrt', '1'); } catch (_) {  } }
   if (!STILL) sS.set(Math.min(roh, N - 1));
   const c = clamp01((roh - (N - 1)) / KREIS);
@@ -1247,7 +1284,79 @@ readers.push(() => {
   star.style.transform = `scale(${0.012 + Math.pow(c, 4) * 3.2})`; starTint.setAttribute('opacity', easeInOutSine(span(c, [0.2, 1])));
   canvasAn = c < 0.98 && bb.bottom > 0 && bb.top < h;
   kopfSetzen(bb.bottom <= (kopf ? kopf.offsetHeight : 0) * 0.6 || c > 0.97 ? 'hell' : roh < 0.5 ? 'szene' : 'glas');
+  if (!STILL) rasten(now);
 });
+const RUHE = 140, RUHE_UNKLAR = 700;
+const SCHWELLE = 0.12, SCHWELLE_PX = 90;
+const SCHWELLE_DURCH = 0.35;
+const grob = matchMedia('(pointer: coarse)');
+let tast = grob.matches;
+let letzteRegung = performance.now() + 600, letzteEingabe = 0, letzterScroll = 0, letztY = scrollY, dir = 0, unklar = false;
+let zeigerUnten = false, fingerUnten = false, haltSzene = -1;
+const feldAktiv = () => { const el = document.activeElement; return !!el && el !== document.body && el.matches('input, textarea, select, [contenteditable]'); };
+const gesperrt = () => root.classList.contains('menue-offen') || !!document.querySelector('dialog[open]');
+function regung(eingabe) { const t = performance.now(); letzteRegung = t; if (eingabe) letzteEingabe = t; }
+function gesteBeginn(y0) {
+  if (geste) return; geste = true;
+  if (fahrt && fahrt.zurueck) return;
+  gesteY = y0; basis = fahrt && fahrt.ziel != null ? Math.min(N - 1, fahrt.ziel) : Math.max(0, Math.min(N - 1, Math.round((y0 - spurTop()) / SZL)));
+}
+function rastZiel(y, oben, ende) {
+  const s = (y - oben) / SZL, letzte = N - 1, px = Math.min(SCHWELLE * SZL, SCHWELLE_PX), weg = y - gesteY;
+  if (s > letzte) {
+    const yL = szeneY(letzte);
+    if (dir < 0) return ende - y <= px ? ende : yL;
+    return y - yL <= px ? yL : ende;
+  }
+  const b = Math.max(0, Math.min(letzte, basis)), sz = (i) => szeneY(Math.max(0, Math.min(letzte, i)));
+  if (!dir) return sz(Math.round(s));
+  if (weg * dir <= px) return Math.abs(weg) <= px ? sz(b) : sz(dir > 0 ? Math.ceil(s - 1e-4) : Math.floor(s + 1e-4));
+  const o = dir > 0 ? Math.floor(s + 1e-4) : Math.ceil(s - 1e-4);
+  if (dir * (o - b) <= 0) return sz(b + dir);
+  return sz(dir * (s - o) > SCHWELLE_DURCH ? o + dir : o);
+}
+function rasten(now) {
+  if (STATISCH || reduce || fahrt || zeigerUnten || fingerUnten) return;
+  const y = scrollY, oben = spurTop(), ende = kurzY(), still = now - letzteRegung;
+  const drin = y >= oben - 1 && y < ende - 1, s = (y - oben) / SZL, n = Math.round(s), aufSzene = drin && n <= N - 1 && Math.abs(y - szeneY(n)) <= 1;
+  if ((aufSzene || !drin) && still > 60) { haltSzene = aufSzene ? n : -1; dir = 0; geste = false; }
+  if (tast) {
+    if (still > 120) { if (!cssAn && aufSzene) cssRasten(true); else if (cssAn && !drin) cssRasten(false); }
+    if (cssAn) return;
+  }
+  if (!drin || aufSzene || still < (unklar ? RUHE_UNKLAR : RUHE) || document.hidden) return;
+  if (gesperrt() || feldAktiv()) return;
+  if (!geste) { gesteY = y; basis = Math.max(0, Math.min(N - 1, n)); dir = 0; }
+  const ziel = rastZiel(y, oben, ende), weg = Math.abs(ziel - y);
+  if (weg < 1) return;
+  const amEnde = ziel >= ende - 1 || s > N - 1, nr = ziel >= ende - 1 ? N : Math.round((ziel - oben) / SZL), zurueck = !amEnde && nr === basis && Math.abs(y - gesteY) <= Math.min(SCHWELLE * SZL, SCHWELLE_PX);
+  fahre(ziel, amEnde ? 420 + 260 * Math.min(1, weg / (1.4 * SZL)) : 280 + 180 * Math.min(1, weg / (0.8 * SZL)), easeOutCubic, nr);
+  if (fahrt) fahrt.zurueck = zurueck;
+}
+addEventListener('scroll', () => {
+  const y = scrollY, t = performance.now();
+  if (eigenOffen && Math.abs(y - eigenY) <= 2) { eigenOffen = !!fahrt; letztY = y; return; }
+  gesteBeginn(letztY);
+  if (y !== letztY) dir = y > letztY ? 1 : -1;
+  letztY = y; haltSzene = -1;
+  if (fahrt) fahrtAus();
+  if (t - letzterScroll > 200) unklar = !fingerUnten && t - letzteEingabe > 300;
+  letzterScroll = letzteRegung = t;
+}, { passive: true });
+addEventListener('wheel', (e) => {
+  if (e.ctrlKey) return;
+  gesteBeginn(letztY); regung(true); fahrtAus();
+  if (tast) { tast = false; cssRasten(false); }
+}, { passive: true });
+addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; zeigerUnten = true; gesteBeginn(letztY); regung(true); fahrtAus(); }, { passive: true, capture: true });
+for (const typ of ['pointerup', 'pointercancel']) addEventListener(typ, (e) => { if (e.pointerType === 'touch') return; zeigerUnten = false; regung(true); }, { passive: true, capture: true });
+addEventListener('pointermove', (e) => { if (zeigerUnten && e.buttons === 0) { zeigerUnten = false; regung(true); } }, { passive: true, capture: true });
+addEventListener('touchstart', () => { fingerUnten = true; tast = true; gesteBeginn(letztY); regung(true); fahrtAus(); }, { passive: true, capture: true });
+for (const typ of ['touchend', 'touchcancel']) addEventListener(typ, (e) => { if (!e.touches.length) fingerUnten = false; regung(true); }, { passive: true, capture: true });
+addEventListener('blur', () => { zeigerUnten = false; fingerUnten = false; });
+document.addEventListener('click', (e) => {
+  if (!cssAn) return; const a = e.target.closest?.('a[href*="#"]'); if (a && !a.getAttribute('href').startsWith('#szene-')) cssRasten(false);
+}, true);
 function kopfSetzen(lage) {
   if (!kopf || lage === kopfLage) return; kopfLage = lage;
   kopf.classList.toggle('ueber-film', lage !== 'hell'); kopf.classList.toggle('film-geht', lage === 'glas');
@@ -1262,13 +1371,13 @@ painters.push((now) => {
 function markeSetzen() { try { localStorage.setItem('make-fahrt', '1'); } catch (_) {  } }
 function ueberspringen(e) {
   if (e) e.preventDefault();
-  markeSetzen(); const k = KURZ();
-  scrollTo({ top: k ? Math.round(k.getBoundingClientRect().top + scrollY) : Math.round(spurTop() + track.offsetHeight), behavior: 'auto' });
+  markeSetzen(); fahrtAus(); cssRasten(false);
+  scrollTo({ top: kurzY(), behavior: 'auto' });
 }
 skip.addEventListener('click', ueberspringen);
 addEventListener('keydown', (e) => {
   if (e.key !== 'Escape' || document.querySelector('dialog[open]') || e.target.closest?.('input, textarea, select')) return;
-  if (root.classList.contains('snap-aktiv') && !STILL) ueberspringen(e);
+  if (inFahrt && !STATISCH && !STILL) ueberspringen(e);
 });
 function zu(dlg) { if (dlg.open) dlg.close(); }
 for (const dlg of [wahl, gast]) {
@@ -1287,26 +1396,20 @@ document.addEventListener('click', (e) => {
   else if (w === 'weiter') szeneZu(Math.max(0, aktiv) + 1);
   else if (w === 'gast') { if (!gast.open) gast.showModal(); }
 });
-let letztesRad = 0, radSumme = 0, radBereit = true, letzterZug = 0, letztesDy = 0;
-addEventListener('wheel', (e) => {
-  if (STATISCH || STILL || e.ctrlKey || e.metaKey || e.shiftKey || track.getBoundingClientRect().bottom <= 2 || document.querySelector('dialog[open]')) return;
-  if (Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
-  e.preventDefault();
-  const now = performance.now(), dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * innerHeight : e.deltaY, neu = now - letztesRad > 130;
-  letztesRad = now;
-  if (neu) { radBereit = true; radSumme = 0; }
-  else if (!radBereit && !animLaeuft && now - letzterZug > 950 && Math.abs(dy) >= Math.abs(letztesDy) && Math.abs(dy) > 8) { radBereit = true; radSumme = 0; }
-  letztesDy = dy;
-  if (!radBereit || animLaeuft) return;
-  radSumme += dy;
-  if (Math.abs(radSumme) < 20) return;
-  radBereit = false; letzterZug = now;
-  const s = Math.min(roh, N - 1 + KREIS), ziel = radSumme > 0 ? Math.floor(s + 0.01) + 1 : Math.ceil(s - 0.01) - 1;
-  szeneZu(Math.max(0, Math.min(N, ziel)));
-}, { passive: false });
 addEventListener('keydown', (e) => {
-  if (e.key !== 'End' || STATISCH || STILL || e.target.closest?.('input, textarea, select') || document.querySelector('dialog[open]')) return;
-  e.preventDefault(); root.classList.remove('snap-aktiv'); scrollTo(0, document.documentElement.scrollHeight);
+  if (STATISCH || STILL || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key, vor = k === 'ArrowDown' || k === 'PageDown' || (k === ' ' && !e.shiftKey), zurueck = k === 'ArrowUp' || k === 'PageUp' || (k === ' ' && e.shiftKey);
+  if (!vor && !zurueck && k !== 'Home' && k !== 'End') return;
+  if (gesperrt() || e.target.closest?.('input, textarea, select, [contenteditable]') || (k === ' ' && e.target.closest?.('button, a, summary'))) return;
+  const y = scrollY, oben = spurTop(), ende = kurzY();
+  if (k === 'End') { e.preventDefault(); fahrtAus(); cssRasten(false); regung(true); scrollTo(0, root.scrollHeight); return; }
+  if (y > ende + 1 || (y >= ende - 1 && !zurueck) || y < oben - 1) return;
+  e.preventDefault(); regung(true);
+  if (k === 'Home') { szeneZu(0, false, 450, easeOutCubic); return; }
+  if (e.repeat && fahrt && (performance.now() - fahrt.t0) / fahrt.dauer < 0.7) return;
+  const s = (y - oben) / SZL;
+  const ziel = fahrt && fahrt.ziel != null ? fahrt.ziel + (vor ? 1 : -1) : s > N - 1 + 0.02 ? (vor ? N : N - 1) : vor ? Math.floor(s + 0.02) + 1 : Math.ceil(s - 0.02) - 1;
+  szeneZu(Math.max(0, Math.min(N, ziel)), false, 450, easeOutCubic);
 });
 const MAIL_OK = /^[^\s@<>"',;:]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,24}$/i;
 const STEMPEL_MIN_MS = 3500, STEMPEL_MAX_MS = 90 * 60 * 1000;
@@ -1409,7 +1512,16 @@ if (!STATISCH && !STILL) {
   new Spring(0, EINFLUG, (v) => { introK = v; sceneDirty = true; }).set(1);
 }
 let rz = 0;
-addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { sizeScene(); zeigeSzene(aktiv); if (STATISCH) panels.forEach((el) => { el.style.backgroundImage = ''; }); }); });
+let rzHalt = -1;
+addEventListener('resize', () => {
+  if (!rz) rzHalt = fahrt ? -1 : haltSzene;
+  cancelAnimationFrame(rz); rz = requestAnimationFrame(() => {
+    rz = 0; messen(); sizeScene(); zeigeSzene(aktiv); if (STATISCH) panels.forEach((el) => { el.style.backgroundImage = ''; });
+    if (STATISCH || STILL) return;
+    if (fahrt && fahrt.ziel != null) fahrt.y = fahrt.ziel >= N ? kurzY() : szeneY(fahrt.ziel);
+    else if (rzHalt >= 0 && !cssAn && Math.abs(scrollY - szeneY(rzHalt)) >= 1) { eigenY = szeneY(rzHalt); eigenOffen = true; scrollTo(0, eigenY); }
+  });
+});
 requestAnimationFrame(frame);
 const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]);
 (async () => {
@@ -1417,7 +1529,7 @@ const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r,
   buildTextures(); sceneDirty = true;
   const ETAGE = { eg: 'eg', tresen: 'tresen', 1: 'e1', 2: 'e2', 3: 'e3a', 4: 'e4', 5: 'e5a', dach: 'dach' };
   const ziel = QUERY.get('szene') || ETAGE[(QUERY.get('etage') || '').toLowerCase()] || (location.hash.startsWith('#szene-') ? location.hash.slice(7) : '');
-  if (ziel && !STILL && !STATISCH) { const i = szeneNr(ziel); if (i >= 0) { scrollTo(0, szeneY(i)); sS.set(i, { immediate: true }); } }
+  if (ziel && !STILL && !STATISCH) { const i = szeneNr(ziel); if (i >= 0) { messen(); fahrtAus(); scrollTo(0, szeneY(i)); sS.set(i, { immediate: true }); } }
   if (STATISCH) bilderMalen();
   root.dataset.bereit = '1';
 })();

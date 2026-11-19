@@ -117,8 +117,12 @@
 .t-caption { font-size: var(--font-size-caption); letter-spacing: var(--tracking-caps); text-transform: uppercase; font-weight: 500; line-height: var(--leading-display); }
 .t-lead { font-size: var(--font-size-lead); font-weight: 500; letter-spacing: var(--tracking-copy); }
 
-/* ── Spur und Bühne: 15 Szenen, je ein Bildschirm hoch. Die Bühne bleibt stehen, die Spur gibt ihr den Scrollweg (14 Szenen + Kreis) ── */
-.track { position: relative; z-index: 1; background: var(--background); height: calc(15.5 * 100vh); height: calc(15.5 * 100dvh); }
+/* ── Spur und Bühne: 15 Szenen. Die Bühne bleibt stehen, die Spur gibt ihr den Scrollweg (14 Szenenlängen + ein halber für den Kreis + eine Fensterhöhe).
+      --szene ist der Scrollweg von einer Szene zur nächsten: am Rechner 1,2 Fensterhöhen (ein Trackpad-Schwung überfliegt so seltener gleich mehrere Szenen),
+      mit dem Finger eine Fensterhöhe. Bewusst vh und nicht dvh: vh bleibt gleich, wenn am Handy die Adressleiste ein- und ausfährt, die Raststellen wandern nicht.
+      haus.js misst die Länge an den Raststellen (.snap). ── */
+.track { --szene: calc(1.2 * 100vh); position: relative; z-index: 1; background: var(--background); height: calc(14.5 * var(--szene) + 100vh); }
+@media (pointer: coarse) { .track { --szene: 100vh; } }
 html.still-s .track { height: 100vh; height: 100dvh; }
 .stage { position: sticky; top: 0; height: 100vh; height: 100dvh; width: 100%; overflow: hidden; }
 .seq { position: absolute; inset: 0; z-index: 1; background: var(--raw-nacht); background-size: cover; background-position: center; }
@@ -127,34 +131,38 @@ html.still-s .track { height: 100vh; height: 100dvh; }
   background: radial-gradient(130% 95% at 50% 45%, transparent 52%, rgb(5 6 9 / .6) 100%), linear-gradient(to bottom, rgb(5 6 9 / .4), transparent 24%, transparent 68%, rgb(5 6 9 / .55)); }
 .grain { position: absolute; inset: 0; pointer-events: none; opacity: .08; mix-blend-mode: overlay; background-size: 160px 160px; }
 
-/* Raststellen: jede Szene rastet ein (Scroll-Snap). Gilt nur, solange man in der Fahrt steht (html.snap-aktiv setzt das Skript);
-   danach scrollt die Seite ganz normal. Das Ende der Fahrt, der erste Abschnitt danach, rastet auch ein. */
+/* Raststellen: je Szene eine. Am Rechner (Maus, Trackpad) rastet nichts per CSS: Dort scrollt die Seite frei, haus.js gleitet erst im Stillstand auf die nächste Szene.
+   Mit dem Finger rastet der Browser selbst (html.rast-fest). Die Klasse setzt haus.js nur im Stillstand auf einer Raststelle und löst sie erst im Stand nach der Fahrt,
+   nie mitten im Scrollen; danach scrollt die Seite ganz normal. Das Ende der Fahrt, der erste Abschnitt danach, ist die letzte Raststelle. */
 .snaps { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
-.snap { position: absolute; left: 0; width: 100%; height: 100vh; height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; }
+.snap { position: absolute; left: 0; width: 100%; height: var(--szene); scroll-snap-align: start; scroll-snap-stop: always; }
 .snap:nth-child(1) { top: 0; }
-.snap:nth-child(2) { top: calc(1 * 100vh); top: calc(1 * 100dvh); }
-.snap:nth-child(3) { top: calc(2 * 100vh); top: calc(2 * 100dvh); }
-.snap:nth-child(4) { top: calc(3 * 100vh); top: calc(3 * 100dvh); }
-.snap:nth-child(5) { top: calc(4 * 100vh); top: calc(4 * 100dvh); }
-.snap:nth-child(6) { top: calc(5 * 100vh); top: calc(5 * 100dvh); }
-.snap:nth-child(7) { top: calc(6 * 100vh); top: calc(6 * 100dvh); }
-.snap:nth-child(8) { top: calc(7 * 100vh); top: calc(7 * 100dvh); }
-.snap:nth-child(9) { top: calc(8 * 100vh); top: calc(8 * 100dvh); }
-.snap:nth-child(10) { top: calc(9 * 100vh); top: calc(9 * 100dvh); }
-.snap:nth-child(11) { top: calc(10 * 100vh); top: calc(10 * 100dvh); }
-.snap:nth-child(12) { top: calc(11 * 100vh); top: calc(11 * 100dvh); }
-.snap:nth-child(13) { top: calc(12 * 100vh); top: calc(12 * 100dvh); }
-.snap:nth-child(14) { top: calc(13 * 100vh); top: calc(13 * 100dvh); }
-.snap:nth-child(15) { top: calc(14 * 100vh); top: calc(14 * 100dvh); }
-html.snap-aktiv { scroll-snap-type: y mandatory; scroll-padding-top: 0; }
-html.snap-aktiv :is(#kurz, #einstieg) { scroll-snap-align: start; scroll-snap-stop: always; }
+.snap:nth-child(2) { top: calc(1 * var(--szene)); }
+.snap:nth-child(3) { top: calc(2 * var(--szene)); }
+.snap:nth-child(4) { top: calc(3 * var(--szene)); }
+.snap:nth-child(5) { top: calc(4 * var(--szene)); }
+.snap:nth-child(6) { top: calc(5 * var(--szene)); }
+.snap:nth-child(7) { top: calc(6 * var(--szene)); }
+.snap:nth-child(8) { top: calc(7 * var(--szene)); }
+.snap:nth-child(9) { top: calc(8 * var(--szene)); }
+.snap:nth-child(10) { top: calc(9 * var(--szene)); }
+.snap:nth-child(11) { top: calc(10 * var(--szene)); }
+.snap:nth-child(12) { top: calc(11 * var(--szene)); }
+.snap:nth-child(13) { top: calc(12 * var(--szene)); }
+.snap:nth-child(14) { top: calc(13 * var(--szene)); }
+.snap:nth-child(15) { top: calc(14 * var(--szene)); }
+html.rast-fest { scroll-snap-type: y mandatory; scroll-padding-top: 0; }
+html.rast-fest :is(#kurz, #einstieg) { scroll-snap-align: start; scroll-snap-stop: always; }
 html.fahrt-aus .track { display: none; }
 html.fahrt-aus .kopf { position: sticky; }
 
-/* ── Szenen: der Text jeder Szene ist echter HTML-Text und steht beim Einrasten sofort ganz da ── */
+/* ── Szenen: der Text jeder Szene ist echter HTML-Text und steht immer ganz da (nie Buchstabe für Buchstabe); zwischen zwei Szenen blendet er kurz über ── */
 .szenen { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
-.sz { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .28s ease, visibility 0s linear .28s; }
-.sz.an { opacity: 1; visibility: visible; transition: opacity .28s ease; }
+.sz { position: absolute; inset: 0; visibility: hidden; }
+.sz.an, .sz.zeigt { visibility: visible; }
+/* Die Deckkraft (--tafel) setzt haus.js nach der Scroll-Lage: Überblendung zwischen zwei Szenen. Sie liegt auf der Tafel selbst, nicht auf der Szene:
+   So bleibt der unscharfe, dunkle Grund der Tafel auch halb durchsichtig erhalten, der Text ist bis zuletzt lesbar. Bedienbar ist nur .an. */
+.sz > .sz-innen { opacity: var(--tafel, 1); }
 .sz-innen { position: absolute; pointer-events: auto; }
 .sz h1, .sz h2 { text-wrap: balance; }
 
