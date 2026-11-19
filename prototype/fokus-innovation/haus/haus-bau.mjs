@@ -185,7 +185,10 @@ export function hausBauen(h) {
   let m = les('buehne.html').replace(/<!--[\s\S]*?-->\n?/g, '');
   const ersetze = (marke, text) => { if (m.split(marke).length !== 2) throw new Error(`Haus: Marke ${marke} muss genau einmal in buehne.html stehen`); m = m.replace(marke, () => text); };
   ersetze('{{szenen}}', szenen.map(panel).join('\n'));
-  ersetze('{{snaps}}', szenen.map((s, i) => `<span class="snap" data-szene="${i}"></span>`).join(''));
+  // Raststellen: je Szene eine, mit ihrer Gruppe. Die Gruppe bestimmt in haus.css die Länge von Halt und Fahrt (--halt-…, --fahrt-…): Auftakt (Szenen vor dem Haus),
+  // Etage (Erdgeschoss bis Dach), Schluss (Pakete) und Ende (letzte Szene: nach ihrem Halt folgt der Kreis). Eine neue Etage bekommt ihre Länge so von selbst.
+  const gruppe = (s, i) => (i === szenen.length - 1 ? 'ende' : s.art === 'etage' || s.art === 'tresen' ? 'etage' : s.art === 'pakete' || s.art === 'finale' ? 'schluss' : 'auftakt');
+  ersetze('{{snaps}}', szenen.map((s, i) => `<span class="snap snap-${gruppe(s, i)}" data-szene="${i}"></span>`).join(''));
   ersetze('{{etagen}}', etagenNav);
   ersetze('{{stufen}}', stufenNav);
   ersetze('{{wahl}}', wahlListe);

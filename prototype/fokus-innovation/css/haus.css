@@ -1,3 +1,12 @@
+.track {
+  --halt-auftakt: 90vh;   --fahrt-auftakt: 90vh;
+  --halt-etage: 140vh;    --fahrt-etage: 110vh;
+  --halt-schluss: 120vh;  --fahrt-schluss: 100vh;
+  --kreis: 60vh;
+}
+@media (pointer: coarse) {
+  .track { --halt-auftakt: 0px; --fahrt-auftakt: 100vh; --halt-etage: 0px; --fahrt-etage: 100vh; --halt-schluss: 0px; --fahrt-schluss: 100vh; --kreis: 50vh; }
+}
 :root { --hr: 16px; }
 @media (min-width: 1440.02px) { :root { --hr: calc(16px + (100vw - 1440px) * 0.00740667); } }
 @media (max-width: 1440px) { :root { --hr: 1.111111vw; } }
@@ -96,34 +105,27 @@
 .t-body { font-size: var(--font-size-body-phone); line-height: var(--leading-copy); letter-spacing: var(--tracking-copy); }
 .t-caption { font-size: var(--font-size-caption); letter-spacing: var(--tracking-caps); text-transform: uppercase; font-weight: 500; line-height: var(--leading-display); }
 .t-lead { font-size: var(--font-size-lead); font-weight: 500; letter-spacing: var(--tracking-copy); }
-.track { --szene: calc(1.2 * 100vh); position: relative; z-index: 1; background: var(--background); height: calc(14.5 * var(--szene) + 100vh); }
-@media (pointer: coarse) { .track { --szene: 100vh; } }
-html.still-s .track { height: 100vh; height: 100dvh; }
-.stage { position: sticky; top: 0; height: 100vh; height: 100dvh; width: 100%; overflow: hidden; }
+.track { position: relative; z-index: 1; background: var(--background); display: grid; grid-template-columns: minmax(0, 1fr); }
+.track > :is(.snaps, .stage) { grid-area: 1 / 1; }
+html.still-s .track { height: 100vh; height: 100dvh; display: block; }
+html.still-s .snaps { display: none; }
+.stage { position: sticky; top: 0; align-self: start; height: 100vh; height: 100dvh; width: 100%; overflow: hidden; }
 .seq { position: absolute; inset: 0; z-index: 1; background: var(--raw-nacht); background-size: cover; background-position: center; }
 .seq canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .seq-shade { position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(130% 95% at 50% 45%, transparent 52%, rgb(5 6 9 / .6) 100%), linear-gradient(to bottom, rgb(5 6 9 / .4), transparent 24%, transparent 68%, rgb(5 6 9 / .55)); }
 .grain { position: absolute; inset: 0; pointer-events: none; opacity: .045; background-size: 160px 160px; }
-.snaps { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
-.snap { position: absolute; left: 0; width: 100%; height: var(--szene); scroll-snap-align: start; scroll-snap-stop: always; }
-.snap:nth-child(1) { top: 0; }
-.snap:nth-child(2) { top: calc(1 * var(--szene)); }
-.snap:nth-child(3) { top: calc(2 * var(--szene)); }
-.snap:nth-child(4) { top: calc(3 * var(--szene)); }
-.snap:nth-child(5) { top: calc(4 * var(--szene)); }
-.snap:nth-child(6) { top: calc(5 * var(--szene)); }
-.snap:nth-child(7) { top: calc(6 * var(--szene)); }
-.snap:nth-child(8) { top: calc(7 * var(--szene)); }
-.snap:nth-child(9) { top: calc(8 * var(--szene)); }
-.snap:nth-child(10) { top: calc(9 * var(--szene)); }
-.snap:nth-child(11) { top: calc(10 * var(--szene)); }
-.snap:nth-child(12) { top: calc(11 * var(--szene)); }
-.snap:nth-child(13) { top: calc(12 * var(--szene)); }
-.snap:nth-child(14) { top: calc(13 * var(--szene)); }
-.snap:nth-child(15) { top: calc(14 * var(--szene)); }
+.snaps { padding-bottom: 100vh; pointer-events: none; }
+.snap { display: block; box-sizing: border-box; scroll-snap-align: start; scroll-snap-stop: always; }
+.snap-auftakt { height: calc(var(--halt-auftakt) + var(--fahrt-auftakt)); padding-top: var(--halt-auftakt); }
+.snap-etage { height: calc(var(--halt-etage) + var(--fahrt-etage)); padding-top: var(--halt-etage); }
+.snap-schluss { height: calc(var(--halt-schluss) + var(--fahrt-schluss)); padding-top: var(--halt-schluss); }
+.snap-ende { height: calc(var(--halt-schluss) + var(--kreis)); padding-top: var(--halt-schluss); }
 html.rast-fest { scroll-snap-type: y mandatory; scroll-padding-top: 0; }
 html.rast-fest :is(#kurz, #einstieg) { scroll-snap-align: start; scroll-snap-stop: always; }
+html.lenis, html.lenis body { height: auto; }
+html.lenis.lenis-smooth { scroll-behavior: auto !important; }
+dialog.haus { overscroll-behavior: contain; }
 html.fahrt-aus .track { display: none; }
 html.fahrt-aus .kopf { position: sticky; }
 .szenen { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
@@ -387,7 +389,7 @@ html:not(.fahrt-aus) .start .sprung { position: fixed; }
 .kopf.ueber-film .haupt-nav > a:hover, .kopf.ueber-film .nav-punkt > a:hover, .kopf.ueber-film .kopf-kontakt:hover { color: var(--hell); background: rgba(242, 243, 243, .08); }
 .kopf.ueber-film .knopf { background: var(--hell); color: var(--nacht); border-color: var(--hell); }
 .kopf.ueber-film .menue summary { border-color: rgba(242, 243, 243, .34); }
-html:not(.js) .track, html.statisch .track { height: auto; }
+html:not(.js) .track, html.statisch .track { height: auto; display: block; }
 html:not(.js) .stage, html.statisch .stage { position: static; height: auto; overflow: visible; }
 html:not(.js) :is(.snaps, .etagen, .fahrt-stufen, .star, .grain, .seq-shade, .ueberspringen) , html.statisch :is(.snaps, .etagen, .fahrt-stufen, .star, .grain, .seq-shade) { display: none; }
 html:not(.js) .seq, html.statisch .seq { display: none; }

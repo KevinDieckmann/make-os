@@ -1,8 +1,9 @@
 /* MAKE Innovation · „Das Haus“: die Fahrt durch 15 Szenen (QUELLE; bauen.mjs macht daraus js/haus.js und setzt Szenen und Linkziele ein).
    Das Produkt des Kunden fährt im Aufzug von der Straße bis zur Bühne auf dem Dach. Die Zeichnung (Canvas) folgt der Scroll-Position.
-   Das Scrollen gehört dem Besucher: Rad und Trackpad scrollen ganz normal, die Seite fängt nichts ab. Erst im Stillstand gleitet sie auf die
-   nächste Szene (weiches Einrasten, jede Eingabe bricht es ab); mit dem Finger rastet der Browser selbst (CSS Scroll-Snap).
-   Der Text jeder Szene ist echtes HTML und steht ganz da. Alles von Hand, keine Fremdbibliothek.
+   Jede Szene hat auf dem Scrollweg einen HALT (der Raum steht, die Tafel ist voll da) und eine FAHRT zur nächsten Szene. Am Rechner scrollt die Seite
+   weich und etwas gebremst (Lenis, js/lenis.min.js, die einzige Fremdbibliothek); im Halt rastet nichts, nur wer mitten in einer Fahrt stehen bleibt,
+   gleitet zum näheren Halt. Mit dem Finger scrollt der Browser selbst und rastet Szene für Szene (CSS Scroll-Snap).
+   Alle Stellwerte: Längen in haus.css ganz oben, das Gefühl hier unter „STELLWERTE DES SCROLLENS“. Der Text jeder Szene ist echtes HTML und steht ganz da.
    Sicherheitsregeln der Website: keine style-Attribute in eingesetztem HTML, nur Klassen und einzelne el.style-Zuweisungen. */
 if (!document.documentElement.classList.contains('fahrt-aus')) { // Rückkehrer sehen die Fahrt nicht (haus-frueh.js)
 const $ = (s, r = document) => r.querySelector(s);
@@ -55,7 +56,7 @@ class Spring {
     if (this.on) this.on(this.v);
   }
 }
-const FOLGE = { tension: 700, friction: 53 };      // die Kamera folgt der Scroll-Position straff (kritisch gedämpft, rund 75 ms Nachlauf): glättet einzelne Rad-Rasten, hängt aber nicht hinterher
+const FOLGE = { tension: 700, friction: 53 };      // ohne Lenis (Finger): die Kamera folgt der Scroll-Position straff (kritisch gedämpft, rund 75 ms Nachlauf); mit Lenis folgt sie ohne Feder
 const EINFLUG = { duration: 3200, easing: easeOutQuint };
 
 /* ── Taktgeber: Leser, Federn, Zeichner ── */
@@ -1304,7 +1305,7 @@ function markenLicht() {
 }
 function drawScene(v, t) {
   const p = v.pz; // Stelle für Kern und Licht (bei einem Flug weicht sie von der Stelle der Kamera ab)
-  kamera(v); oy = 0; spots = span(p, SPOTS); marks = span(p, [THREAD[0] + 0.018, THREAD[1]]) * (1 - span(p, FADEN_OUT)); beacon = span(p, THREAD) * (1 - 0.55 * span(p, [FADEN_OUT[0], SPOTS[1]]));
+  kamera(v); if (NAH) S.f *= 1 + NAH; oy = 0; spots = span(p, SPOTS); marks = span(p, [THREAD[0] + 0.018, THREAD[1]]) * (1 - span(p, FADEN_OUT)); beacon = span(p, THREAD) * (1 - 0.55 * span(p, [FADEN_OUT[0], SPOTS[1]]));
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   ctx.drawImage(sky, 0, Math.round(S.cy - skyHy));
   drawCity();
@@ -1325,48 +1326,132 @@ function snap(c) { if (!STILL) return; c.style.visibility = 'hidden'; c.parentEl
 
 /* ═══════════════ Aufbau der Seite: die 15 Szenen ═══════════════ */
 const SZ = /*SZENEN*/[]/*SZENEN-ENDE*/;   // je Szene: id, art, stufe und bild (p, pz, ue, zone, zoom)
-const N = SZ.length, KREIS = 0.5;          // nach der letzten Szene wächst der Kreis noch eine halbe Szenenlänge lang (Übergang in die Kurz-Startseite); dieselbe Zahl steht in haus.css (Höhe der Spur: 14,5 Szenen)
+const N = SZ.length;                        // nach der letzten Szene wächst der Kreis (Übergang in die Kurz-Startseite); seine Länge steht in haus.css (--kreis)
 const kopf = $('.kopf');
 const track = $('#top'), star = $('#star'), starTint = $('#starTint'), skip = $('#ueberspringen');
 const panels = SZ.map((s) => $('#szene-' + s.id));
 const etagenNav = $('#etagen'), stufenNav = $('#stufen'), wahl = $('#etagenwahl'), gast = $('#gastwunsch');
 const KURZ = () => document.getElementById('kurz') || document.getElementById('einstieg');
 const spurTop = () => track.getBoundingClientRect().top + scrollY;
-/* Länge einer Szene auf der Spur in px. Sie steht in haus.css (--szene) und wird gemessen, nie aus der Fensterhöhe gerechnet:
-   Am Handy ändert sich die Fensterhöhe mit der Adressleiste, die Spur (vh) nicht. So springt beim Ein- und Ausblenden der Leiste nichts. */
-const rastEls = $$('.snap', track);
-let SZL = innerHeight;
-function messen() { const l = rastEls.length > 1 ? rastEls[1].getBoundingClientRect().top - rastEls[0].getBoundingClientRect().top : 0; SZL = l > 50 ? l : innerHeight; } // genau, nicht auf ganze Pixel gerundet (Zoom)
-messen();
-const szeneY = (i) => (STATISCH ? Math.round(panels[i].getBoundingClientRect().top + scrollY - 8) : Math.round(spurTop() + i * SZL));
-const kurzY = () => { const k = KURZ(); return Math.round(k ? k.getBoundingClientRect().top + scrollY : spurTop() + track.offsetHeight); };
 
-/* ── Eigene Fahrten der Seite: Tasten, Knöpfe, Leisten und das weiche Einrasten. Rad, Trackpad und Finger scrollen ganz normal (nichts wird abgefangen);
-      jede Eingabe des Besuchers bricht eine laufende Fahrt sofort ab, die Seite bleibt, wo sie gerade ist. ── */
-let fahrt = null;                    // { von, y, t0, dauer, kurve, ziel } · ziel = Nummer der Szene (N = Kurz-Startseite)
-let eigenY = -1, eigenOffen = false; // die Lage, die wir zuletzt selbst gesetzt haben (so erkennen wir im scroll-Ereignis fremde Bewegung)
-let geste = false, gesteY = 0, basis = 0; // die laufende Geste des Besuchers (siehe weiches Einrasten)
-let cssAn = false;                   // html.rast-fest: der Browser rastet selbst (nur bei Berührung, nur im Stillstand umgeschaltet)
+/* ═══════════════ STELLWERTE DES SCROLLENS (eine Zahl ändern genügt) ═══════════════
+   Die LÄNGEN von Halt und Fahrt je Szene stehen in haus.css ganz oben (--halt-…, --fahrt-…, --kreis). Hier steht, wie sich das Scrollen anfühlt. */
+const LENIS = { lerp: 0.09, wheelMultiplier: 0.75 }; // weiches Scrollen am Rechner (Rad, Trackpad): lerp kleiner = weicher und träger · wheelMultiplier kleiner = langsamer (1 = so schnell wie der Browser)
+const ANLAUF = 0.2;              // Anteil der Fahrt, in dem Aufzug bzw. Kamera anfahren und am Ende wieder ausrollen (0 = gleichmäßig, 0.5 = durchgehend weich)
+const TAFEL_BLENDE = 0.2;        // die Tafel blendet im ersten Fünftel der Fahrt aus, die nächste im letzten Fünftel ein; dazwischen fährt nur die Zeichnung
+const NAEHER = 0.03;             // im Halt kommt die Zeichnung beim Scrollen ganz langsam näher (0.03 = 3 %), damit der Raum lebt; 0 = sie steht still
+const RUHE = 350, RUHE_UNKLAR = 700; // ms ohne Eingabe und ohne Bewegung, bevor die Seite aus einer FAHRT zum näheren Halt gleitet; „unklar“ = Bewegung ohne erkennbare Eingabe (z. B. gezogene Bildlaufleiste)
+const RAST_AB = 0.15;            // ab diesem Anteil der Fahrt (in Scrollrichtung gezählt) gleitet sie weiter zum Halt, auf den man zufährt, davor zurück zum letzten. 0.5 = immer zum näheren Halt · kleiner (z. B. 0.25) = ein angefangener Schritt wird eher zu Ende gefahren
+const RAST_DAUER = [700, 1300];  // ms für dieses Gleiten (kurzer bis langer Weg)
+const RAST_TIEFE = 0.04;         // so weit (in Fensterhöhen) gleitet sie in den Halt hinein, damit ein Zittern am Rand nicht gleich wieder losfährt
+const TASTE_DAUER = [900, 1400]; // ms für eine Fahrt per Taste, Knopf oder Leiste (kürzeste, längste) …
+const TASTE_JE_HOEHE = 400;      // … dazwischen so viele ms je Fensterhöhe Weg
+
+/* ── Der Weg der Fahrt: EINE Stelle für Zeichnung, Tafeln, Leisten, Tasten und Einrasten ──
+   Jede Szene hat auf der Spur erst einen HALT (der Raum steht, die Tafel ist voll da) und dann eine FAHRT zur nächsten Szene (Aufzug bzw. Kamera fährt).
+   Die Längen stehen in haus.css und werden an den Raststellen (.snap) gemessen (Höhe = Halt + Fahrt, padding-top = Halt), nie aus der Fensterhöhe gerechnet:
+   Am Handy ändert sich die Fensterhöhe mit der Adressleiste, die Spur (vh) nicht. So springt beim Ein- und Ausblenden der Leiste nichts.
+   ortVon(y) macht aus einer Scroll-Lage den Ort: i = Szene · h = Anteil im Halt (0 … 1) · t = Anteil der Fahrt (0 = im Halt) · lage = Stelle für die Zeichnung
+   (im Halt genau i, in der Fahrt mit Anfahren und Ausrollen von i nach i + 1) · kreis = Anteil des Übergangs nach der letzten Szene. */
+const rastEls = $$('.snap', track), snapsEl = $('.snaps', track);
+let WEG = rastEls.map(() => ({ y: 0, halt: 0, fahrt: 1 })), U = innerHeight, HALTE = false; // WEG[i] = { y, halt, fahrt } in px ab Anfang der Spur · U = eine Fensterhöhe der Spur (100vh) · HALTE = es gibt Halte (am Rechner)
+function messen() {
+  const o = track.getBoundingClientRect().top;
+  WEG = rastEls.map((el) => { const r = el.getBoundingClientRect(), halt = Math.min(r.height, parseFloat(getComputedStyle(el).paddingTop) || 0); return { y: r.top - o, halt, fahrt: Math.max(1, r.height - halt) }; }); // genau, nicht auf ganze Pixel gerundet (Zoom)
+  U = (snapsEl && parseFloat(getComputedStyle(snapsEl).paddingBottom)) || innerHeight;
+  HALTE = WEG.some((w) => w.halt > 1);
+}
+messen();
+function schwung(t) { // Anfahren und Ausrollen: die Geschwindigkeit steigt im ersten Stück an, bleibt gleich und fällt im letzten Stück ab. Ohne Halte (Finger) läuft die Lage gleichmäßig mit.
+  if (!HALTE || ANLAUF <= 0) return t;
+  const a = Math.min(0.5, ANLAUF), v = 1 / (1 - a);
+  return t < a ? (v * t * t) / (2 * a) : t > 1 - a ? 1 - (v * (1 - t) * (1 - t)) / (2 * a) : v * (t - a / 2);
+}
+function schwungZurueck(f) { // die Umkehrung: aus dem Anteil der Lage der Anteil der Fahrt
+  if (!HALTE || ANLAUF <= 0) return f;
+  const a = Math.min(0.5, ANLAUF), v = 1 / (1 - a), g = (v * a) / 2;
+  return f < g ? Math.sqrt((2 * a * f) / v) : f > 1 - g ? 1 - Math.sqrt((2 * a * (1 - f)) / v) : f / v + a / 2;
+}
+function ortVon(yAbs) {
+  const r = yAbs - spurTop(); let i = 0; while (i < N - 1 && r >= WEG[i + 1].y) i++;
+  const w = WEG[i], d = r - w.y;
+  if (d <= w.halt) return { i, h: w.halt > 0 ? clamp01(d / w.halt) : 1, t: 0, lage: i, kreis: 0 };
+  const t = clamp01((d - w.halt) / w.fahrt);
+  return i < N - 1 ? { i, h: 1, t, lage: i + schwung(t), kreis: 0 } : { i, h: 1, t, lage: i, kreis: t };
+}
+function yVonLage(v) { // die Scroll-Lage, an der die Zeichnung an der Stelle v steht
+  const i = Math.max(0, Math.min(N - 1, Math.floor(v))), f = Math.min(1, Math.max(0, v - i)), w = WEG[i];
+  return spurTop() + w.y + w.halt + (i < N - 1 ? schwungZurueck(f) * w.fahrt : 0);
+}
+const nahVon = (o) => (HALTE && NAEHER ? NAEHER * (o.t > 0 && o.i < N - 1 ? 1 - schwung(o.t) : smooth(o.h)) : 0); // im Halt kommt die Zeichnung näher, in der Fahrt geht sie auf die Grundstellung der nächsten Szene zurück
+/* Wohin Tasten, Leisten und Direkteinstiege zielen: die Mitte des Halts (Szene 1: der Anfang der Seite). */
+const szeneY = (i) => (STATISCH ? Math.round(panels[i].getBoundingClientRect().top + scrollY - 8) : Math.round(spurTop() + WEG[i].y + (i > 0 ? WEG[i].halt / 2 : 0)));
+const kurzY = () => { const k = KURZ(); return Math.round(k ? k.getBoundingClientRect().top + scrollY : spurTop() + track.offsetHeight); };
+const aufBuehne = () => { const bb = track.getBoundingClientRect(); return bb.top <= 1 && bb.bottom >= innerHeight - 1; }; // die Bühne steht im Bild (nicht davor, nicht beim Hinausschieben danach)
+window.__haus = { ort: ortVon, weg: () => WEG }; // nur zum Messen (werkzeug/haus-echtlauf.mjs)
+
+/* ── Weiches Scrollen am Rechner (Lenis, js/lenis.min.js): Rad und Trackpad werden geglättet und etwas gebremst. Nur bei feinem Zeiger; mit dem Finger und bei
+      „weniger Bewegung“ scrollt der Browser selbst. Lenis gilt für die ganze Seite, also auch für die Kurz-Startseite nach der Fahrt (kein Bruch am Ende).
+      Solange ein Dialog oder das Menü offen ist, steht Lenis: Die Seite dahinter bewegt sich nicht, der Dialog selbst scrollt wie gewohnt. ── */
+let lenis = null;
+if (window.Lenis && matchMedia('(pointer: fine)').matches && !reduce && !STATISCH) {
+  try {
+    lenis = new window.Lenis({ lerp: LENIS.lerp, wheelMultiplier: LENIS.wheelMultiplier, smoothWheel: true, syncTouch: false, autoRaf: false, allowNestedScroll: true }); // allowNestedScroll: was selbst scrollen kann (Dialog, Menü), scrollt der Browser
+    window.lenis = lenis;
+  } catch (e) { console.error(e); lenis = null; }
+}
+
+/* ── Eigene Fahrten der Seite: Tasten, Knöpfe, Leisten und das weiche Einrasten. Jede Eingabe des Besuchers bricht eine laufende Fahrt sofort ab,
+      die Seite bleibt, wo sie gerade ist. Mit Lenis fährt Lenis (scrollTo), sonst setzen wir die Lage Bild für Bild selbst.
+      GEFÜHRTE Fahrt (Tasten, Leisten, Knöpfe): Die Zeichnung fährt in der Zeit gleichmäßig weich von ihrer Stelle zur Zielszene, statt an jedem Halt zu warten;
+      die Scroll-Lage läuft nur mit und steht am Ende in der Mitte des Halts. Wird die Fahrt abgebrochen, steht die Seite dort, wo die Zeichnung gerade ist. ── */
+let fahrt = null;                    // { von, y, t0, dauer, kurve, ziel, fuehrt } · ziel = Nummer der Szene (N = Kurz-Startseite) · fuehrt = { lage0, lage1, nah0, nah1, kreis0 } oder null
+let eigenY = -1, eigenOffen = false; // ohne Lenis: die Lage, die wir zuletzt selbst gesetzt haben (so erkennen wir im scroll-Ereignis fremde Bewegung)
+let ORT = { i: 0, h: 0, t: 0, lage: 0, kreis: 0 }, NAH = 0; // der Ort, der gerade gezeigt wird, und wie nah die Zeichnung steht
+let cssAn = false;                   // html.rast-fest: der Browser rastet selbst (nur mit dem Finger und ohne Halte, nur im Stillstand umgeschaltet)
 function cssRasten(an) { if (an === cssAn) return; cssAn = an; root.classList.toggle('rast-fest', an); }
-function fahrtAus() { fahrt = null; }
-function fahre(y, dauer, kurve, ziel = null) {
+function setze(y) { if (lenis) { lenis.reset(); lenis.scrollTo(y, { immediate: true, force: true }); } else scrollTo(0, y); } // ohne Fahrt dorthin (reset: Lenis nimmt erst die wirkliche Lage, sonst hielte es einen Sprung des Browsers für schon erledigt)
+function sperreAbgleichen() { // offener Dialog, offenes Menü: Lenis steht (der Browser scrollt dort selbst)
+  if (!lenis) return; const g = gesperrt(); if (g === lenis.isStopped) return;
+  fahrtAus(); if (g) lenis.stop(); else lenis.start();
+}
+function fahrtAus() {
+  const f = fahrt; if (!f) return; fahrt = null;
+  if (f.fuehrt && ORT.gefuehrt && ORT.lage !== f.fuehrt.lage0) setze(yVonLage(ORT.lage)); // geführte Fahrt: Die Seite steht ab jetzt dort, wo die Zeichnung gerade ist
+  else if (lenis) lenis.reset();
+}
+function fahre(y, dauer, kurve, ziel = null, gefuehrt = false) {
   y = Math.max(0, Math.min(y, root.scrollHeight - innerHeight));
-  if (Math.abs(y - scrollY) < 1) { fahrt = null; return; }
+  const von = ORT, nah0 = NAH;
+  fahrtAus(); sperreAbgleichen();
+  if (Math.abs(y - scrollY) < 1) return;
   cssRasten(false); // eigene Fahrten laufen ohne das Rasten des Browsers (er würde jeden Schritt auf eine Raststelle ziehen); umgeschaltet wird im Stand
-  fahrt = { von: scrollY, y, t0: performance.now(), dauer, kurve, ziel }; geste = false;
+  const fuehrt = gefuehrt && ziel != null && ziel < N && aufBuehne() ? { lage0: von.lage, lage1: ziel, nah0, nah1: nahVon(ortVon(y)), kreis0: von.kreis, nur: [Math.round(von.lage), ziel] } : null;
+  const f = fahrt = { von: scrollY, y, t0: performance.now(), dauer, kurve, ziel, fuehrt };
+  if (lenis) lenis.scrollTo(y, { duration: dauer / 1000, easing: kurve, force: true, onComplete: () => { if (fahrt === f) fahrt = null; } });
+}
+function fahrtOrt(now) { // der Ort einer geführten Fahrt zum Zeitpunkt now
+  const g = fahrt.fuehrt, k = clamp01((now - fahrt.t0) / fahrt.dauer), e = fahrt.kurve(k), v = k >= 1 ? g.lage1 : lerp(g.lage0, g.lage1, e);
+  const i = Math.max(0, Math.min(N - 1, Math.floor(v))), fr = Math.min(1, Math.max(0, v - i));
+  return { i, h: 1, t: i < N - 1 ? schwungZurueck(fr) : 0, lage: v, kreis: g.kreis0 * (1 - e), nah: lerp(g.nah0, g.nah1, e), nur: g.nur, gefuehrt: true };
 }
 readers.push((now) => {
+  if (lenis) { // Lenis läuft in unserem Takt, vor dem Lesen der Lage
+    sperreAbgleichen(); lenis.raf(now);
+    if (fahrt && lenis.isScrolling !== 'smooth' && now - fahrt.t0 > 80) fahrtAus(); // die Fahrt ist von außen beendet worden
+    return;
+  }
   if (!fahrt) return;
   const k = Math.min(1, Math.max(0, (now - fahrt.t0) / fahrt.dauer));
   eigenY = k < 1 ? fahrt.von + (fahrt.y - fahrt.von) * fahrt.kurve(k) : fahrt.y; eigenOffen = true;
   scrollTo(0, eigenY);
   if (k >= 1) fahrt = null;
 });
-/* Eine Szene anfahren (i = N: die Kurz-Startseite): Knöpfe, Leisten, Tasten, Direkteinstiege. */
-function szeneZu(i, sofort, dauer, kurve) {
-  const kurz = i >= N, y = kurz ? kurzY() : szeneY(Math.max(0, Math.min(N - 1, i)));
-  if (sofort || STATISCH || reduce) { fahrtAus(); if (Math.abs(y - scrollY) >= 2) { cssRasten(false); scrollTo(0, y); } return; }
-  fahre(y, dauer ?? (kurz ? 1200 : Math.min(1500, 520 + 120 * Math.abs((y - scrollY) / SZL))), kurve ?? easeInOutSine, Math.max(0, Math.min(N, i)));
+/* Eine Szene anfahren (i = N: die Kurz-Startseite): Knöpfe, Leisten, Tasten, Direkteinstiege. Ziel ist die Mitte des Halts. Die Dauer richtet sich nach dem Weg. */
+function szeneZu(i, sofort) {
+  const kurz = i >= N, n = Math.max(0, Math.min(N - 1, i)), y = kurz ? kurzY() : szeneY(n);
+  if (sofort || STATISCH || reduce || (!kurz && !aufBuehne())) { fahrtAus(); if (Math.abs(y - scrollY) >= 2) { cssRasten(false); setze(y); } return; }
+  fahre(y, Math.min(TASTE_DAUER[1], Math.max(TASTE_DAUER[0], (TASTE_JE_HOEHE * Math.abs(y - scrollY)) / U)), easeInOutSine, kurz ? N : n, !kurz);
 }
 const szeneNr = (w) => { const n = /^\d+$/.test(w) ? +w - 1 : SZ.findIndex((s) => s.id === w); return n >= 0 && n < N ? n : -1; };
 const sceneDirty0 = () => { sceneDirty = true; };
@@ -1392,7 +1477,7 @@ const sS = new Spring(0, FOLGE, sceneDirty0, 0.0004);
 (() => { const c = document.createElement('canvas'); c.width = c.height = 160; const g = c.getContext('2d'), d = g.createImageData(160, 160), R = mulberry(3); for (let i = 0; i < d.data.length; i += 4) { const v = (R() * 255) | 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; } g.putImageData(d, 0, 0); $('#grain').style.backgroundImage = `url(${c.toDataURL()})`; })();
 
 /* ── Lesen: wo steht die Seite? Danach Text, Leisten, Kreis und Kopf ── */
-let roh = 0, aktiv = -1, canvasAn = true, kopfLage = '', marke = false;
+let aktiv = -1, canvasAn = true, kopfLage = '', marke = false;
 const stufenFolge = [...new Set(SZ.map((s) => s.stufe).filter(Boolean))];
 const stufeVon = (i) => SZ[i].stufe;
 const etagenLinks = $$('a', etagenNav), stufenLinks = $$('a', stufenNav);
@@ -1413,117 +1498,104 @@ function zeigeSzene(a) {
     if (jetzt) l.setAttribute('aria-current', 'step'); else l.removeAttribute('aria-current');
   });
 }
-/* Die Tafeln blenden nach der Lage: Tafel i steht voll da, solange die (straff nachgeführte) Lage näher als 0,3 Szenen an i ist, und blendet bis 0,5 weich aus;
-   erst danach kommt die nächste. Nie zwei Tafeln zugleich, nie Buchstabe für Buchstabe: Der Text steht ganz da, er wandert nur wenige Pixel mit. */
+/* Die Tafeln blenden nach dem Ort: Im ganzen Halt steht die Tafel voll da. Sie blendet im ersten Stück der Fahrt aus (TAFEL_BLENDE), die nächste im letzten Stück ein;
+   dazwischen fährt nur die Zeichnung. Ohne Halte (Finger) wie bisher: voll bis 0,3 Szenen Abstand, weg bei 0,5. Nie zwei Tafeln zugleich, nie Buchstabe für Buchstabe:
+   Der Text steht ganz da, er wandert nur wenige Pixel mit. Nach der letzten Szene blendet die Tafel mit dem Kreis aus. */
 const tafelO = new Array(N).fill(-1);
 /* Deckkraft und Versatz liegen direkt auf der Tafel (eigene Ebene, solange sie zu sehen ist): Der Wechsel läuft dann im Zusammensetzer und zeichnet nichts neu. */
 const tafelInnen = panels.map((el) => el.querySelector(':scope > .sz-innen') || el);
-function tafeln(lage) {
-  for (let i = 0; i < N; i++) {
-    const d = lage - i, a = Math.abs(d), t = a <= 0.3 ? 0 : a >= 0.5 ? 1 : (a - 0.3) / 0.2;
-    const o = Math.round((1 - t * t * (3 - 2 * t)) * 200) / 200;
-    if (o === tafelO[i]) continue; tafelO[i] = o;
-    const el = panels[i], in_ = tafelInnen[i];
-    in_.style.opacity = String(o); in_.style.transform = o < 1 && o > 0 ? `translate3d(0,${(-Math.sign(d) * (1 - o) * 14).toFixed(1)}px,0)` : '';
-    el.classList.toggle('zeigt', o > 0);
+function tafeln(o) {
+  const aus = HALTE ? [0, TAFEL_BLENDE] : [0.3, 0.5], ein = HALTE ? [1 - TAFEL_BLENDE, 1] : [0.5, 0.7];
+  for (let j = 0; j < N; j++) {
+    let op = 0, ri = 0;
+    if (j === o.i) { op = 1 - smooth(j === N - 1 ? span(o.kreis, [0.6, 1]) : span(o.t, aus)); ri = -1; }
+    else if (j === o.i + 1) { op = smooth(span(o.t, ein)); ri = 1; }
+    if (o.nur && !o.nur.includes(j)) op = 0; // geführte Fahrt über mehrere Szenen: die Tafeln dazwischen blitzen nicht auf
+    op = Math.round(op * 200) / 200;
+    if (op === tafelO[j]) continue; tafelO[j] = op;
+    const el = panels[j], in_ = tafelInnen[j];
+    in_.style.opacity = String(op); in_.style.transform = op < 1 && op > 0 ? `translate3d(0,${(ri * (1 - op) * 14).toFixed(1)}px,0)` : '';
+    el.classList.toggle('zeigt', op > 0);
   }
 }
-painters.push(() => { if (!STATISCH && !STILL) tafeln(sS.v); });
+painters.push(() => { if (!STATISCH && !STILL) tafeln(ORT); });
 
 let inFahrt = true;
 readers.push((now) => {
   const bb = track.getBoundingClientRect(), h = innerHeight;
   if (STATISCH) { kopfSetzen(bb.bottom <= (kopf ? kopf.offsetHeight : 0) * 0.6 ? 'hell' : 'glas'); return; }
-  roh = STILL ? 0 : Math.min(N - 1 + KREIS, Math.max(0, -bb.top / SZL));
-  const a = Math.min(N - 1, Math.max(0, Math.round(Math.min(roh, N - 1))));
+  const o = STILL ? ORT : fahrt && fahrt.fuehrt ? fahrtOrt(now) : ortVon(scrollY); ORT = o;
+  const a = o.i < N - 1 && o.t >= 0.5 ? o.i + 1 : o.i;
   if (a !== aktiv) zeigeSzene(a);
   inFahrt = !STILL && bb.bottom > 2; // danach scrollt die Seite ganz normal
-  if (!marke && roh >= N - 1 - 0.02) { marke = true; try { localStorage.setItem('make-fahrt', '1'); } catch (_) { /* ohne localStorage: die Fahrt startet beim nächsten Mal wieder */ } }
-  if (!STILL) sS.set(Math.min(roh, N - 1));
+  if (!marke && o.lage >= N - 1 - 0.02) { marke = true; try { localStorage.setItem('make-fahrt', '1'); } catch (_) { /* ohne localStorage: die Fahrt startet beim nächsten Mal wieder */ } }
+  if (!STILL) {
+    const nah = o.nah ?? nahVon(o); if (nah !== NAH) { NAH = nah; sceneDirty = true; }
+    if (!lenis) sS.set(o.lage);                                        // ohne Lenis folgt die Zeichnung über die straffe Feder (glättet einzelne Rad-Rasten)
+    else if (o.lage !== sS.v) sS.set(o.lage, { immediate: true });     // mit Lenis ist die Lage schon geglättet: nicht doppelt nachfedern
+  }
   // der Kreis nach der letzten Szene
-  const c = clamp01((roh - (N - 1)) / KREIS);
+  const c = o.kreis;
   star.style.visibility = c > 0 ? 'visible' : 'hidden'; star.style.opacity = c > 0 ? 1 : 0;
   star.style.transform = `scale(${0.012 + Math.pow(c, 4) * 3.2})`; starTint.setAttribute('opacity', easeInOutSine(span(c, [0.2, 1])));
   canvasAn = c < 0.98 && bb.bottom > 0 && bb.top < h;
-  kopfSetzen(bb.bottom <= (kopf ? kopf.offsetHeight : 0) * 0.6 || c > 0.97 ? 'hell' : roh < 0.5 ? 'szene' : 'glas');
+  kopfSetzen(bb.bottom <= (kopf ? kopf.offsetHeight : 0) * 0.6 || c > 0.97 ? 'hell' : o.lage < 0.5 ? 'szene' : 'glas');
   if (!STILL) rasten(now);
 });
 
-/* ── Weiches Einrasten: Kommt eine kurze Zeit lang keine Eingabe und steht die Seite nicht auf einer Szene, gleitet sie auf die nächste.
-      Es zwingt niemanden: Rad, Taste, Zeiger oder Finger brechen es sofort ab. Hinter der letzten Szene zieht nichts zurück, nach der Fahrt rastet nichts mehr. ── */
-const RUHE = 140, RUHE_UNKLAR = 700;         // ms ohne Eingabe und ohne Bewegung; „unklar“ = Bewegung ohne erkennbare Eingabe (z. B. gezogene Bildlaufleiste)
-const SCHWELLE = 0.12, SCHWELLE_PX = 90;     // ab diesem Weg (in Szenen, höchstens 90 px: eine Raste des Mausrads genügt) geht es in Scrollrichtung zur nächsten Szene statt zurück
-const SCHWELLE_DURCH = 0.35;                 // nach einer überfahrenen Szene: erst ab hier weiter zur übernächsten, sonst zurück auf die eben erreichte
+/* ── Weiches Einrasten: Im HALT passiert nichts. Dort kann man beliebig stehen und ein Stück vor und zurück scrollen. Nur wer mitten in einer FAHRT stehen bleibt,
+      wird nach kurzer Ruhe (RUHE) langsam zum näheren Halt gebracht: weiter zum nächsten erst, wenn schon mehr als die Hälfte der Fahrt zurückgelegt ist (RAST_AB),
+      sonst zurück. Es zwingt niemanden: Rad, Taste, Zeiger oder Finger brechen es sofort ab. Nach der Fahrt rastet nichts mehr.
+      Ohne Halte (Finger) rastet der Browser selbst, Szene für Szene (html.rast-fest). ── */
 const grob = matchMedia('(pointer: coarse)');
 let tast = grob.matches;                     // Berührung: dort rastet der Browser selbst (html.rast-fest), das weiche Einrasten springt nur ein, solange die Klasse ruht
-let letzteRegung = performance.now() + 600, letzteEingabe = 0, letzterScroll = 0, letztY = scrollY, dir = 0, unklar = false;
-let zeigerUnten = false, fingerUnten = false, haltSzene = -1;
+let letzteRegung = performance.now() + 600, letzteEingabe = 0, letzterScroll = 0, letztY = scrollY, dir = 0, unklar = false; // dir = Richtung der letzten Bewegung (1 = nach unten)
+let zeigerUnten = false, fingerUnten = false;
 const feldAktiv = () => { const el = document.activeElement; return !!el && el !== document.body && el.matches('input, textarea, select, [contenteditable]'); };
 const gesperrt = () => root.classList.contains('menue-offen') || !!document.querySelector('dialog[open]');
 function regung(eingabe) { const t = performance.now(); letzteRegung = t; if (eingabe) letzteEingabe = t; }
-/* Eine Geste beginnt mit der ersten Eingabe nach einer Ruhe. Wir merken uns, wo die Seite da stand (gesteY) und auf welcher Szene sie stand bzw. wohin sie
-   gerade glitt (basis). Wer ein Zurückgleiten unterbricht, setzt seine Geste fort: Kleine, zögernde Schritte zählen zusammen. */
-function gesteBeginn(y0) {
-  if (geste) return; geste = true;
-  if (fahrt && fahrt.zurueck) return;
-  gesteY = y0; basis = fahrt && fahrt.ziel != null ? Math.min(N - 1, fahrt.ziel) : Math.max(0, Math.min(N - 1, Math.round((y0 - spurTop()) / SZL)));
-}
-function rastZiel(y, oben, ende) {
-  const s = (y - oben) / SZL, letzte = N - 1, px = Math.min(SCHWELLE * SZL, SCHWELLE_PX), weg = y - gesteY;
-  if (s > letzte) { // Übergang hinter der letzten Szene (der Kreis): vorwärts zur Kurz-Startseite, von unten kommend hinauf in die letzte Szene. Zurück zieht hier nichts.
-    const yL = szeneY(letzte);
-    if (dir < 0) return ende - y <= px ? ende : yL;
-    return y - yL <= px ? yL : ende;
-  }
-  const b = Math.max(0, Math.min(letzte, basis)), sz = (i) => szeneY(Math.max(0, Math.min(letzte, i)));
-  if (!dir) return sz(Math.round(s));
-  if (weg * dir <= px) return Math.abs(weg) <= px ? sz(b) : sz(dir > 0 ? Math.ceil(s - 1e-4) : Math.floor(s + 1e-4)); // kaum bewegt: zurück bzw. weiter zur Szene, zu der es schon ging · umgekehrt: die nächste Szene in der neuen Richtung
-  const o = dir > 0 ? Math.floor(s + 1e-4) : Math.ceil(s - 1e-4);  // die Szene, die in Scrollrichtung hinter uns liegt
-  if (dir * (o - b) <= 0) return sz(b + dir);                       // deutlicher Weg, noch im ersten Schritt: eine Szene weiter, nie zurück
-  return sz(dir * (s - o) > SCHWELLE_DURCH ? o + dir : o);          // eine Szene oder mehr überfahren: auf die nächstgelegene, mit leichtem Zug nach vorn
-}
 function rasten(now) {
   if (STATISCH || reduce || fahrt || zeigerUnten || fingerUnten) return;
+  if (lenis && lenis.isScrolling === 'smooth') { letzteRegung = now; return; } // das weiche Scrollen läuft noch aus
   const y = scrollY, oben = spurTop(), ende = kurzY(), still = now - letzteRegung;
-  const drin = y >= oben - 1 && y < ende - 1, s = (y - oben) / SZL, n = Math.round(s), aufSzene = drin && n <= N - 1 && Math.abs(y - szeneY(n)) <= 1;
-  if ((aufSzene || !drin) && still > 60) { haltSzene = aufSzene ? n : -1; dir = 0; geste = false; }
-  if (tast) { // Berührung: die Klasse wird nur im Stillstand auf einer Raststelle gesetzt bzw. nach der Fahrt gelöst, nie mitten im Scrollen
-    if (still > 120) { if (!cssAn && aufSzene) cssRasten(true); else if (cssAn && !drin) cssRasten(false); }
+  const drin = y >= oben - 1 && y < ende - 1, o = drin ? ortVon(y) : null, w = o ? WEG[o.i] : null;
+  const a = o ? oben + w.y + w.halt : 0, b = o ? (o.i < N - 1 ? oben + WEG[o.i + 1].y : ende) : 0; // die Fahrt reicht von a (Ende des Halts) bis b (Beginn des nächsten Halts bzw. die Kurz-Startseite)
+  const imHalt = !!o && (y <= a + 1 || y >= b - 1);
+  if (!HALTE && tast) { // Berührung: die Klasse wird nur im Stillstand auf einer Raststelle gesetzt bzw. nach der Fahrt gelöst, nie mitten im Scrollen
+    if (still > 120) { if (!cssAn && imHalt) cssRasten(true); else if (cssAn && !drin) cssRasten(false); }
     if (cssAn) return;
   }
-  if (!drin || aufSzene || still < (unklar ? RUHE_UNKLAR : RUHE) || document.hidden) return; // vor und nach der Fahrt scrollt die Seite ganz normal
+  if (!drin || imHalt || still < (unklar ? RUHE_UNKLAR : RUHE) || document.hidden) return; // vor und nach der Fahrt scrollt die Seite ganz normal
   if (gesperrt() || feldAktiv()) return;
-  if (!geste) { gesteY = y; basis = Math.max(0, Math.min(N - 1, n)); dir = 0; } // ohne Geste (z. B. neu geladen mitten in der Fahrt): auf die nächstgelegene Szene
-  const ziel = rastZiel(y, oben, ende), weg = Math.abs(ziel - y);
-  if (weg < 1) return;
-  const amEnde = ziel >= ende - 1 || s > N - 1, nr = ziel >= ende - 1 ? N : Math.round((ziel - oben) / SZL), zurueck = !amEnde && nr === basis && Math.abs(y - gesteY) <= Math.min(SCHWELLE * SZL, SCHWELLE_PX);
-  fahre(ziel, amEnde ? 420 + 260 * Math.min(1, weg / (1.4 * SZL)) : 280 + 180 * Math.min(1, weg / (0.8 * SZL)), easeOutCubic, nr);
-  if (fahrt) fahrt.zurueck = zurueck;
+  const anteil = (y - a) / (b - a), vor = dir < 0 ? 1 - anteil <= RAST_AB : anteil > RAST_AB, letzte = o.i === N - 1; // in Scrollrichtung gezählt; ohne bekannte Richtung wie nach unten
+  const ziel = vor ? (letzte ? ende : b + Math.min(RAST_TIEFE * U, WEG[o.i + 1].halt / 2)) : a - Math.min(RAST_TIEFE * U, w.halt / 2);
+  if (Math.abs(ziel - y) < 1) return;
+  fahre(ziel, RAST_DAUER[0] + (RAST_DAUER[1] - RAST_DAUER[0]) * Math.min(1, Math.abs(ziel - y) / (1.0 * U)), easeInOutSine, vor ? (letzte ? N : o.i + 1) : o.i);
 }
 addEventListener('scroll', () => {
   const y = scrollY, t = performance.now();
-  if (eigenOffen && Math.abs(y - eigenY) <= 2) { eigenOffen = !!fahrt; letztY = y; return; } // unsere eigene Fahrt
-  gesteBeginn(letztY);
+  if (lenis ? !!fahrt && Math.abs(y - lenis.animatedScroll) <= 3 : eigenOffen && Math.abs(y - eigenY) <= 2) { if (!lenis) eigenOffen = !!fahrt; letztY = y; return; } // unsere eigene Fahrt
   if (y !== letztY) dir = y > letztY ? 1 : -1;
-  letztY = y; haltSzene = -1;
+  letztY = y;
   if (fahrt) fahrtAus();                                                      // jemand anderes bewegt die Seite (Bildlaufleiste, Sprungmarke): wir lassen los
   if (t - letzterScroll > 200) unklar = !fingerUnten && t - letzteEingabe > 300; // eine Bewegung ohne Rad, Taste oder Finger davor: länger warten
   letzterScroll = letzteRegung = t;
 }, { passive: true });
-/* Das Rad hört nur zu (passiv, nichts wird abgefangen): Es bricht eine laufende Fahrt ab und merkt sich den Zeitpunkt. */
+/* Das Rad hört nur zu (passiv): Es bricht eine laufende Fahrt ab und merkt sich den Zeitpunkt. In der Einfangphase, damit es vor Lenis an der Reihe ist. */
 addEventListener('wheel', (e) => {
   if (e.ctrlKey) return; // Zoomen
-  gesteBeginn(letztY); regung(true); fahrtAus(); // letztY, nicht scrollY: Der Browser hat die Seite oft schon bewegt, wenn das Rad-Ereignis ankommt
+  regung(true); fahrtAus();
   if (tast) { tast = false; cssRasten(false); } // Gerät mit Berührung, das gerade mit Maus oder Trackpad bedient wird: frei scrollen, weich einrasten (die nächste Berührung stellt zurück)
-}, { passive: true });
-addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; zeigerUnten = true; gesteBeginn(letztY); regung(true); fahrtAus(); }, { passive: true, capture: true });
+}, { passive: true, capture: true });
+addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; zeigerUnten = true; regung(true); fahrtAus(); }, { passive: true, capture: true });
 for (const typ of ['pointerup', 'pointercancel']) addEventListener(typ, (e) => { if (e.pointerType === 'touch') return; zeigerUnten = false; regung(true); }, { passive: true, capture: true });
 addEventListener('pointermove', (e) => { if (zeigerUnten && e.buttons === 0) { zeigerUnten = false; regung(true); } }, { passive: true, capture: true }); // losgelassen über der Bildlaufleiste
-addEventListener('touchstart', () => { fingerUnten = true; tast = true; gesteBeginn(letztY); regung(true); fahrtAus(); }, { passive: true, capture: true });
+addEventListener('touchstart', () => { fingerUnten = true; tast = true; regung(true); fahrtAus(); }, { passive: true, capture: true });
 for (const typ of ['touchend', 'touchcancel']) addEventListener(typ, (e) => { if (!e.touches.length) fingerUnten = false; regung(true); }, { passive: true, capture: true });
 addEventListener('blur', () => { zeigerUnten = false; fingerUnten = false; });
 document.addEventListener('click', (e) => { // eine Sprungmarke anderswo auf der Seite (Kopf, Fuß): der Browser springt frei, ohne auf eine Szene gezogen zu werden
-  if (!cssAn) return; const a = e.target.closest?.('a[href*="#"]'); if (a && !a.getAttribute('href').startsWith('#szene-')) cssRasten(false);
+  const a = e.target.closest?.('a[href*="#"]'); if (!a || a.getAttribute('href').startsWith('#szene-')) return;
+  cssRasten(false); fahrtAus(); if (lenis) lenis.reset(); // ein auslaufendes weiches Scrollen würde den Sprung sonst überschreiben
 }, true);
 function kopfSetzen(lage) { // Kopf der Website: über Szene 1 durchsichtig, über der Fahrt dunkles Glas, im hellen Teil wie überall
   if (!kopf || lage === kopfLage) return; kopfLage = lage;
@@ -1542,7 +1614,7 @@ function markeSetzen() { try { localStorage.setItem('make-fahrt', '1'); } catch 
 function ueberspringen(e) {
   if (e) e.preventDefault();
   markeSetzen(); fahrtAus(); cssRasten(false);
-  scrollTo({ top: kurzY(), behavior: 'auto' });
+  setze(kurzY());
 }
 skip.addEventListener('click', ueberspringen);
 addEventListener('keydown', (e) => {
@@ -1566,22 +1638,23 @@ document.addEventListener('click', (e) => {
   else if (w === 'weiter') szeneZu(Math.max(0, aktiv) + 1);
   else if (w === 'gast') { if (!gast.open) gast.showModal(); }
 });
-/* Tasten bleiben Schritte: Pfeil runter/hoch, Bild ab/auf und die Leertaste (mit Umschalt zurück) fahren genau eine Szene, Pos1 an den Anfang, Ende ans Seitenende.
-   Nicht in einem Formularfeld, nicht bei offenem Dialog oder Menü. Nach der Fahrt gehören die Tasten wieder dem Browser. */
+/* Tasten bleiben Schritte: Pfeil runter/hoch, Bild ab/auf und die Leertaste (mit Umschalt zurück) fahren zum nächsten bzw. vorigen Halt (in dessen Mitte), Pos1 an den Anfang,
+   Ende ans Seitenende. Die Dauer richtet sich nach dem Weg (TASTE_DAUER); jede Eingabe bricht die Fahrt ab. Nicht in einem Formularfeld, nicht bei offenem Dialog oder Menü.
+   Nach der Fahrt gehören die Tasten wieder dem Browser. */
 addEventListener('keydown', (e) => {
   if (STATISCH || STILL || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key, vor = k === 'ArrowDown' || k === 'PageDown' || (k === ' ' && !e.shiftKey), zurueck = k === 'ArrowUp' || k === 'PageUp' || (k === ' ' && e.shiftKey);
   if (!vor && !zurueck && k !== 'Home' && k !== 'End') return;
   if (gesperrt() || e.target.closest?.('input, textarea, select, [contenteditable]') || (k === ' ' && e.target.closest?.('button, a, summary'))) return;
   const y = scrollY, oben = spurTop(), ende = kurzY();
-  if (k === 'End') { e.preventDefault(); fahrtAus(); cssRasten(false); regung(true); scrollTo(0, root.scrollHeight); return; } // ans Ende der Seite, nicht nur ans Ende der Fahrt
+  if (k === 'End') { e.preventDefault(); fahrtAus(); cssRasten(false); regung(true); setze(root.scrollHeight); return; } // ans Ende der Seite, nicht nur ans Ende der Fahrt
   if (y > ende + 1 || (y >= ende - 1 && !zurueck) || y < oben - 1) return; // außerhalb der Fahrt: ganz normal
   e.preventDefault(); regung(true);
-  if (k === 'Home') { szeneZu(0, false, 450, easeOutCubic); return; }
+  if (k === 'Home') { szeneZu(0); return; }
   if (e.repeat && fahrt && (performance.now() - fahrt.t0) / fahrt.dauer < 0.7) return; // gehaltene Taste: Szene für Szene, nicht im Flug durch alle
-  const s = (y - oben) / SZL;
-  const ziel = fahrt && fahrt.ziel != null ? fahrt.ziel + (vor ? 1 : -1) : s > N - 1 + 0.02 ? (vor ? N : N - 1) : vor ? Math.floor(s + 0.02) + 1 : Math.ceil(s - 0.02) - 1;
-  szeneZu(Math.max(0, Math.min(N, ziel)), false, 450, easeOutCubic);
+  const o = ortVon(y), letzte = o.i === N - 1;
+  const ziel = fahrt && fahrt.ziel != null ? fahrt.ziel + (vor ? 1 : -1) : letzte && o.t > 0.02 ? (vor ? N : N - 1) : vor ? o.i + 1 : o.t > 0.02 ? o.i : o.i - 1;
+  szeneZu(Math.max(0, Math.min(N, ziel)));
 });
 /* Formulare der Fahrt senden direkt an die Anwendung (gleiche Herkunft, fetch). Die Anwendung nimmt ein Formular nur mit einem signierten Stempel an
    (mindestens 3 Sekunden alt, höchstens 2 Stunden): Der Stempel kommt per GET, beim ersten Fokus bzw. beim Öffnen. Antwortet die Anwendung nicht
@@ -1700,14 +1773,15 @@ if (!STATISCH && !STILL) { // Einflug: die Kamera gleitet heran, statt zu stehen
   new Spring(0, EINFLUG, (v) => { introK = v; sceneDirty = true; }).set(1);
 }
 let rz = 0;
-let rzHalt = -1;
+let rzAnteil = null;
 addEventListener('resize', () => {
-  if (!rz) rzHalt = fahrt ? -1 : haltSzene; // welche Szene stand im Bild, bevor sich die Größe geändert hat
+  if (!rz) rzAnteil = !fahrt && inFahrt && !STATISCH && !STILL ? (scrollY - spurTop()) / U : null; // wo die Seite stand, bevor sich die Größe geändert hat (in Fensterhöhen der Spur)
   cancelAnimationFrame(rz); rz = requestAnimationFrame(() => {
     rz = 0; messen(); sizeScene(); zeigeSzene(aktiv); if (STATISCH) panels.forEach((el) => { el.style.backgroundImage = ''; });
     if (STATISCH || STILL) return;
-    if (fahrt && fahrt.ziel != null) fahrt.y = fahrt.ziel >= N ? kurzY() : szeneY(fahrt.ziel);            // eine laufende Fahrt behält ihr Ziel
-    else if (rzHalt >= 0 && !cssAn && Math.abs(scrollY - szeneY(rzHalt)) >= 1) { eigenY = szeneY(rzHalt); eigenOffen = true; scrollTo(0, eigenY); } // die Szene bleibt stehen (ohne Fahrt)
+    if (lenis) lenis.resize();
+    if (fahrt && fahrt.ziel != null) { const z = fahrt.ziel; fahrt.fuehrt = null; fahrtAus(); if (z <= N) szeneZu(z, true); } // eine laufende Fahrt kommt gleich an ihrem Ziel an
+    else if (rzAnteil != null && !cssAn) { const y = Math.round(spurTop() + rzAnteil * U); if (Math.abs(scrollY - y) >= 1) setze(y); } // derselbe Ort bleibt stehen (alle Längen laufen mit der Fensterhöhe)
   });
 });
 requestAnimationFrame(frame);
@@ -1719,7 +1793,10 @@ const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r,
   // Sprung an eine Szene: ?szene=7, ?szene=e2 oder ?etage=eg|tresen|1|2|3|4|5|dach (Adresse) bzw. #szene-e2
   const ETAGE = { eg: 'eg', tresen: 'tresen', 1: 'e1', 2: 'e2', 3: 'e3a', 4: 'e4', 5: 'e5a', dach: 'dach' };
   const ziel = QUERY.get('szene') || ETAGE[(QUERY.get('etage') || '').toLowerCase()] || (location.hash.startsWith('#szene-') ? location.hash.slice(7) : '');
-  if (ziel && !STILL && !STATISCH) { const i = szeneNr(ziel); if (i >= 0) { messen(); fahrtAus(); scrollTo(0, szeneY(i)); sS.set(i, { immediate: true }); } }
+  if (ziel && !STILL && !STATISCH) { const i = szeneNr(ziel); if (i >= 0) { messen(); fahrtAus(); setze(szeneY(i)); sS.set(i, { immediate: true });
+    // Bei #szene-… springt der Browser beim Laden selbst noch einmal zur Sprungmarke: danach steht die Seite wieder in der Mitte des Halts (solange niemand etwas getan hat)
+    const nach = () => { if (!letzteEingabe && !fahrt && Math.abs(scrollY - szeneY(i)) > 2) setze(szeneY(i)); };
+    if (location.hash) { setTimeout(nach, 400); if (document.readyState !== 'complete') addEventListener('load', () => setTimeout(nach, 60), { once: true }); } } }
   if (STATISCH) bilderMalen();
   root.dataset.bereit = '1';
 })();

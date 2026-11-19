@@ -3,6 +3,22 @@
    Maße: Hier steht „rem“ für die Einheit des Hauses (--hr, läuft mit der Fensterbreite). Die Website hat eine andere
    Wurzel-Schriftgröße, deshalb setzt bauen.mjs für jedes „rem“ calc(… * var(--hr)) ein. Schrift: die der Website (fokus.css). */
 
+/* ═══════════════ STELLWERTE DER FAHRT: wie lang ist der Scrollweg? (100vh = eine Fensterhöhe) ═══════════════
+   Jede Szene hat einen HALT (der Raum steht, die Tafel ist voll da, man kann hineinsehen) und danach eine FAHRT zur nächsten Szene (Aufzug bzw. Kamera fährt).
+   „Länger im Raum bleiben“ = Halt größer · „langsamer fahren“ = Fahrt größer · „kürzer“ = Zahlen kleiner. Sonst ist nichts zu ändern: Die Höhe der Spur ergibt sich
+   von selbst, haus.js misst diese Längen. Wie sich das Scrollen anfühlt (Bremse, Weichheit, Einrasten, Tasten), steht in haus.js unter „STELLWERTE DES SCROLLENS“.
+   Zusammen am Rechner: 3 × 1,8 + 10 × 2,5 + 2,2 + 1,2 + 0,6 = rund 34 Fensterhöhen. */
+.track {
+  --halt-auftakt: 90vh;   --fahrt-auftakt: 90vh;    /* Szenen 1 bis 3: vor dem Haus */
+  --halt-etage: 140vh;    --fahrt-etage: 110vh;     /* Szenen 4 bis 13: Erdgeschoss bis Dach */
+  --halt-schluss: 120vh;  --fahrt-schluss: 100vh;   /* Szene 14 (Pakete) und 15 (Finale): Halt beider Szenen · Fahrt von 14 nach 15 */
+  --kreis: 60vh;                                    /* nach dem Halt von Szene 15: der Kreis wächst, dann beginnt die Kurz-Startseite */
+}
+/* Mit dem Finger (Handy, Tablet): eine Fensterhöhe je Szene, kein Halt. Dort rastet der Browser selbst Szene für Szene (ein Wisch, eine Szene). */
+@media (pointer: coarse) {
+  .track { --halt-auftakt: 0px; --fahrt-auftakt: 100vh; --halt-etage: 0px; --fahrt-etage: 100vh; --halt-schluss: 0px; --fahrt-schluss: 100vh; --kreis: 50vh; }
+}
+
 /* ── Einheit des Hauses: 16px bei 1440 Breite, darunter und darüber läuft sie mit ── */
 :root { --hr: 16px; }
 @media (min-width: 1440.02px) { :root { --hr: calc(16px + (100vw - 1440px) * 0.00740667); } }
@@ -117,42 +133,37 @@
 .t-caption { font-size: var(--font-size-caption); letter-spacing: var(--tracking-caps); text-transform: uppercase; font-weight: 500; line-height: var(--leading-display); }
 .t-lead { font-size: var(--font-size-lead); font-weight: 500; letter-spacing: var(--tracking-copy); }
 
-/* ── Spur und Bühne: 15 Szenen. Die Bühne bleibt stehen, die Spur gibt ihr den Scrollweg (14 Szenenlängen + ein halber für den Kreis + eine Fensterhöhe).
-      --szene ist der Scrollweg von einer Szene zur nächsten: am Rechner 1,2 Fensterhöhen (ein Trackpad-Schwung überfliegt so seltener gleich mehrere Szenen),
-      mit dem Finger eine Fensterhöhe. Bewusst vh und nicht dvh: vh bleibt gleich, wenn am Handy die Adressleiste ein- und ausfährt, die Raststellen wandern nicht.
-      haus.js misst die Länge an den Raststellen (.snap). ── */
-.track { --szene: calc(1.2 * 100vh); position: relative; z-index: 1; background: var(--background); height: calc(14.5 * var(--szene) + 100vh); }
-@media (pointer: coarse) { .track { --szene: 100vh; } }
-html.still-s .track { height: 100vh; height: 100dvh; }
-.stage { position: sticky; top: 0; height: 100vh; height: 100dvh; width: 100%; overflow: hidden; }
+/* ── Spur und Bühne: 15 Szenen. Die Bühne bleibt stehen, die Spur gibt ihr den Scrollweg: je Szene ein Halt und eine Fahrt (Stellwerte ganz oben in dieser Datei),
+      danach der Kreis und eine Fensterhöhe zum Hinausschieben. Die Länge der Spur ergibt sich aus den Raststellen (.snaps liegt mit der Bühne in derselben Rasterzelle
+      und gibt die Höhe vor); haus.js misst Halt und Fahrt an den Raststellen (.snap). ── */
+.track { position: relative; z-index: 1; background: var(--background); display: grid; grid-template-columns: minmax(0, 1fr); }
+.track > :is(.snaps, .stage) { grid-area: 1 / 1; }
+html.still-s .track { height: 100vh; height: 100dvh; display: block; }
+html.still-s .snaps { display: none; }
+.stage { position: sticky; top: 0; align-self: start; height: 100vh; height: 100dvh; width: 100%; overflow: hidden; }
 .seq { position: absolute; inset: 0; z-index: 1; background: var(--raw-nacht); background-size: cover; background-position: center; }
 .seq canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .seq-shade { position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(130% 95% at 50% 45%, transparent 52%, rgb(5 6 9 / .6) 100%), linear-gradient(to bottom, rgb(5 6 9 / .4), transparent 24%, transparent 68%, rgb(5 6 9 / .55)); }
 .grain { position: absolute; inset: 0; pointer-events: none; opacity: .045; background-size: 160px 160px; }
 
-/* Raststellen: je Szene eine. Am Rechner (Maus, Trackpad) rastet nichts per CSS: Dort scrollt die Seite frei, haus.js gleitet erst im Stillstand auf die nächste Szene.
-   Mit dem Finger rastet der Browser selbst (html.rast-fest). Die Klasse setzt haus.js nur im Stillstand auf einer Raststelle und löst sie erst im Stand nach der Fahrt,
-   nie mitten im Scrollen; danach scrollt die Seite ganz normal. Das Ende der Fahrt, der erste Abschnitt danach, ist die letzte Raststelle. */
-.snaps { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
-.snap { position: absolute; left: 0; width: 100%; height: var(--szene); scroll-snap-align: start; scroll-snap-stop: always; }
-.snap:nth-child(1) { top: 0; }
-.snap:nth-child(2) { top: calc(1 * var(--szene)); }
-.snap:nth-child(3) { top: calc(2 * var(--szene)); }
-.snap:nth-child(4) { top: calc(3 * var(--szene)); }
-.snap:nth-child(5) { top: calc(4 * var(--szene)); }
-.snap:nth-child(6) { top: calc(5 * var(--szene)); }
-.snap:nth-child(7) { top: calc(6 * var(--szene)); }
-.snap:nth-child(8) { top: calc(7 * var(--szene)); }
-.snap:nth-child(9) { top: calc(8 * var(--szene)); }
-.snap:nth-child(10) { top: calc(9 * var(--szene)); }
-.snap:nth-child(11) { top: calc(10 * var(--szene)); }
-.snap:nth-child(12) { top: calc(11 * var(--szene)); }
-.snap:nth-child(13) { top: calc(12 * var(--szene)); }
-.snap:nth-child(14) { top: calc(13 * var(--szene)); }
-.snap:nth-child(15) { top: calc(14 * var(--szene)); }
+/* Raststellen: je Szene eine, so lang wie Halt + Fahrt der Szene; der Halt ist ihr padding-top (dort misst haus.js). Bewusst vh und nicht dvh: vh bleibt gleich,
+   wenn am Handy die Adressleiste ein- und ausfährt, die Raststellen wandern nicht. Am Rechner (Maus, Trackpad) rastet nichts per CSS: Dort scrollt die Seite weich (Lenis),
+   haus.js gleitet nur aus einer Fahrt zum näheren Halt. Mit dem Finger rastet der Browser selbst (html.rast-fest). Die Klasse setzt haus.js nur im Stillstand auf einer
+   Raststelle und löst sie erst im Stand nach der Fahrt, nie mitten im Scrollen; danach scrollt die Seite ganz normal. Das Ende der Fahrt, der erste Abschnitt danach,
+   ist die letzte Raststelle. */
+.snaps { padding-bottom: 100vh; pointer-events: none; }
+.snap { display: block; box-sizing: border-box; scroll-snap-align: start; scroll-snap-stop: always; }
+.snap-auftakt { height: calc(var(--halt-auftakt) + var(--fahrt-auftakt)); padding-top: var(--halt-auftakt); }
+.snap-etage { height: calc(var(--halt-etage) + var(--fahrt-etage)); padding-top: var(--halt-etage); }
+.snap-schluss { height: calc(var(--halt-schluss) + var(--fahrt-schluss)); padding-top: var(--halt-schluss); }
+.snap-ende { height: calc(var(--halt-schluss) + var(--kreis)); padding-top: var(--halt-schluss); }
 html.rast-fest { scroll-snap-type: y mandatory; scroll-padding-top: 0; }
 html.rast-fest :is(#kurz, #einstieg) { scroll-snap-align: start; scroll-snap-stop: always; }
+/* Weiches Scrollen am Rechner (Lenis): die Seite behält ihre natürliche Höhe, der Browser federt nicht zusätzlich nach. Dialoge geben ihr Scrollen nicht an die Seite weiter. */
+html.lenis, html.lenis body { height: auto; }
+html.lenis.lenis-smooth { scroll-behavior: auto !important; }
+dialog.haus { overscroll-behavior: contain; }
 html.fahrt-aus .track { display: none; }
 html.fahrt-aus .kopf { position: sticky; }
 
@@ -459,7 +470,7 @@ html:not(.fahrt-aus) .start .sprung { position: fixed; }
 .kopf.ueber-film .menue summary { border-color: rgba(242, 243, 243, .34); }
 
 /* ── Ohne Skript und bei „weniger Bewegung“: die 15 Szenen stehen als normale, untereinander lesbare Abschnitte (mit ruhigem Bild, wenn das Skript es malt) ── */
-html:not(.js) .track, html.statisch .track { height: auto; }
+html:not(.js) .track, html.statisch .track { height: auto; display: block; }
 html:not(.js) .stage, html.statisch .stage { position: static; height: auto; overflow: visible; }
 html:not(.js) :is(.snaps, .etagen, .fahrt-stufen, .star, .grain, .seq-shade, .ueberspringen) , html.statisch :is(.snaps, .etagen, .fahrt-stufen, .star, .grain, .seq-shade) { display: none; }
 html:not(.js) .seq, html.statisch .seq { display: none; }
