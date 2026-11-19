@@ -21,7 +21,7 @@
       .then((j) => {
         if (!j || !j.ok || !j.aktiv) return zeigeErsatz();
         if (j.newsletter && j.newsletter.wortlaut) {
-          haken.querySelector('span').textContent = `${j.newsletter.wortlaut} Der Newsletter kommt erst, wenn Sie die Anmeldung über den Link in unserer E-Mail bestätigen.`;
+          haken.querySelector('span').textContent = `${j.newsletter.wortlaut} Der Newsletter kommt erst, wenn du die Anmeldung über den Link in unserer E-Mail bestätigen.`;
           fassung = j.newsletter.fassung;
           haken.hidden = false;
         }
@@ -36,7 +36,7 @@
       const email = feld('email').value.trim();
       const firma = feld('firma').value.trim();
       for (const n of ['vorname', 'email']) feld(n).removeAttribute('aria-invalid');
-      if (!vorname) { feld('vorname').setAttribute('aria-invalid', 'true'); feld('vorname').focus(); return sage('Bitte Ihren Vornamen angeben.'); }
+      if (!vorname) { feld('vorname').setAttribute('aria-invalid', 'true'); feld('vorname').focus(); return sage('Bitte gib deinen Vornamen an.'); }
       if (!EMAIL_OK.test(email)) { feld('email').setAttribute('aria-invalid', 'true'); feld('email').focus(); return sage('Bitte eine gültige E-Mail-Adresse angeben.'); }
       const newsletter = !haken.hidden && feld('newsletter').checked;
       knopf.disabled = true;
@@ -51,15 +51,15 @@
         const j = await r.json().catch(() => null);
         if (r.ok && j && j.ok) {
           form.hidden = true;
-          fertig.querySelector('[data-fertig-text]').textContent = j.text || 'Schauen Sie in Ihr Postfach: Der Link zum Herunterladen ist unterwegs. Er gilt 7 Tage.';
+          fertig.querySelector('[data-fertig-text]').textContent = j.text || 'Schau in dein Postfach: Der Link zum Herunterladen ist unterwegs. Er gilt 7 Tage.';
           fertig.hidden = false;
           fertig.focus();
           return;
         }
         if (r.status === 404 && !(j && j.fehler)) return zeigeErsatz();
-        sage((j && j.fehler) || 'Das hat leider nicht geklappt. Bitte versuchen Sie es gleich noch einmal.');
+        sage((j && j.fehler) || 'Das hat leider nicht geklappt. Bitte versuch es gleich noch einmal.');
       } catch {
-        sage('Keine Verbindung. Bitte prüfen Sie Ihr Netz und versuchen Sie es noch einmal.');
+        sage('Keine Verbindung. Bitte prüf dein Netz und versuch es noch einmal.');
       } finally {
         knopf.disabled = false;
         knopf.removeAttribute('aria-busy');

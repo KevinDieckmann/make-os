@@ -159,6 +159,7 @@ export function hausBauen(h) {
       if (s.kennzeichen) teile.push(`<p class="sz-kennzeichen">${e(s.kennzeichen)}</p>`);
       if (s.preis) teile.push(`<p class="sz-preis"><b>${e(preisZeile(s.preis))}</b>${s.preis.zusatz ? `<span>${e(s.preis.zusatz)}</span>` : ''}<small>Alle Preise netto.</small></p>`);
     }
+    if (s.absender) teile.push(`<p class="sz-absender">${e(s.absender)}</p>`);
     if (s.foto) teile.push(`<div class="sz-kevin">${foto(s.foto)}<p>${e(s.fotoSatz || '')}</p></div>`);
     const fuss = [];
     if (s.knopf) fuss.push(alink('mehr sz-knopf', s.knopf.ziel, s.knopf.text));

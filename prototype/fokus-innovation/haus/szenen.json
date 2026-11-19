@@ -170,6 +170,7 @@
           "homepage-landing"
         ]
       },
+      "absender": "von MAKE Studios",
       "knopf": {
         "text": "Mehr erfahren",
         "ziel": "sichtbarkeit"
@@ -281,6 +282,7 @@
       },
       "foto": "[FOTO KEVIN]",
       "fotoSatz": "Hier leitet Kevin.",
+      "absender": "von MAKE Revenue",
       "knopf": {
         "text": "Mehr erfahren",
         "ziel": "vertrieb"

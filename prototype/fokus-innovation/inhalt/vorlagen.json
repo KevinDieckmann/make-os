@@ -4,7 +4,7 @@
     {
       "id": "vertriebsteam-aufbauen",
       "titel": "Arbeitsheft: Vom Gründer-Vertrieb zum Vertriebsteam",
-      "text": "Bestimmen Sie Ihre Phase und gehen Sie Bogen für Bogen durch Rollen, Erwartungen, Auswahl mit Probetag, Einarbeitung, Vergütung und Führungsrhythmus. Mit ausgefülltem Vergütungsbeispiel und den Rechtsgrundlagen.",
+      "text": "Bestimme deine Phase und geh Bogen für Bogen durch Rollen, Erwartungen, Auswahl mit Probetag, Einarbeitung, Vergütung und Führungsrhythmus. Mit ausgefülltem Vergütungsbeispiel und den Rechtsgrundlagen.",
       "bereich": "vertrieb",
       "ratgeber": "vom-gruender-vertrieb-zum-vertriebsteam",
       "phase": [
@@ -33,7 +33,7 @@
     {
       "id": "vertriebskennzahlen-je-phase",
       "titel": "Vertriebskennzahlen je Phase",
-      "text": "Wählen Sie Ihre Phase, tragen Sie jeden Freitag wenige Zahlen ein und sehen Sie Quoten und Monatssummen auf einen Blick. Als PDF mit Wochenbögen und als Tabelle, die selbst rechnet.",
+      "text": "Wähle deine Phase, trag jeden Freitag wenige Zahlen ein und sieh Quoten und Monatssummen auf einen Blick. Als PDF mit Wochenbögen und als Tabelle, die selbst rechnet.",
       "bereich": "vertrieb",
       "ratgeber": "vertriebskennzahlen-je-phase",
       "phase": [
@@ -76,8 +76,8 @@
     },
     {
       "id": "kernsatz-in-fuenf-schritten",
-      "titel": "Ihr Kernsatz in fünf Schritten",
-      "text": "Mit vier Fragen, drei erfundenen Beispielen und einem Test mit drei Personen formulieren Sie den einen Satz, der sagt, für wen Sie da sind, was Sie lösen und warum man Ihnen glauben kann.",
+      "titel": "Dein Kernsatz in fünf Schritten",
+      "text": "Mit vier Fragen, drei erfundenen Beispielen und einem Test mit drei Personen formulierst du den einen Satz, der sagt, für wen du da bist, was du löst und warum man dir glauben kann.",
       "bereich": "sichtbarkeit",
       "ratgeber": "positionierung-in-fuenf-saetzen",
       "phase": [
@@ -99,7 +99,7 @@
     {
       "id": "startseiten-check",
       "titel": "Startseiten-Check",
-      "text": "Prüfen Sie Ihre Startseite an 25 Punkten, von der ersten Ansicht bis zur Auffindbarkeit, und finden Sie die drei Änderungen, die Ihnen am meisten bringen. Als PDF und als Tabelle, die selbst rechnet.",
+      "text": "Prüfe deine Startseite an 25 Punkten, von der ersten Ansicht bis zur Auffindbarkeit, und finde die drei Änderungen, die dir am meisten bringen. Als PDF und als Tabelle, die selbst rechnet.",
       "bereich": "sichtbarkeit",
       "ratgeber": "homepage-fuenf-sekunden",
       "phase": [
@@ -143,8 +143,8 @@
     },
     {
       "id": "ki-regeln-fuer-ihr-team",
-      "titel": "KI-Regeln für Ihr Team",
-      "text": "Legen Sie fest, welche Werkzeuge Ihr Team nutzt, was nie hineinkommt, wer prüft und wie Sie kennzeichnen. Mit ausgefülltem Beispiel, Artikel 4 der KI-Verordnung im Wortlaut und einer Teilnehmerliste für Schulungen. Keine Rechtsberatung.",
+      "titel": "KI-Regeln für dein Team",
+      "text": "Lege fest, welche Werkzeuge dein Team nutzt, was nie hineinkommt, wer prüft und wie du kennzeichnest. Mit ausgefülltem Beispiel, Artikel 4 der KI-Verordnung im Wortlaut und einer Teilnehmerliste für Schulungen. Keine Rechtsberatung.",
       "bereich": "innovation",
       "ratgeber": "erste-30-tage-mit-ki",
       "phase": [
@@ -165,7 +165,7 @@
     {
       "id": "ki-anwendungsfall-bewerten",
       "titel": "KI-Anwendungsfälle bewerten",
-      "text": "Beschreiben Sie jeden Ablauf in einem Steckbrief, vergeben Sie Punkte nach sechs Kriterien und finden Sie den Ablauf, mit dem sich der erste Versuch mit KI lohnt. Als PDF und als Tabelle, die selbst rechnet.",
+      "text": "Beschreibe jeden Ablauf in einem Steckbrief, vergib Punkte nach sechs Kriterien und finde den Ablauf, mit dem sich der erste Versuch mit KI lohnt. Als PDF und als Tabelle, die selbst rechnet.",
       "bereich": "innovation",
       "ratgeber": "ki-anwendungsfaelle-finden",
       "phase": [
@@ -189,7 +189,7 @@
     {
       "id": "ki-pilot-30-tage",
       "titel": "KI-Pilot in 30 Tagen",
-      "text": "Mit Steckbrief, Wochenplan, Messbogen und Auswertung prüfen Sie einen Monat lang an einem Ablauf, ob KI ihn wirklich verbessert, und entscheiden dann. Den Messbogen gibt es auch als Tabelle.",
+      "text": "Mit Steckbrief, Wochenplan, Messbogen und Auswertung prüfst du einen Monat lang an einem Ablauf, ob KI ihn wirklich verbessert, und entscheidest dann. Den Messbogen gibt es auch als Tabelle.",
       "bereich": "innovation",
       "ratgeber": "erste-30-tage-mit-ki",
       "phase": [

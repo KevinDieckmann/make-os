@@ -14,7 +14,7 @@ const text = (x, y, inhalt, klasse = 'pb-text', anker = 'middle') => `<text clas
 const BILDER = {
   // In den Markt: das Kernproblem der Startseite — gutes Produkt, kleiner Umsatz.
   'produkt-umsatz': {
-    titel: 'Ihr Produkt ist besser, als Ihr Umsatz zeigt. Mit Sichtbarkeit und planbarem Vertrieb schließt sich die Lücke.',
+    titel: 'Dein Produkt ist besser, als dein Umsatz zeigt. Mit Sichtbarkeit und planbarem Vertrieb schließt sich die Lücke.',
     satz: 'Das Produkt ist gut, der Umsatz klein. Dazwischen fehlen meist Sichtbarkeit und ein Vertrieb, der planbar läuft.',
     svg: () => `
 <line class="pb-achse" x1="60" y1="200" x2="340" y2="200"/>
@@ -25,11 +25,11 @@ ${text(80, 40, 'Was möglich ist', 'pb-text pb-klein', 'start')}
 <g class="pb-luecke"><line x1="257" y1="58" x2="257" y2="146"/><path d="M251 64 L257 56 L263 64 M251 140 L257 148 L263 140"/>${text(271, 106, 'Lücke', 'pb-text pb-klein', 'start')}</g>
 <g class="pb-geist"><line x1="219" y1="152" x2="303" y2="152"/>${text(309, 156, 'heute', 'pb-text pb-klein', 'start')}</g>
 <circle class="pb-punkt" cx="257" cy="50" r="6"/>
-${text(143, 224, 'Ihr Produkt')}${text(257, 224, 'Ihr Umsatz')}`,
+${text(143, 224, 'Dein Produkt')}${text(257, 224, 'Dein Umsatz')}`,
   },
   // Sichtbarkeit: in der Antwort von Suche und KI-Assistent nicht vorkommen.
   gefunden: {
-    titel: 'Eine Antwort von Suchmaschine oder KI-Assistent mit drei Anbietern. Ihr Unternehmen fehlt, mit klarer Beschreibung steht es oben.',
+    titel: 'Eine Antwort von Suchmaschine oder KI-Assistent mit drei Anbietern. Dein Unternehmen fehlt, mit klarer Beschreibung steht es oben.',
     satz: 'Kunden fragen Google und KI-Assistenten. Wer dort nicht klar beschrieben ist, kommt in der Antwort nicht vor.',
     svg: () => `
 <rect class="pb-feld" x="36" y="16" width="328" height="34" rx="17"/>
@@ -39,8 +39,8 @@ ${[0, 1, 2].map((i) => `<g class="pb-zeile pb-z${i + 1}"><circle class="pb-grau"
 <g class="pb-eigen">
 <rect class="pb-eigen-rahmen" x="40" y="186" width="320" height="36" rx="8"/>
 <circle class="pb-eigen-punkt" cx="58" cy="204" r="7"/>
-<text class="pb-text pb-eigen-vorher" x="74" y="208" text-anchor="start">Ihr Unternehmen? Fehlt.</text>
-<text class="pb-text pb-eigen-nachher" x="74" y="208" text-anchor="start">Ihr Unternehmen</text>
+<text class="pb-text pb-eigen-vorher" x="74" y="208" text-anchor="start">Dein Unternehmen? Fehlt.</text>
+<text class="pb-text pb-eigen-nachher" x="74" y="208" text-anchor="start">Dein Unternehmen</text>
 </g>`,
   },
   // Innovation / Ins Unternehmen: einzelne Werkzeuge ohne Verbindung — dann ein Ablauf.
@@ -59,8 +59,8 @@ ${knoten.map(([x, y, n], i) => `<g class="pb-knoten pb-k${i + 1}"><rect x="${x}"
   },
   // Über uns: viele Dienstleister, viele Abstimmungen — dann ein Team mit allen Fachleuten (Kevin 31.10.: Netzwerk nicht nennen).
   netzwerk: {
-    titel: 'Heute stimmen Sie fünf Dienstleister einzeln ab. Bei uns sind die Fachleute in einem Team, mit einem Ansprechpartner.',
-    satz: 'Fünf Dienstleister heißt fünf Abstimmungen. Bei uns sind die Fachleute im Team, und Sie haben einen Ansprechpartner.',
+    titel: 'Heute stimmst du fünf Dienstleister einzeln ab. Bei uns sind die Fachleute in einem Team, mit einem Ansprechpartner.',
+    satz: 'Fünf Dienstleister heißt fünf Abstimmungen. Bei uns sind die Fachleute im Team, und du hast einen Ansprechpartner.',
     svg: () => {
       const fach = ['Design', 'Video', 'Technik', 'Presse', 'Vertrieb'].map((n, i) => [300, 26 + i * 44, n]);
       return `
@@ -68,7 +68,7 @@ ${fach.map(([x, y]) => `<line class="pb-wirr" x1="66" y1="120" x2="${x - 4}" y2=
 ${fach.map(([x, y]) => `<line class="pb-verbindung" pathLength="1" x1="196" y1="120" x2="${x - 4}" y2="${y + 13}"/>`).join('')}
 <line class="pb-fuehrung" pathLength="1" x1="66" y1="120" x2="186" y2="120"/>
 ${fach.map(([x, y, n]) => `<g class="pb-knoten pb-fest"><rect x="${x - 4}" y="${y}" width="88" height="26" rx="13"/>${text(x + 40, y + 17, n, 'pb-text pb-klein')}</g>`).join('')}
-<circle class="pb-sie" cx="56" cy="120" r="10"/>${text(56, 150, 'Sie', 'pb-text pb-klein')}
+<circle class="pb-sie" cx="56" cy="120" r="10"/>${text(56, 150, 'Du', 'pb-text pb-klein')}
 <g class="pb-kern"><circle class="pb-punkt" cx="196" cy="120" r="10"/>${text(186, 146, 'Ein Team', 'pb-text pb-klein pb-akzent-text', 'end')}</g>`;
     },
   },
@@ -100,7 +100,7 @@ export function buehne(art, video) {
 
 /** Eingetragenes Video als Figur (Standbild, lädt erst beim Abspielen). */
 export function videoFigur(v) {
-  return `<figure class="video-buehne erscheint"><video controls preload="none" playsinline${v.bild ? ` poster="${esc(v.bild)}"` : ''}><source src="${esc(v.datei)}" type="video/mp4">Ihr Browser zeigt dieses Video nicht. <a href="${esc(v.datei)}">Video herunterladen</a>.</video>${v.titel ? `<figcaption class="leise klein-text">${esc(v.titel)}</figcaption>` : ''}</figure>`;
+  return `<figure class="video-buehne erscheint"><video controls preload="none" playsinline${v.bild ? ` poster="${esc(v.bild)}"` : ''}><source src="${esc(v.datei)}" type="video/mp4">Dein Browser zeigt dieses Video nicht. <a href="${esc(v.datei)}">Video herunterladen</a>.</video>${v.titel ? `<figcaption class="leise klein-text">${esc(v.titel)}</figcaption>` : ''}</figure>`;
 }
 
 /** Eigener Abschnitt fürs Video, wo die rechte Seite schon belegt ist — ohne Video nichts. */

@@ -225,6 +225,7 @@ html.statisch .sz-pfeil { animation: none; }
 .sz-preis b { font-size: 1.25rem; font-weight: 600; letter-spacing: -.01em; }
 .sz-preis span { font-size: .8125rem; color: var(--fg-85); flex-basis: 100%; }
 .sz-preis small { font-size: .75rem; color: var(--fg-70); }
+.sz-absender { font-size: .75rem; letter-spacing: .04em; color: var(--fg-70); }
 .sz-kennzeichen { font-size: .8125rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 500; color: var(--akz); }
 .sz-fuss { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: .55rem; }
 .sz-leise { display: inline-flex; align-items: center; min-height: 44px; font-size: .9375rem; color: var(--fg-95); border-bottom: 1px solid var(--fg-30); text-align: left; }

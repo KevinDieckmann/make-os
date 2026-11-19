@@ -12,11 +12,11 @@
     "hinweis": "Die Story der Startseite (Kevin 25.10., geschärft 29.10., neu 30.10. abends nach drei Analysen: Aufmerksamkeit, Kernproblem der Gründer, Story-Psychologie; Einstieg von Kevin gewählt). Bild 1 trifft Sichtbarkeit und Vertrieb zugleich, Bild 2 Sichtbarkeit (entschieden wird vor dem Erstkontakt), Bild 3 Vertrieb (wer anfragt, wartet), Bild 4 die Antwort mit dem Slogan, Bild 5 schließt den Bogen von Bild 1. Keine Zahlen im Film.",
     "marke": "MAKE Innovation · Agentur für Sichtbarkeit, Vertrieb und Innovation",
     "laerm": {
-      "titel": "Ihr Produkt ist besser,|als Ihr Umsatz zeigt?",
-      "satz": "Kaum jemand kennt Sie, und verkauft wird, wenn neben Produkt, Team und Buchhaltung Zeit bleibt."
+      "titel": "Dein Produkt ist besser,|als dein Umsatz zeigt?",
+      "satz": "Kaum jemand kennt dich, und verkauft wird, wenn neben Produkt, Team und Buchhaltung Zeit bleibt."
     },
     "fokus": {
-      "titel": "Entschieden wird,|bevor Sie im Raum sind.",
+      "titel": "Entschieden wird,|bevor du im Raum bist.",
       "satz": "Kunden recherchieren allein und kommen mit einem klaren Bedürfnis. Den Auftrag bekommt der, dem sie schon vertrauen."
     },
     "luecke": {
@@ -28,15 +28,15 @@
       "satz": "Sichtbarkeit bringt Anfragen, ein Vertrieb mit System macht Kunden daraus. KI kommt dazu, sobald Abläufe und Daten stimmen."
     },
     "durchbruch": {
-      "titel": "Jetzt zeigt Ihr Umsatz,|wie gut Ihr Produkt ist.",
-      "satz": "Man kennt Sie, bevor gesucht wird, und jede Anfrage hat einen nächsten Schritt."
+      "titel": "Jetzt zeigt dein Umsatz,|wie gut dein Produkt ist.",
+      "satz": "Man kennt dich, bevor gesucht wird, und jede Anfrage hat einen nächsten Schritt."
     }
   },
   "start": {
     "vorzeile": "Agentur für Sichtbarkeit, Vertrieb und Innovation · Berlin",
     "titel": "Sichtbar sein. Planbar verkaufen.",
     "ruhig": "Für Gründer und Unternehmer, die wachsen möchten.",
-    "lead": "Wir machen Ihr Angebot mit Positionierung, Website, Videos und PR bekannt und bauen den Vertrieb, der aus Anfragen Kunden macht. Wo KI Arbeit spart, führen wir sie ein. Jedes Angebot hat einen offenen Preis und einen festen Ablauf, und wir setzen selbst mit um.",
+    "lead": "Wir machen dein Angebot mit Positionierung, Website, Videos und PR bekannt und bauen den Vertrieb, der aus Anfragen Kunden macht. Wo KI Arbeit spart, führen wir sie ein. Jedes Angebot hat einen offenen Preis und einen festen Ablauf, und wir setzen selbst mit um.",
     "kernsatz": "Wir machen gute Produkte bekannt und bauen den Vertrieb, der daraus Kunden macht."
   },
   "leitidee": {
@@ -128,21 +128,21 @@
       "nr": "01",
       "name": "Sichtbarkeit",
       "paar": "Gesehen werden.",
-      "satz": "Positionierung, Homepages, Videos, Social Media, PR und Kommunikation. Damit Kunden Sie finden und schnell verstehen, was Sie machen.",
-      "problem": "Besucher verstehen in fünf Sekunden nicht, was Sie machen und warum sie Sie anrufen sollten. In Medien und auf Bühnen Ihrer Branche kommen andere zu Wort, und Anfragen bleiben aus.",
+      "satz": "Positionierung, Homepages, Videos, Social Media, PR und Kommunikation. Damit Kunden dich finden und schnell verstehen, was du machst.",
+      "problem": "Besucher verstehen in fünf Sekunden nicht, was du machst und warum sie dich anrufen sollten. In Medien und auf Bühnen deiner Branche kommen andere zu Wort, und Anfragen bleiben aus.",
       "weg": [
         "Unklare Botschaft, kaum bekannt, kaum Anfragen",
         "Positionierung, Website, Videos, PR und Kommunikation",
-        "Man kennt und versteht Sie, Anfragen kommen an und werden Kunden"
+        "Man kennt und versteht dich, Anfragen kommen an und werden Kunden"
       ],
       "held": {
-        "titel": "Wer Sie nicht kennt, kann nicht kaufen.",
-        "text": "Mit Positionierung, Website, Videos und Pressearbeit machen wir Sie verständlich und bekannt. Den Vertrieb denken wir dabei immer mit, denn Aufmerksamkeit allein bringt noch keine Anfrage."
+        "titel": "Wer dich nicht kennt, kann nicht kaufen.",
+        "text": "Mit Positionierung, Website, Videos und Pressearbeit machen wir dich verständlich und bekannt. Den Vertrieb denken wir dabei immer mit, denn Aufmerksamkeit allein bringt noch keine Anfrage."
       },
       "schritte": [
         {
           "titel": "Ausgangslage",
-          "text": "Ihr Angebot ist neu, aber auf der Website versteht man es erst nach drei Absätzen. Besucher gehen, bevor sie verstehen, was Sie machen."
+          "text": "Dein Angebot ist neu, aber auf der Website versteht man es erst nach drei Absätzen. Besucher gehen, bevor sie verstehen, was du machst."
         },
         {
           "titel": "Wendepunkt",
@@ -150,19 +150,20 @@
         },
         {
           "titel": "Unser Weg",
-          "text": "Wir schärfen Ihre Positionierung, erzählen Ihre Geschichte, bauen Website und Videos, die sie in Sekunden zeigen, und tragen Ihre Themen zu Medien, Podcasts und Bühnen."
+          "text": "Wir schärfen deine Positionierung, erzählen deine Geschichte, bauen Website und Videos, die sie in Sekunden zeigen, und tragen deine Themen zu Medien, Podcasts und Bühnen."
         },
         {
           "titel": "Ergebnis",
-          "text": "Sie werden gesehen und verstanden, Anfragen kommen an, und Ihr Vertrieb macht Kunden daraus."
+          "text": "Du wirst gesehen und verstanden, Anfragen kommen an, und dein Vertrieb macht Kunden daraus."
         }
       ],
       "auch": {
         "titel": "Netzwerk und Events",
-        "text": "Manche Kunden lernt man am besten persönlich kennen. Wir laden Sie zu unseren Events ein und stellen Kontakte her, wo es passt. Was Sie dafür brauchen, besprechen wir im Gespräch."
+        "text": "Manche Kunden lernt man am besten persönlich kennen. Wir laden dich zu unseren Events ein und stellen Kontakte her, wo es passt. Was du dafür brauchst, besprechen wir im Gespräch."
       },
-      "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo}, Social Media ab {ab:social-media} im Monat sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.",
-      "auf_anfrage": []
+      "kurz": "Wir machen dein Angebot verständlich und bekannt: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo}, Social Media ab {ab:social-media} im Monat sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.",
+      "auf_anfrage": [],
+      "anzeige": "Digitale Sichtbarkeit"
     },
     "vertrieb": {
       "nr": "02",
@@ -171,14 +172,14 @@
       "satz": "Zielgruppe, Prozess, Kennzahlen und ein Team, das selbst abschließt.",
       "problem": "Vertrieb hängt an der Geschäftsführung, und das meiste läuft über Bauchgefühl. Anfragen gehen verloren, Angebote bleiben liegen, und niemand weiß, wie viele Gespräche es für das Jahresziel braucht.",
       "weg": [
-        "Vertrieb hängt an Ihnen",
+        "Vertrieb hängt an dir",
         "Zielgruppe, Prozess im CRM, Gesprächsleitfäden, Wochenreport, Training",
-        "Ihr Team schließt selbst ab, planbar"
+        "Dein Team schließt selbst ab, planbar"
       ],
       "beleg": "auftraege",
       "held": {
-        "titel": "Ein Vertrieb, der nicht an Ihnen hängt.",
-        "text": "Wir bauen Ablauf, Kennzahlen und Rollen so auf, dass Ihre Leute selbst abschließen. Wir machen es vor und üben mit ihnen, bis es sitzt."
+        "titel": "Ein Vertrieb, der nicht an dir hängt.",
+        "text": "Wir bauen Ablauf, Kennzahlen und Rollen so auf, dass deine Leute selbst abschließen. Wir machen es vor und üben mit ihnen, bis es sitzt."
       },
       "schritte": [
         {
@@ -191,11 +192,11 @@
         },
         {
           "titel": "Unser Weg",
-          "text": "Wir starten mit dem Fundament: Zielgruppe, Ansprache, Salesprozess. Dann bauen wir Leadgenerierung, Prozesse und Kennzahlen auf und machen vor, bis Ihr Team selbst abschließt."
+          "text": "Wir starten mit dem Fundament: Zielgruppe, Ansprache, Salesprozess. Dann bauen wir Leadgenerierung, Prozesse und Kennzahlen auf und machen vor, bis dein Team selbst abschließt."
         },
         {
           "titel": "Ergebnis",
-          "text": "Ein Vertrieb, den Sie steuern können: Pipeline im CRM, Wochenreport, klare Rollen und ein Sales Playbook, das bleibt."
+          "text": "Ein Vertrieb, den du steuern kannst: Pipeline im CRM, Wochenreport, klare Rollen und ein Sales Playbook, das bleibt."
         }
       ],
       "ablauf": [
@@ -216,17 +217,18 @@
           "text": "Head of Sales oder Chief Sales Officer"
         }
       ],
-      "kurz": "Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop für {preis:tagesworkshop} netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.",
+      "kurz": "Wir bauen deinen Vertrieb auf, bis dein Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop für {preis:tagesworkshop} netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.",
       "leiter": {
-        "titel": "Ihr Vertriebsleiter kommt nicht in Fahrt?",
+        "titel": "Dein Vertriebsleiter kommt nicht in Fahrt?",
         "text": "Meist fehlt ihm ein System, nach dem er führen kann. Das bauen wir mit ihm auf, arbeiten ihn ein und übergeben ihm dann den Vertrieb. Danach hängt der Vertrieb nicht mehr an der Geschäftsführung."
-      }
+      },
+      "anzeige": "Vertrieb"
     },
     "innovation": {
       "nr": "03",
       "name": "Innovation",
       "paar": "Im Alltag ankommen.",
-      "satz": "Abläufe, Daten, KI und neue Software. Wir führen sie so ein, dass Ihr Team im Alltag damit arbeitet.",
+      "satz": "Abläufe, Daten, KI und neue Software. Wir führen sie so ein, dass dein Team im Alltag damit arbeitet.",
       "problem": "KI wird ausprobiert, aber die Abläufe dahinter sind nicht geklärt und die Daten liegen verstreut. Dann macht KI Fehler nur schneller, neue Werkzeuge versanden, und die Geschäftsführung bleibt der Engpass.",
       "weg": [
         "Werkzeuge ausprobiert, Abläufe unklar, Daten verstreut",
@@ -235,8 +237,8 @@
       ],
       "beleg": "ki_daten",
       "held": {
-        "titel": "KI braucht Struktur. Wir bauen sie mit Ihnen.",
-        "text": "Es geht um das, was jeden Tag anfällt: Routineaufgaben, Kommunikation, Angebote, Auswertungen. KI macht das schneller, aber nur, wenn die Abläufe klar sind und die Daten stimmen. Sonst macht sie die Fehler nur schneller. Deshalb ordnen wir zuerst Abläufe und Daten, führen dann KI und neue Software ein und schulen Ihr Team, bis es damit arbeitet."
+        "titel": "KI braucht Struktur. Wir bauen sie mit dir.",
+        "text": "Es geht um das, was jeden Tag anfällt: Routineaufgaben, Kommunikation, Angebote, Auswertungen. KI macht das schneller, aber nur, wenn die Abläufe klar sind und die Daten stimmen. Sonst macht sie die Fehler nur schneller. Deshalb ordnen wir zuerst Abläufe und Daten, führen dann KI und neue Software ein und schulen dein Team, bis es damit arbeitet."
       },
       "schritte": [
         {
@@ -249,7 +251,7 @@
         },
         {
           "titel": "Unser Weg",
-          "text": "Der Innovations-Check zeigt Ihre Stufe. Im Scoping-Workshop klären wir Umfang, Abläufe und Daten, bevor gebaut wird. Im Umsetzungsprojekt ordnen wir Abläufe und Daten und führen KI ein, bis es läuft."
+          "text": "Der Innovations-Check zeigt deine Stufe. Im Scoping-Workshop klären wir Umfang, Abläufe und Daten, bevor gebaut wird. Im Umsetzungsprojekt ordnen wir Abläufe und Daten und führen KI ein, bis es läuft."
         },
         {
           "titel": "Ergebnis",
@@ -260,15 +262,15 @@
       "brain": {
         "titel": "KI-Brain",
         "stand": "In Vorbereitung",
-        "text": "KI ist nur so gut wie die Daten, auf die sie zugreift. Wir bringen mit Ihnen Wissen, Abläufe und Daten an einen Ort, auf den sie sich verlassen kann.",
+        "text": "KI ist nur so gut wie die Daten, auf die sie zugreift. Wir bringen mit dir Wissen, Abläufe und Daten an einen Ort, auf den sie sich verlassen kann.",
         "betreff": "Interesse: KI-Brain"
       },
       "kurz": "Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Der Weg hat drei Schritte: der kostenlose Innovations-Check, der Scoping-Workshop ab {preis:scoping-workshop}, der auf das Projekt angerechnet wird, und das Umsetzungsprojekt ab {preis:umsetzungsprojekte}, alles netto.",
       "schritte_titel": "Drei Schritte: Check, Workshop, Projekt.",
-      "schritte_lead": "Der Check zeigt, wo Sie stehen. Im Workshop klären wir Umfang, Abläufe und Daten. Im Projekt führen wir KI und Software ein, bis sie im Alltag genutzt werden.",
+      "schritte_lead": "Der Check zeigt, wo du stehst. Im Workshop klären wir Umfang, Abläufe und Daten. Im Projekt führen wir KI und Software ein, bis sie im Alltag genutzt werden.",
       "schritt_texte": {
         "hinweis": "Ein Satz je Schritt (Kevin 18.11.). Namen und Preise kommen aus makeinnovation/inhalt/inhalt.json.",
-        "check": "In rund 10 Minuten sehen Sie, wo Ihr Unternehmen steht.",
+        "check": "In rund 10 Minuten siehst du, wo dein Unternehmen steht.",
         "workshop": "Umfang, Abläufe und Daten klären, bevor gebaut wird. Wird auf das Projekt angerechnet.",
         "projekt": "KI und Software einführen, bis sie im Alltag genutzt werden, mit klarem Umfang, vorab vereinbart."
       },
@@ -283,7 +285,7 @@
         },
         {
           "titel": "KI im Alltag",
-          "text": "KI und neue Software, die Ihr Team wirklich nutzt: für Routineaufgaben, Kommunikation, Angebote und Wissen. Mit Regeln, wer was wofür nutzt."
+          "text": "KI und neue Software, die dein Team wirklich nutzt: für Routineaufgaben, Kommunikation, Angebote und Wissen. Mit Regeln, wer was wofür nutzt."
         },
         {
           "titel": "Automatisierung",
@@ -291,34 +293,20 @@
         }
       ],
       "held_varianten": [
-        "KI braucht Struktur. Wir bauen sie mit Ihnen."
+        "KI braucht Struktur. Wir bauen sie mit dir."
       ],
       "felder_titel": "Erst Struktur, dann Tempo.",
-      "felder_lead": "Wir gehen in dieser Reihenfolge vor: Abläufe ordnen, Daten an einen Ort, dann KI und Automatisierung. So macht KI schneller, was funktioniert, und nicht, was heute schon hakt."
+      "felder_lead": "Wir gehen in dieser Reihenfolge vor: Abläufe ordnen, Daten an einen Ort, dann KI und Automatisierung. So macht KI schneller, was funktioniert, und nicht, was heute schon hakt.",
+      "anzeige": "Analyse & KI"
     }
   },
   "events": {
     "titel": "MAKE Innovation · Events",
     "satz": "Verschiedene Formate. Ein Fokus. Menschen zusammenbringen, die Neues umsetzen.",
-    "text": "Jeden Monat der Fokus Abend in Berlin mit 30 bis 40 Gästen, die Neues umsetzen. Dazu weitere Formate, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Kuratiert und auf Einladung, für Gäste und Kunden kostenlos. Malin ist Gastgeberin.",
+    "text": "Jeden Monat der Fokus Abend in Berlin mit 30 bis 40 Gästen, die Neues umsetzen. Kuratiert und auf Einladung, für Gäste und Kunden kostenlos. Malin ist Gastgeberin.",
     "kosten": "Für Gäste und Kunden kostenlos",
-    "termine": "Termine, Orte und Formate stehen in jeder Einladung. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste.",
+    "termine": "Termine, Orte und Formate stehen in jeder Einladung. Trag dich auf die Gästeliste ein, dann bekommst du die nächste.",
     "betreff": "MAKE Innovation · Events · Gästeliste",
-    "formate_hinweis": "Neben dem Fokus Abend planen wir diese Formate. Welches wann stattfindet, steht in der Einladung.",
-    "formate": [
-      {
-        "titel": "Gesprächsrunde",
-        "text": "Ein kleiner Kreis spricht offen über ein Thema, das gerade viele beschäftigt. Was gesagt wird, bleibt im Raum, und jeder kommt zu Wort."
-      },
-      {
-        "titel": "Workshop",
-        "text": "In wenigen Stunden arbeiten Sie an einem Thema und nehmen ein Ergebnis mit, etwa zu KI im Alltag, zur eigenen Positionierung oder zum Vertrieb."
-      },
-      {
-        "titel": "Treffen im Netzwerk",
-        "text": "Wir stellen Unternehmen gezielt Menschen aus unserem Netzwerk vor, die zu ihrer Aufgabe passen."
-      }
-    ],
     "merkmale": [
       {
         "titel": "Auf Einladung",
@@ -326,7 +314,7 @@
       },
       {
         "titel": "Persönlich",
-        "text": "Kleine Runden und klare Themen statt Messehalle. So kommen Sie mit den Menschen ins Gespräch, die für Sie zählen."
+        "text": "Kleine Runden und klare Themen statt Messehalle. So kommst du mit den Menschen ins Gespräch, die für dich zählen."
       },
       {
         "titel": "Verbindend",
@@ -339,7 +327,7 @@
       "Ein Fokus."
     ],
     "start_ruhig": "Menschen zusammenbringen, die Neues umsetzen.",
-    "held_text": "Wir bringen Menschen zusammen, die Neues umsetzen: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir laden gezielt ein, zur Gesprächsrunde im kleinen Kreis ebenso wie zum Workshop. Gastgeberin ist Malin.",
+    "held_text": "Wir bringen Menschen zusammen, die Neues umsetzen: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir laden gezielt ein, damit am Tisch die richtigen Menschen sitzen. Gastgeberin ist Malin.",
     "start_text": "Jeden Monat laden wir in Berlin zum Fokus Abend ein: 30 bis 40 Gäste, die Neues umsetzen, zwei Impulse, Thementische und offenes Netzwerken. Für Gäste und Kunden kostenlos, auf Einladung.",
     "podcast_hinweis": "Zum Podcast Fokus Innovation",
     "abend": {
@@ -355,7 +343,7 @@
         "Gezielte Vorstellungen"
       ],
       "ablauf_titel": "Der Abend",
-      "ablauf_lead": "Von 18:30 bis 22:00 Uhr: zwei kurze Impulse, dann sprechen Sie an Thementischen und im offenen Netzwerken.",
+      "ablauf_lead": "Von 18:30 bis 22:00 Uhr: zwei kurze Impulse, dann sprichst du an Thementischen und im offenen Netzwerken.",
       "ablauf": {
         "zeilen": [
           [
@@ -453,12 +441,8 @@
           "a": "Nichts. Für Gäste und Kunden ist der Abend immer kostenlos."
         },
         {
-          "f": "Darf ich als Partner etwas vorstellen?",
-          "a": "Sie begrüßen 3 Minuten und stehen auf Einladung, Anmeldeseite und im Nachbericht. Einen Verkaufsvortrag gibt es nicht."
-        },
-        {
           "f": "Bekomme ich die Teilnehmerliste?",
-          "a": "Nein. Gästedaten geben wir nicht weiter. Im Partnerbericht sehen Sie Zahlen, Branchen und Eindrücke."
+          "a": "Nein. Gästedaten geben wir nicht weiter."
         },
         {
           "f": "Wo findet der Abend statt?",
@@ -477,9 +461,79 @@
         "marke": "Events",
         "titel": "Fokus Abend.",
         "lead": "Jeden Monat in Berlin. Für Gäste und Kunden kostenlos, Unternehmen können einen Abend als Partner begleiten.",
-        "gast": "Auf Einladung. Danach bekommen Sie eine Dankesmail mit 3 Gedanken."
+        "gast": "Auf Einladung. Danach bekommst du eine Dankesmail mit 3 Gedanken."
+      },
+      "gast_titel": "Als Gast",
+      "gast_liste": [
+        "Kostenlos, auf Einladung",
+        "Thementische in 2 Runden und offenes Netzwerken",
+        "Gezielte Vorstellungen",
+        "Nach dem Abend eine Dankesmail mit 3 Gedanken"
+      ],
+      "partner": {
+        "vorzeile": "Events",
+        "titel": "Abendpartner werden.",
+        "ruhig": "Einen Fokus Abend begleiten.",
+        "lead": "Du begleitest einen Abend in Berlin als Partner: mit Logo und Nennung, einer Begrüßung von 3 Minuten und einem Partnerbericht danach.",
+        "leistungen_marke": "Leistungen",
+        "leistungen_h2": "Was du als Abendpartner bekommst.",
+        "leistungen": [
+          {
+            "titel": "Logo und Nennung",
+            "text": "Dein Logo und deine Nennung stehen auf der Einladung und auf der Anmeldeseite."
+          },
+          {
+            "titel": "Begrüßung",
+            "text": "Du begrüßt die Gäste 3 Minuten lang. Einen Verkaufsvortrag gibt es nicht."
+          },
+          {
+            "titel": "Beitrag im Nachbericht",
+            "text": "Du bist mit einem Beitrag im Nachbericht zum Abend dabei."
+          },
+          {
+            "titel": "Partnerbericht",
+            "text": "In 3 Werktagen bekommst du Zahlen, Branchen und Eindrücke, dazu 15 Minuten Feedback-Gespräch."
+          }
+        ],
+        "preis_marke": "Preis",
+        "preis_h2": "Ab {preis:abendpartner} je Abend.",
+        "preis_text": "Netto zuzüglich Umsatzsteuer. Den genauen Festpreis nennen wir dir vorab.",
+        "haltung_text": "Wir versprechen keine Leads. Wir versprechen einen guten Abend mit den richtigen Menschen und einen Bericht mit Zahlen, Branchen und Eindrücken.",
+        "fragen_titel": "Fragen zum Abendpartner",
+        "fragen": [
+          {
+            "f": "Darf ich als Partner etwas vorstellen?",
+            "a": "Du begrüßt 3 Minuten und stehst auf Einladung, Anmeldeseite und im Nachbericht. Einen Verkaufsvortrag gibt es nicht."
+          },
+          {
+            "f": "Bekomme ich die Teilnehmerliste?",
+            "a": "Nein. Gästedaten geben wir nicht weiter. Im Partnerbericht siehst du Zahlen, Branchen und Eindrücke."
+          },
+          {
+            "f": "Was kostet es?",
+            "a": "Ab {preis:abendpartner} je Abend, netto zuzüglich Umsatzsteuer."
+          },
+          {
+            "f": "Werden Fotos gemacht?",
+            "a": "Nur mit Einwilligung. Darauf weisen wir bei der Anmeldung und am Eingang hin."
+          }
+        ],
+        "zurueck": "Zum Fokus Abend"
       }
-    }
+    },
+    "naechster": "Erster Fokus Abend im Januar 2027 · 30 bis 40 Plätze · auf Einladung",
+    "regeln_kurz": [
+      "Kein Verkaufsvortrag",
+      "Keine Teilnehmerlisten",
+      "Fotos nur mit Einwilligung"
+    ],
+    "gastgeberin": {
+      "marke": "Gastgeberin",
+      "h2": "Malin bringt Menschen zusammen.",
+      "foto": "[FOTO MALIN]"
+    },
+    "einladung_knopf": "Platz auf der Gästeliste sichern",
+    "partner_link": "Abendpartner werden"
   },
   "blick": {
     "hinweis": "Zusätzliche Zeilen im Band unter dem Kopf einer Angebotsseite: [Begriff, Text]. Preise nur als Platzhalter.",
@@ -501,8 +555,8 @@
     "vorzeile": "Podcast",
     "text": "Fokus Innovation ist unser Podcast. Hier stellen wir Innovationen aus Deutschland vor: Menschen, die etwas Neues gebaut haben, erzählen, was es kann und wie es dazu kam.",
     "aufruf_marke": "Gast vorschlagen",
-    "aufruf_titel": "Sie haben etwas Neues gebaut?",
-    "aufruf_text": "Schlagen Sie sich oder jemanden vor, der hier sitzen sollte.",
+    "aufruf_titel": "Du hast etwas Neues gebaut?",
+    "aufruf_text": "Schlag dich oder jemanden vor, der hier sitzen sollte.",
     "knopf": "Als Gast vorschlagen",
     "anlass": "podcast-gast",
     "betreff": "Podcast Fokus Innovation: Gast vorschlagen",
@@ -512,7 +566,7 @@
     {
       "titel": "Wir setzen selbst mit um",
       "text": "Im Team des Kunden, bis es läuft, wenn es sein muss am Produkt.",
-      "beleg": "Head of Sales und CSO: Wir machen vor, bis Ihr Team selbst abschließt."
+      "beleg": "Head of Sales und CSO: Wir machen vor, bis dein Team selbst abschließt."
     },
     {
       "titel": "Wir kommen aus dem Vertrieb",
@@ -526,7 +580,7 @@
     },
     {
       "titel": "Klare Preise, feste Abläufe",
-      "text": "Was ein Angebot kostet und wie es abläuft, lesen Sie vor dem ersten Gespräch auf seiner Seite.",
+      "text": "Was ein Angebot kostet und wie es abläuft, liest du vor dem ersten Gespräch auf seiner Seite.",
       "beleg": "Homepages und Videos mit Lieferzeit in Werktagen, Mandate mit festem Monatspreis und klarer Laufzeit."
     }
   ],
@@ -534,19 +588,19 @@
     {
       "titel": "Start-ups",
       "richtung": "Innovation in den Markt bringen",
-      "text": "Sie bauen etwas Neues und brauchen die ersten Kunden.",
+      "text": "Du baust etwas Neues und brauchst die ersten Kunden.",
       "einstieg": "Positionierung, Sichtbarkeit und unsere Events. Vertrieb, sobald das Produkt fertig ist."
     },
     {
       "titel": "Unternehmer mit fertigem Produkt",
       "richtung": "Innovation in den Markt bringen",
-      "text": "Ihr Produkt ist fertig und soll wachsen: Tech, KI, FinTech, innovative Dienstleister und Handwerk, Gesundheit, Sport, Ernährung.",
+      "text": "Dein Produkt ist fertig und soll wachsen: Tech, KI, FinTech, innovative Dienstleister und Handwerk, Gesundheit, Sport, Ernährung.",
       "einstieg": "Sichtbarkeit und Vertrieb aus einer Hand, auf Wunsch mit PR und Kommunikation."
     },
     {
       "titel": "Mittelstand, der Neues einführt",
       "richtung": "Innovation ins Unternehmen bringen",
-      "text": "Sie wollen KI und neue Werkzeuge nicht nur ausprobieren, sondern im Alltag nutzen.",
+      "text": "Du willst KI und neue Werkzeuge nicht nur ausprobieren, sondern im Alltag nutzen.",
       "einstieg": "Der Innovations-Check, danach der Scoping-Workshop und KI und Datenbasis im Umsetzungsprojekt. Bei Bedarf auch Vertrieb."
     }
   ],
@@ -567,7 +621,7 @@
   "arbeitsweise": [
     {
       "titel": "Fortschrittlich",
-      "text": "Wir arbeiten selbst jeden Tag mit KI und neuen Werkzeugen. Was sich bei uns bewährt, bringen wir zu Ihnen mit."
+      "text": "Wir arbeiten selbst jeden Tag mit KI und neuen Werkzeugen. Was sich bei uns bewährt, bringen wir zu dir mit."
     },
     {
       "titel": "Tempo",
@@ -575,7 +629,7 @@
     },
     {
       "titel": "Alle Fachleute im Team",
-      "text": "Film, Design, Technik, PR und Vertrieb kommen aus einem Team. Sie haben einen Ansprechpartner und müssen nichts selbst koordinieren."
+      "text": "Film, Design, Technik, PR und Vertrieb kommen aus einem Team. Du hast einen Ansprechpartner und musst nichts selbst koordinieren."
     }
   ],
   "grundregel": "Was hier steht, können wir belegen. Quellen verlinken wir.",
@@ -590,7 +644,7 @@
     },
     {
       "titel": "Kein Callcenter",
-      "text": "Ihr Team verkauft selbst, wir machen vor."
+      "text": "Dein Team verkauft selbst, wir machen vor."
     },
     {
       "titel": "Kein Inkubator",
@@ -600,7 +654,7 @@
   "team_netzwerk": {
     "titel": "Das Team dahinter",
     "rolle": "Fachleute im Team",
-    "text": "In jedem Projekt arbeiten die Fachleute mit, die es braucht: eingespielt und mit festen Abläufen. Sie haben trotzdem eine Ansprechperson, die für das Ergebnis geradesteht.",
+    "text": "In jedem Projekt arbeiten die Fachleute mit, die es braucht: eingespielt und mit festen Abläufen. Du hast trotzdem eine Ansprechperson, die für das Ergebnis geradesteht.",
     "felder": [
       "Film und Video",
       "Design und Websites",
@@ -630,8 +684,8 @@
       "text": "30 Minuten Erstgespräch per Video oder ein Check mit Ergebnis sofort. Beides kostenlos."
     },
     {
-      "titel": "Ihr Vorschlag",
-      "text": "Wir schlagen Ihnen das passende Angebot vor und nennen Festpreis und Ablauf schriftlich, bevor es losgeht."
+      "titel": "Dein Vorschlag",
+      "text": "Wir schlagen dir das passende Angebot vor und nennen Festpreis und Ablauf schriftlich, bevor es losgeht."
     },
     {
       "titel": "Start",
@@ -643,8 +697,8 @@
     "positionierung": "In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.",
     "umsetzungsprojekte": "Wir ordnen zuerst Abläufe und Daten und führen dann KI und Software ein, bis sie im Alltag genutzt werden. Mit klarem Umfang, vorab vereinbart.",
     "scoping-workshop": "Umfang, Abläufe und Daten klären, bevor gebaut wird.",
-    "social-media": "Wir betreuen Ihre sozialen Medien in drei Paketen: vom Redaktionsplan mit Texten und Reels bis zum monatlichen Dreh.",
-    "abendpartner": "Sie begleiten einen Fokus Abend als Partner: mit Logo und Nennung, einer Begrüßung von 3 Minuten und einem Partnerbericht.",
+    "social-media": "Wir betreuen deine sozialen Medien in drei Paketen: vom Redaktionsplan mit Texten und Reels bis zum monatlichen Dreh.",
+    "abendpartner": "Du begleitest einen Fokus Abend als Partner: mit Logo und Nennung, einer Begrüßung von 3 Minuten und einem Partnerbericht.",
     "tagesworkshop": "Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.",
     "pr-kommunikation": "Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation."
   },
@@ -658,23 +712,23 @@
   },
   "check": {
     "hinweis": "Text der Fokus-Seite zum Check (ruhiger als die Vorlage).",
-    "text": "Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Die kurze Fassung dauert rund 10 Minuten und zeigt das Ergebnis sofort, die ausführliche rund 25 Minuten, danach kommt der vollständige Bericht per E-Mail."
+    "text": "Der Innovations-Check zeigt, wo dein Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit deiner Branche und mit zwei nächsten Schritten. Die kurze Fassung dauert rund 10 Minuten und zeigt das Ergebnis sofort, die ausführliche rund 25 Minuten, danach kommt der vollständige Bericht per E-Mail."
   },
   "angebote_lead": {
-    "sichtbarkeit": "Jedes Angebot hat einen Startpreis. Homepages und Videos haben feste Lieferzeiten, bei Social Media sowie PR und Kommunikation steht der Monatspreis vor dem Start fest. Ablauf, Ergebnis und Konditionen finden Sie auf der Seite des Angebots.",
+    "sichtbarkeit": "Jedes Angebot hat einen Startpreis. Homepages und Videos haben feste Lieferzeiten, bei Social Media sowie PR und Kommunikation steht der Monatspreis vor dem Start fest. Ablauf, Ergebnis und Konditionen findest du auf der Seite des Angebots.",
     "vertrieb": "Monatspreise, die vor dem Start feststehen, und klare Laufzeiten von 6 oder 12 Monaten. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
     "innovation": "Der Check ist kostenlos. Im Scoping-Workshop klären wir Umfang, Abläufe und Daten, bevor gebaut wird; er wird auf das Projekt angerechnet. Das Umsetzungsprojekt hat einen klaren Umfang, vorab vereinbart."
   },
   "fragen_zuschnitt": {
     "hinweis": "Antworten aus den gemeinsamen Fragen, auf den Bereich zugeschnitten (nur gekürzt, nichts Neues).",
     "sichtbarkeit": {
-      "gibt-es-rabatt": "Auf Positionierung, Homepages und Videos gibt es kein Skonto. Bei PR und Kommunikation gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen.",
+      "gibt-es-rabatt": "Auf Positionierung, Homepages und Videos gibt es kein Skonto. Bei PR und Kommunikation gibt es 3 % Skonto, wenn du die volle Laufzeit vorab zahlst.",
       "wie-lange-laufen-die-vertraege": "Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis. Die Videoserie läuft mindestens 3 Monate, danach ist sie monatlich kündbar. PR und Kommunikation läuft 6 oder 12 Monate."
     },
     "vertrieb": {
-      "gibt-es-rabatt": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen.",
+      "gibt-es-rabatt": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn du die volle Laufzeit vorab zahlst.",
       "wie-lange-laufen-die-vertraege": "Head of Sales und CSO laufen 6 oder 12 Monate. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis.",
-      "was-kostet-der-tagesworkshop-und-was": "{preis:tagesworkshop} netto. Sie bekommen ein Protokoll mit Ihren fünf größten Hebeln nach Aufwand und Wirkung und einen 90-Tage-Plan. Einen Hebel setzen wir am Tag gemeinsam um. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
+      "was-kostet-der-tagesworkshop-und-was": "{preis:tagesworkshop} netto. Du bekommst ein Protokoll mit deinen fünf größten Hebeln nach Aufwand und Wirkung und einen 90-Tage-Plan. Einen Hebel setzen wir am Tag gemeinsam um. Startest du danach ein Mandat, rechnen wir den Workshop voll an."
     }
   },
   "produkt_anpassung": {
@@ -682,14 +736,14 @@
     "homepage-cinematic": {
       "fuer": [
         "Tech und Mittelstand, die mit Wirkung auffallen wollen",
-        "Firmen, deren Geschichte erst noch erzählt werden will: Die Story entwickeln wir mit Ihnen"
+        "Firmen, deren Geschichte erst noch erzählt werden will: Die Story entwickeln wir mit dir"
       ]
     },
     "erklaervideo": {
-      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, was Sie machen. Text wird überflogen, ein Dreh kostet Tausende Euro und Wochen."
+      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, was du machst. Text wird überflogen, ein Dreh kostet Tausende Euro und Wochen."
     },
     "videostory": {
-      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, wer hinter Ihrer Firma steht. Text wird überflogen, ein Dreh kostet Tausende Euro und Wochen."
+      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, wer hinter deiner Firma steht. Text wird überflogen, ein Dreh kostet Tausende Euro und Wochen."
     },
     "homepage-landing": {
       "fuer": [
@@ -791,7 +845,7 @@
       },
       "head-of-sales": {
         "titel": "Head of Sales auf Zeit · MAKE Innovation",
-        "beschreibung": "Vertriebsleitung auf Zeit für 6 oder 12 Monate: Wir bauen Ihren Vertrieb auf, machen Ihrem Team vor und übergeben ein System. {preis:head-of-sales} netto im Monat."
+        "beschreibung": "Vertriebsleitung auf Zeit für 6 oder 12 Monate: Wir bauen deinen Vertrieb auf, machen deinem Team vor und übergeben ein System. {preis:head-of-sales} netto im Monat."
       },
       "cso": {
         "titel": "Chief Sales Officer auf Zeit (CSO) · MAKE Innovation",
@@ -803,7 +857,7 @@
       },
       "homepage-story": {
         "titel": "Homepage Story: Website mit Unterseiten · MAKE Innovation",
-        "beschreibung": "Ihre Geschichte als Website: Startseite mit 3D-Effekt und drei Unterseiten, Texte von uns, fertig in 15 Werktagen. {preis:homepage-story} netto, einmalig."
+        "beschreibung": "Deine Geschichte als Website: Startseite mit 3D-Effekt und drei Unterseiten, Texte von uns, fertig in 15 Werktagen. {preis:homepage-story} netto, einmalig."
       },
       "homepage-cinematic": {
         "titel": "Homepage Cinematic: Website mit 3D-Szenen · MAKE Innovation",
@@ -811,15 +865,15 @@
       },
       "erklaervideo": {
         "titel": "Erklärvideo in 10 Werktagen · MAKE Innovation",
-        "beschreibung": "Ihr Angebot in 90 Sekunden verstanden: Erklärvideo in Ihrer CI, ohne Dreh vor Ort, in drei Bildformaten mit Untertiteln. {preis:erklaervideo} netto, in 10 Werktagen."
+        "beschreibung": "Dein Angebot in 90 Sekunden verstanden: Erklärvideo in deiner CI, ohne Dreh vor Ort, in drei Bildformaten mit Untertiteln. {preis:erklaervideo} netto, in 10 Werktagen."
       },
       "videostory": {
-        "titel": "Videostory: die Geschichte Ihrer Firma · MAKE Innovation",
-        "beschreibung": "Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich und in Ihrer CI, mit KI-Stimme oder Ihrer eigenen. {preis:videostory} netto, fertig in 15 Werktagen."
+        "titel": "Videostory: die Geschichte deiner Firma · MAKE Innovation",
+        "beschreibung": "Die Geschichte deiner Firma in 90 Sekunden, ehrlich und in deiner CI, mit KI-Stimme oder deiner eigenen. {preis:videostory} netto, fertig in 15 Werktagen."
       },
       "video-serie": {
         "titel": "Videoserie: zwei Videos im Monat · MAKE Innovation",
-        "beschreibung": "Jeden Monat zwei neue Videos nach Redaktionsplan: Sie planen 30 Minuten mit, Skript und Schnitt machen wir. {preis:video-serie} netto im Monat, mindestens 3 Monate."
+        "beschreibung": "Jeden Monat zwei neue Videos nach Redaktionsplan: Du planst 30 Minuten mit, Skript und Schnitt machen wir. {preis:video-serie} netto im Monat, mindestens 3 Monate."
       },
       "positionierung": {
         "titel": "Positionierung entwickeln in drei Tiefen · MAKE Innovation",
@@ -831,15 +885,15 @@
       },
       "innovations-check": {
         "titel": "Innovations-Check: kostenlos in 10 Minuten · MAKE Innovation",
-        "beschreibung": "Wo steht Ihr Unternehmen bei Strategie, KI, Automatisierung, Daten und Team? Der kostenlose Innovations-Check zeigt es in rund 10 Minuten, mit Branchenvergleich."
+        "beschreibung": "Wo steht dein Unternehmen bei Strategie, KI, Automatisierung, Daten und Team? Der kostenlose Innovations-Check zeigt es in rund 10 Minuten, mit Branchenvergleich."
       },
       "ueber-uns": {
         "titel": "Über uns: Kevin Dieckmann und Malin · MAKE Innovation",
-        "beschreibung": "Warum es MAKE Innovation gibt, wer dahintersteht und woran Sie uns messen können: Werte, Arbeitsweise und was wir vorher im Vertrieb aufgebaut haben."
+        "beschreibung": "Warum es MAKE Innovation gibt, wer dahintersteht und wie wir arbeiten: Kevin Dieckmann und Malin, Festpreis vorab, kein Verkaufsgespräch."
       },
       "kontakt": {
         "titel": "Kontakt · MAKE Innovation",
-        "beschreibung": "So erreichen Sie MAKE Innovation in Berlin: Erstgespräch vereinbaren, per E-Mail schreiben oder mit dem kostenlosen Innovations-Check in 10 Minuten starten."
+        "beschreibung": "So erreichst du MAKE Innovation in Berlin: Erstgespräch vereinbaren, per E-Mail schreiben oder mit dem kostenlosen Innovations-Check in 10 Minuten starten."
       },
       "impressum": {
         "titel": "Impressum · MAKE Innovation",
@@ -847,7 +901,7 @@
       },
       "datenschutz": {
         "titel": "Datenschutz · MAKE Innovation",
-        "beschreibung": "Datenschutzhinweis von MAKE Innovation: keine Cookies, kein Tracking, Hosting in Deutschland. Was wir verarbeiten, wenn Sie den Check nutzen oder uns schreiben."
+        "beschreibung": "Datenschutzhinweis von MAKE Innovation: keine Cookies, kein Tracking, Hosting in Deutschland. Was wir verarbeiten, wenn du den Check nutzt oder uns schreibst."
       },
       "wissen": {
         "titel": "Wissen: Vertrieb, Sichtbarkeit und KI · MAKE Innovation",
@@ -875,7 +929,7 @@
       },
       "events": {
         "titel": "Fokus Abend und Events in Berlin · MAKE Innovation",
-        "beschreibung": "Fokus Abend: jeden Monat in Berlin, 30 bis 40 Gäste, zwei Impulse, Thementische und Netzwerken. Auf Einladung, für Gäste und Kunden kostenlos. Gastgeberin ist Malin."
+        "beschreibung": "Fokus Abend: erster Abend im Januar 2027 in Berlin, 30 bis 40 Gäste, zwei Impulse, Thementische und Netzwerken. Auf Einladung, für Gäste kostenlos."
       },
       "social-media": {
         "titel": "Social Media in drei Paketen: S, M, L · MAKE Innovation",
@@ -891,99 +945,103 @@
       },
       "in-den-markt": {
         "titel": "Innovation in den Markt bringen · MAKE Innovation",
-        "beschreibung": "Ihr Produkt ist stark, jetzt braucht es Kunden: Positionierung, Website, Videos und PR machen Sie sichtbar, ein Vertrieb mit System macht Kunden daraus."
+        "beschreibung": "Dein Produkt ist stark, jetzt braucht es Kunden: Positionierung, Website, Videos und PR machen dich sichtbar, ein Vertrieb mit System macht Kunden daraus."
       },
       "ins-unternehmen": {
         "titel": "Innovation ins Unternehmen bringen · MAKE Innovation",
-        "beschreibung": "KI im Alltag nutzen, nicht nur ausprobieren: Erst Abläufe und Daten ordnen, dann KI und neue Software einführen, bis Ihr Team damit arbeitet."
+        "beschreibung": "KI im Alltag nutzen, nicht nur ausprobieren: Erst Abläufe und Daten ordnen, dann KI und neue Software einführen, bis dein Team damit arbeitet."
+      },
+      "events/abendpartner": {
+        "titel": "Abendpartner beim Fokus Abend · MAKE Innovation",
+        "beschreibung": "Begleite einen Fokus Abend in Berlin als Partner: Logo und Nennung, Begrüßung von 3 Minuten und Partnerbericht. Ab {preis:abendpartner} je Abend, netto."
       }
     }
   },
-  "preise_nebenkosten": "Head of Sales und CSO: Termine vor Ort nach Absprache, Reisekosten gegen Beleg. Beim CSO tragen Sie Stellenanzeigen, Recruiting-Tools, Probetag-Vergütung und Werbebudget direkt. Websites: Hosting und Domain laufen über Sie, die laufenden Kosten zahlen Sie direkt an Ihren Anbieter.",
+  "preise_nebenkosten": "Head of Sales und CSO: Termine vor Ort nach Absprache, Reisekosten gegen Beleg. Beim CSO trägst du Stellenanzeigen, Recruiting-Tools, Probetag-Vergütung und Werbebudget direkt. Websites: Hosting und Domain laufen über dich, die laufenden Kosten zahlst du direkt an deinen Anbieter.",
   "tueren": [
     {
       "id": "markt",
       "etikett": "Innovation in den Markt bringen",
       "titel": "Wir haben ein starkes Produkt und brauchen Kunden.",
-      "text": "Wir sorgen dafür, dass man Sie kennt, wenn Kunden suchen, und dass keine Anfrage liegen bleibt.",
+      "text": "Wir sorgen dafür, dass man dich kennt, wenn Kunden suchen, und dass keine Anfrage liegen bleibt.",
       "pfad": "/in-den-markt/"
     },
     {
       "id": "unternehmen",
       "etikett": "Innovation ins Unternehmen bringen",
       "titel": "Wir wollen KI und neue Software im Alltag nutzen, nicht nur ausprobieren.",
-      "text": "Wir räumen zuerst Abläufe und Daten auf und führen KI dann so ein, dass Ihr Team jeden Tag damit arbeitet.",
+      "text": "Wir räumen zuerst Abläufe und Daten auf und führen KI dann so ein, dass dein Team jeden Tag damit arbeitet.",
       "pfad": "/ins-unternehmen/"
     }
   ],
   "bekannt": {
-    "titel": "Kommt Ihnen das bekannt vor?",
+    "titel": "Kommt dir das bekannt vor?",
     "lead": "Neun Situationen aus Sichtbarkeit, Vertrieb und Innovation, die uns Gründer und Geschäftsführer immer wieder schildern.",
     "gruppen": [
       {
         "bereich": "sichtbarkeit",
         "momente": [
-          "Im Gespräch erklären Sie Ihr Produkt in zwei Minuten. Auf Ihrer Website gelingt das niemandem.",
-          "Ein Fachmagazin schreibt über genau Ihr Thema und zitiert andere. Auf dem Podium danach sitzen Sie im Publikum.",
-          "Ein Kunde fragt eine KI nach Anbietern für Ihr Thema. Ihr Name kommt in der Antwort nicht vor."
+          "Im Gespräch erklärst du dein Produkt in zwei Minuten. Auf deiner Website gelingt das niemandem.",
+          "Ein Fachmagazin schreibt über genau dein Thema und zitiert andere. Auf dem Podium danach sitzt du im Publikum.",
+          "Ein Kunde fragt eine KI nach Anbietern für dein Thema. Dein Name kommt in der Antwort nicht vor."
         ],
         "zahl": "forrester-ki-einkauf-2026"
       },
       {
         "bereich": "vertrieb",
         "momente": [
-          "Ein Interessent von der Messe hat vor drei Wochen um ein Angebot gebeten. Der Entwurf liegt noch in Ihrem Postfach.",
+          "Ein Interessent von der Messe hat vor drei Wochen um ein Angebot gebeten. Der Entwurf liegt noch in deinem Postfach.",
           "Ein Wettbewerber mit dem schwächeren Produkt bekommt den Auftrag, weil er schneller nachgefasst hat.",
-          "Wie viele neue Kunden nächsten Monat kommen, kann niemand sagen. Es hängt an Empfehlungen und an Ihnen."
+          "Wie viele neue Kunden nächsten Monat kommen, kann niemand sagen. Es hängt an Empfehlungen und an dir."
         ],
         "zahl": "ifo-auftragsmangel-2026"
       },
       {
         "bereich": "innovation",
         "momente": [
-          "Alle reden über KI. Wo Sie anfangen sollen und was dabei erlaubt ist, kann Ihnen im Haus niemand sagen.",
+          "Alle reden über KI. Wo du anfangen sollst und was dabei erlaubt ist, kann dir im Haus niemand sagen.",
           "Im Team nutzen einige ChatGPT. Wofür, mit welchen Daten und mit welchem Nutzen, weiß niemand.",
-          "Für ein einfaches Angebot suchen Sie Zahlen aus drei Listen, zwei Postfächern und dem Kopf eines Kollegen zusammen."
+          "Für ein einfaches Angebot suchst du Zahlen aus drei Listen, zwei Postfächern und dem Kopf eines Kollegen zusammen."
         ],
         "zahl": "zew-genai-eigenregie-2026"
       }
     ],
-    "schluss": "Wenn Sie sich in zwei davon wiedererkennen, lohnt sich ein Gespräch. Meist hängen die Probleme zusammen, und dann sollte man sie auch zusammen angehen.",
+    "schluss": "Wenn du dich in zwei davon wiedererkennst, lohnt sich ein Gespräch. Meist hängen die Probleme zusammen, und dann sollte man sie auch zusammen angehen.",
     "belege_titel": "Was Studien 2026 zeigen"
   },
   "wegweiser": {
     "titel": "Womit anfangen?",
-    "lead": "Sie müssen nicht alles auf einmal angehen. Suchen Sie die Lage, die am besten passt.",
+    "lead": "Du musst nicht alles auf einmal angehen. Suche die Lage, die am besten passt.",
     "markt": [
       {
-        "lage": "Ihre Website erklärt nicht, was Sie tun.",
+        "lage": "Deine Website erklärt nicht, was du tust.",
         "angebot": "positionierung"
       },
       {
-        "lage": "Ihre Website bringt kaum Anfragen.",
+        "lage": "Deine Website bringt kaum Anfragen.",
         "ziel": "/sichtbarkeit/homepages/",
         "name": "Homepages",
         "gruppe": "Homepage-Pakete",
         "bereich": "sichtbarkeit"
       },
       {
-        "lage": "Besucher verstehen Ihr Angebot nicht schnell genug.",
+        "lage": "Besucher verstehen dein Angebot nicht schnell genug.",
         "angebot": "erklaervideo"
       },
       {
-        "lage": "In Medien und auf Bühnen Ihrer Branche kommen andere zu Wort.",
+        "lage": "In Medien und auf Bühnen deiner Branche kommen andere zu Wort.",
         "angebot": "pr-kommunikation"
       },
       {
-        "lage": "Sie wollen wissen, wo der größte Hebel liegt.",
+        "lage": "Du willst wissen, wo der größte Hebel liegt.",
         "angebot": "tagesworkshop"
       },
       {
-        "lage": "Der Vertrieb hängt an Ihnen.",
+        "lage": "Der Vertrieb hängt an dir.",
         "angebot": "head-of-sales"
       },
       {
-        "lage": "Ihr neuer Vertriebsleiter kommt nicht in Fahrt.",
+        "lage": "Dein neuer Vertriebsleiter kommt nicht in Fahrt.",
         "angebot": "head-of-sales"
       }
     ],
@@ -996,7 +1054,7 @@
         "bereich": "innovation"
       },
       {
-        "lage": "Sie haben ein Vorhaben, aber der Umfang ist noch offen.",
+        "lage": "Du hast ein Vorhaben, aber der Umfang ist noch offen.",
         "angebot": "scoping-workshop"
       },
       {
@@ -1008,27 +1066,27 @@
   "einwaende": [
     {
       "f": "Wer arbeitet an meinem Projekt?",
-      "a": "Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Die Fachleute für Produktion, Technik und Medienarbeit sind im Team. Sie sprechen immer mit uns, und wir stimmen alles Weitere im Team ab."
+      "a": "Du arbeitest direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Die Fachleute für Produktion, Technik und Medienarbeit sind im Team. Du sprichst immer mit uns, und wir stimmen alles Weitere im Team ab."
     },
     {
-      "f": "Welche Erfahrung bringen Sie mit?",
+      "f": "Welche Erfahrung bringt ihr mit?",
       "a": "Wir kommen aus der Vertriebsführung: Teams geführt, Partnernetze aufgebaut, Head of Sales bei einem FinTech. Heute arbeiten wir in laufenden Projekten mit KI, auch im internationalen Umfeld. Namen nennen wir nur, wenn Kunden es freigeben. Vertraulichkeit gehört für uns dazu."
     },
     {
       "f": "Was kostet das, und was bekomme ich dafür?",
-      "a": "Jedes Angebot steht mit Startpreis, festem Ablauf und klaren Konditionen auf seiner Seite; den genauen Festpreis bekommen Sie vor dem Start. Homepages und Videos haben eine feste Lieferzeit in Werktagen, Mandate einen festen Monatspreis und eine klare Laufzeit. Im Mandat sehen Sie den Fortschritt schwarz auf weiß: Zwischenbilanz in Woche 8, im Vertrieb ab Monat 3 jeden Freitag der Wochenreport."
+      "a": "Jedes Angebot steht mit Startpreis, festem Ablauf und klaren Konditionen auf seiner Seite; den genauen Festpreis bekommst du vor dem Start. Homepages und Videos haben eine feste Lieferzeit in Werktagen, Mandate einen festen Monatspreis und eine klare Laufzeit. Im Mandat siehst du den Fortschritt schwarz auf weiß: Zwischenbilanz in Woche 8, im Vertrieb ab Monat 3 jeden Freitag der Wochenreport."
     },
     {
       "f": "Ist das Erstgespräch ein Verkaufsgespräch?",
-      "a": "Nein, es ist ein Gespräch über Ihre Lage, kostenlos und per Video. Am Ende sagen wir Ihnen klar, ob wir helfen können und womit. Und wenn nicht, sagen wir auch das."
+      "a": "Nein, es ist ein Gespräch über deine Lage, kostenlos und per Video. Am Ende sagen wir dir klar, ob wir helfen können und womit. Und wenn nicht, sagen wir auch das."
     },
     {
-      "f": "Arbeiten Sie auch bei uns vor Ort?",
-      "a": "Ja. Vieles läuft per Video, wichtige Termine machen wir gern bei Ihnen: Workshops, Trainings mit Ihrem Team, Gespräche mit der Geschäftsführung. Termine vor Ort vereinbaren wir vorher, Reisekosten rechnen wir gegen Beleg ab."
+      "f": "Arbeitet ihr auch bei uns vor Ort?",
+      "a": "Ja. Vieles läuft per Video, wichtige Termine machen wir gern bei dir: Workshops, Trainings mit deinem Team, Gespräche mit der Geschäftsführung. Termine vor Ort vereinbaren wir vorher, Reisekosten rechnen wir gegen Beleg ab."
     },
     {
       "f": "Wie gut sind Videos, die mit KI entstehen?",
-      "a": "So gut wie das Skript und die Sorgfalt dahinter. Sie geben zuerst das Skript frei, bevor ein Bild entsteht. Wir arbeiten mit ruhigen Bildern, wo es geht mit Ihrem eigenen Material, und bei Videostory und Videoserie auf Wunsch mit Ihrer eigenen Stimme. KI-Inhalte kennzeichnen wir, wo es nötig ist."
+      "a": "So gut wie das Skript und die Sorgfalt dahinter. Du gibst zuerst das Skript frei, bevor ein Bild entsteht. Wir arbeiten mit ruhigen Bildern, wo es geht mit deinem eigenen Material, und bei Videostory und Videoserie auf Wunsch mit deiner eigenen Stimme. KI-Inhalte kennzeichnen wir, wo es nötig ist."
     }
   ],
   "erstgespraech": {
@@ -1039,18 +1097,18 @@
     "mail_text": "Guten Tag,\n\nich möchte ein Erstgespräch vereinbaren.\n\nUnternehmen:\nWorum es geht:\nWas soll in 90 Tagen anders sein:\nWann passt ein Gespräch:\n\nViele Grüße"
   },
   "risiko": {
-    "titel": "Sie sehen früh, wo Sie stehen",
-    "titel_absicherung": "Ihr Risiko bleibt klein",
+    "titel": "Du siehst früh, wo du stehst",
+    "titel_absicherung": "Dein Risiko bleibt klein",
     "punkte": [
-      "In Woche 8 bekommen Sie eine Zwischenbilanz mit Zahlen und Fahrplan.",
-      "Was entsteht, dürfen Sie nach Zahlung weiter nutzen."
+      "In Woche 8 bekommst du eine Zwischenbilanz mit Zahlen und Fahrplan.",
+      "Was entsteht, darfst du nach Zahlung weiter nutzen."
     ]
   },
   "familie": {
     "hinweis": "Marken (Kevin 11.11.2026, Wortlaut 12.11.: aus Kundensicht, keine Innensicht wie „Familie“, „Dach“, „die Preise stehen hier“). Sichtbarkeit liefert MAKE Studios, Vertrieb (mit Netzwerken und Events) MAKE Revenue, Innovation bleibt bei MAKE Innovation; Preise stehen nur bei MAKE Innovation. Die Adressen der Marken stehen an genau dieser einen Stelle (url). Die Sätze unter satz und dach_satz sind die Standardsätze für Suchmaschinen (JSON-LD, llms.txt), sie stehen nicht im sichtbaren Fließtext.",
     "marke": "Leistungen",
-    "titel": "Was Sie von uns bekommen.",
-    "lead": "Aus guten Angeboten soll Umsatz werden: MAKE Studios macht Sie sichtbar, MAKE Revenue macht aus Anfragen Aufträge, und MAKE Innovation führt KI und bessere Abläufe ein.",
+    "titel": "Was du von uns bekommst.",
+    "lead": "Aus guten Angeboten soll Umsatz werden: MAKE Studios macht dich sichtbar, MAKE Revenue macht aus Anfragen Aufträge, und MAKE Innovation führt KI und bessere Abläufe ein.",
     "dach_satz": "MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue.",
     "innovation_marke": "Innovation",
     "events_hinweis": "Mehr zu Netzwerken und Events bei MAKE Revenue",
@@ -1062,7 +1120,7 @@
         "url": "https://makestudios.de/",
         "thema": "Sichtbarkeit und Video",
         "satz": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Video, Fotos und Social Media.",
-        "anriss": "MAKE Studios baut Ihre Website, pflegt Ihr Google-Profil und macht Video und Fotos. Ihre sozialen Medien betreuen wir in drei Paketen. Damit Kunden Sie finden und schnell verstehen, was Sie machen.",
+        "anriss": "MAKE Studios baut deine Website, pflegt dein Google-Profil und macht Video und Fotos. Deine sozialen Medien betreuen wir in drei Paketen. Damit Kunden dich finden und schnell verstehen, was du machst.",
         "themen": [
           "Websites",
           "Google-Profil",
@@ -1072,12 +1130,12 @@
         "dort": "Problem, Beispiele und Ablauf",
         "preise_link": "Pakete und Preise",
         "blatt": {
-          "titel": "Sichtbarkeit: Pakete und Preise",
-          "text": "Alle Pakete mit Preis, Umfang und Lieferzeit. Fertige Beispielseiten und den Ablauf sehen Sie bei MAKE Studios.",
+          "titel": "Gefunden werden, wo gesucht wird.",
+          "text": "Alle Pakete mit Preis, Umfang und Lieferzeit: Website, Google, Video und Social Media aus einer Hand.",
           "angebote_titel": "Alle Pakete mit Preis"
         },
         "link_text": "Beispiele ansehen",
-        "hinweis_text": "Fertige Beispielseiten und den Ablauf sehen Sie bei MAKE Studios."
+        "hinweis_text": "Fertige Beispielseiten und den Ablauf siehst du bei MAKE Studios."
       },
       {
         "id": "revenue",
@@ -1086,7 +1144,7 @@
         "url": "https://makerevenue.de/",
         "thema": "Vertrieb",
         "satz": "MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.",
-        "anriss": "MAKE Revenue baut Ihren Vertrieb so auf, dass er nicht mehr an Ihnen hängt: fester Ablauf im CRM, Leitfäden für die Gespräche, jeden Freitag ein Wochenreport. Wenn Sie möchten, übernehmen wir die Vertriebsleitung auf Zeit. Dazu kommen Abende in kleiner Runde für neue Kontakte.",
+        "anriss": "MAKE Revenue baut deinen Vertrieb so auf, dass er nicht mehr an dir hängt: fester Ablauf im CRM, Leitfäden für die Gespräche, jeden Freitag ein Wochenreport. Wenn du möchtest, übernehmen wir die Vertriebsleitung auf Zeit. Dazu kommen Abende in kleiner Runde für neue Kontakte.",
         "themen": [
           "Vertrieb mit System",
           "Vertrieb auf Zeit",
@@ -1095,18 +1153,18 @@
         "dort": "Vorgehen, Ablauf und Events",
         "preise_link": "Leistungen und Preise",
         "blatt": {
-          "titel": "Vertrieb: Leistungen und Preise",
-          "text": "Tagesworkshop, Head of Sales und Chief Sales Officer mit Preis, Umfang und Laufzeit. Wie wir dabei vorgehen, sehen Sie bei MAKE Revenue.",
+          "titel": "Aus Aufmerksamkeit werden Kunden.",
+          "text": "Tagesworkshop, Head of Sales und Chief Sales Officer mit Preis, Umfang und Laufzeit: ein fester Ablauf, der nicht mehr an dir hängt.",
           "angebote_titel": "Alle Leistungen mit Preis"
         },
         "link_text": "So gehen wir vor",
-        "hinweis_text": "Wie wir im Vertrieb vorgehen, sehen Sie bei MAKE Revenue."
+        "hinweis_text": "Wie wir im Vertrieb vorgehen, siehst du bei MAKE Revenue."
       }
     ]
   },
   "arbeitsprobe": {
     "titel": "Diese Website ist unsere Arbeitsprobe.",
-    "text": "Scroll-Geschichte mit eigener Szene, Texte, Ratgeber, Vorschaubilder und strukturierte Daten für Google und KI-Suchen. Die Seite kommt ohne Cookies, Tracking und fremde Dienste aus. So bauen wir auch Ihre.",
+    "text": "Scroll-Geschichte mit eigener Szene, Texte, Ratgeber, Vorschaubilder und strukturierte Daten für Google und KI-Suchen. Die Seite kommt ohne Cookies, Tracking und fremde Dienste aus. So bauen wir auch deine.",
     "punkte": [
       "Ein Kernsatz oben, ein klarer nächster Schritt",
       "Ohne Cookies und Tracking, kein Banner nötig",
@@ -1172,8 +1230,8 @@
     "satz": "Nächste Woche: Messekontakte nachfassen, die zwei größten offenen Angebote zuerst."
   },
   "rechner": {
-    "titel": "Rechnen Sie nach: Wie viele Termine braucht Ihr Ziel?",
-    "lead": "Tragen Sie Ihre Werte ein. Die Rechnung bleibt in Ihrem Browser, nichts wird gesendet."
+    "titel": "Rechne nach: Wie viele Termine braucht dein Ziel?",
+    "lead": "Trag deine Werte ein. Die Rechnung bleibt in deinem Browser, nichts wird gesendet."
   },
   "check_einstieg": [
     {
@@ -1182,11 +1240,11 @@
     },
     {
       "titel": "Ergebnis",
-      "text": "Ihre Stufe, der Vergleich mit Ihrer Branche und zwei nächste Schritte: kurz sofort, ausführlich als Bericht per E-Mail."
+      "text": "Deine Stufe, der Vergleich mit deiner Branche und zwei nächste Schritte: kurz sofort, ausführlich als Bericht per E-Mail."
     },
     {
       "titel": "Erstgespräch",
-      "text": "30 Minuten mit Kevin. Ihre Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden."
+      "text": "30 Minuten mit Kevin. Deine Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden."
     }
   ],
   "umfang": {
@@ -1198,7 +1256,7 @@
     "hinweis": "Bereich „Kostenlos“ (Kevin 30.10.): Checks, Ratgeber, Zahlen, Vorlagen, Newsletter. Seit 13.11.2026 zwei Checks (Kevin): der Innovations-Check und der Sichtbarkeits- und Vertriebs-Check. Feld bereiche = zu welchen Bereichen der Check gehört.",
     "titel": "Kostenlos.",
     "ruhig": "Zum Mitnehmen.",
-    "lead": "Checks, Leitfäden, Ratgeber, Zahlen und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Alles mit Anleitung, Beispiel und Bogen zum Ausfüllen. Das meiste bekommen Sie sofort und ohne Anmeldung, ausführliche Arbeitshefte und den vollständigen Check-Bericht schicken wir Ihnen per E-Mail.",
+    "lead": "Checks, Leitfäden, Ratgeber, Zahlen und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Alles mit Anleitung, Beispiel und Bogen zum Ausfüllen. Das meiste bekommst du sofort und ohne Anmeldung, ausführliche Arbeitshefte und den vollständigen Check-Bericht schicken wir dir per E-Mail.",
     "checks": [
       {
         "id": "innovation",
@@ -1212,7 +1270,7 @@
         "id": "sichtbarkeit-vertrieb",
         "name": "Sichtbarkeits- und Vertriebs-Check",
         "minuten": 7,
-        "text": "Fünfzehn Fragen zu Sichtbarkeit und Vertrieb, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, ob es eher an der Sichtbarkeit oder am Vertrieb liegt und welcher Schritt jetzt am meisten bringt.",
+        "text": "Fünfzehn Fragen zu Sichtbarkeit und Vertrieb, dazu zwei in deinen eigenen Worten. Du siehst sofort, ob es eher an der Sichtbarkeit oder am Vertrieb liegt und welcher Schritt jetzt am meisten bringt.",
         "thema": "sichtbarkeit-vertrieb",
         "bereiche": [
           "sichtbarkeit",
@@ -1220,15 +1278,15 @@
         ]
       }
     ],
-    "phasen_titel": "Wo steht Ihr Unternehmen?",
+    "phasen_titel": "Wo steht dein Unternehmen?",
     "phasen_ruhig": "Das hilft jetzt.",
-    "phasen_lead": "Am Anfang zählen andere Dinge als im Wachstum. Wählen Sie Ihre Phase und fangen Sie dort an.",
+    "phasen_lead": "Am Anfang zählen andere Dinge als im Wachstum. Wähle deine Phase und fang dort an.",
     "phasen": [
       {
         "id": "start",
         "name": "Start",
-        "titel": "Sie machen noch vieles selbst.",
-        "satz": "Sie verkaufen, schreiben die Website und entscheiden fast alles. Jetzt zählen ein klarer Satz, ein fester Ablauf und wenige Zahlen.",
+        "titel": "Du machst noch vieles selbst.",
+        "satz": "Du verkaufst, schreibst die Website und entscheidest fast alles. Jetzt zählen ein klarer Satz, ein fester Ablauf und wenige Zahlen.",
         "empfohlen": [
           "r:positionierung-in-fuenf-saetzen",
           "v:kernsatz-in-fuenf-schritten",
@@ -1255,7 +1313,7 @@
       {
         "id": "wachstum",
         "name": "Wachstum",
-        "titel": "Das Team wächst, Sie führen.",
+        "titel": "Das Team wächst, du führst.",
         "satz": "Mehrere Rollen, mehr Kunden, mehr Abstimmung. Jetzt zählen ein fester Führungsrhythmus, Zahlen je Rolle und Vertretung für jede wichtige Aufgabe.",
         "empfohlen": [
           "r:vom-gruender-vertrieb-zum-vertriebsteam",
@@ -1273,13 +1331,13 @@
     },
     "vorlagen": {
       "titel": "Vorlagen zum Mitnehmen.",
-      "lead": "Jede Vorlage mit Anleitung und ausgefülltem Beispiel. Als PDF zum Ausdrucken, viele auch als Tabelle für Excel, Numbers oder Google Tabellen. Kurze Vorlagen laden Sie direkt, ausführliche Arbeitshefte schicken wir Ihnen per E-Mail.",
+      "lead": "Jede Vorlage mit Anleitung und ausgefülltem Beispiel. Als PDF zum Ausdrucken, viele auch als Tabelle für Excel, Numbers oder Google Tabellen. Kurze Vorlagen lädst du direkt, ausführliche Arbeitshefte schicken wir dir per E-Mail.",
       "per_mail_ab_seiten": 7,
       "per_mail_hinweis": "Kevin 31.10.: Die kleinen Sachen sind okay, die größeren brauchen eine E-Mail. Ab so vielen PDF-Seiten führt die Vorlage auf ihre Vorschau-Seite; die Datei kommt nur per E-Mail (App: /api/unterlage)."
     },
     "newsletter": {
       "titel": "Neues aus unserer Arbeit.",
-      "text": "Alle paar Wochen ein kurzer Brief mit neuen Ratgebern, Zahlen und Vorlagen. Kostenlos, jederzeit abbestellbar. Sie bekommen ihn erst, wenn Sie Ihre Anmeldung per E-Mail bestätigen.",
+      "text": "Alle paar Wochen ein kurzer Brief mit neuen Ratgebern, Zahlen und Vorlagen. Kostenlos, jederzeit abbestellbar. Du bekommst ihn erst, wenn du deine Anmeldung per E-Mail bestätigst.",
       "pfad": "/newsletter",
       "knopf": "Zum Newsletter anmelden"
     }
@@ -1290,7 +1348,7 @@
       "name": "Homepages",
       "titel": "Homepages.",
       "ruhig": "Drei Pakete, ein Ziel.",
-      "lead": "Eine Website, auf der Besucher in fünf Sekunden verstehen, was Sie machen, und die Anfragen bringt. Es gibt drei Pakete mit festem Preis und fester Lieferzeit. Sie unterscheiden sich darin, wie viel Geschichte die Seite erzählt und wie aufwendig sie gestaltet ist.",
+      "lead": "Eine Website, auf der Besucher in fünf Sekunden verstehen, was du machst, und die Anfragen bringt. Es gibt drei Pakete mit festem Preis und fester Lieferzeit. Sie unterscheiden sich darin, wie viel Geschichte die Seite erzählt und wie aufwendig sie gestaltet ist.",
       "seo_titel": "Homepages: drei Pakete mit Festpreis · MAKE Innovation",
       "seo_beschreibung": "Homepage Landing, Story und Cinematic: drei Pakete mit festem Preis und fester Lieferzeit, Texte von uns, mobil zuerst und mit Anfrage ins CRM."
     },
@@ -1299,9 +1357,9 @@
       "name": "Videos",
       "titel": "Videos.",
       "ruhig": "Erklären, erzählen, dranbleiben.",
-      "lead": "Unsere Videos zeigen in Sekunden, was Sie machen, vom einzelnen Erklärvideo bis zur Serie. Sie geben zuerst das Skript frei, dann entstehen die Bilder. Alle drei Angebote haben einen festen Preis, Erklärvideo und Videostory auch eine feste Lieferzeit.",
+      "lead": "Unsere Videos zeigen in Sekunden, was du machst, vom einzelnen Erklärvideo bis zur Serie. Du gibst zuerst das Skript frei, dann entstehen die Bilder. Alle drei Angebote haben einen festen Preis, Erklärvideo und Videostory auch eine feste Lieferzeit.",
       "seo_titel": "Videos für Unternehmen: drei Angebote · MAKE Innovation",
-      "seo_beschreibung": "Erklärvideo, Videostory und Video Serie: Videos, die Ihr Angebot in Sekunden zeigen, mit Skript zur Freigabe, festem Preis und fester Lieferzeit."
+      "seo_beschreibung": "Erklärvideo, Videostory und Video Serie: Videos, die dein Angebot in Sekunden zeigen, mit Skript zur Freigabe, festem Preis und fester Lieferzeit."
     }
   },
   "start_varianten": {
@@ -1318,9 +1376,9 @@
     ],
     "gewaehlt": "Sichtbar sein. Planbar verkaufen. (Kevin 30.10.)"
   },
-  "warum_lead": "Vier Unterschiede, an denen Sie uns messen können.",
+  "warum_lead": "Vier Unterschiede, an denen du uns messen kannst.",
   "einwaende_titel": "Was Entscheider uns zuerst fragen.",
-  "einwaende_marke": "Bevor Sie fragen",
+  "einwaende_marke": "Bevor du fragst",
   "laufbahn": {
     "marke": "Aus unserer Arbeit",
     "h2": "Was wir mitbringen.",
@@ -1341,27 +1399,27 @@
   },
   "einstiege": {
     "markt": {
-      "titel": "Ihr Produkt ist stark.",
+      "titel": "Dein Produkt ist stark.",
       "ruhig": "Jetzt braucht es Kunden.",
-      "lead": "Viele Kunden haben sich schon entschieden, bevor sie anfragen. Wir sorgen dafür, dass man Sie bis dahin kennt, und bauen den Vertrieb, der jede Anfrage weiterverfolgt.",
-      "merken": "Woran Sie es merken",
-      "schritte_titel": "So bringen wir Ihr Produkt in den Markt.",
+      "lead": "Viele Kunden haben sich schon entschieden, bevor sie anfragen. Wir sorgen dafür, dass man dich bis dahin kennt, und bauen den Vertrieb, der jede Anfrage weiterverfolgt.",
+      "merken": "Woran du es merkst",
+      "schritte_titel": "So bringen wir dein Produkt in den Markt.",
       "schritte": [
         {
-          "titel": "Klar sagen, was Sie lösen",
-          "text": "Wir fassen in wenigen Sätzen zusammen, für wen Sie da sind, welches Problem Sie lösen und was Sie anders machen. Darauf bauen Website, Videos und Vertrieb auf."
+          "titel": "Klar sagen, was du löst",
+          "text": "Wir fassen in wenigen Sätzen zusammen, für wen du da bist, welches Problem du löst und was du anders machst. Darauf bauen Website, Videos und Vertrieb auf."
         },
         {
           "titel": "Gefunden und verstanden werden",
-          "text": "Website, Videos und Pressearbeit tragen Ihre Botschaft dorthin, wo Ihre Kunden suchen und sich informieren."
+          "text": "Website, Videos und Pressearbeit tragen deine Botschaft dorthin, wo deine Kunden suchen und sich informieren."
         },
         {
           "titel": "Aus Anfragen Kunden machen",
           "text": "Ein Vertrieb mit System: klarer Ablauf, CRM, Gesprächsleitfäden und Zahlen. Jede Anfrage hat einen nächsten Schritt."
         },
         {
-          "titel": "Ihr Team übernimmt",
-          "text": "Wir arbeiten mit, bis Ihr Team Sichtbarkeit und Vertrieb allein trägt. Danach sind wir da, wenn Sie uns brauchen."
+          "titel": "Dein Team übernimmt",
+          "text": "Wir arbeiten mit, bis dein Team Sichtbarkeit und Vertrieb allein trägt. Danach sind wir da, wenn du uns brauchst."
         }
       ],
       "zahlen": [
@@ -1374,14 +1432,14 @@
           "Check starten"
         ]
       ],
-      "check_satz": "Der Sichtbarkeits- und Vertriebs-Check zeigt Ihnen in rund sieben Minuten, wo Sie bei Sichtbarkeit und Vertrieb stehen und welcher Schritt jetzt am meisten bringt."
+      "check_satz": "Der Sichtbarkeits- und Vertriebs-Check zeigt dir in rund sieben Minuten, wo du bei Sichtbarkeit und Vertrieb stehst und welcher Schritt jetzt am meisten bringt."
     },
     "unternehmen": {
       "titel": "KI im Alltag nutzen.",
       "ruhig": "Nicht nur ausprobieren.",
-      "lead": "Erst ordnen wir Abläufe und Daten. Dann führen wir KI und neue Software dort ein, wo sie Arbeit spart, und bleiben dabei, bis Ihr Team damit arbeitet.",
-      "merken": "Woran Sie es merken",
-      "schritte_titel": "So bringen wir KI in Ihren Alltag.",
+      "lead": "Erst ordnen wir Abläufe und Daten. Dann führen wir KI und neue Software dort ein, wo sie Arbeit spart, und bleiben dabei, bis dein Team damit arbeitet.",
+      "merken": "Woran du es merkst",
+      "schritte_titel": "So bringen wir KI in deinen Alltag.",
       "zahlen": [
         "bitkom-ki-potenzial-2026",
         "bitkom-ki-datenaufbereitung"
@@ -1392,7 +1450,7 @@
           "Innovations-Check starten"
         ]
       ],
-      "check_satz": "Der Innovations-Check zeigt Ihnen in rund zehn Minuten, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht und wo KI den größten Unterschied macht. Wer es genauer wissen will, wählt die ausführliche Fassung und bekommt den vollständigen Bericht per E-Mail."
+      "check_satz": "Der Innovations-Check zeigt dir in rund zehn Minuten, wo dein Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht und wo KI den größten Unterschied macht. Wer es genauer wissen will, wählt die ausführliche Fassung und bekommt den vollständigen Bericht per E-Mail."
     }
   },
   "videos": {
@@ -1413,37 +1471,37 @@
     "hinweis": "Kevin 31.10. (Klickrunde): Freigabe vor dem Bau + Ausstieg. Gilt für Homepages, Videos und den Tagesworkshop. Muss zu den Verträgen/Angeboten passen.",
     "Homepage-Pakete": {
       "punkte": [
-        "Sie geben Seitenplan und Texte frei, bevor wir bauen.",
-        "Passt Ihnen der erste Entwurf nicht, steigen Sie aus und zahlen nur die Hälfte. Den Rest erstatten wir.",
+        "Du gibst Seitenplan und Texte frei, bevor wir bauen.",
+        "Passt dir der erste Entwurf nicht, steigst du aus und zahlst nur die Hälfte. Den Rest erstatten wir.",
         "Nach 30 Tagen schauen wir gemeinsam, wie viele Anfragen die Seite gebracht hat."
       ],
-      "kondition": "Passt der erste Entwurf nicht, können Sie aussteigen und zahlen nur die Hälfte."
+      "kondition": "Passt der erste Entwurf nicht, kannst du aussteigen und zahlst nur die Hälfte."
     },
     "Videos": {
       "punkte": [
-        "Sie geben das Skript frei, bevor wir produzieren.",
-        "Passt Ihnen der erste Entwurf nicht, steigen Sie aus und zahlen nur die Hälfte. Den Rest erstatten wir."
+        "Du gibst das Skript frei, bevor wir produzieren.",
+        "Passt dir der erste Entwurf nicht, steigst du aus und zahlst nur die Hälfte. Den Rest erstatten wir."
       ],
-      "kondition": "Passt der erste Entwurf nicht, können Sie aussteigen und zahlen nur die Hälfte."
+      "kondition": "Passt der erste Entwurf nicht, kannst du aussteigen und zahlst nur die Hälfte."
     },
     "tagesworkshop": {
       "punkte": [
-        "Am Abend kennen Sie Ihre fünf größten Hebel. Drei davon können Sie sofort umsetzen.",
-        "Starten Sie danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Workshop voll an."
+        "Am Abend kennst du deine fünf größten Hebel. Drei davon kannst du sofort umsetzen.",
+        "Startest du danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Workshop voll an."
       ]
     },
     "video-serie": {
       "punkte": [
-        "Sie geben das Skript frei, bevor wir produzieren.",
-        "Passt Ihnen der erste Entwurf nicht, steigen Sie aus und zahlen nur die Hälfte des ersten Monats. Den Rest erstatten wir."
+        "Du gibst das Skript frei, bevor wir produzieren.",
+        "Passt dir der erste Entwurf nicht, steigst du aus und zahlst nur die Hälfte des ersten Monats. Den Rest erstatten wir."
       ],
-      "kondition": "Passt der erste Entwurf nicht, können Sie aussteigen und zahlen nur die Hälfte des ersten Monats."
+      "kondition": "Passt der erste Entwurf nicht, kannst du aussteigen und zahlst nur die Hälfte des ersten Monats."
     }
   },
   "produkt_blaetter": {
     "hinweis": "Produktblätter nur für diese Website (31.10., Prüfung: die Einstiegsprodukte hatten die dünnsten Seiten). Nur belegte Fakten aus inhalt.json, keine erfundenen Fristen.",
     "tagesworkshop": {
-      "versprechen": "Ein Tag, an dem Sie erfahren, wo Ihr größter Hebel in Vertrieb, Markteintritt und Sichtbarkeit liegt. Mit einem Plan für 90 Tage.",
+      "versprechen": "Ein Tag, an dem du erfährst, wo dein größter Hebel in Vertrieb, Markteintritt und Sichtbarkeit liegt. Mit einem Plan für 90 Tage.",
       "fuer": [
         "Gründer und Unternehmer, die wissen wollen, wo der größte Hebel liegt, bevor sie investieren",
         "Teams, deren Vertrieb wächst, aber nicht planbar läuft"
@@ -1454,11 +1512,11 @@
         "zeilen": [
           [
             "Vorab",
-            "Sie wählen den Fokus: eher Strategie oder eher operativ."
+            "Du wählst den Fokus: eher Strategie oder eher operativ."
           ],
           [
             "Vormittag",
-            "Lage, Zahlen und Kunden. Wir ordnen ein, ob Sie ein Markt- oder ein Produktproblem haben."
+            "Lage, Zahlen und Kunden. Wir ordnen ein, ob du ein Markt- oder ein Produktproblem hast."
           ],
           [
             "Nachmittag",
@@ -1466,14 +1524,14 @@
           ],
           [
             "Danach",
-            "Protokoll mit Ihren fünf Hebeln und Ihr 90-Tage-Plan, schriftlich."
+            "Protokoll mit deinen fünf Hebeln und dein 90-Tage-Plan, schriftlich."
           ]
         ]
       },
       "ergebnis": [
-        "Am Abend kennen Sie Ihre fünf größten Hebel, bewertet nach Aufwand und Wirkung.",
-        "Sie haben einen 90-Tage-Plan und wissen, ob Sie ein Markt- oder ein Produktproblem haben.",
-        "Drei Hebel können Sie sofort umsetzen, einen haben wir schon gemeinsam umgesetzt."
+        "Am Abend kennst du deine fünf größten Hebel, bewertet nach Aufwand und Wirkung.",
+        "Du hast einen 90-Tage-Plan und weißt, ob du ein Markt- oder ein Produktproblem hast.",
+        "Drei Hebel kannst du sofort umsetzen, einen haben wir schon gemeinsam umgesetzt."
       ],
       "eckdaten": [
         [
@@ -1491,7 +1549,7 @@
       ],
       "immer": [
         "Ein Tag zu Vertrieb, Markteintritt und Sichtbarkeit",
-        "Protokoll mit Ihren fünf Hebeln nach Aufwand und Wirkung",
+        "Protokoll mit deinen fünf Hebeln nach Aufwand und Wirkung",
         "90-Tage-Plan",
         "Einordnung: Markt- oder Produktproblem",
         "Eine Sache setzen wir am Tag direkt um"
@@ -1511,42 +1569,42 @@
         ],
         [
           "Ergebnis",
-          "Am Abend kennen Sie Ihre fünf größten Hebel. Drei davon können Sie sofort umsetzen."
+          "Am Abend kennst du deine fünf größten Hebel. Drei davon kannst du sofort umsetzen."
         ]
       ],
       "mitwirkung": [
         "Einen Tag Zeit, ohne Unterbrechung",
-        "Ihre Vertriebszahlen der letzten Monate, soweit vorhanden",
+        "Deine Vertriebszahlen der letzten Monate, soweit vorhanden",
         "Bei Bedarf eine Person aus Vertrieb oder Marketing dazu"
       ],
       "fragen": [
         {
           "frage": "Wird der Preis angerechnet?",
-          "antwort": "Ja. Starten Sie danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Tagesworkshop voll an."
+          "antwort": "Ja. Startest du danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Tagesworkshop voll an."
         },
         {
           "frage": "Was bringt mir der Tag?",
-          "antwort": "Am Abend kennen Sie Ihre fünf größten Hebel. Drei davon können Sie sofort umsetzen."
+          "antwort": "Am Abend kennst du deine fünf größten Hebel. Drei davon kannst du sofort umsetzen."
         },
         {
           "frage": "Strategie oder operativ: Was heißt das?",
-          "antwort": "Mit Fokus Strategie geht es um Zielgruppe, Markteintritt und Positionierung. Mit Fokus operativ um Ablauf, Zahlen und Werkzeuge im Vertrieb. Sie wählen vorab."
+          "antwort": "Mit Fokus Strategie geht es um Zielgruppe, Markteintritt und Positionierung. Mit Fokus operativ um Ablauf, Zahlen und Werkzeuge im Vertrieb. Du wählst vorab."
         }
       ]
     },
     "positionierung": {
-      "versprechen": "Ihre Positionierung in Sätzen, die Ihr Team, Ihre Website und Ihr Vertrieb sofort verwenden können.",
+      "versprechen": "Deine Positionierung in Sätzen, die dein Team, deine Website und dein Vertrieb sofort verwenden können.",
       "fuer": [
         "Gründer und Unternehmer, deren Angebot man nicht in einem Satz versteht",
         "Teams vor einer neuen Website, einem Video oder einer Kampagne"
       ],
       "nicht_fuer": "Ein neues Logo oder Corporate Design. Das gehört nicht zur Positionierung.",
-      "problem": "Jeder im Team erklärt Ihr Angebot anders. Website, Gespräche und Angebote sagen nicht dasselbe, und Kunden verstehen nicht schnell genug, warum gerade Sie.",
+      "problem": "Jeder im Team erklärt dein Angebot anders. Website, Gespräche und Angebote sagen nicht dasselbe, und Kunden verstehen nicht schnell genug, warum gerade du.",
       "ablauf": {
         "zeilen": [
           [
             "Vorab",
-            "Wir bereiten mit KI vor: Ihr Markt, Ihr Wettbewerb, Ihre bisherigen Texte."
+            "Wir bereiten mit KI vor: Dein Markt, dein Wettbewerb, deine bisherigen Texte."
           ],
           [
             "Workshop",
@@ -1554,12 +1612,12 @@
           ],
           [
             "Danach",
-            "Ihre Positionierung schriftlich, je nach Stufe mit Interviews, Pitch und Kernbotschaften."
+            "Deine Positionierung schriftlich, je nach Stufe mit Interviews, Pitch und Kernbotschaften."
           ]
         ]
       },
       "ergebnis": [
-        "Ihre Positionierung in fünf Sätzen, einem Satz und sieben Wörtern.",
+        "Deine Positionierung in fünf Sätzen, einem Satz und sieben Wörtern.",
         "Geprüft gegen zehn Grundsätze.",
         "In M und L dazu Kundeninterviews, Wettbewerb, Pitch und Kernbotschaften."
       ],
@@ -1575,7 +1633,7 @@
       ],
       "mitwirkung": [
         "Zeit für den Workshop",
-        "Ihre bisherigen Texte, Präsentationen und Kundenstimmen, soweit vorhanden",
+        "Deine bisherigen Texte, Präsentationen und Kundenstimmen, soweit vorhanden",
         "Bei M und L: Zugang zu drei Kunden für die Interviews"
       ],
       "fragen": [
@@ -1585,7 +1643,7 @@
         },
         {
           "frage": "Was bereite ich vor?",
-          "antwort": "Nichts Aufwendiges: Ihre bisherigen Texte, Präsentationen und, wenn vorhanden, Kundenstimmen. Den Rest bereiten wir vor."
+          "antwort": "Nichts Aufwendiges: Deine bisherigen Texte, Präsentationen und, wenn vorhanden, Kundenstimmen. Den Rest bereiten wir vor."
         }
       ]
     }
@@ -1594,7 +1652,7 @@
     "hinweis": "Kevin 31.10.: Bausteine als Einstieg, 49–590 € netto, auf Rechnung, Lieferung nach Freigabe in MAKE OS. Texte der Übersicht; Preise und Inhalte in inhalt/bausteine.json und inhalt/bausteine/<id>.meta.json.",
     "verkaeufer_hinweis": "Verkäufer und Rechnungssteller der Bausteine (Kevin 31.10.: MAKE Innovation GmbH, Bestellen erst nach Eintragung ins Handelsregister) = Schlüssel in makeinnovation/inhalt/seite.json › anbieter. Solange dort Platzhalter stehen, nennt die Seite keinen Verkäufer; nach der Eintragung Anschrift, Geschäftsführer und HRB dort eintragen.",
     "verkaeufer": "make",
-    "lead": "Fertige Arbeitspakete aus unserer Arbeit: Anleitung Schritt für Schritt, ausgefülltes Beispiel und Bögen zum Ausfüllen. Sie setzen selbst um, in Ihrem Tempo. Für Unternehmen, auf Rechnung.",
+    "lead": "Fertige Arbeitspakete aus unserer Arbeit: Anleitung Schritt für Schritt, ausgefülltes Beispiel und Bögen zum Ausfüllen. Du setzt selbst um, in deinem Tempo. Für Unternehmen, auf Rechnung.",
     "ablauf": [
       {
         "titel": "Bestellen",
@@ -1606,7 +1664,7 @@
       },
       {
         "titel": "Umsetzen",
-        "text": "Mit Anleitung, Beispiel und Bögen, in Ihrem Tempo. Fragen dazu klären wir gern im kostenlosen Erstgespräch."
+        "text": "Mit Anleitung, Beispiel und Bögen, in deinem Tempo. Fragen dazu klären wir gern im kostenlosen Erstgespräch."
       }
     ],
     "bedingungen": [
@@ -1624,14 +1682,14 @@
       ],
       [
         "Nutzung",
-        "einfaches, unbefristetes Nutzungsrecht in Ihrem Unternehmen; Weitergabe und Weiterverkauf sind nicht erlaubt"
+        "einfaches, unbefristetes Nutzungsrecht in deinem Unternehmen; Weitergabe und Weiterverkauf sind nicht erlaubt"
       ],
       [
         "Für wen",
         "nur für Unternehmen, nicht für Verbraucher"
       ]
     ],
-    "bedingungen_hinweis": "Fragen vor dem Kauf? Schreiben Sie uns an kevin@makeinnovation.de oder vereinbaren Sie ein kostenloses Erstgespräch von 30 Minuten."
+    "bedingungen_hinweis": "Fragen vor dem Kauf? Schreib uns an kevin@makeinnovation.de oder vereinbare ein kostenloses Erstgespräch von 30 Minuten."
   },
   "kurz": {
     "_hinweis": "Kurz-Startseite nach der Fahrt (Konzept Malin 18.11.): alle Texte in Du. Platzhalter stehen in eckigen Klammern. Ziele: Pfad der Website oder angebot:<kennung>.",
@@ -1762,5 +1820,51 @@
     "finale": {
       "h2": "Mach deine Innovation sichtbar."
     }
-  }
+  },
+  "ueber_uns": {
+    "hinweis": "Seite /ueber-uns/ (Umbau 19.11., Konzept Malin). Gründungsgeschichte und Fotos sind Platzhalter, bis Kevin und Malin sie liefern.",
+    "gruendung": {
+      "marke": "Unsere Geschichte",
+      "h2": "Wie MAKE Innovation entstanden ist.",
+      "platzhalter": "[GRÜNDUNGSGESCHICHTE FOLGT]",
+      "fragen": [
+        "Wie habt ihr euch gefunden?",
+        "Welches Problem habt ihr selbst erlebt?",
+        "Warum gibt es MAKE Innovation?"
+      ]
+    },
+    "personen_marke": "Wer dahintersteht",
+    "personen_h2": "Kevin und Malin leiten jedes Projekt persönlich.",
+    "kevin": [
+      "Kevin kommt aus der Vertriebsführung: Er hat Vertriebsteams geführt, Partnernetze aufgebaut und war Head of Sales bei einem FinTech.",
+      "Bei MAKE Innovation verantwortet er Vertrieb und Umsetzung und verbindet Vertrieb mit KI.",
+      "Er arbeitet selbst in den Projekten mit, auch im internationalen Umfeld."
+    ],
+    "malin": [
+      "Malin ist Mitgründerin und Gastgeberin unserer Events.",
+      "Sie verantwortet Bühne und Netzwerk.",
+      "Bei jeder Einladung überlegt sie, wer wen kennenlernen sollte."
+    ],
+    "foto_kevin": "[FOTO KEVIN]",
+    "foto_malin": "[FOTO MALIN]",
+    "team_satz": "Hinter uns steht ein festes Netzwerk aus Fachleuten für Film, Design, Technik und PR.",
+    "regeln_marke": "So arbeiten wir",
+    "regeln_h2": "Drei Regeln, die du prüfen kannst.",
+    "regeln": [
+      {
+        "titel": "Festpreis vorab",
+        "text": "Du kennst den Preis, bevor wir starten. Wir rechnen keine Stunden ab."
+      },
+      {
+        "titel": "Kein Verkaufsgespräch",
+        "text": "Im Erstgespräch klären wir, ob und womit wir dir helfen können. Mehr passiert dort nicht."
+      },
+      {
+        "titel": "Ein fester Ansprechpartner",
+        "text": "Du hast eine Ansprechperson, die für das Ergebnis geradesteht, und musst nichts selbst koordinieren."
+      }
+    ],
+    "finale": "Sprechen wir darüber."
+  },
+  "pr_bereich": "Sichtbarkeit & Vertrauen"
 }

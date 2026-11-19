@@ -32,13 +32,13 @@ const sichtbarkeit = () => {
     const [ux, uy] = [(cx - x) / d, (cy - y) / d];
     return `<path class="g-anfrage a${i + 1}" pathLength="1" d="M${r1(x + ux * 15)} ${r1(y + uy * 15)}L${r1(cx - ux * 54)} ${r1(cy - uy * 54)}"/>`;
   }).join('');
-  return figur('sichtbarkeit', 'Zeichnung: Von Ihrem Angebot gehen Signale aus. Aus Menschen, die sie erreichen, werden Anfragen.', `
+  return figur('sichtbarkeit', 'Zeichnung: Von deinem Angebot gehen Signale aus. Aus Menschen, die sie erreichen, werden Anfragen.', `
 <path class="g-spur" d="M86 182H140M72 204H140M100 226H140"/>
 <circle class="g-hof" cx="${cx}" cy="${cy}" r="66"/>
 ${[100, 170, 240].map(bogen).join('')}
 ${linien}
 ${kunden.map(([x, y, an]) => `<circle class="g-kunde${an ? ` an k${++n}` : ''}" cx="${x}" cy="${y}" r="11"/>`).join('')}
-<circle class="g-kern" cx="${cx}" cy="${cy}" r="42"/>`, [['m1', 'Ihr Angebot'], ['m2', 'Signale'], ['m3', 'Anfragen']]);
+<circle class="g-kern" cx="${cx}" cy="${cy}" r="42"/>`, [['m1', 'Dein Angebot'], ['m2', 'Signale'], ['m3', 'Anfragen']]);
 };
 
 /** Vertrieb: eine geordnete Strecke. Die Kugel läuft von der Anfrage über Gespräch und Angebot bis durch die Wand: der Abschluss. */
@@ -56,13 +56,13 @@ const vertrieb = () => figur('vertrieb', 'Zeichnung: Eine geordnete Strecke von 
 const innovation = () => {
   const [cx, cy, r] = [320, 196, 118];
   const knoten = [[cx, cy - r], [cx + r, cy], [cx, cy + r], [cx - r, cy]];
-  return figur('innovation', 'Zeichnung: Abläufe, Daten, KI und Software werden zu einem Ablauf verbunden, mit dem Ihr Team im Alltag arbeitet.', `
+  return figur('innovation', 'Zeichnung: Abläufe, Daten, KI und Software werden zu einem Ablauf verbunden, mit dem dein Team im Alltag arbeitet.', `
 <circle class="g-ring" cx="${cx}" cy="${cy}" r="${r}"/>
 <path class="g-umlauf" pathLength="1" d="M${cx} ${cy - r}A${r} ${r} 0 1 1 ${cx - 0.1} ${cy - r}"/>
 ${knoten.map(([x, y], i) => `<line class="g-speiche p${i + 1}" pathLength="1" x1="${x + (x === cx ? 0 : x > cx ? -14 : 14)}" y1="${y + (y === cy ? 0 : y > cy ? -14 : 14)}" x2="${cx + (x === cx ? 0 : x > cx ? 44 : -44)}" y2="${cy + (y === cy ? 0 : y > cy ? 44 : -44)}"/>`).join('')}
 ${knoten.map(([x, y], i) => `<circle class="g-knoten n${i + 1}" cx="${x}" cy="${y}" r="11"/>`).join('')}
 <circle class="g-hof" cx="${cx}" cy="${cy}" r="56"/>
-<g class="g-bahn-dreh"><circle class="g-kern g-laeufer" cx="${cx}" cy="${cy}" r="34"/></g>`, [['m1', 'Abläufe'], ['m2', 'Daten'], ['m3', 'KI'], ['m4', 'Software'], ['m5', 'Ihr Team']]);
+<g class="g-bahn-dreh"><circle class="g-kern g-laeufer" cx="${cx}" cy="${cy}" r="34"/></g>`, [['m1', 'Abläufe'], ['m2', 'Daten'], ['m3', 'KI'], ['m4', 'Software'], ['m5', 'Dein Team']]);
 };
 
 const BEREICH = { sichtbarkeit, vertrieb, innovation };
@@ -75,12 +75,12 @@ export const teamGrafik = () => {
   const platz = (grad) => [r1(cx + r * Math.cos((grad * Math.PI) / 180)), r1(cy + r * Math.sin((grad * Math.PI) / 180))];
   const [wx, wy] = platz(180);
   const team = [120, 60, 0, -60, -120].map(platz);
-  return figur('team', 'Zeichnung: Ihr Team sitzt in einer Runde. Einer der Plätze ist unserer, von dort gehen Verbindungen zu allen in der Runde.', `
+  return figur('team', 'Zeichnung: Dein Team sitzt in einer Runde. Einer der Plätze ist unserer, von dort gehen Verbindungen zu allen in der Runde.', `
 <circle class="g-runde" cx="${cx}" cy="${cy}" r="${r}"/>
 ${team.map(([x, y], i) => { const d = Math.hypot(x - wx, y - wy); const [ux, uy] = [(x - wx) / d, (y - wy) / d]; return `<path class="g-faden f${i + 1}" pathLength="1" d="M${r1(wx + ux * 24)} ${r1(wy + uy * 24)}L${r1(x - ux * 17)} ${r1(y - uy * 17)}"/>`; }).join('')}
 ${team.map(([x, y]) => `<circle class="g-platz" cx="${x}" cy="${y}" r="15"/>`).join('')}
 <circle class="g-platz frei" cx="${wx}" cy="${wy}" r="19"/>
-<g class="g-gast"><path class="g-spur" d="M${wx - 78} ${wy - 10}H${wx - 34}M${wx - 90} ${wy}H${wx - 34}M${wx - 68} ${wy + 10}H${wx - 34}"/><circle class="g-kern" cx="${wx}" cy="${wy}" r="19"/></g>`, [['m1', 'Wir'], ['m2', 'Ihr Team']], { klasse: 'hell', box: '100 24 420 252' });
+<g class="g-gast"><path class="g-spur" d="M${wx - 78} ${wy - 10}H${wx - 34}M${wx - 90} ${wy}H${wx - 34}M${wx - 68} ${wy + 10}H${wx - 34}"/><circle class="g-kern" cx="${wx}" cy="${wy}" r="19"/></g>`, [['m1', 'Wir'], ['m2', 'Dein Team']], { klasse: 'hell', box: '100 24 420 252' });
 };
 
 /** Zeichen der zwei Einstiege: in den Markt (die Kugel ist durch die Wand) und ins Unternehmen (die Kugel kommt im Haus an). */
