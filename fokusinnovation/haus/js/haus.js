@@ -1270,13 +1270,14 @@ function zeigeSzene(a) {
   });
 }
 const tafelO = new Array(N).fill(-1);
+const tafelInnen = panels.map((el) => el.querySelector(':scope > .sz-innen') || el);
 function tafeln(lage) {
   for (let i = 0; i < N; i++) {
     const d = lage - i, a = Math.abs(d), t = a <= 0.3 ? 0 : a >= 0.5 ? 1 : (a - 0.3) / 0.2;
     const o = Math.round((1 - t * t * (3 - 2 * t)) * 200) / 200;
     if (o === tafelO[i]) continue; tafelO[i] = o;
-    const el = panels[i];
-    el.style.setProperty('--tafel', String(o)); el.style.transform = o < 1 && o > 0 ? `translate3d(0,${(-Math.sign(d) * (1 - o) * 14).toFixed(1)}px,0)` : '';
+    const el = panels[i], in_ = tafelInnen[i];
+    in_.style.opacity = String(o); in_.style.transform = o < 1 && o > 0 ? `translate3d(0,${(-Math.sign(d) * (1 - o) * 14).toFixed(1)}px,0)` : '';
     el.classList.toggle('zeigt', o > 0);
   }
 }
