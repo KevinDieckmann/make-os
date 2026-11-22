@@ -1,0 +1,10 @@
+/* Nur ohne JavaScript: Der Rundgang steht als Liste, alle drei Wertverfahren sind sichtbar, nichts ist versteckt. */
+.wert-fall[hidden] { display: block; }
+.reiter { display: none; }
+.rundgang-fotos { display: none; }
+.rundgang-plan svg { max-height: 360px; }
+.rundgang-innen { grid-template-columns: 1fr; }
+.stationen { display: grid; gap: 22px; }
+.film-video { display: none; }
+@media (min-width: 900px) { .rundgang-innen { grid-template-columns: 1fr 1fr; align-items: start; } .rundgang-plan, .stationen { grid-row: auto; } }
+.wert-raster { grid-template-columns: 1fr !important; }

@@ -1,0 +1,273 @@
+/* Lindenhof Immobilien · Beispielseite. Leinen, Dämmerblau, Terrakotta und Messing. Fraunces und Figtree, selbst ausgeliefert. */
+@font-face { font-family: "Fraunces"; src: url("schriften/fraunces.woff2") format("woff2"); font-weight: 300 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Fraunces"; src: url("schriften/fraunces-kursiv.woff2") format("woff2"); font-weight: 300 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "Figtree"; src: url("schriften/figtree.woff2") format("woff2"); font-weight: 300 800; font-display: swap; }
+
+:root {
+  --leinen: #F5EFE4; --papier: #FBF8F1; --sand: #EBE1D0; --linie: #DACDB8;
+  --tinte: #1B2F3B; --leise: #526470; --nacht: #14252F; --nacht-2: #1C3341; --nacht-text: #E6EDF0; --nacht-leise: #9DB1BC;
+  --terra: #BF4E26; --terra-text: #9E3F1C; --messing: #D9A55B;
+  --serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --sans: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --rand: clamp(20px, 5vw, 72px); --max: 1280px; --kopf: 68px;
+  --pad: max(var(--rand), calc((100vw - var(--max)) / 2));
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--kopf) + 12px); -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--leinen); color: var(--tinte); font: 400 17px/1.65 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: clip; }
+img, svg, video { display: block; max-width: 100%; }
+h1, h2, h3, h4, p, ul, ol, figure { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+a { color: inherit; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--terra); outline-offset: 3px; border-radius: 4px; }
+.vorrat { position: absolute; }
+.sprung { position: absolute; left: 12px; top: -80px; z-index: 100; padding: 10px 16px; background: var(--tinte); color: var(--papier); border-radius: 6px; }
+.sprung:focus { top: 12px; }
+
+/* Kopf */
+.kopf { position: sticky; top: 0; z-index: 50; height: var(--kopf); display: flex; align-items: center; gap: 24px; padding: 0 var(--rand); background: color-mix(in srgb, var(--leinen) 93%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--linie); }
+.marke { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; flex: none; }
+.marke-zeichen { width: 34px; height: 34px; color: var(--terra); }
+.marke-text { display: flex; flex-direction: column; line-height: 1; }
+.marke-text b { font: 500 23px/1 var(--serif); letter-spacing: -.01em; }
+.marke-text i { margin-top: 3px; font: 600 10.5px/1.2 var(--sans); font-style: normal; letter-spacing: .24em; text-transform: uppercase; color: var(--leise); }
+.wege { flex: 1; min-width: 0; }
+.wege ul { display: flex; gap: 2px; justify-content: center; }
+.wege a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; font-size: 15px; font-weight: 500; text-decoration: none; color: var(--leise); border-radius: 999px; }
+.wege a:hover, .wege a[aria-current="true"] { color: var(--tinte); background: var(--sand); }
+.kopf-tel { flex: none; display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.kopf-tel:hover { color: var(--terra-text); }
+.kopf-knopf { flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 999px; background: var(--terra); color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.kopf-knopf:hover { background: #A8431F; }
+
+/* Bausteine */
+.etikett { font: 700 12px/1.3 var(--sans); letter-spacing: .2em; text-transform: uppercase; color: var(--terra-text); }
+.etikett-hell { color: var(--messing); }
+.knopf { display: inline-flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 28px; border: 0; border-radius: 999px; background: var(--terra); color: #fff; font-size: 17px; font-weight: 600; text-decoration: none; transition: background .2s; }
+.knopf svg { width: 22px; height: 22px; transition: transform .2s; }
+.knopf:hover { background: #A8431F; }
+.knopf:hover svg { transform: translateX(4px); }
+.knopf-leise { background: transparent; color: var(--tinte); box-shadow: inset 0 0 0 1.5px var(--tinte); }
+.knopf-leise:hover { background: var(--tinte); color: var(--papier); }
+.knopf-hell { background: var(--messing); color: var(--nacht); }
+.knopf-hell:hover { background: #E5B66F; }
+.textlink { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: inherit; font-weight: 600; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 5px; background: none; border: 0; padding: 0; }
+.textlink svg { width: 20px; height: 20px; }
+.textlink:hover { color: var(--terra-text); }
+.textlink-hell:hover { color: var(--messing); }
+.abschnitt-kopf { display: grid; gap: 14px; }
+.abschnitt-kopf h2 { font: 400 clamp(32px, 4.6vw, 62px)/1.04 var(--serif); letter-spacing: -.02em; max-width: 18ch; font-variation-settings: "opsz" 120; }
+.abschnitt-satz { font-size: 19px; color: var(--leise); max-width: 56ch; }
+section { padding: clamp(64px, 9vw, 128px) var(--pad); }
+.liste-haken li { position: relative; padding: 9px 0 9px 32px; }
+.liste-haken li::before { content: ""; position: absolute; left: 3px; top: 17px; width: 13px; height: 7px; border-left: 2.5px solid var(--terra); border-bottom: 2.5px solid var(--terra); transform: rotate(-45deg); }
+
+/* Film und Bogen */
+.bogen { overflow: hidden; border-radius: 999px 999px 10px 10px; background: var(--sand); }
+.film { position: relative; width: 100%; height: 100%; overflow: hidden; isolation: isolate; }
+.film-poster, .film-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.film-video { opacity: 0; transition: opacity .4s linear; pointer-events: none; }
+.film.laeuft .film-video { opacity: 1; }
+.film.laeuft.blende .film-video { opacity: 0; transition-duration: .8s; }
+.film-knopf { position: absolute; z-index: 3; right: 50%; bottom: 18px; margin-right: -24px; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: rgba(20, 37, 47, .82); color: #fff; }
+.film-knopf[hidden] { display: none; }
+.film-knopf span { width: 12px; height: 14px; border-inline: 4px solid currentColor; }
+.film-knopf.steht span { width: 0; height: 0; margin-left: 4px; border-block: 8px solid transparent; border-inline: 0; border-left: 13px solid currentColor; }
+
+/* Einstieg */
+.start { display: grid; gap: 48px; padding-top: clamp(32px, 5vw, 72px); align-items: center; }
+.start-text { display: grid; gap: 26px; }
+.start h1 { font: 400 clamp(42px, 6.2vw, 92px)/1 var(--serif); letter-spacing: -.03em; font-variation-settings: "opsz" 144; }
+.start h1 em { color: var(--terra); font-style: italic; }
+.start-satz { font-size: clamp(18px, 1.5vw, 21px); max-width: 50ch; }
+.start-wege { display: flex; flex-wrap: wrap; gap: 12px; }
+.start-klein { font-size: 15px; color: var(--leise); }
+.start-klein a { font-weight: 600; color: var(--tinte); }
+.start-bild { position: relative; padding-bottom: 12px; }
+.bogen-gross { aspect-ratio: 4 / 5; width: min(100%, 560px); margin-left: auto; }
+.bogen-klein img { width: 100%; height: 100%; object-fit: cover; }
+.bogen-klein { position: absolute; left: 0; bottom: 56px; width: 38%; aspect-ratio: 3 / 4; box-shadow: 0 0 0 8px var(--leinen); }
+.bild-hinweis { margin-top: 12px; text-align: right; font-size: 12px; color: var(--leise); }
+@media (min-width: 960px) { .start { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 72px; } }
+@media (max-width: 599px) { .bogen-klein { width: 34%; bottom: 44px; } }
+
+/* Wert */
+.wert { background: var(--papier); }
+.wert-raster { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 44px; }
+.reiter { display: grid; gap: 8px; align-content: start; }
+.reiter-knopf { display: grid; gap: 2px; text-align: left; min-height: 68px; padding: 14px 18px; border: 1.5px solid var(--linie); border-radius: 14px; background: transparent; transition: background .2s, border-color .2s; }
+.reiter-knopf b { font: 500 21px/1.2 var(--serif); }
+.reiter-knopf span { font-size: 14px; color: var(--leise); }
+.reiter-knopf:hover { border-color: var(--tinte); }
+.reiter-knopf[aria-selected="true"] { background: var(--tinte); border-color: var(--tinte); color: var(--papier); }
+.reiter-knopf[aria-selected="true"] span { color: var(--nacht-leise); }
+.wert-felder { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+.wert-fall { padding: clamp(22px, 3vw, 40px); background: var(--leinen); border-radius: 20px; border: 1px solid var(--linie); animation: ein .5s cubic-bezier(.2, .7, .2, 1); }
+.wert-fall[hidden] { display: none; }
+@keyframes ein { from { opacity: 0; transform: translateY(12px); } }
+.wert-fall h3 { font: 400 clamp(28px, 3.2vw, 42px)/1.1 var(--serif); letter-spacing: -.015em; color: var(--terra-text); }
+.wert-satz { margin: 14px 0 22px; font-size: 19px; max-width: 52ch; }
+.wert-fall h4 { font: 700 12px var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--leise); margin-bottom: 4px; }
+.wert-fuss { display: grid; gap: 8px; padding: 0 4px; color: var(--leise); max-width: 62ch; }
+.wert-fuss b { color: var(--tinte); }
+@media (min-width: 960px) { .wert-raster { grid-template-columns: 340px minmax(0, 1fr); gap: 48px; align-items: start; } }
+
+/* Rundgang: sticky Bühne, die Linie geht mit dem Scrollen durch den Grundriss */
+.rundgang { background: var(--nacht); color: var(--nacht-text); padding: 0; }
+.rundgang-spur { position: relative; }
+.js .rundgang-spur { height: 560vh; }
+.rundgang-buehne { padding: clamp(40px, 6vw, 72px) var(--pad) 32px; }
+.js .rundgang-buehne { position: sticky; top: var(--kopf); height: calc(100vh - var(--kopf)); min-height: 560px; display: flex; flex-direction: column; padding-top: clamp(20px, 3vh, 40px); padding-bottom: calc(86px + env(safe-area-inset-bottom)); overflow: hidden; }
+.rundgang-kopf { display: grid; gap: 8px; margin-bottom: clamp(16px, 3vh, 36px); }
+.rundgang-kopf h2 { font: 400 clamp(26px, 3.6vw, 52px)/1.05 var(--serif); letter-spacing: -.02em; color: var(--papier); max-width: 22ch; }
+.rundgang-innen { display: grid; gap: 28px; flex: 1; min-height: 0; }
+.rundgang-fotos { min-height: 0; }
+.foto { position: relative; height: 100%; width: 100%; background: var(--nacht-2); }
+.foto-bild { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.08); transition: opacity .7s ease, transform 2.4s ease; }
+.foto-bild.aktiv { opacity: 1; transform: scale(1); }
+.rundgang-plan { min-height: 0; display: grid; align-items: center; }
+.rundgang-plan svg { width: 100%; height: 100%; max-height: 100%; }
+.raum { fill: rgba(230, 237, 240, .04); transition: fill .5s; }
+.raum.aktiv { fill: rgba(217, 165, 91, .28); }
+.raum-flur { fill: rgba(230, 237, 240, .02); }
+.plan-waende rect, .plan-waende path { stroke: var(--nacht-text); stroke-width: 4; stroke-linecap: square; }
+.plan-waende path { stroke-width: 3; }
+.plan-tueren path { stroke: var(--nacht-leise); stroke-width: 1.5; }
+.plan-tueren .plan-eingang { stroke: var(--messing); stroke-width: 5; }
+.plan-luecken path { stroke: var(--nacht); stroke-width: 7; stroke-linecap: butt; }
+.plan-fenster path { stroke: var(--nacht-leise); stroke-width: 1.5; }
+.plan-moebel > * { stroke: rgba(230, 237, 240, .38); stroke-width: 1.4; }
+.plan-moebel .plan-teppich { stroke-dasharray: 3 4; stroke: rgba(230, 237, 240, .2); }
+.plan-namen text { fill: var(--nacht-leise); font: 600 13px var(--sans); letter-spacing: .14em; text-transform: uppercase; text-anchor: middle; }
+.plan-weg { fill: none; stroke: rgba(230, 237, 240, .3); stroke-width: 2.5; stroke-dasharray: 2 9; stroke-linecap: round; stroke-linejoin: round; }
+.plan-gezogen { fill: none; stroke: var(--messing); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.plan-marke circle:first-child { fill: rgba(217, 165, 91, .3); }
+.plan-marke .kern { fill: var(--messing); }
+.plan-stationen circle { fill: var(--nacht); stroke: var(--messing); stroke-width: 2.5; }
+.plan-stationen text { fill: var(--papier); font: 700 13px var(--sans); text-anchor: middle; dominant-baseline: central; }
+.stationen { position: relative; min-height: 150px; }
+.js .station { position: absolute; inset: 0 auto auto 0; opacity: 0; transform: translateY(18px); transition: opacity .5s, transform .5s; pointer-events: none; }
+.js .station.aktiv { opacity: 1; transform: none; pointer-events: auto; }
+.station { display: flex; gap: 16px; }
+.station-nr { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--messing); color: var(--nacht); font-weight: 700; }
+.station h3 { font: 400 clamp(26px, 3vw, 40px)/1.1 var(--serif); color: var(--papier); margin-bottom: 8px; }
+.station p { max-width: 46ch; color: var(--nacht-text); }
+@media (min-width: 900px) {
+  .rundgang-innen { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); grid-template-rows: minmax(0, 1fr) auto; gap: 24px 56px; }
+  .rundgang-fotos { grid-row: 1 / 3; }
+  .rundgang-plan { grid-row: 1; }
+  .stationen { grid-row: 2; min-height: 150px; }
+  .foto { max-width: 520px; }
+}
+@media (max-width: 899px) {
+  .rundgang-kopf h2 { display: none; }
+  .js .rundgang-buehne { padding-top: 14px; }
+  .rundgang-innen { grid-template-rows: minmax(0, 1.25fr) minmax(0, .9fr) auto; gap: 14px; }
+  .foto { max-width: 340px; margin-inline: auto; }
+  .rundgang-plan svg { max-height: 100%; }
+  .stationen { min-height: 130px; }
+  .station p { font-size: 16px; line-height: 1.5; }
+  .station-nr { width: 34px; height: 34px; }
+}
+
+/* Ablauf */
+.ablauf { background: var(--leinen); }
+.weg { position: relative; display: grid; gap: 28px; margin-top: 52px; counter-reset: w; }
+.weg li { position: relative; padding-left: 64px; }
+.weg::before { content: ""; position: absolute; left: 21px; top: 8px; bottom: 8px; width: 2px; background: repeating-linear-gradient(to bottom, var(--terra) 0 6px, transparent 6px 14px); }
+.weg-nr { position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--terra); color: #fff; font: 500 20px var(--serif); }
+.weg h3 { font: 500 24px/1.2 var(--serif); margin-bottom: 6px; }
+.weg p { color: var(--leise); max-width: 44ch; }
+@media (min-width: 960px) {
+  .weg { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
+  .weg::before { left: 22px; right: 22px; top: 21px; bottom: auto; width: auto; height: 2px; background: repeating-linear-gradient(to right, var(--terra) 0 6px, transparent 6px 14px); }
+  .weg li { padding: 64px 0 0; }
+  .weg li:nth-child(even) { padding-top: 84px; }
+  .weg-nr { left: 0; }
+  .weg li:nth-child(even) .weg-nr { top: 20px; }
+}
+
+/* Gebiet */
+.gebiet { background: var(--terra); color: #fff; position: relative; overflow: hidden; }
+.gebiet .abschnitt-kopf h2 { color: #fff; }
+.gebiet .abschnitt-satz { color: #FBE3D6; }
+.gebiet .etikett-hell { color: #FBE3D6; }
+.gebiet { display: grid; gap: 48px; align-items: center; }
+.gebiet-bild { position: relative; z-index: 1; width: min(100%, 420px); aspect-ratio: 3 / 4; justify-self: center; box-shadow: 0 0 0 14px rgba(255, 255, 255, .12), 0 0 0 28px rgba(255, 255, 255, .07); }
+@media (min-width: 900px) { .gebiet { grid-template-columns: 1.1fr .9fr; gap: 80px; } .gebiet-bild { justify-self: end; } }
+.orte { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 40px; max-width: 720px; }
+.orte li { padding: 12px 22px; border: 1.5px solid rgba(255, 255, 255, .55); border-radius: 999px; font: 500 clamp(19px, 2vw, 26px)/1.2 var(--serif); }
+.gebiet-text { position: relative; z-index: 1; }
+
+/* Team */
+.team { background: var(--papier); }
+.team-raster { display: grid; gap: 48px; margin-top: 48px; }
+.menschen { display: grid; gap: 28px; }
+.menschen li { display: flex; align-items: center; gap: 22px; }
+.menschen svg { width: 100px; height: 117px; flex: none; }
+.bild-grund { fill: var(--messing); } .bild-zwei { fill: var(--terra); }
+.bild-schrift { fill: var(--nacht); font: 500 38px var(--serif); text-anchor: middle; dominant-baseline: central; }
+.bild-zwei + .bild-schrift { fill: #fff; }
+.menschen h3 { font: 500 25px/1.2 var(--serif); }
+.menschen p { color: var(--leise); }
+.beispiel { display: inline-block; margin-top: 6px; font: 700 11px var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--terra-text); }
+.haltung h3 { font: 400 clamp(26px, 3vw, 38px)/1.15 var(--serif); margin-bottom: 14px; }
+.haltung li { border-bottom: 1px solid var(--linie); max-width: 54ch; }
+@media (min-width: 900px) { .team-raster { grid-template-columns: .9fr 1.1fr; gap: 80px; align-items: start; } }
+
+/* Fragen */
+.fragen { background: var(--leinen); }
+.fragen-liste { margin-top: 40px; max-width: 860px; border-top: 2px solid var(--tinte); }
+details { border-bottom: 1px solid var(--linie); }
+summary { position: relative; display: flex; align-items: center; min-height: 68px; padding: 14px 56px 14px 0; font: 500 clamp(20px, 2.2vw, 26px)/1.25 var(--serif); cursor: pointer; list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: ""; position: absolute; right: 8px; top: 50%; width: 14px; height: 14px; margin-top: -10px; border-right: 2.5px solid var(--terra); border-bottom: 2.5px solid var(--terra); transform: rotate(45deg); transition: transform .25s; }
+details[open] summary::after { transform: rotate(-135deg); margin-top: -3px; }
+details p { padding: 0 56px 24px 0; max-width: 64ch; color: var(--leise); }
+
+/* Kontakt */
+.kontakt { display: grid; gap: 40px; background: var(--nacht); color: var(--nacht-text); }
+.kontakt h2 { font: 400 clamp(30px, 4vw, 54px)/1.08 var(--serif); letter-spacing: -.02em; color: var(--papier); margin: 14px 0 18px; max-width: 20ch; }
+.kontakt-text p { max-width: 46ch; }
+.kontakt-direkt { margin-top: 24px; font: 500 24px/1.4 var(--serif); color: var(--papier); }
+.kontakt-direkt a { text-underline-offset: 5px; }
+.kontakt-form { max-width: 560px; }
+.formular { display: grid; gap: 20px; }
+.feld { display: grid; gap: 8px; }
+.feld label { font: 600 13px/1.3 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--nacht-leise); }
+.feld-leise { text-transform: none; letter-spacing: 0; opacity: .85; font-weight: 400; }
+.feld input { width: 100%; min-height: 56px; padding: 14px 18px; border: 1px solid rgba(230, 237, 240, .3); border-radius: 14px; background: rgba(255, 255, 255, .05); color: var(--papier); font: inherit; font-size: 17px; }
+.feld input::placeholder { color: var(--nacht-leise); }
+.feld input:focus-visible { outline: 2px solid var(--messing); outline-offset: 2px; }
+.feld-fehler { color: #FFB59E; font-size: 14px; }
+.formular-hinweis { font-size: 14px; color: var(--nacht-leise); }
+.formular .knopf { justify-self: start; }
+.formular-danke { display: grid; gap: 12px; justify-items: start; padding: 28px; border: 1px solid var(--messing); border-radius: 20px; }
+.formular-danke h3 { font: 400 32px var(--serif); color: var(--papier); }
+.formular-danke[hidden], .formular[hidden] { display: none; }
+@media (min-width: 900px) { .kontakt { grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; } }
+
+/* Fuß */
+.fuss { display: grid; gap: 28px; padding: 56px var(--pad) 40px; background: var(--nacht); color: var(--nacht-text); border-top: 1px solid rgba(230, 237, 240, .14); }
+.fuss .marke-zeichen { color: var(--messing); }
+.fuss .marke-text i { color: var(--nacht-leise); }
+.fuss-marke { display: grid; gap: 14px; color: var(--nacht-leise); font-size: 15px; }
+.fuss-wege ul { display: flex; flex-wrap: wrap; gap: 0 20px; }
+.fuss-wege a { display: inline-flex; min-height: 44px; align-items: center; text-decoration: none; }
+.fuss-wege a:hover { color: var(--messing); }
+.fuss-klein { font-size: 13px; color: var(--nacht-leise); max-width: 80ch; }
+@media (min-width: 900px) { .fuss { grid-template-columns: 1fr 1fr; } .fuss-klein { grid-column: 1 / -1; } }
+
+/* Einblenden */
+.belebt [data-zeig] { opacity: 0; transform: translateY(24px); transition: opacity .8s cubic-bezier(.2, .7, .2, 1), transform .8s cubic-bezier(.2, .7, .2, 1); }
+.belebt [data-zeig].da { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; } .foto-bild { transition: opacity .2s; transform: none; } }
+@media (max-width: 1099px) { .kopf-tel { display: none; } }
+@media (max-width: 899px) { .wege { display: none; } .kopf { justify-content: space-between; } }
+@media (max-width: 719px) { .marke-text i { display: none; } .kopf-knopf { padding: 0 16px; } }
+@media print { .kopf, .film-knopf, .ms-leiste, .ms-platz, .sprung { display: none !important; } .js .rundgang-spur { height: auto; } .js .rundgang-buehne { position: static; height: auto; } }
+
+/* Tippflächen am Handy: Wortmarke, Telefon- und Quellenlinks mindestens 44 px hoch */
+.marke { min-height: 44px; }
+a[href^="tel:"], a[href^="http"] { display: inline-block; padding: 12px 0; margin: -12px 0; }
