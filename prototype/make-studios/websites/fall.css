@@ -31,7 +31,7 @@ h1, h2, h3, p, ul, figure { margin: 0; }
 
 main { padding: 0 var(--rand) clamp(64px, 8vw, 120px); max-width: 1320px; margin: 0 auto; }
 .krumen { padding: 22px 0 0; font: 500 12px/1.5 "Mono", monospace; letter-spacing: .06em; color: var(--tinte-weich); }
-.krumen a { display: inline-block; padding: 8px 0; }
+.krumen a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px; }
 .fall-kopf { padding: clamp(28px, 5vw, 64px) 0 clamp(28px, 4vw, 48px); max-width: 1000px; }
 h1 { margin-top: 16px; font-weight: 700; font-stretch: 75%; letter-spacing: -.02em; font-size: clamp(38px, 5.4vw, 84px); line-height: .94; text-wrap: balance; }
 h2 { font-weight: 700; font-stretch: 75%; letter-spacing: -.02em; font-size: clamp(28px, 2.8vw, 42px); line-height: 1; }
@@ -61,7 +61,7 @@ figcaption { margin-top: 12px; font: 500 12px/1.4 "Mono", monospace; letter-spac
 .karte { display: flex; flex-direction: column; gap: 10px; }
 .karte-bild { display: block; border-radius: 14px; overflow: hidden; background: var(--tinte); box-shadow: 0 0 0 1px var(--linie); }
 .karte-bild img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: 50% 0; }
-.karte h3 a { text-decoration: none; }
+.karte h3 a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
 .karte h3 a:hover { color: var(--signal-text); }
 .karte > p:not(.ueberzeile) { font-size: 16px; color: var(--tinte-weich); }
 .karte-wege { display: flex; flex-wrap: wrap; gap: 4px 20px; }
@@ -71,6 +71,10 @@ figcaption { margin-top: 12px; font: 500 12px/1.4 "Mono", monospace; letter-spac
 .fuss nav { display: flex; flex-wrap: wrap; gap: 4px 22px; }
 .fuss a { display: inline-flex; align-items: center; min-height: 44px; }
 .nichts main { min-height: 60vh; }
+.fall-text { margin-top: 14px; max-width: 62ch; font-size: 16px; color: var(--tinte-weich); }
+.fragen-fall h3 { margin-top: 22px; font-size: clamp(19px, 1.7vw, 23px); line-height: 1.15; }
+.fragen-fall h3:first-of-type { margin-top: 0; }
+.fragen-fall p { margin-top: 8px; }
 @media (max-width: 760px) {
   body { font-size: 17px; }
   .kopf nav { order: 3; width: 100%; margin: 0 -14px; }
@@ -80,3 +84,4 @@ figcaption { margin-top: 12px; font: 500 12px/1.4 "Mono", monospace; letter-spac
   .fall section > :not(h2), .fall aside > :not(h2) { grid-column: 1; }
   .fall-aktionen .knopf { width: 100%; }
 }
+section[aria-labelledby] > p > a:not(.knopf) { display: inline-block; padding: 12px 0; margin: -12px 0; }

@@ -1,14 +1,378 @@
 {
-  "hinweis": "Je Beispielseite eine Fallseite unter websites/<slug>/. Name, Branche, Satz und Merkmale liest seo.mjs aus den Karten in index.html (Abschnitt Beispielseiten). Hier stehen nur die Texte der Fallseite; aufbau ist freiwillig (ein Absatz zu den Abschnitten der Seite). platzhalter: true = Texte fehlen noch; solche Seiten bleiben noindex und stehen nicht in der Sitemap.",
-  "arten": {"gastro": "Gastronomie", "bau": "Bau & Handwerk", "buero": "Beratung & Büro"},
+  "hinweis": "Je Beispielseite eine Fallseite unter websites/<slug>/. Name, Branche, Satz und Merkmale liest seo.mjs aus den Karten in index.html (Abschnitt Beispielseiten). Hier stehen nur die Texte der Fallseite; aufbau ist freiwillig (ein Absatz zu den Abschnitten der Seite). platzhalter: true = Texte fehlen noch; solche Seiten bleiben noindex und stehen nicht in der Sitemap. Seit dem SEO-Umbau (21.11.): begriff = Branchenwort für Titel, Überschrift und Fragen (\"Website für <begriff>\"), titelbegriff optional kürzer für den Titel, einleitung = Einstiegsabsatz mit dem Branchenbegriff, kundenfragen = typische Fragen, die Besucher dieser Branche vor einer Anfrage haben (nur Themen, keine Fachantworten; die Antworten auf der Fallseite beschreiben nur, wie MAKE Studios die Seite baut). fragen = je Fallseite fünf eigene Fragen mit Antworten (Liste aus [Frage, Antwort], Antworten aus Sicht von MAKE Studios: wie so eine Seite gebaut wird und was die Beispielseite zeigt; keine Fachberatung, keine Zahlen). Fehlt fragen, gelten die allgemeinen Fragen aus seo.mjs.",
+  "arten": {
+    "innovativ": "Innovative Produkte & Technik",
+    "bau": "Bau & Handwerk",
+    "buero": "Agenturen & Coaches"
+  },
   "seiten": [
-    {"slug": "cafe-roesterei", "art": "gastro", "thema": "Café und Rösterei", "buchen": "gastro", "erstellt": "2026-11-11", "aufgabe": "Ein Café oder eine Rösterei wird meist unterwegs am Handy gesucht. In Sekunden muss klar sein, was es gibt, wann geöffnet ist und wie man hinkommt. Und der Besuch soll Lust machen.", "passt": "Für Cafés, Röstereien, Bäckereien und kleine Läden mit eigenem Produkt, die ihr Angebot zeigen und Bestellungen oder Besuche vorbereiten wollen."},
-    {"slug": "coach", "art": "buero", "thema": "Coaching und Beratung", "buchen": "andere", "erstellt": "2026-11-11", "aufgabe": "Wer ein Coaching sucht, wählt zuerst die Person. Die Seite zeigt deshalb Gesicht, Haltung und Themen, sagt, was man erwarten darf und was nicht, und führt zu einem Kennenlernen.", "passt": "Für Coaches, Beraterinnen und Berater sowie Trainer, die mit ihrer Person arbeiten und Anfragen für ein erstes Gespräch bekommen wollen.", "aufbau": "Im Einstieg steht ein Porträt. Es folgen eine angeheftete Szene, in der aus vielen schwebenden Gedanken die Frage „Was ist jetzt wirklich wichtig?“ wird, fünf Themen zum Aufklappen, ein Film, der beim Scrollen wächst, der Ablauf in vier Schritten, drei Formate der Zusammenarbeit, der Abschnitt „Was Sie erwarten dürfen. Und was nicht.“ und ein Formular für das Kennenlernen."},
-    {"slug": "neubau-film", "art": "bau", "thema": "Bauträger und Wohnprojekt", "buchen": "immobilien", "erstellt": "2026-11-11", "aufgabe": "Ein Wohnprojekt wird zuerst am Bildschirm besichtigt. Die Seite stellt das Haus in Bildern und Film vor, nennt die Eckdaten und führt zur Terminanfrage.", "passt": "Für Bauträger, Projektentwickler und Makler, die ein einzelnes Objekt oder Projekt mit Film, Eckdaten und Besichtigungstermin vorstellen wollen."},
-    {"slug": "agentur", "art": "buero", "thema": "Agentur und Markenbüro", "buchen": "agentur", "erstellt": "2026-11-11", "aufgabe": "Eine Agentur wird an ihrer eigenen Seite gemessen, bevor jemand anruft. Zuerst kommen also Arbeiten und Bewegtbild, dann Leistungen und Ablauf. Für die Projektanfrage reichen wenige Felder.", "passt": "Für Agenturen, Gestaltungs- und Planungsbüros sowie Studios, die ihre Arbeit zeigen und Projektanfragen über die eigene Seite bekommen wollen.", "aufbau": "Die Seite ist wie ein Druckbogen gedacht, mit Papier, Schwarz, Cyan, Magenta und Gelb. Im Auftakt springt die Wortmarke in den Passer, der Werkstattfilm wächst beim Scrollen auf volle Größe. Es folgen drei Beispielprojekte als Bogenstapel, die Leistungen als vier Platten, die ein Foto scharf zusammensetzen, der Ablauf, das Team und eine Anfrage mit drei Feldern."},
-    {"slug": "cafe-bistro", "art": "gastro", "thema": "Frühstückslokal und Bistro", "buchen": "gastro", "erstellt": "2026-11-11", "aufgabe": "Gäste wollen vor dem Besuch die Karte sehen und wissen, ob ein Tisch frei ist. Karte und Tischanfrage sind von jeder Stelle aus ohne Umweg erreichbar.", "passt": "Für Restaurants, Bistros und Frühstückslokale, die ihre Karte als Text statt als PDF zeigen und Tischanfragen über die eigene Seite bekommen wollen."},
-    {"slug": "dach-sanierung", "art": "bau", "thema": "Dachdecker und Sanierung", "buchen": "andere", "erstellt": "2026-11-11", "aufgabe": "Wer einen Handwerksbetrieb sucht, will schnell sehen, was der Betrieb kann, wie er arbeitet und wie man anfragt. Die Seite erklärt die Arbeit am Bild und macht die Anfrage leicht.", "passt": "Für Dachdecker, Sanierer und andere Handwerksbetriebe, die ihre Leistungen erklären und Anfragen mit den nötigen Angaben bekommen wollen."},
-    {"slug": "kanzlei", "art": "buero", "thema": "Kanzlei und Anwaltsbüro", "buchen": "andere", "erstellt": "2026-11-11", "aufgabe": "Wer eine Kanzlei sucht, hat einen Anlass und wenig Lust auf Juristendeutsch. Die Seite spricht Alltagssprache, ordnet nach Anlässen statt nach Paragrafen, erklärt den Ablauf und führt zur Anfrage für eine Erstberatung.", "passt": "Für Kanzleien, Steuerbüros und andere beratende Berufe, die verständlich zeigen wollen, wobei sie helfen, und Anfragen mit dem passenden Anlass bekommen wollen.", "aufbau": "Flaschengrün und Papier, gesetzt mit Randnummern, feinen Linien und großen Serifen. Die Anlässe stehen in Alltagssprache unter drei Reitern, in einer Szene wird ein Vertragssatz durchgestrichen und in Klartext übersetzt. Es folgen der Ablauf in fünf Schritten, die Hausordnung der Kanzlei und die Anfrage für eine Erstberatung."},
-    {"slug": "bauunternehmen", "art": "bau", "thema": "Bauunternehmen", "buchen": "andere", "erstellt": "2026-11-11", "aufgabe": "Bauherren prüfen ein Bauunternehmen, bevor sie anrufen. Die Seite zeigt Projekte nach Bereichen, den Ablauf bis zur Übergabe und einen kurzen Weg zur Projektanfrage.", "passt": "Für Bauunternehmen und Generalunternehmer, die Projekte, Ablauf und Ansprechpartner zeigen und qualifizierte Projektanfragen wollen."}
+    {
+      "slug": "drohnen-inspektion",
+      "art": "innovativ",
+      "thema": "Drohnen-Dienstleister",
+      "buchen": "technik",
+      "erstellt": "2026-11-21",
+      "aufgabe": "Wer neue Technik anbietet, muss sie erklären können, bevor jemand anruft. Die Seite macht den Flug einer Inspektionsdrohne zum Erlebnis, nennt Leistungen und Ergebnisse klar, belegt Zulassungen und Sicherheit und führt zu einer Anfrage mit Ort und Zweck.",
+      "passt": "Für Unternehmen mit innovativen Produkten und Dienstleistungen aus Technik, Energie, Messen und Prüfen, die erklärungsbedürftig sind und Vertrauen durch Nachweise brauchen.",
+      "aufbau": "Der Einstieg ist eine angeheftete Szene: Beim Scrollen fliegt eine Drohne in Streifen über eine gezeichnete Gewerbeanlage, und Besucher wechseln zwischen Luftbild, Wärmebild und Vermessung. Es folgen vier Leistungen, die Ergebnisse zum Anklicken von Orthofoto bis Bericht, der Ablauf in fünf Schritten, Zulassungen und Sicherheit mit Feldern für die Nachweise, ein Regler für den Vergleich von Foto und Wärmebild, die Preislogik, fünf Fragen und ein Formular mit Ort und Zweck. Alle Bilder sind gezeichnete Illustrationen.",
+      "begriff": "Drohnen-Dienstleister",
+      "einleitung": "Sie fliegen Drohnen für Inspektion, Wärmebild oder Vermessung und möchten eine Website erstellen lassen, die Ihre Arbeit erklärt, bevor jemand anruft? Diese Beispielseite für einen erfundenen Drohnen-Dienstleister zeigt, wie MAKE Studios so eine Seite baut.",
+      "kundenfragen": [
+        "Brauche ich eine Genehmigung für den Flug über meinem Grundstück?",
+        "Was zeigt eine Thermografie?",
+        "Wann habe ich den Bericht?",
+        "Was kostet der Einsatz?",
+        "Ist der Pilot qualifiziert und versichert?"
+      ],
+      "fragen": [
+        [
+          "Wie erklärt eine Website, was eine Drohne von oben sichtbar macht?",
+          "Mit einem Bild, das sich bewegen lässt. Auf der Beispielseite Havelblick Luftservice fliegt beim Scrollen eine Drohne in Streifen über eine gezeichnete Anlage, und Besucher wechseln selbst zwischen Luftbild, Wärmebild und Vermessung. Die Bilder dort sind Illustration; Ihre echten Aufnahmen setzen wir an dieselbe Stelle."
+        ],
+        [
+          "Wohin gehören Genehmigung, Qualifikation und Versicherung?",
+          "In einen eigenen Abschnitt zu Zulassungen und Sicherheit, den Besucher vor der Anfrage finden. Die Beispielseite hat dort Felder für Nachweise. Eingetragen wird nur, was Sie belegen können; wir tragen nichts für Sie ein."
+        ],
+        [
+          "Wie zeigt die Seite, was ein Bericht enthält?",
+          "Die Ergebnisse stehen zum Anklicken da, vom Orthofoto bis zum Bericht. So sehen Besucher, was sie bekommen, und nicht nur, wie lange geflogen wird. Wenn Sie Beispielberichte freigeben, bauen wir sie an dieselbe Stelle."
+        ],
+        [
+          "Wie lässt sich der Preis erklären, wenn jeder Einsatz anders ist?",
+          "Die Beispielseite erklärt, wovon der Aufwand abhängt, und nennt keine erfundene Zahl. Eine Preisangabe kommt nur auf die Seite, wenn Sie sie festlegen."
+        ],
+        [
+          "Was fragt das Formular vor einem Einsatz ab?",
+          "Ort und Zweck, damit Sie vorab einschätzen können, was gebraucht wird. In der Beispielseite sendet das Formular nichts. Bei Ihrer Seite legen wir mit Ihnen fest, wohin die Anfragen gehen."
+        ]
+      ]
+    },
+    {
+      "slug": "coach",
+      "art": "buero",
+      "thema": "Coaching und Beratung",
+      "buchen": "agentur",
+      "erstellt": "2026-11-11",
+      "aufgabe": "Wer ein Coaching sucht, wählt zuerst die Person. Die Seite zeigt deshalb Gesicht, Haltung und Themen, sagt, was man erwarten darf und was nicht, und führt zu einem Kennenlernen.",
+      "passt": "Für Coaches, Beraterinnen und Berater sowie Trainer, die mit ihrer Person arbeiten und Anfragen für ein erstes Gespräch bekommen wollen.",
+      "aufbau": "Im Einstieg steht ein Porträt. Es folgen eine angeheftete Szene, in der aus vielen schwebenden Gedanken die Frage „Was ist jetzt wirklich wichtig?“ wird, fünf Themen zum Aufklappen, ein Film, der beim Scrollen wächst, der Ablauf in vier Schritten, drei Formate der Zusammenarbeit, der Abschnitt „Was Sie erwarten dürfen. Und was nicht.“ und ein Formular für das Kennenlernen.",
+      "begriff": "Coaches",
+      "einleitung": "Wer ein Coaching sucht, wählt zuerst die Person. Wenn Sie als Coach oder Beraterin eine Website erstellen lassen möchten, zeigt diese Beispielseite für einen erfundenen Coaching-Betrieb, wie Gesicht, Haltung und Themen zu einer Anfrage für das Kennenlernen führen.",
+      "kundenfragen": [
+        "Was ist der Unterschied zwischen Coaching und Therapie?",
+        "Wie läuft ein Erstgespräch ab?",
+        "Wie viele Sitzungen brauche ich?",
+        "Was kostet Coaching?",
+        "Ist Coaching vertraulich?"
+      ],
+      "fragen": [
+        [
+          "Wie bekommt eine Coaching-Website Persönlichkeit, ohne nach Stockfoto auszusehen?",
+          "Mit Ihrem Gesicht und Ihren Worten. Die Beispielseite Fermate beginnt mit einem Porträt. Für Ihre Seite planen wir einen Termin für Fotos, auf Wunsch auch für ein kurzes Video, und schreiben die Texte gern aus dem Gespräch."
+        ],
+        [
+          "Wie erklärt man Coaching, das man nicht sehen kann?",
+          "Mit einer Szene statt einer Behauptung. Auf der Beispielseite werden aus vielen schwebenden Gedanken die Frage „Was ist jetzt wirklich wichtig?“, danach folgen fünf Themen zum Aufklappen und der Ablauf in vier Schritten."
+        ],
+        [
+          "Wie grenzt die Seite Coaching von Therapie ab?",
+          "Ein eigener Abschnitt sagt offen, was Besucher erwarten dürfen und was nicht. Die Beispielseite hat ihn unter „Was Sie erwarten dürfen. Und was nicht.“ Die genauen Formulierungen stimmen wir mit Ihnen ab. Rechtliche Fragen zu Ihren Aussagen klären Sie bitte mit einer Fachperson."
+        ],
+        [
+          "Wie läuft der Weg zum Erstgespräch auf der Seite?",
+          "Über drei Formate der Zusammenarbeit und ein Formular für das Kennenlernen. Es fragt nur das Nötigste ab. In der Beispielseite sendet es nichts."
+        ],
+        [
+          "Wie gehen Sie mit Stimmen von Klientinnen und Klienten um?",
+          "Wir setzen Stimmen nur ein, wenn sie echt sind und die Personen zugestimmt haben. Erfundene Zitate bauen wir nicht."
+        ]
+      ]
+    },
+    {
+      "slug": "agentur",
+      "art": "buero",
+      "thema": "Agentur und Markenbüro",
+      "buchen": "agentur",
+      "erstellt": "2026-11-11",
+      "aufgabe": "Eine Agentur wird an ihrer eigenen Seite gemessen, bevor jemand anruft. Zuerst kommen also Arbeiten und Bewegtbild, dann Leistungen und Ablauf. Für die Projektanfrage reichen wenige Felder.",
+      "passt": "Für Agenturen, Gestaltungs- und Planungsbüros sowie Studios, die ihre Arbeit zeigen und Projektanfragen über die eigene Seite bekommen wollen.",
+      "aufbau": "Die Seite ist wie ein Druckbogen gedacht, mit Papier, Schwarz, Cyan, Magenta und Gelb. Im Auftakt springt die Wortmarke in den Passer, der Werkstattfilm wächst beim Scrollen auf volle Größe. Es folgen drei Beispielprojekte als Bogenstapel, die Leistungen als vier Platten, die ein Foto scharf zusammensetzen, der Ablauf, das Team und eine Anfrage mit drei Feldern.",
+      "begriff": "Agenturen",
+      "einleitung": "Eine Agentur wird an ihrer eigenen Seite gemessen. Wenn Sie als Agentur oder Markenbüro eine Website erstellen lassen möchten, zeigt diese Beispielseite für einen erfundenen Betrieb, wie Arbeiten, Bewegtbild, Team und Projektanfrage aufgebaut werden.",
+      "kundenfragen": [
+        "Welche Arbeiten hat die Agentur schon gemacht?",
+        "Wer arbeitet an meinem Projekt?",
+        "Wie läuft ein Projekt ab?",
+        "Was kostet ein Projekt?",
+        "Wie lange dauert es?"
+      ],
+      "fragen": [
+        [
+          "Wie zeigt eine Agentur ihre Handschrift auf der eigenen Seite?",
+          "Indem die Seite selbst die Arbeitsprobe ist. Die Beispielseite Passer ist wie ein Druckbogen gedacht, mit Papier, Schwarz, Cyan, Magenta und Gelb, und ihre Wortmarke springt im Auftakt in den Passer."
+        ],
+        [
+          "Wie werden Projekte gezeigt, ohne dass die Seite zur Bildergalerie wird?",
+          "Die Beispielseite zeigt drei Projekte als Bogenstapel, jedes mit eigener Geschichte statt nur einem Bild. Welche Projekte Sie zeigen dürfen, entscheiden Sie."
+        ],
+        [
+          "Wie lassen sich Leistungen erklären, die ineinandergreifen?",
+          "Als vier Platten, die beim Scrollen ein Foto scharf zusammensetzen. So sieht man, wie das Ganze entsteht, statt eine Liste zu lesen."
+        ],
+        [
+          "Wie stellt man ein Team vor, ohne Floskeln?",
+          "Mit echten Menschen und echten Fotos. Wo Aufnahmen fehlen, bleibt die Stelle offen, und wir erfinden nichts."
+        ],
+        [
+          "Wie lang darf eine Projektanfrage sein?",
+          "Kurz. Die Beispielseite fragt mit drei Feldern an. Alles Weitere klärt das Gespräch danach."
+        ]
+      ]
+    },
+    {
+      "slug": "dach-sanierung",
+      "art": "bau",
+      "thema": "Dachdecker und Sanierung",
+      "buchen": "bau",
+      "erstellt": "2026-11-11",
+      "aufgabe": "Wer einen Handwerksbetrieb sucht, will schnell sehen, was der Betrieb kann, wie er arbeitet und wie man anfragt. Die Seite erklärt die Arbeit am Bild und macht die Anfrage leicht.",
+      "passt": "Für Dachdecker, Sanierer und andere Handwerksbetriebe, die ihre Leistungen erklären und Anfragen mit den nötigen Angaben bekommen wollen.",
+      "begriff": "Dachdecker",
+      "einleitung": "Wer einen Dachdecker sucht, will schnell sehen, was der Betrieb kann und wie man anfragt. Wenn Sie als Dachdecker oder Sanierungsbetrieb eine Website erstellen lassen möchten, zeigt diese Beispielseite für einen erfundenen Betrieb, wie Leistungen am Foto erklärt werden und die Anfrage leichtfällt.",
+      "kundenfragen": [
+        "Was kostet ein neues Dach?",
+        "Wie schnell kann der Betrieb kommen?",
+        "Wie lange dauert die Arbeit?",
+        "Wie läuft eine Anfrage ab?",
+        "Welche Leistungen gibt es?"
+      ],
+      "fragen": [
+        [
+          "Wie zeigt ein Dachdecker auf der Website, dass er verlässlich arbeitet?",
+          "Am Bild. Die Beispielseite Firstlinie erklärt die Arbeit mit Fotos und Film und zeigt den Ablauf in klaren Schritten, statt Zuverlässigkeit nur zu behaupten. Ihre echten Baustellenfotos ersetzen die Beispielbilder."
+        ],
+        [
+          "Wie wird erklärt, was ein neues Dach kostet?",
+          "Die Seite sagt, wovon der Preis abhängt, und nennt keine erfundene Zahl. Ein Festpreis vor Baubeginn lässt sich als Schritt im Ablauf beschreiben, wenn Sie so arbeiten."
+        ],
+        [
+          "Wie wird der Ablauf eines Dachprojekts sichtbar?",
+          "Auch als Reel im Hochformat: Termin vor Ort, Festpreis vor Baubeginn, Abnahme mit Protokoll. Dieses Reel gehört zur Beispielseite und läuft auf der Hauptseite von MAKE Studios."
+        ],
+        [
+          "Welche Leistungen gehören auf die Seite?",
+          "Die, nach denen Besucher suchen, als eigene Bereiche in Ihren Worten, zum Beispiel Neueindeckung, Reparatur oder Sanierung. Ihre Liste legen wir im Briefing fest."
+        ],
+        [
+          "Wie schnell kommt man zur Anfrage?",
+          "Mit einem Tipp. Die Anfrage ist auf der Beispielseite bewusst leicht gehalten, damit niemand erst suchen muss. Wie sie bei Ihnen ankommt, klären wir im Gespräch."
+        ]
+      ]
+    },
+    {
+      "slug": "kanzlei",
+      "art": "buero",
+      "thema": "Kanzlei und Anwaltsbüro",
+      "buchen": "agentur",
+      "erstellt": "2026-11-11",
+      "aufgabe": "Wer eine Kanzlei sucht, hat einen Anlass und wenig Lust auf Juristendeutsch. Die Seite spricht Alltagssprache, ordnet nach Anlässen statt nach Paragrafen, erklärt den Ablauf und führt zur Anfrage für eine Erstberatung.",
+      "passt": "Für Kanzleien, Steuerbüros und andere beratende Berufe, die verständlich zeigen wollen, wobei sie helfen, und Anfragen mit dem passenden Anlass bekommen wollen.",
+      "aufbau": "Flaschengrün und Papier, gesetzt mit Randnummern, feinen Linien und großen Serifen. Die Anlässe stehen in Alltagssprache unter drei Reitern, in einer Szene wird ein Vertragssatz durchgestrichen und in Klartext übersetzt. Es folgen der Ablauf in fünf Schritten, die Hausordnung der Kanzlei und die Anfrage für eine Erstberatung.",
+      "begriff": "Kanzleien",
+      "einleitung": "Wer eine Kanzlei sucht, hat einen Anlass und wenig Lust auf Juristendeutsch. Wenn Sie als Kanzlei oder Anwaltsbüro eine Website erstellen lassen möchten, zeigt diese Beispielseite für einen erfundenen Betrieb, wie Anlässe, Alltagssprache und eine Anfrage für die Erstberatung zusammenpassen. Rechtsberatung ist sie nicht.",
+      "kundenfragen": [
+        "Was kostet die Erstberatung?",
+        "Wie schnell bekomme ich einen Termin?",
+        "Auf welche Rechtsgebiete ist die Kanzlei spezialisiert?",
+        "Wie läuft ein Mandat ab?"
+      ],
+      "fragen": [
+        [
+          "Wie spricht eine Kanzlei Mandanten an, die keine Juristen sind?",
+          "In Alltagssprache. Die Beispielseite Wortlaut stellt die Anlässe unter drei Reitern so dar, wie Menschen sie erleben, nicht wie Gesetze sie nennen."
+        ],
+        [
+          "Wie zeigt die Seite, was man von einer Kanzlei bekommt?",
+          "Mit einer kleinen Szene: Ein Vertragssatz wird durchgestrichen und in Klartext übersetzt. Besucher sehen den Unterschied, bevor sie anfragen."
+        ],
+        [
+          "Was ist bei Werbung für Kanzleien zu beachten?",
+          "Für Anwälte gelten berufsrechtliche Regeln für Auftritt und Werbung. Die prüfen Sie oder Ihre Kammer. Wir bauen, was Sie freigeben, und geben keine Rechtsberatung."
+        ],
+        [
+          "Wie wird der Ablauf eines Mandats erklärt?",
+          "Als Ablauf in fünf Schritten, damit Mandanten wissen, was auf sie zukommt. Dazu kommt die „Hausordnung“ der Kanzlei: wie sie arbeitet und was sie erwartet."
+        ],
+        [
+          "Wie läuft die Anfrage für eine Erstberatung?",
+          "Über ein kurzes Formular. Welche Angaben es abfragt, legen wir mit Ihnen fest, auch mit Blick auf Vertraulichkeit. In der Beispielseite sendet es nichts."
+        ]
+      ]
+    },
+    {
+      "slug": "bauunternehmen",
+      "art": "bau",
+      "thema": "Bauunternehmen",
+      "buchen": "bau",
+      "erstellt": "2026-11-11",
+      "aufgabe": "Bauherren prüfen ein Bauunternehmen, bevor sie anrufen. Die Seite zeigt Projekte nach Bereichen, den Ablauf bis zur Übergabe und einen kurzen Weg zur Projektanfrage.",
+      "passt": "Für Bauunternehmen und Generalunternehmer, die Projekte, Ablauf und Ansprechpartner zeigen und qualifizierte Projektanfragen wollen.",
+      "begriff": "Bauunternehmen",
+      "einleitung": "Wer ein Bauunternehmen sucht, will Projekte sehen und wissen, wie ein Bau abläuft. Wenn Sie als Bauunternehmen eine Website erstellen lassen möchten, zeigt diese Beispielseite für einen erfundenen Betrieb, wie Projekte, Baustellenfilm und Ablauf bis zur Übergabe geordnet werden.",
+      "kundenfragen": [
+        "Welche Projekte hat das Unternehmen gebaut?",
+        "Wie läuft ein Bauvorhaben ab?",
+        "Was kostet ein Bau?",
+        "Wie lange dauert es bis zur Übergabe?"
+      ],
+      "fragen": [
+        [
+          "Wie zeigt ein Bauunternehmen seine Projekte?",
+          "Nach Bereichen geordnet, so wie die Beispielseite Lotwerk Bau es tut, damit Bauherren schnell das finden, was ihrem Vorhaben ähnelt. Gezeigt werden nur Projekte, die Sie freigeben."
+        ],
+        [
+          "Wie wird der Weg bis zur Übergabe erklärt?",
+          "Als Ablauf vom ersten Gespräch bis zur Übergabe. Wer den Weg kennt, ruft eher an. Die Schritte legen wir nach Ihrer Arbeitsweise fest."
+        ],
+        [
+          "Welche Referenzen darf die Seite nennen?",
+          "Nur echte, die Sie freigeben. Die Beispielseite zeigt einen erfundenen Betrieb und keine echten Kundenprojekte."
+        ],
+        [
+          "Wie geht die Seite mit der Frage nach den Kosten um?",
+          "Sie erklärt, wie ein Angebot entsteht, und nennt keine erfundene Zahl. Konkrete Preise kommen nur auf die Seite, wenn Sie sie nennen wollen."
+        ],
+        [
+          "Wie läuft die Projektanfrage ab?",
+          "Über einen kurzen Weg zur Anfrage. Er fragt, was Sie für eine erste Einschätzung brauchen, und nicht mehr."
+        ]
+      ]
+    },
+    {
+      "slug": "beratung-mittelstand",
+      "art": "buero",
+      "thema": "Unternehmensberatung",
+      "buchen": "agentur",
+      "erstellt": "2026-11-21",
+      "aufgabe": "Wer eine Beratung sucht, hat ein Problem und kennt den Fachbegriff dafür oft nicht. Die Seite beginnt beim Problem: Besucher wählen Nachfolge, Wachstum, Abläufe oder Zahlen und sehen den Weg, die Ergebnisse und ob sich ein Gespräch lohnt.",
+      "passt": "Für Unternehmensberatungen, Steuerberater und andere Dienstleister, deren Angebot erklärungsbedürftig ist und die Anfragen von Menschen bekommen wollen, die ihr Problem schon benennen können.",
+      "aufbau": "Nachtblau mit Seekarten-Raster und Bernstein, gesetzt in einer Grotesk mit Mono-Beschriftungen. Schon der erste Bildschirm ist die Seekarte: Man wählt sein Problem, eine Kurslinie zieht sich über die gezeichnete Karte, und ein Kurz-Check bewertet drei Aussagen. Es folgen die Leistungen als Verzeichnis, drei Phasen mit festem Preis, erfundene Beispielfälle, Team, Fragen und die Anfrage für ein Erstgespräch.",
+      "begriff": "Berater",
+      "titelbegriff": "Unternehmensberatung",
+      "einleitung": "Wer eine Beratung sucht, will wissen, ob sie sein Problem kennt. Wenn Sie als Unternehmensberater oder Beraterin eine Website erstellen lassen möchten, zeigt diese Beispielseite für einen erfundenen Betrieb, wie die Seite beim Problem beginnt und zum Erstgespräch führt.",
+      "kundenfragen": [
+        "Was kostet Beratung und wie wird abgerechnet?",
+        "Wie lange dauert ein Projekt?",
+        "Was bleibt nach dem Projekt bei uns?",
+        "Hat die Beratung Erfahrung in unserer Branche?",
+        "Wie läuft das Erstgespräch?"
+      ],
+      "fragen": [
+        [
+          "Wie zeigt eine Beratung, dass sie beim Problem anfängt und nicht beim Angebot?",
+          "Indem die Seite beim Problem beginnt. Auf der Beispielseite Kurswerk wählt der Besucher sein Problem, und eine Kurslinie zeigt den Weg über eine gezeichnete Karte."
+        ],
+        [
+          "Wie kann ein Besucher einschätzen, ob ein Gespräch sich lohnt?",
+          "Mit einem kurzen Check. Die Beispielseite bewertet drei Aussagen und sagt ehrlich, ob ein Erstgespräch jetzt sinnvoll ist."
+        ],
+        [
+          "Wie lassen sich Fälle darstellen, wenn Kunden nicht genannt werden dürfen?",
+          "Die Beispielseite arbeitet mit erfundenen Beispielfällen und sagt das offen. Echte Fälle zeigen wir nur mit Einverständnis der Kunden und Ihrer Freigabe."
+        ],
+        [
+          "Wie wird das Honorar erklärt?",
+          "Als drei Phasen mit festem Preis je Phase. Die Beispielseite nennt dafür keine Zahlen. Ihre Preise legen Sie fest."
+        ],
+        [
+          "Was zeigt die Seite über das Team?",
+          "Die Menschen, die beraten, mit Haltung und Werdegang. Wo Porträts fehlen, bleibt die Stelle offen. Wir erfinden keine Personen und keine Auszeichnungen."
+        ]
+      ]
+    },
+    {
+      "slug": "energiespeicher",
+      "art": "innovativ",
+      "thema": "Solar und Energiespeicher",
+      "buchen": "technik",
+      "erstellt": "2026-11-21",
+      "aufgabe": "Beim Thema Speicher und Solar fragen Betriebe zuerst, ob es sich lohnt und was bei einem Stromausfall passiert. Die Seite beantwortet das nicht mit Versprechen, sondern lässt Besucher einen Tag durchfahren und selbst festlegen, was weiterlaufen soll.",
+      "passt": "Für Installationsbetriebe, Energieberater und Anbieter von Solar-, Speicher- und anderer Gebäudetechnik, deren Produkt erklärungsbedürftig ist und die Anfragen von Betrieben mit konkretem Anlass bekommen wollen.",
+      "aufbau": "Warmes Papier, tiefes Waldgrün und ein Sonnengelb, gesetzt in einer runden Grotesk mit Mono-Beschriftungen. Der Einstieg ist eine gezeichnete Szene: Mit einem Regler fährt man durch den Tag und sieht, wie Sonne, Halle, Speicher und Netz zusammenspielen, mit und ohne Speicher. Es folgen vier Leistungen, die Auswahl „Was darf bei einem Stromausfall nicht stehen bleiben?“, der Ablauf in fünf Schritten mit dem Hinweis zur Förderung, Felder für Anlagen und Nachweise, fünf Fragen und die Anfrage. Alle Bilder sind gezeichnete Illustrationen ohne Messwerte.",
+      "begriff": "Solar und Energiespeicher",
+      "titelbegriff": "Solar und Speicher",
+      "einleitung": "Solaranlagen und Batteriespeicher brauchen Erklärung, bevor jemand anfragt. Wenn Sie als Fachbetrieb für Solar und Energiespeicher eine Website erstellen lassen möchten, zeigt diese Beispielseite für einen erfundenen Betrieb, wie Technik zum Ausprobieren statt zum Behaupten aufgebaut wird.",
+      "kundenfragen": [
+        "Lohnt sich ein Speicher?",
+        "Funktioniert er bei Stromausfall?",
+        "Wie lange hält er?",
+        "Gibt es Förderung?",
+        "Wie groß muss er sein?"
+      ],
+      "fragen": [
+        [
+          "Wie erklärt man, ob sich ein Speicher lohnt, ohne Zahlen zu versprechen?",
+          "Man lässt es durchspielen. Auf der Beispielseite Speicherwerk Havelland fährt der Besucher mit einem Regler durch einen Tag und sieht, wie Sonne, Halle, Speicher und Netz zusammenspielen, mit und ohne Speicher. Es sind keine Messwerte, sondern eine Illustration."
+        ],
+        [
+          "Wie wird das Thema Stromausfall behandelt?",
+          "Als Auswahl: „Was darf bei einem Stromausfall nicht stehen bleiben?“ Besucher legen selbst fest, was ihnen wichtig ist. Das macht die Anfrage konkreter."
+        ],
+        [
+          "Wie geht die Seite mit dem Thema Förderung um?",
+          "Der Ablauf enthält einen Hinweis dazu. Bedingungen ändern sich, deshalb nennen wir keine Beträge und verweisen auf die zuständigen Stellen. Den aktuellen Stand prüfen Sie."
+        ],
+        [
+          "Wohin gehören Anlagen und Nachweise?",
+          "In einen eigenen Abschnitt mit Feldern für Ihre Anlagen und Nachweise. Die Beispielseite hält Platz dafür bereit. Eingetragen wird nur, was belegt ist."
+        ],
+        [
+          "Wie läuft die Beratungsanfrage ab?",
+          "Über eine Anfrage nach dem Ablauf in fünf Schritten. Sie fragt, was für ein erstes Gespräch nötig ist. In der Beispielseite sendet sie nichts."
+        ]
+      ]
+    },
+    {
+      "slug": "robotik",
+      "art": "innovativ",
+      "thema": "Robotik und Automatisierung",
+      "buchen": "technik",
+      "erstellt": "2026-11-21",
+      "aufgabe": "Wer Roboter für den Mittelstand verkauft, hat Kunden, die Kosten, Sicherheit und Personal fürchten. Die Seite lässt sie eine Zelle selbst bedienen, rechnet mit ihren eigenen Zahlen statt mit Versprechen und führt über Analyse, Pilot und Ausbau zu einer Anfrage.",
+      "passt": "Für Anbieter von Automatisierung, Maschinen und Anlagentechnik, die erklärungsbedürftige Investitionsgüter an Betriebe verkaufen und dafür Vertrauen und Verständnis aufbauen müssen.",
+      "aufbau": "Betongrau, Stahl und Warngelb, gesetzt in einer schmalen Versalienschrift wie auf Maschinenschildern. Der Einstieg ist eine gezeichnete Roboterzelle von oben: Besucher wechseln zwischen Palettieren und Maschine bestücken, fahren den Durchgang Schritt für Schritt durch und schicken eine Person in den Bereich, worauf der Arm langsamer wird und anhält. Es folgen drei Einsatzfelder, ein Rechner für die eigenen Zahlen, der Weg über Analyse, Pilot und Ausbau mit Miete oder Leasing als Einstieg, Sicherheit und Nachweise mit Feldern für die Einträge, fünf Fragen und die Anfrage. Alle Bilder sind gezeichnete Illustrationen.",
+      "begriff": "Robotik und Automatisierung",
+      "titelbegriff": "Robotik",
+      "einleitung": "Wer Automatisierung einkauft, will die Technik begreifen, bevor er mit dem Vertrieb spricht. Wenn Sie als Anbieter von Robotik und Automatisierung eine Website erstellen lassen möchten, zeigt diese Beispielseite für einen erfundenen Betrieb, wie eine gezeichnete Zelle und ein Rechner das erklären.",
+      "kundenfragen": [
+        "Was kostet ein Cobot insgesamt?",
+        "Wann amortisiert sich das?",
+        "Brauche ich Fachpersonal?",
+        "Wie sicher ist die Zusammenarbeit mit Menschen?",
+        "Geht das auch zur Miete?"
+      ],
+      "fragen": [
+        [
+          "Wie erklärt eine Website, was ein Cobot insgesamt kostet?",
+          "Mit einem Rechner für die eigenen Zahlen. Die Beispielseite Greifzelle Automation nennt selbst keine erfundenen Preise und lässt Besucher mit ihren Werten rechnen."
+        ],
+        [
+          "Wie zeigt man, wie eine Roboterzelle arbeitet?",
+          "Mit einer gezeichneten Zelle von oben. Besucher wechseln zwischen Palettieren und Maschine bestücken und fahren den Durchgang Schritt für Schritt durch."
+        ],
+        [
+          "Wie wird Sicherheit bei der Zusammenarbeit mit Menschen gezeigt?",
+          "In der Zelle: Schickt der Besucher eine Person in den Bereich, wird der Arm langsamer und hält an. Dazu gibt es einen Abschnitt zu Sicherheit und Nachweisen mit Feldern für Ihre Einträge."
+        ],
+        [
+          "Wie wird der Einstieg für Betriebe ohne Fachpersonal erklärt?",
+          "Als Weg über Analyse, Pilot und Ausbau. Die Beispielseite nennt Miete oder Leasing als Einstieg. Was bei Ihnen gilt, legen Sie fest."
+        ],
+        [
+          "Welche Einsatzfelder gehören auf die Seite?",
+          "Die, für die Sie Lösungen anbieten, als eigene Felder mit Beispielen. Die Beispielseite zeigt drei Einsatzfelder und führt zur Analyse-Anfrage."
+        ]
+      ]
+    }
   ]
 }

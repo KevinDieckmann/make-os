@@ -1,4 +1,4 @@
-Schriften dieser Testseite — alle unter der SIL Open Font License 1.1 (Text unten).
+Schriften dieser Website, alle unter der SIL Open Font License 1.1 (Text unten).
 
 Bricolage Grotesque (schriften/bricolage-grotesque.woff2)
 Copyright 2022 The Bricolage Grotesque Project Authors (https://github.com/ateliertriay/bricolage)

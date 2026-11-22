@@ -58,7 +58,7 @@ em { font-family: "Instrument", Georgia, serif; font-style: italic; font-weight:
 .held-titel, .szenen-titel, .ziel-titel, .abschnitt-titel, .kontakt-titel, .tafel-titel, .tafel-zahl,
 .kennzahl-wert, .karte-titel, .werk-nr, .werk-name, .menue-nav a, .laufband-spur, .familie-karte h3,
 .analyse-zahl, .leistung h3, .ablauf-liste h3, .ablauf-liste span, .analyse-gruppe-titel, .analyse-berlin b, .tafel-markt b,
-.entwurf-titel, .satz-gross, .aufruf-text, .mock-gross, .mock-objekt-titel {
+.entwurf-titel, .satz-gross, .aufruf-text, .mock-gross, .mock-objekt-titel, .kreis h3, .ki-kasten h3, .paar-titel, .referenzen-gruppe {
   font-family: "Bricolage", system-ui, sans-serif;
   font-weight: 700;
   font-stretch: 75%;
@@ -347,7 +347,7 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .tafel-text { margin-top: 22px; max-width: 40ch; font-size: 18px; color: rgba(242, 237, 228, .78); }
 .tafel-zahl { margin-top: 18px; font-size: clamp(64px, 7.6vw, 132px); line-height: .84; font-variant-numeric: tabular-nums; }
 .tafel-satz { margin-top: 14px; max-width: 30ch; font-size: clamp(18px, 1.45vw, 22px); line-height: 1.35; }
-.tafel-markt { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
+.tafel-markt { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
 .tafel-markt p { padding-top: 12px; border-top: 1px solid var(--linie-hell); font: 500 12px/1.4 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: rgba(242, 237, 228, .7); }
 .tafel-markt b { display: block; margin-bottom: 8px; font-size: clamp(30px, 3vw, 46px); line-height: .9; letter-spacing: -.02em; text-transform: none; color: var(--signal); font-variant-numeric: tabular-nums; }
 .tafel-quelle { margin-top: 12px; font: 500 12px/1.45 "Mono", monospace; letter-spacing: .03em; opacity: .72; }
@@ -361,17 +361,7 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 
 .attrappe-handy .geraet-handy { width: min(250px, 30vh); transform: rotate(-4deg); box-shadow: 0 0 0 1px rgba(13, 12, 11, .3), 0 40px 80px -30px rgba(13, 12, 11, .6); }
 .attrappe-fenster .geraet-fenster { width: min(100%, 580px); transform: rotate(-2deg); box-shadow: 0 0 0 1px rgba(13, 12, 11, .2), 0 40px 80px -30px rgba(13, 12, 11, .45); }
-.handy { width: 236px; padding: 10px; border-radius: 38px; background: var(--tinte); box-shadow: 0 40px 80px -30px rgba(13, 12, 11, .6); transform: rotate(-4deg); }
-.handy > * { background: var(--papier); color: var(--tinte); }
-.handy-bild { position: relative; height: 200px; border-radius: 28px 28px 8px 8px; overflow: hidden; background: radial-gradient(70% 60% at 30% 35%, #E9B37A, transparent 70%), radial-gradient(60% 60% at 75% 70%, #7A3E1D, transparent 70%), linear-gradient(160deg, #C47A3E, #3A1E10); }
-.handy-name { padding: 14px 14px 2px; font-weight: 700; font-size: 20px; font-stretch: 85%; }
-.handy-zeile { padding: 0 14px 12px; font-size: 13px; color: #3E6B3A; }
-.handy-knoepfe { display: flex; gap: 6px; padding: 0 12px 12px; }
-.handy-knoepfe span { flex: 1; padding: 8px 0; border-radius: 999px; background: #E3EBF7; color: #1A4FA0; font-size: 12px; font-weight: 600; text-align: center; }
-.handy-reihe { display: flex; gap: 6px; padding: 0 12px 14px; border-radius: 0 0 28px 28px; }
-.handy-reihe img { flex: 1; min-width: 0; width: 0; height: 54px; border-radius: 10px; object-fit: cover; background: #C47A3E; }
 /* Fotos in den Entwürfen füllen ihre Fläche; die Farbe dahinter steht, bis das Bild geladen ist */
-.handy-bild img, .mock-foto img, .mock-faelle img, .mock-haus img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 
 /* 05 Ergebnis: die fertigen Seiten als Bildschirme im Raum. studio.js fährt von einem zum nächsten. */
@@ -428,14 +418,14 @@ html.dunkel .kopf .knopf:hover { background: var(--signal); }
 .anzeige.auf-dunkel .anzeige-kapitel b { color: var(--signal); }
 .anzeige.auf-dunkel .anzeige-balken::before { background: var(--tinte); }
 .anzeige-pause {
-  position: relative; flex: none; width: 34px; height: 34px; margin: -11px 0; padding: 0; border-radius: 50%;
+  position: relative; flex: none; width: 44px; height: 44px; margin: -16px 0; padding: 0; border-radius: 50%;
   border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; pointer-events: auto;
   transition: background .2s, color .2s;
 }
-.anzeige-pause::before, .anzeige-pause::after { content: ""; position: absolute; top: 11px; width: 3px; height: 10px; border-radius: 1px; background: currentColor; }
-.anzeige-pause::before { left: 12px; }
-.anzeige-pause::after { right: 12px; }
-.anzeige-pause[aria-pressed="true"]::before { left: 13px; top: 10px; width: 0; height: 0; border-radius: 0; background: none; border-left: 10px solid currentColor; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+.anzeige-pause::before, .anzeige-pause::after { content: ""; position: absolute; top: 16px; width: 3px; height: 10px; border-radius: 1px; background: currentColor; }
+.anzeige-pause::before { left: 17px; }
+.anzeige-pause::after { right: 17px; }
+.anzeige-pause[aria-pressed="true"]::before { left: 18px; top: 15px; width: 0; height: 0; border-radius: 0; background: none; border-left: 10px solid currentColor; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
 .anzeige-pause[aria-pressed="true"]::after { display: none; }
 .anzeige-pause:hover { background: var(--signal); color: var(--tinte); border-color: var(--signal); }
 
@@ -476,7 +466,7 @@ html.ohne-chrom .chrom {
 .analyse-zahl { font-size: clamp(54px, 5vw, 80px); line-height: .86; font-variant-numeric: tabular-nums; }
 .analyse-satz { font-size: 17px; line-height: 1.45; color: rgba(242, 237, 228, .88); }
 .analyse-quelle { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--linie-hell); font: 500 12px/1.5 "Mono", monospace; color: rgba(242, 237, 228, .6); }
-.analyse-quelle a { color: rgba(242, 237, 228, .86); text-underline-offset: 3px; }
+.analyse-quelle a { display: inline-block; padding: 14px 0; margin: -14px 0; color: rgba(242, 237, 228, .86); text-underline-offset: 3px; }
 .analysen-fuss { margin-top: 28px; font: 500 12px/1.5 "Mono", monospace; letter-spacing: .04em; color: rgba(242, 237, 228, .56); }
 
 /* Leistungen: die vier Teile des Auftritts, dunkel abgesetzt direkt nach dem Film */
@@ -615,10 +605,10 @@ html.menue-offen { overflow: hidden; }
   background-size: 44px 44px; background-position: center;
   -webkit-mask: radial-gradient(75% 75% at 50% 50%, #000 20%, transparent 100%); mask: radial-gradient(75% 75% at 50% 50%, #000 20%, transparent 100%);
 }
-.entwurf-gastro .entwurf-buehne { background: radial-gradient(60% 70% at 88% 8%, rgba(255, 143, 184, .55), transparent 62%), radial-gradient(80% 80% at 0% 100%, #C2380A, transparent 66%), var(--signal); }
 .entwurf-agentur .entwurf-buehne { background: radial-gradient(55% 65% at 12% 10%, rgba(255, 143, 184, .45), transparent 62%), radial-gradient(75% 80% at 100% 100%, #241048, transparent 70%), var(--violett); }
-.entwurf-immo .entwurf-buehne { background: radial-gradient(70% 80% at 92% 0%, #FAF7F1, transparent 60%), radial-gradient(80% 70% at 0% 100%, var(--papier-3), transparent 70%), var(--papier-2); box-shadow: inset 0 0 0 1px var(--linie); }
-.entwurf-immo .entwurf-buehne::before { background-image: linear-gradient(rgba(13, 12, 11, .07) 1px, transparent 1px), linear-gradient(90deg, rgba(13, 12, 11, .07) 1px, transparent 1px); }
+.entwurf-bau .entwurf-buehne { background: radial-gradient(70% 80% at 92% 0%, #FAF7F1, transparent 60%), radial-gradient(80% 70% at 0% 100%, var(--papier-3), transparent 70%), var(--papier-2); box-shadow: inset 0 0 0 1px var(--linie); }
+.entwurf-bau .entwurf-buehne::before { background-image: linear-gradient(rgba(13, 12, 11, .07) 1px, transparent 1px), linear-gradient(90deg, rgba(13, 12, 11, .07) 1px, transparent 1px); }
+.entwurf-technik .entwurf-buehne { background: radial-gradient(60% 70% at 90% 8%, rgba(255, 106, 43, .5), transparent 62%), radial-gradient(75% 80% at 0% 100%, #1B2733, transparent 70%), #0A0F13; }
 .entwurf-etikett { top: 20px; left: 20px; }
 
 /* Browser-Attrappe */
@@ -639,20 +629,15 @@ html.menue-offen { overflow: hidden; }
 .mock-play { position: absolute; left: 50%; top: 50%; width: 32px; height: 32px; margin: -16px 0 0 -16px; border-radius: 50%; background: rgba(242, 237, 228, .92); }
 .mock-play::after { content: ""; position: absolute; left: 13px; top: 10px; border-left: 9px solid var(--tinte); border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
 
-/* Café: warm, Serifen, Karte als Text */
-.entwurf-gastro .entwurf-buehne { place-items: center start; }
-.mock-gastro { width: min(86%, 540px); }
-.mock-gastro .mock-seite { background: #FBF6EE; color: #2B1D14; }
-.mock-held { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; }
-.mock-held-text { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; padding: 4px 0; }
-.mock-serif { font-family: "Instrument", Georgia, serif; font-style: italic; font-size: clamp(24px, 2.3vw, 32px); line-height: 1.02; }
-.mock-gastro .mock-knopf { background: #2B1D14; color: #FBF6EE; }
-.mock-foto { position: relative; min-height: 150px; border-radius: 12px; overflow: hidden; background: radial-gradient(70% 60% at 30% 35%, #E9B37A, transparent 70%), radial-gradient(60% 60% at 75% 70%, #7A3E1D, transparent 70%), linear-gradient(160deg, #C47A3E, #3A1E10); }
-.mock-karte { display: grid; gap: 8px; width: 62%; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(43, 29, 20, .14); font-size: 12px; }
-.mock-karte p { display: flex; align-items: baseline; gap: 8px; }
-.mock-karte i { flex: 1; border-bottom: 1px dotted rgba(43, 29, 20, .4); translate: 0 -3px; }
-.mock-karte span:last-child { font: 500 12px/1 "Mono", monospace; opacity: .72; }
-.entwurf .mock-handy { position: absolute; z-index: 1; right: clamp(16px, 5%, 56px); bottom: -64px; width: 236px; rotate: 6deg; scale: .8; transform: none; transform-origin: bottom right; transition: rotate .7s var(--kurve), translate .7s var(--kurve); }
+
+/* Technik: Graphit, Signalorange, ein Bild vom Einsatz */
+.mock-technik .mock-seite { background: #0A0F13; color: #E7EEF2; }
+.mock-technik .mock-gross { max-width: 11ch; }
+.mock-technik .mock-gross em { color: #FF6A2B; }
+.mock-bild { position: relative; height: 132px; border-radius: 10px; overflow: hidden; background: #131B21; }
+.mock-bild img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
+.mock-marken { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.mock-marken span { padding: 6px 10px; border-radius: 999px; background: rgba(231, 238, 242, .1); font: 500 11px/1 "Mono", monospace; letter-spacing: .04em; }
 
 /* Agentur: dunkel, große Schrift, Arbeiten vorn */
 .mock-agentur .mock-seite { background: #121014; color: var(--papier); }
@@ -669,18 +654,18 @@ html.menue-offen { overflow: hidden; }
 .mock-faelle b { font-weight: inherit; }
 .mock-faelle div:nth-child(3) { background: linear-gradient(160deg, #4B3590, #0D0C0B); }
 
-/* Makler: hell, Objekt mit Video-Rundgang, eigener Weg für Eigentümer */
-.mock-immo .mock-seite { background: #FCFBF8; color: #1F2328; }
+/* Bau: hell, Projekt mit Baustellen-Film, Ablauf */
+.mock-bau .mock-seite { background: #FCFBF8; color: #1F2328; }
 .mock-objekt { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: end; }
 .mock-haus { position: relative; height: 176px; border-radius: 12px; overflow: hidden; background: #C9D3DC; }
-.mock-haus img { object-position: 88% 30%; }
+.mock-haus img { object-position: 50% 50%; }
 .mock-chip { position: absolute; z-index: 1; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px 5px 5px; border-radius: 999px; background: rgba(13, 12, 11, .76); color: var(--papier); font: 500 12px/1 "Mono", monospace; letter-spacing: .04em; }
 .mock-chip .mock-play { position: relative; left: auto; top: auto; width: 20px; height: 20px; margin: 0; }
 .mock-chip .mock-play::after { left: 8px; top: 6px; border-left-width: 6px; border-top-width: 4px; border-bottom-width: 4px; }
 .mock-objekt-text { display: flex; flex-direction: column; gap: 6px; padding-bottom: 2px; }
 .mock-objekt-titel { font-size: clamp(22px, 2vw, 28px); line-height: .95; }
 .mock-objekt-ort { font-size: 12px; opacity: .7; }
-.mock-immo .mock-knopf { margin-top: 10px; background: #1F2328; color: #FCFBF8; }
+.mock-bau .mock-knopf { margin-top: 10px; background: #1F2328; color: #FCFBF8; }
 .mock-eigentuemer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: #EEEDE6; font-size: 12px; }
 .mock-eigentuemer b { font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 
@@ -764,7 +749,7 @@ html.menue-offen { overflow: hidden; }
 
 .referenz-branche { margin: 0; font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--signal); }
 .referenz-name { margin: 12px 0 0; font-family: "Bricolage", system-ui, sans-serif; font-weight: 700; font-stretch: 75%; letter-spacing: -.02em; font-size: clamp(34px, 3.2vw, 54px); line-height: .92; }
-.referenz-link { color: inherit; text-decoration: none; }
+.referenz-link { display: inline-flex; align-items: center; min-height: 44px; color: inherit; text-decoration: none; }
 /* Die ganze Karte ist klickbar, der Link bleibt aber ein einziger, gut benannter Link */
 .referenz-link::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: 16px; }
 .referenz-link:focus-visible { outline: none; }
@@ -893,7 +878,7 @@ html.menue-offen { overflow: hidden; }
 .film-knopf::before { content: ""; margin-left: 3px; border-left: 12px solid currentColor; border-block: 8px solid transparent; }
 .laeuft > .film-knopf::before { width: 12px; height: 14px; margin-left: 0; border: 0; border-inline: 4px solid currentColor; }
 .film-knopf:hover { background: var(--signal); color: var(--tinte); }
-.filme-hinweis { margin-top: 16px; font: 500 12px/1.5 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); }
+.filme-hinweis, .social-hinweis { margin-top: 16px; font: 500 12px/1.5 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--tinte-weich); }
 
 /* Ohne Kamera: dunkle Tafel. Links der Weg, rechts die drei Schritte als Zeichnung und die drei Formate. */
 .weg-ohne {
@@ -941,44 +926,103 @@ html.menue-offen { overflow: hidden; }
 .video-immer { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }
 .video-immer li { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--linie-hell); font: 500 12px/1 "Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: rgba(242, 237, 228, .8); }
 
-/* ─── Social Media (auf Anfrage): drei Bausteine, daneben ein gezeichnetes Beispiel ─── */
+/* ─── Social Media: drei Pakete (S, M, L) ─── */
 .abschnitt-social { background: var(--papier-2); }
-.social { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 4.5vw, 80px); align-items: center; }
+.social { display: block; }
+.social-text .bausteine { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 clamp(20px, 3vw, 48px); }
 .bausteine { list-style: none; padding: 0; }
-.bausteine li { display: grid; grid-template-columns: 44px minmax(0, 1fr); padding: 22px 0; border-top: 1px solid var(--linie); }
+.bausteine li { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-content: start; padding: 22px 0; border-top: 1px solid var(--linie); }
 .bausteine li:last-child { border-bottom: 1px solid var(--linie); }
+.social-text .bausteine li, .social-text .bausteine li:last-child { border-bottom: 0; border-top: 2px solid var(--tinte); padding-bottom: 6px; }
 .bausteine span { grid-row: 1 / span 2; padding-top: 7px; font: 500 12px/1 "Mono", monospace; letter-spacing: .14em; color: var(--signal-text); }
 .bausteine h3 { font-size: clamp(28px, 2.4vw, 38px); line-height: 1; }
 .bausteine p { margin-top: 8px; max-width: 40ch; font-size: 17px; line-height: 1.5; color: var(--tinte-weich); }
-.social-knopf { margin-top: 30px; }
-.social-buehne {
-  position: relative; isolation: isolate; overflow: hidden; overflow: clip;
-  display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); grid-template-areas: "handy plan" "handy post" "handy antwort"; align-items: center;
-  gap: 14px clamp(16px, 2.4vw, 32px); padding: clamp(60px, 5vw, 76px) clamp(20px, 3.4vw, 52px) clamp(28px, 3.4vw, 52px); border-radius: 32px;
-  background: radial-gradient(55% 65% at 12% 10%, rgba(255, 143, 184, .45), transparent 62%), radial-gradient(75% 80% at 100% 100%, #241048, transparent 70%), var(--violett);
-}
-.social-buehne::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background-image: linear-gradient(rgba(255, 255, 255, .13) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .13) 1px, transparent 1px);
-  background-size: 44px 44px; background-position: center;
-  -webkit-mask: radial-gradient(75% 75% at 50% 50%, #000 20%, transparent 100%); mask: radial-gradient(75% 75% at 50% 50%, #000 20%, transparent 100%);
-}
-.social-buehne > .etikett { top: 20px; left: 20px; }
-.social-handy { grid-area: handy; justify-self: center; width: min(100%, 330px); rotate: -2deg; box-shadow: 0 0 0 1px rgba(242, 237, 228, .2), 0 50px 90px -30px rgba(8, 3, 20, .9); }
-.social-handy .geraet-bild { aspect-ratio: 9 / 16; }
+.social-text .social-hinweis { margin-top: 28px; }
+.social-text .link-pfeil { display: flex; width: fit-content; margin-top: 6px; }   /* Verweis auf das Preisblatt, eigene Zeile über dem Knopf */
+.social-knopf { margin-top: 18px; }
 .social-art { font: 500 12px/1.2 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau); }
-.social-handy .social-art { position: absolute; top: 20px; left: 20px; z-index: 2; padding: 6px 10px; border-radius: 999px; background: rgba(13, 12, 11, .72); color: var(--papier); }
-.social-karte { padding: 14px 16px 16px; border-radius: 18px; background: var(--papier); color: var(--tinte); box-shadow: 0 30px 50px -30px rgba(13, 12, 11, .7); }
-.social-plan { grid-area: plan; }
-.social-post { grid-area: post; rotate: 1.5deg; }
-.social-antwort { grid-area: antwort; }
-.social-plan ul { list-style: none; padding: 0; margin-top: 10px; }
-.social-plan li { display: grid; grid-template-columns: 68px minmax(0, 1fr); padding: 8px 0 0; margin-top: 8px; border-top: 1px solid var(--linie); font-size: 14px; line-height: 1.35; }
-.social-plan b { font: 500 12px/1.75 "Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--signal-text); }
-.social-post img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; margin-top: 10px; border-radius: 10px; }
-.social-zeile { margin-top: 10px; font-size: 15px; line-height: 1.4; }
-.blase { width: fit-content; max-width: 88%; margin-top: 10px; padding: 9px 13px; border-radius: 16px 16px 16px 4px; background: var(--papier-3); font-size: 14px; line-height: 1.35; }
-.blase-wir { margin-left: auto; border-radius: 16px 16px 4px 16px; background: var(--tinte); color: var(--papier); }
+
+/* ─── Reels: große Bühne, sechs Hochformat-Clips in Handy-Rahmen, leicht gekippt und versetzt (reels.js) ─── */
+.abschnitt-reels {
+  --reel-b: clamp(300px, 22vw, 360px);
+  position: relative; isolation: isolate; overflow: hidden; overflow: clip; padding-inline: 0; background: var(--tinte); color: var(--papier);
+}
+.abschnitt-reels::before {
+  content: ""; position: absolute; z-index: -2; inset: 0; pointer-events: none;
+  background: radial-gradient(46% 60% at 82% 46%, rgba(255, 90, 31, .62), transparent 70%), radial-gradient(40% 56% at 6% 86%, rgba(124, 58, 237, .5), transparent 70%);
+}
+.abschnitt-reels::after {
+  content: "REELS"; position: absolute; z-index: -1; left: 50%; bottom: -.12em; translate: -50% 0; pointer-events: none; user-select: none;
+  font: 800 clamp(160px, 30vw, 480px)/.8 "Bricolage", system-ui, sans-serif; font-stretch: 75%; letter-spacing: -.04em; white-space: nowrap;
+  color: transparent; -webkit-text-stroke: 2px rgba(242, 237, 228, .16);
+}
+.reels-kopf { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 20px clamp(24px, 4vw, 64px); align-items: end; padding: 0 var(--rand); margin-bottom: clamp(28px, 3vw, 48px); }
+.reels-kopf .ueberzeile { grid-column: 1 / -1; }
+.reels-titel { font-size: clamp(64px, 10vw, 168px); line-height: .84; }
+.reels-titel em { color: var(--signal); font-size: 1.04em; }
+.reels-text { max-width: 44ch; padding-bottom: 8px; font-size: clamp(18px, 1.4vw, 21px); line-height: 1.5; color: rgba(242, 237, 228, .84); }
+.reels-weg {
+  grid-column: 2; justify-self: start; display: inline-flex; align-items: center; gap: .6em; min-height: 52px; padding: 0 26px; border-radius: 999px;
+  background: var(--signal); color: var(--tinte); font-weight: 700; font-size: 17px; text-decoration: none; transition: background .25s, color .25s;
+}
+.reels-weg::after { content: "→"; transition: translate .4s var(--kurve); }
+.reels-weg:hover { background: var(--papier); }
+.reels-weg:hover::after { translate: 5px 0; }
+.reels-weg:focus-visible { outline: 2px solid var(--papier); }
+.reels-bahn { display: flex; justify-content: flex-start; align-items: flex-start; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--rand); padding: 36px var(--rand) 56px; -webkit-overflow-scrolling: touch; scrollbar-width: none; cursor: grab; }
+.reels-bahn::-webkit-scrollbar { display: none; }
+.reels-bahn.zieht { cursor: grabbing; scroll-snap-type: none; }
+.reels-bahn:focus-visible { outline: 2px solid var(--signal); outline-offset: -4px; }
+.reels-pfeile { display: flex; justify-content: flex-end; gap: 12px; padding: 0 var(--rand) 64px; }
+.reels-pfeil { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; border: 1px solid rgba(242, 237, 228, .4); background: transparent; color: var(--papier); font: 500 22px/1 "Mono", monospace; cursor: pointer; transition: background .3s var(--kurve), color .3s var(--kurve); }
+.reels-pfeil:hover:not(:disabled) { background: var(--papier); color: var(--tinte); }
+.reels-pfeil:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+.reels-pfeil:disabled { opacity: .35; cursor: default; }
+.reel { flex: none; width: var(--reel-b); margin: 0; scroll-snap-align: start; }
+.reel:nth-child(1) { rotate: -4deg; translate: 0 40px; }
+.reel:nth-child(2) { rotate: 3deg; translate: 0 -6px; }
+.reel:nth-child(3) { rotate: -2deg; translate: 0 56px; }
+.reel:nth-child(4) { rotate: 4deg; translate: 0 8px; }
+.reel:nth-child(5) { rotate: -3deg; translate: 0 48px; }
+.reel:nth-child(6) { rotate: 2deg; translate: 0 -4px; }
+.reel-handy { box-shadow: 0 0 0 1px rgba(242, 237, 228, .22), 0 50px 80px -30px rgba(0, 0, 0, .9); }
+.reel-handy .geraet-bild { aspect-ratio: 9 / 16; }
+.reel-handy .etikett { top: 16px; left: 16px; padding: 5px 8px; font-size: 11px; letter-spacing: .08em; }
+.reel-flaeche { background: var(--tinte-2); }
+.reel-poster, .reel-flaeche > video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.reel-flaeche > video { opacity: 0; transition: opacity .5s ease; }
+.reel-flaeche.laeuft > video { opacity: 1; }
+.reel figcaption { margin-top: 16px; font: 500 12px/1.3 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: rgba(242, 237, 228, .8); text-align: center; }
+.reel-knopf {
+  position: absolute; z-index: 3; right: 10px; bottom: 10px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+  background: rgba(13, 12, 11, .72); color: var(--papier); cursor: pointer; transition: background .25s, color .25s;
+}
+.reel-knopf::before { content: ""; margin-left: 3px; border-left: 12px solid currentColor; border-block: 8px solid transparent; }
+.laeuft > .reel-knopf::before { width: 12px; height: 14px; margin-left: 0; border: 0; border-inline: 4px solid currentColor; }
+.reel-knopf:hover { background: var(--signal); color: var(--tinte); }
+.reel-knopf:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.reels-hinweis { display: none; }
+@media (max-width: 1100px) {
+  .reels-kopf { grid-template-columns: minmax(0, 1fr); }
+  .reels-weg { grid-column: 1; }
+  .reels-bahn { padding-block: 24px 40px; }
+  .reel { --reel-b: clamp(280px, 34vw, 320px); }
+}
+@media (min-width: 641px) and (max-width: 1100px) {
+  /* Mittlere Breiten: die versetzten Reels brauchen unten Platz für ihre Beschriftung, und die Kontur-Schrift darf sie nicht berühren */
+  .reels-bahn { padding-block: 24px 88px; }
+  .reels-pfeile { padding-bottom: 170px; }
+  .abschnitt-reels::after { font-size: clamp(120px, 22vw, 240px); }
+}
+@media (max-width: 640px) {
+  /* Handy: ein Reel füllt fast den Bildschirm, das nächste schaut am Rand heraus; ohne Kippen und Versatz */
+  .reels-bahn { gap: 12px; padding-block: 20px 36px; cursor: auto; }
+  .reels-pfeile { display: none; }
+  .reels-hinweis { display: block; margin: 0 var(--rand) 48px; font: 500 12px/1.3 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: rgba(242, 237, 228, .72); }
+  .reel { --reel-b: min(86vw, calc((100svh - 120px) * .5625)); rotate: none !important; translate: none !important; scroll-snap-stop: always; }
+  .reel figcaption { margin-top: 12px; }
+  .reels-titel { font-size: clamp(56px, 19vw, 90px); }
+}
 
 /* Ablauf: was nach dem Freischalten weiterläuft */
 .ablauf-danach { margin-top: clamp(28px, 3vw, 44px); padding-top: 18px; border-top: 2px solid var(--tinte); font-size: 17px; font-weight: 600; }
@@ -989,12 +1033,11 @@ html.menue-offen { overflow: hidden; }
 }
 @media (max-width: 1100px) {
   .weg-ohne { grid-template-columns: minmax(0, 1fr); }
-  .social { grid-template-columns: minmax(0, 1fr); }
-  .social-buehne { justify-self: center; width: min(100%, 760px); }
 }
 @media (max-width: 900px) {
   .leistungen-kopf, .video-kopf, .social-kopf { grid-template-columns: minmax(0, 1fr); }
-  .weg, .social { grid-template-columns: minmax(0, 1fr); }
+  .weg { grid-template-columns: minmax(0, 1fr); }
+  .social-text .bausteine { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
   .abschnitt-leistungen { margin: 0 6px; border-radius: 26px; }
@@ -1011,24 +1054,13 @@ html.menue-offen { overflow: hidden; }
   .format { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .format .format-frist { grid-column: 1; }
   .bausteine li { grid-template-columns: 36px minmax(0, 1fr); }
+  .social-text .bausteine { grid-template-columns: minmax(0, 1fr); }
   .social-knopf { width: 100%; }
-  .social-buehne { grid-template-columns: minmax(0, 1fr); grid-template-areas: "handy" "post" "antwort"; gap: 14px; padding: 58px 14px 18px; border-radius: 24px; }
-  .social-plan { display: none; }
-  .social-handy { width: min(100%, 250px); margin-bottom: 8px; padding: 5px; border-radius: 22px; rotate: -1.5deg; }
-  .social-post { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 4px 12px; align-items: center; rotate: none; }
-  .social-post .social-art { grid-column: 1 / -1; }
-  .social-post img { aspect-ratio: 1; margin-top: 6px; }
-  .social-post .social-zeile { margin-top: 6px; }
-  .social-handy .geraet-bild { border-radius: 17px; }
-  .social-handy .social-art { top: 14px; left: 14px; }
-  .social-karte { padding: 12px 12px 14px; border-radius: 16px; }
-  .social-zeile { font-size: 14px; }
 }
 
 /* Tiefe beim Zeigen: nur mit Maus */
 @media (hover: hover) and (pointer: fine) {
   .entwurf-buehne:hover .mock { rotate: 0deg; translate: 0 -8px; box-shadow: 0 70px 110px -40px rgba(13, 12, 11, .75), 0 0 0 1px rgba(13, 12, 11, .08); }
-  .entwurf-buehne:hover .mock-handy { rotate: 3deg; translate: 0 -14px; }
   .analyse { transition: border-color .35s, translate .5s var(--kurve); }
   .analyse:hover { border-color: rgba(242, 237, 228, .3); }
   .analyse::before {
@@ -1042,7 +1074,7 @@ html.menue-offen { overflow: hidden; }
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .abschnitt-kopf, .entwurf-buehne, .entwurf-text, .aufruf, .analyse, .leistung, .ablauf-liste li, .fragen-liste,
-    .weg-text, .filme-rahmen, .weg-inhalt, .bausteine li, .social-buehne {
+    .weg-text, .filme-rahmen, .weg-inhalt, .bausteine li, .reels-kopf {
       animation: auftauchen linear both; animation-timeline: view(); animation-range: entry 0% entry 70%;
     }
     .entwurf-text { animation-range: entry 10% entry 85%; }
@@ -1064,7 +1096,6 @@ html.menue-offen { overflow: hidden; }
   .ablauf-liste li:nth-last-child(-n+3) { padding-bottom: 38px; }
   .ablauf-liste li:nth-last-child(-n+2) { padding-bottom: 0; }
   .tafel { width: 88vw; gap: 24px; }
-  .handy { transform: rotate(-4deg) scale(.86); }
   .ergebnis-kopf { max-width: min(420px, 38vw); }
   .ergebnis-text { width: min(320px, 32vw); }
   .analyse-gruppe { grid-template-columns: 1fr; }
@@ -1219,7 +1250,6 @@ html.menue-offen { overflow: hidden; }
   .tafel-satz { font-size: 17px; }
   .tafel-liste { display: none; }
   .attrappe { align-self: stretch; overflow: hidden; }
-  .handy { transform: rotate(-4deg) scale(.7); transform-origin: top center; }
   .attrappe-handy { align-items: start; }
   .attrappe-handy .geraet-handy { width: min(46vw, 24vh); transform: rotate(-3deg); }
   /* Handy: Das Schild steht einzeilig unten im Gerät (darunter ist kein Platz) und sagt nur „Beispielseite“ */
@@ -1260,16 +1290,16 @@ html.menue-offen { overflow: hidden; }
   .filter { margin-top: 0; }
   .filter-knopf { padding: 0 14px; font-size: 14px; }
   .entwurf-buehne { padding: 52px 14px 36px; border-radius: 24px; }
-  .entwurf-gastro .entwurf-buehne { place-items: center; }
-  .mock, .mock-gastro { width: 100%; }
+  .mock { width: 100%; }
   .mock-seite { padding: 12px 14px 16px; }
   .mock-nav span:nth-of-type(n+2) { display: none; }
-  .entwurf .mock-handy { display: none; }
   .mock-karte { width: 100%; }
   .mock-serif { font-size: 22px; }
   .mock-foto { min-height: 120px; }
   .mock-gross { font-size: 38px; }
   .mock-faelle div { height: 78px; }
+  .mock-bild { height: 96px; }
+  .mock-marken span:nth-child(3) { display: none; }
   .mock-faelle b { display: none; }   /* Handy: nur das Wort, die Nummer passt mit 12 px nicht in die kleinen Flächen */
   .mock-objekt { grid-template-columns: 1fr; gap: 12px; }
   .mock-haus { height: 128px; }
@@ -1283,4 +1313,170 @@ html.menue-offen { overflow: hidden; }
 @media (max-width: 640px) and (max-height: 700px) {
   .tafel-start .tafel-text { display: none; }
   .tafel-titel { font-size: 38px; }
+}
+
+/* Für wen wir bauen */
+.zielgruppen-liste { border-top: 2px solid var(--tinte); }
+.zielgruppe { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 12px clamp(24px, 4vw, 72px); padding: clamp(22px, 2.6vw, 36px) 0; border-bottom: 1px solid var(--linie); }
+.zielgruppe h3 { font-size: clamp(30px, 3.4vw, 54px); line-height: .96; }
+.zielgruppe p { max-width: 62ch; font-size: clamp(17px, 1.3vw, 19px); color: var(--tinte-weich); }
+.zielgruppe .zielgruppe-links { display: flex; flex-wrap: wrap; gap: 0 26px; margin-top: 10px; color: var(--tinte); }
+@media (max-width: 820px) { .zielgruppe { grid-template-columns: minmax(0, 1fr); } }
+
+.beispiele-hinweis a { display: inline-block; padding: 14px 0; margin: -14px 0; }
+
+/* Ab-Preise (Werte kommen aus preise.json über seo.mjs) */
+.leistung .leistung-preis { margin: 10px 0 0; font: 600 15px/1.4 "Mono", monospace; letter-spacing: .04em; color: var(--signal); max-width: none; }
+.leistungen-raster + .preis-hinweis { margin-top: 28px; font-size: 14px; line-height: 1.6; color: rgba(242, 237, 228, .64); max-width: 70ch; }
+.preis-hinweis a { color: inherit; }
+.format .format-preis { grid-column: 2; margin: 2px 0 0; font: 600 14px/1.4 "Mono", monospace; letter-spacing: .04em; color: var(--text, inherit); }
+.bausteine li .paket-preis { margin-top: 10px; font: 600 14px/1.4 "Mono", monospace; letter-spacing: .04em; color: var(--signal); }
+.abschnitt-entwuerfe .abschnitt-text span[data-preis] { white-space: nowrap; font-weight: 600; }
+@media (max-width: 720px) { .format .format-preis { grid-column: 1; } }
+
+
+/* ─── Sichtbarkeit: Kreislauf, KI-Kasten, Paar, Gruppen der Beispielseiten ─── */
+.abschnitt-kreislauf { background: var(--papier); }
+.kreis { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(14px, 2vw, 28px); }
+.kreis li { position: relative; padding-top: 72px; }
+.kreis-punkt { position: absolute; top: 0; left: 0; z-index: 1; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--tinte); color: var(--papier); font: 500 14px/1 "Mono", monospace; letter-spacing: .06em; }
+.kreis li:first-child .kreis-punkt { background: var(--signal); color: var(--tinte); }
+.kreis li::before { content: ""; position: absolute; top: 25px; left: 52px; right: calc(-1 * clamp(14px, 2vw, 28px)); height: 2px; background: var(--tinte); opacity: .22; }
+.kreis li:last-child::before { display: none; }
+.kreis h3 { font-size: clamp(26px, 2.2vw, 36px); line-height: .98; }
+.kreis p { margin-top: 10px; max-width: 24ch; font-size: 17px; line-height: 1.4; color: var(--tinte-weich); }
+.kreis-zurueck { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: 10px; }
+.kreis-zurueck svg { display: block; width: 100%; height: 56px; fill: none; stroke: var(--tinte); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: .3; vector-effect: non-scaling-stroke; }
+.kreis-zurueck svg path { vector-effect: non-scaling-stroke; }
+.kreis-zurueck span { margin-top: 12px; font: 500 12px/1.2 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--signal-text); }
+.ki-kasten { margin-top: clamp(40px, 5vw, 64px); padding: clamp(24px, 3vw, 40px); border-radius: 28px; background: var(--tinte); color: var(--papier); max-width: 880px; }
+.ki-kasten h3 { font-size: clamp(28px, 2.6vw, 40px); line-height: .98; color: var(--signal); }
+.ki-kasten p { margin-top: 14px; max-width: 62ch; font-size: clamp(17px, 1.3vw, 19px); line-height: 1.5; color: rgba(242, 237, 228, .82); }
+@media (prefers-reduced-motion: no-preference) {
+  .kreis.laeuft .kreis-punkt { animation: kreis-puls 10s linear infinite; }
+  .kreis.laeuft li:nth-child(2) .kreis-punkt { animation-delay: 2s; }
+  .kreis.laeuft li:nth-child(3) .kreis-punkt { animation-delay: 4s; }
+  .kreis.laeuft li:nth-child(4) .kreis-punkt { animation-delay: 6s; }
+  .kreis.laeuft li:nth-child(5) .kreis-punkt { animation-delay: 8s; }
+  .kreis.laeuft li:nth-child(n+2) .kreis-punkt { background: var(--tinte); }
+}
+@keyframes kreis-puls { 0%, 14%, 100% { background: var(--tinte); color: var(--papier); box-shadow: 0 0 0 0 rgba(255, 90, 31, 0); } 3%, 9% { background: var(--signal); color: var(--tinte); box-shadow: 0 0 0 10px rgba(255, 90, 31, .18); } }
+@media (max-width: 900px) {
+  .kreis { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .kreis li { padding: 0 0 28px 72px; min-height: 52px; }
+  .kreis li::before { top: 52px; bottom: 0; left: 25px; right: auto; width: 2px; height: auto; }
+  .kreis-zurueck svg { display: none; }
+  .kreis-zurueck { align-items: flex-start; }
+  .kreis p { max-width: 34ch; }
+}
+.paar-band { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 64px); align-items: end; padding: clamp(44px, 5vw, 72px) var(--rand); background: var(--papier-2); border-top: 1px solid var(--linie); }
+.paar-titel { font-size: clamp(38px, 5.2vw, 84px); line-height: .92; }
+.paar-titel em { color: var(--signal-tief); }
+.paar-text { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.paar-text p { max-width: 40ch; font-size: clamp(17px, 1.3vw, 20px); color: var(--tinte-weich); }
+@media (max-width: 820px) { .paar-band { grid-template-columns: minmax(0, 1fr); align-items: start; } }
+.referenzen-gruppe { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 14px; margin: 0; padding-top: 6px; font-size: clamp(28px, 2.8vw, 44px); line-height: .98; color: var(--papier); border-top: 1px solid var(--linie-hell); }
+.referenzen-gruppe:first-child { border-top: 0; padding-top: 0; }
+.referenzen-gruppe[hidden] { display: none; }
+
+/* ─── Auftakt: die Ebenen eines Betriebs (Website, Reel, Google-Profil, Beitrag, Video). Maße in u = Kartenhöhe. ─── */
+.karussell { --u: var(--karte-h); --cw: 2.12; --ch: 1.7; --sx: -.22; --sy: -.12; --K: .75; }
+.ebenen { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; opacity: 0; pointer-events: none; }
+.ebene { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
+.ebene-reel { width: calc(var(--u) * .44); transform: translate3d(calc(var(--u) * .62), calc(var(--u) * .27), 70px) translate(-50%, -50%) rotateY(-9deg) rotateZ(3deg); }
+.ebene-profil { width: calc(var(--u) * .66); transform: translate3d(calc(var(--u) * -.52), calc(var(--u) * .56), 40px) translate(-50%, -50%) rotateZ(-2deg); }
+.ebene-beitrag { width: calc(var(--u) * .40); transform: translate3d(calc(var(--u) * .66), calc(var(--u) * -.50), -30px) translate(-50%, -50%) rotateY(-12deg) rotateZ(4deg); }
+.ebene-video { width: calc(var(--u) * .46); transform: translate3d(calc(var(--u) * .14), calc(var(--u) * .70), 20px) translate(-50%, -50%) rotateZ(2deg); }
+.ebenen-name { position: absolute; left: calc(var(--u) * -.2); top: calc(var(--u) * .9); margin: 0; font: 500 11px/1 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau); white-space: nowrap; }
+.eb-etikett { top: 10px; left: 10px; font-size: 10px; padding: 5px 8px; letter-spacing: .08em; z-index: 4; }
+.eb-karte { position: relative; overflow: hidden; border-radius: calc(var(--u) * .035); background: #FBF8F2; color: #1B1917; box-shadow: 0 0 0 1px rgba(13, 12, 11, .1), 0 40px 70px -30px rgba(13, 12, 11, .55); font-family: "Bricolage", system-ui, sans-serif; font-size: calc(var(--u) * .03); line-height: 1.25; }
+.eb-karte img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.eb-profil-foto { height: calc(var(--u) * .2); } .eb-profil-foto img { object-position: 50% 36%; }
+.eb-profil-text { padding: .7em .9em .5em; }
+.eb-profil-text b { display: block; font-size: 1.25em; font-weight: 700; font-stretch: 85%; }
+.eb-profil-text > span { display: block; opacity: .66; }
+.eb-profil-text p { display: flex; align-items: center; gap: .6em; margin: .4em 0 0; }
+.eb-sterne i { font-style: normal; color: #D98A00; letter-spacing: .08em; } .eb-sterne em { font-style: normal; opacity: .6; }
+.eb-offen i { width: .6em; height: .6em; border-radius: 50%; background: #2E8B57; } .eb-offen { color: #25724A; font-weight: 600; }
+.eb-knoepfe { display: flex; gap: .5em; padding: .3em .9em .9em; }
+.eb-knoepfe span { flex: 1; padding: .55em 0; border-radius: 999px; background: #EEE7DA; text-align: center; font-weight: 600; font-size: .9em; }
+.eb-beitrag-kopf { display: flex; align-items: center; gap: .6em; padding: .7em .8em; font-weight: 700; }
+.eb-beitrag-kopf i { width: 1.8em; height: 1.8em; border-radius: 50%; background: var(--signal); }
+.eb-beitrag-foto { aspect-ratio: 4 / 3; } .eb-beitrag-foto img { object-position: 86% 22%; }
+.ebene-beitrag .eb-etikett { left: auto; right: 10px; }
+.eb-beitrag p { margin: .7em .8em 0; font-size: .92em; }
+.eb-beitrag-fuss { display: flex; gap: .9em; padding: .6em .8em .8em; }
+.eb-beitrag-fuss svg { width: 1.5em; height: 1.5em; fill: none; stroke: #1B1917; stroke-width: 1.8; stroke-linejoin: round; }
+.eb-video { aspect-ratio: 16 / 9; border-radius: calc(var(--u) * .03); }
+.eb-reel .geraet-handy { width: 100%; }
+.eb-reel .geraet-bild { position: relative; overflow: hidden; aspect-ratio: 9 / 16; }
+.eb-reel .geraet-bild img { width: 100%; height: 100%; object-fit: cover; }
+.eb-play { position: absolute; left: 50%; top: 50%; width: 15%; aspect-ratio: 1; margin: -7.5% 0 0 -7.5%; border-radius: 50%; background: rgba(242, 237, 228, .92); }
+.eb-play::after { content: ""; position: absolute; left: 38%; top: 30%; border-left: .55em solid var(--tinte); border-top: .38em solid transparent; border-bottom: .38em solid transparent; font-size: calc(var(--u) * .03); }
+.eb-video .eb-play { width: 11%; margin: -5.5% 0 0 -5.5%; } .eb-reel .eb-play { width: 30%; margin: -15% 0 0 -15%; }
+.eb-strich { position: absolute; left: 8%; right: 8%; bottom: 5%; height: 3px; border-radius: 3px; background: rgba(242, 237, 228, .38); overflow: hidden; }
+.eb-strich i { display: block; width: 38%; height: 100%; background: var(--papier); }
+@media (prefers-reduced-motion: no-preference) {
+  .ebene { animation: eb-ein .9s var(--kurve) backwards; }
+  .ebene-reel { animation-delay: .55s; } .ebene-profil { animation-delay: .75s; } .ebene-beitrag { animation-delay: .95s; } .ebene-video { animation-delay: 1.15s; }
+  .ebenen-name { animation: eb-ein .9s var(--kurve) 1.3s backwards; }
+}
+@keyframes eb-ein { from { opacity: 0; translate: 0 36px; } to { opacity: 1; translate: 0 0; } }
+@media (max-width: 640px) {
+  .karussell { --cw: 1.5; --ch: 1.42; --sx: -.04; --sy: -.18; --K: .94; }
+  .ebene-reel { width: calc(var(--u) * .42); transform: translate3d(calc(var(--u) * .52), calc(var(--u) * .24), 70px) translate(-50%, -50%) rotateY(-8deg) rotateZ(3deg); }
+  .ebene-profil { width: calc(var(--u) * .62); transform: translate3d(calc(var(--u) * -.42), calc(var(--u) * .54), 40px) translate(-50%, -50%) rotateZ(-2deg); }
+  .ebene-beitrag, .ebene-video, .ebenen-name { display: none; }
+  .eb-etikett { font-size: 9px; padding: 4px 6px; }
+}
+/* ruhige Fassung des Auftakts: derselbe Betrieb, flach gestapelt */
+.hb { position: relative; aspect-ratio: 16 / 11; --u: 520px; font-size: 14px; }
+.hb-fenster { position: absolute; left: 0; top: 0; width: 78%; rotate: -1.5deg; }
+.hb-fenster .geraet-fenster { box-shadow: 0 50px 80px -40px rgba(13, 12, 11, .6), 0 0 0 1px rgba(13, 12, 11, .5); }
+.hb-reel { position: absolute; right: 0; top: 14%; width: 25%; rotate: 3deg; }
+.hb-profil { position: absolute; left: 6%; bottom: 0; width: 42%; rotate: -2deg; }
+.hb-profil .eb-karte { font-size: clamp(10px, 1.2vw, 14px); }
+.hb-profil .eb-profil-foto { height: auto; aspect-ratio: 16 / 6; }
+.hb .eb-etikett { position: absolute; }
+
+/* Karussell: je Gruppe ein Handy mit dem Reel */
+.karte-reel { position: absolute; z-index: 1; left: 50%; translate: -50% 0; top: calc(var(--karte-kopf) + 4px); width: 40%; }
+.karte-reel .geraet-handy { padding: 4px; border-radius: 16px; width: 100%; }
+.karte-reel .geraet-bild { position: relative; overflow: hidden; aspect-ratio: 9 / 16; border-radius: 12px; }
+.karte-reel img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.karte-reel .eb-play { width: 32%; margin: -16% 0 0 -16%; }
+.karte-reel .eb-play::after { font-size: 9px; }
+.karte-medium { opacity: .32; }
+.karte-reel { width: 44%; top: calc(var(--karte-kopf) + 6px); }
+.karte-reel .geraet-handy { box-shadow: 0 0 0 1px rgba(242, 237, 228, .2), 0 30px 50px -20px rgba(0, 0, 0, .9); }
+.karte-reel { width: 38%; top: calc(var(--karte-kopf) + 2px); }
+.karte-medium { opacity: .18; }
+.karte-seite:has(.karte-reel) .karte-unten::before { inset: -34px -20px -20px; }
+
+.werk-reel { position: relative; overflow: hidden; }
+.werk-reel img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.werk-reel .eb-play { width: 30%; margin: -15% 0 0 -15%; }
+.werk-reel .eb-play::after { font-size: 7px; }
+
+.referenz-hinweis { justify-content: center; gap: 14px; padding: clamp(24px, 3vw, 44px); border: 1px dashed var(--linie-hell); border-radius: 18px; }
+.referenz-hinweis-satz { margin: 0; max-width: 34ch; font: 700 clamp(26px, 2.4vw, 38px)/1 "Bricolage", system-ui, sans-serif; font-stretch: 75%; letter-spacing: -.02em; color: var(--papier); }
+.referenz-hinweis .link-pfeil { align-self: flex-start; }
+.hb-fenster .eb-etikett { top: auto; bottom: 12px; left: 12px; }
+.abschnitt-kreislauf .abschnitt-titel { text-wrap: balance; }
+@media (max-width: 420px) { .abschnitt-kreislauf .abschnitt-titel { font-size: 40px; } }
+.referenzen-gruppe { margin-bottom: calc(-1 * clamp(24px, 2.6vw, 40px)); }
+.held-unter { animation: none; }   /* größter Text im ersten Bildschirm: sofort da (LCP) */
+.eb-sterne em { font-family: inherit; }
+.karte-reel noscript, .werk-reel noscript { display: contents; }
+/* kleine Handys (z. B. 360 × 640): Text enger, damit die Ebenen Platz haben; der Verweis "Alle Leistungen" steht im Menü und im Laufband */
+@media (max-width: 640px) and (max-height: 700px) {
+  .held-unter { margin-top: 8px; max-width: none; font-size: 15px; line-height: 1.25; }
+  .held-text { margin-top: 8px; font-size: 14px; line-height: 1.35; }
+  .held-aktionen { margin-top: 14px; }
+  .held-aktionen .link-pfeil { display: none; }
+}
+@media (min-width: 641px) and (max-width: 1024px) and (orientation: portrait) {
+  .held-unter { max-width: none; margin-top: 12px; font-size: 18px; }
+  .held-text { margin-top: 10px; max-width: none; font-size: 17px; }
+  .held-aktionen { margin-top: 18px; }
 }

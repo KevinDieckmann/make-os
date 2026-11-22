@@ -30,7 +30,7 @@
   // ─── Teile der Seite ───
   const film = $('#film'), buehne = $('.buehne'), kopf = $('.kopf');
   const held = $('.szene-held'), zeilen = $$('.held-titel .zeile'), laufband = $('.laufband'), branchen = $('.szene-branchen');
-  const rahmen = $('.karussell-rahmen'), karussell = $('.karussell'), karten = $$('.karte'), innen0 = $('.karte-0 .karte-innen'), schirm = $('.schirm');
+  const ebenen = $('.ebenen'), rahmen = $('.karussell-rahmen'), karussell = $('.karussell'), karten = $$('.karte'), innen0 = $('.karte-0 .karte-innen'), schirm = $('.schirm');
   const blende = $('.blende'), analyse = $('.szene-analyse'), kennzahlen = $('.kennzahlen');
   const kennA = $('.kennzahl-a'), kennB = $('.kennzahl-b'), kennH = $('.kennzahl-handy'), zaehler = $$('.zaehler');
   const streifen = $('.streifen'), spur = $('.streifen-spur'), tafeln = $$('.tafel');
@@ -42,7 +42,7 @@
 
   const noetig = [film, buehne, kopf, held, laufband, branchen, rahmen, karussell, innen0, schirm, blende, analyse, kennzahlen,
     kennA, kennB, kennH, streifen, spur, ergebnis, ergKopf, ergText, vorhang, chrom, zielSzene, anzeige, kapNr, balken, zeitAnzeige, pause, statischLink];
-  if (noetig.some(e => !e) || karten.length !== 4 || zeilen.length !== 2 || tafeln.length < 2 || werke.length < 2 || werkTexte.length !== werke.length) {
+  if (noetig.some(e => !e) || karten.length !== 3 || zeilen.length !== 2 || tafeln.length < 2 || werke.length < 2 || werkTexte.length !== werke.length) {
     if (statischLink) statischLink.media = 'all';
     return;
   }
@@ -158,13 +158,20 @@
       hp.s = s;
       hp.x = mitte;
       hp.y = (kopfH + laufOben) / 2 - kTop;
-      hp.ry = -14; hp.rz = 3;
+      hp.ry = -14; hp.rz = 3; hp.hoch = false;
     } else {
       hp.s = sHoch;
       hp.x = 0;
       hp.y = (heldUnten + laufOben) / 2 - kTop;
-      hp.ry = -8; hp.rz = 2;
+      hp.ry = -8; hp.rz = 2; hp.hoch = true;
     }
+    // Ebenen (Website, Reel, Profil, Beitrag, Video): die Gruppe hat eigene Maße (in Kartenhöhen) und teilt sich den Platz des Bildschirms
+    const cs = getComputedStyle(karussell), uK = kh || 1;
+    const cw = parseFloat(cs.getPropertyValue('--cw')) || 1.95, ch = parseFloat(cs.getPropertyValue('--ch')) || 1.65;
+    const sx = parseFloat(cs.getPropertyValue('--sx')) || 0, sy = parseFloat(cs.getPropertyValue('--sy')) || 0;
+    const hoch = hp.hoch ? platz - 36 : laufOben - kopfH - 44;
+    hp.s = Math.min(hp.s * (1.46 / cw), hoch / (ch * uK));
+    hp.sx = sx * uK * hp.s; hp.sy = sy * uK * hp.s;
     hexMax = Math.sqrt(Math.pow(vw / 2, 2) + Math.pow(Math.max(kTop, vh - kTop), 2)) / .866 * 1.02;
 
     const pl = parseFloat(getComputedStyle(spur).paddingLeft) || 0, n = tafeln.length;
@@ -198,8 +205,8 @@
   }
 
   // ─── Hell/Dunkel für Kopf und Anzeige ───
-  const SEITE_DUNKEL = $$('.abschnitt-leistungen, .abschnitt-beispiele, .abschnitt-analysen, .abschnitt-kontakt, .fuss');
-  const STATISCH_DUNKEL = $$('.blende, .streifen, .ergebnis, .abschnitt-leistungen, .abschnitt-beispiele, .abschnitt-analysen, .abschnitt-kontakt, .fuss');
+  const SEITE_DUNKEL = $$('.abschnitt-leistungen, .abschnitt-reels, .abschnitt-beispiele, .abschnitt-analysen, .abschnitt-kontakt, .fuss');
+  const STATISCH_DUNKEL = $$('.blende, .streifen, .ergebnis, .abschnitt-leistungen, .abschnitt-reels, .abschnitt-beispiele, .abschnitt-analysen, .abschnitt-kontakt, .fuss');
   function flaecheDunkel(liste, y) {
     for (let i = 0; i < liste.length; i++) { const r = liste[i].getBoundingClientRect(); if (r.height > 0 && r.top <= y && r.bottom > y) return true; }
     return false;
@@ -242,16 +249,16 @@
     if (kartenAn) {
       const flip = inOut(lok('wende', .12, .92));
       const reise = inOut(lok('wende', .04, 1));
-      const dreh = stufen(lok('branchen', .1, 1), 4, .44);
+      const dreh = stufen(lok('branchen', .1, 1), karten.length, .44);
       const ein0 = aus(klemme((jetzt - START - 600) / 1100));
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < karten.length; i++) {
         const th = (i - dreh) * 52;
         let x = Math.sin(th * RAD) * R, y = 0, z = (Math.cos(th * RAD) - 1) * R, ry = th, rx = 0, rz = 0, s = 1;
         let op = 1 - abschnitt(Math.abs(th), 70, 112);
         if (i === 0) {
           const schwebe = angehalten ? 0 : Math.sin(zeitGl * .9) * 6;
-          x = mix(hp.x, x, reise);
-          y = mix(hp.y + schwebe + (1 - ein0) * 70, y, reise);
+          x = mix(hp.x + hp.sx, x, reise);
+          y = mix(hp.y + hp.sy + schwebe + (1 - ein0) * 70, y, reise);
           z = mix(0, z, reise);
           ry = mix(hp.ry - (1 - ein0) * 24 + zg.x * 8, ry, reise);
           rx = mix(-zg.y * 6, rx, reise);
@@ -266,6 +273,15 @@
         setze(karten[i], 'opacity', r3(op));
         setze(karten[i], 'z-index', String(10 - Math.round(Math.abs(th) / 26)));
         if (kLinks[i]) setze(kLinks[i], 'pointer-events', (op > .55 && Math.abs(th) < 30 && (i > 0 || flip > .5)) ? 'auto' : 'none');
+      }
+      if (ebenen) {
+        const eE = 1 - klemme(reise * 2.6), an = eE > 0.01;
+        zeige(ebenen, an);
+        if (an) {
+          const sw = angehalten ? 0 : Math.sin(zeitGl * .9) * 6;
+          setze(ebenen, 'transform', 'translate3d(' + r1(hp.x) + 'px,' + r1(hp.y + sw + (1 - ein0) * 70) + 'px,0) rotateY(' + r1(hp.ry + zg.x * 8) + 'deg) rotateX(' + r1(-zg.y * 6) + 'deg) rotateZ(' + r1(hp.rz) + 'deg) scale(' + r3(hp.s) + ')');
+          setze(ebenen, 'opacity', r3(eE * ein0));
+        }
       }
       setze(innen0, 'transform', 'rotateY(' + r1(flip * 180) + 'deg)');
       if (flip < .5) { if (eBl <= 0) regie.push(flSchirm); }

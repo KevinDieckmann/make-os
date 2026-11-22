@@ -37,7 +37,9 @@
     const HOECHSTENS = 2;
     const pfad = (name) => 'referenzen/' + name + '.mp4';
     const posterPfad = (name) => 'referenzen/' + name + '-poster.webp';
-    const erlaubt = () => !ruhig.matches && !sparen() && !M.halt.ist() && !D.hidden;
+    // Filme laden erst nach der ersten Eingabe (Scrollen, Tippen, Taste, Maus): vorher steht nur das Poster, so bleibt der erste Bildschirm leicht.
+    let eingabe = false;
+    const erlaubt = () => eingabe && !ruhig.matches && !sparen() && !M.halt.ist() && !D.hidden;
     const flaechen = new Map();
     let rang = 0;
 
@@ -183,6 +185,7 @@
       });
     }
 
+    ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach((n) => W.addEventListener(n, () => { if (eingabe) return; eingabe = true; ordnen(); }, { passive: true }));
     function spiele(el, an, zumPoster) {
       const z = flaechen.get(el);
       if (!z || z.will === !!an) return;
@@ -294,6 +297,15 @@
 
   // ═══ Menü für schmale Fenster ═══
   // <dialog> mit showModal(): Fokusfalle und Escape bringt der Browser mit, der Rest der Seite ist währenddessen stumm.
+  // Poster der Beispielfilme weiter unten laden erst kurz vor dem Sichtbereich (ein <video poster> würde sofort geladen)
+  (function () {
+    const filme = Array.from(D.querySelectorAll('video[data-poster]'));
+    const setzen = (v) => { v.setAttribute('poster', v.getAttribute('data-poster')); v.removeAttribute('data-poster'); };
+    if (!('IntersectionObserver' in W)) { filme.forEach(setzen); return; }
+    const io = new IntersectionObserver((liste) => liste.forEach((e) => { if (e.isIntersecting) { setzen(e.target); io.unobserve(e.target); } }), { rootMargin: '700px 0px' });
+    filme.forEach((v) => io.observe(v));
+  })();
+
   const menue = D.getElementById('menue');
   const menueKnopf = D.querySelector('.menue-knopf');
   if (menue && menueKnopf && typeof menue.showModal === 'function') {
@@ -348,8 +360,20 @@
       const wahl = knopf.dataset.filter;
       knoepfe.forEach((k) => k.setAttribute('aria-pressed', String(k === knopf)));
       teile.forEach((el) => { el.hidden = wahl !== 'alle' && (galerie ? el.dataset.art : el.dataset.branche) !== wahl; });
+      if (galerie) D.querySelectorAll('.referenzen-gruppe').forEach((h) => { h.hidden = wahl !== 'alle' && h.dataset.gruppe !== wahl; });
     });
   });
+
+  // Bilder, die erst nach dem ersten Bildschirm gebraucht werden (Reel-Poster in Karussell und Ergebnis): nach dem Laden nachholen
+  const spaeter = () => D.querySelectorAll('img[data-src]').forEach((i) => { i.src = i.getAttribute('data-src'); i.removeAttribute('data-src'); });
+  if (D.readyState === 'complete') W.setTimeout(spaeter, 1200); else W.addEventListener('load', () => W.setTimeout(spaeter, 1200), { once: true });
+
+  // Kreislauf: die Stationen leuchten der Reihe nach, solange der Abschnitt im Bild ist (nicht bei „Bewegung reduzieren“)
+  const kreis = D.querySelector('[data-kreis]');
+  if (kreis && 'IntersectionObserver' in W) {
+    new IntersectionObserver((liste) => liste.forEach((e) => kreis.classList.toggle('laeuft', e.isIntersecting && !M.halt.ist())), { threshold: .3 }).observe(kreis);
+    M.halt.hoeren((an) => { if (an) kreis.classList.remove('laeuft'); });
+  }
 
   if (fein) {
     // Licht folgt der Maus über den Analyse-Karten

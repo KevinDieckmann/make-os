@@ -5,9 +5,12 @@
   "stand": "November 2026",
   "firma": {
     "email": "kevin@makeinnovation.de",
-    "telefon": "{{TELEFON wie beim Dach}}",
-    "strasse": "{{STRASSE HAUSNUMMER wie beim Dach}}",
-    "plz": "{{PLZ wie beim Dach}}",
+    "telefon": "",
+    "strasse": "Attilastraße 18",
+    "plz": "12529",
+    "ort": "Schönefeld",
+    "region": "Brandenburg",
     "sameAs": []
-  }
+  },
+  "startBeschreibung": "MAKE Studios in Berlin macht Bau, Handwerk, innovative Produkte, Agenturen und Coaches sichtbar. KI-gestützt, Social Media {{preis:social-s}} im Monat."
 }

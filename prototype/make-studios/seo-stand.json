@@ -1,42 +1,46 @@
 {
  "/": {
-  "hash": "e26240024be6",
-  "datum": "2026-11-13"
+  "hash": "329f603dcc93",
+  "datum": "2026-11-22"
  },
- "/websites/cafe-roesterei/": {
-  "hash": "74bbbaa31812",
-  "datum": "2026-11-13"
+ "/websites/drohnen-inspektion/": {
+  "hash": "7f40e685b65c",
+  "datum": "2026-11-21"
  },
  "/websites/coach/": {
-  "hash": "21ebad470ddf",
-  "datum": "2026-11-13"
- },
- "/websites/neubau-film/": {
-  "hash": "73bf326bd2f6",
-  "datum": "2026-11-13"
+  "hash": "f700244c4b1b",
+  "datum": "2026-11-21"
  },
  "/websites/agentur/": {
-  "hash": "2a4b01c6f973",
-  "datum": "2026-11-13"
- },
- "/websites/cafe-bistro/": {
-  "hash": "dfbe00337f02",
-  "datum": "2026-11-13"
+  "hash": "abc275c46a1b",
+  "datum": "2026-11-21"
  },
  "/websites/dach-sanierung/": {
-  "hash": "195e9ff72b2a",
-  "datum": "2026-11-13"
+  "hash": "03773404fb8d",
+  "datum": "2026-11-21"
  },
  "/websites/kanzlei/": {
-  "hash": "0759edfbf63b",
-  "datum": "2026-11-13"
+  "hash": "86779aea97a3",
+  "datum": "2026-11-21"
  },
  "/websites/bauunternehmen/": {
-  "hash": "870fd585b4cf",
-  "datum": "2026-11-13"
+  "hash": "304ec9c83c1a",
+  "datum": "2026-11-21"
+ },
+ "/websites/beratung-mittelstand/": {
+  "hash": "97f48d876481",
+  "datum": "2026-11-21"
+ },
+ "/websites/energiespeicher/": {
+  "hash": "db7b7c806c32",
+  "datum": "2026-11-21"
+ },
+ "/websites/robotik/": {
+  "hash": "f489a187294d",
+  "datum": "2026-11-21"
  },
  "/websites/": {
-  "hash": "6ec8150d655c",
-  "datum": "2026-11-12"
+  "hash": "d020260b9048",
+  "datum": "2026-11-21"
  }
 }
