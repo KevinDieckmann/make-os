@@ -1,23 +1,22 @@
 {
-  "_hinweis": "Die Fahrt in 15 Szenen, in der Reihenfolge der Fahrt. Texte stehen als echter HTML-Text im Dokument (Bau: haus-bau.mjs). Eine neue Etage (z. B. Referenzen oder Gastro) ist ein neuer Eintrag hier plus ein Raum für sie in haus.js (FLOORS und die Raumzeichnung); der Ablauf selbst ändert sich nicht. art: eingang | problem | fahrt | etage | tresen | pakete | finale. stufe: Kennung aus stufen.json. etage: nr (Etagenzahl oder Name), name, optional unter. preis: { label, angebote } = kleinster Ab-Preis der genannten Angebote aus makeinnovation/inhalt/inhalt.json (eine Preisliste, nie hier). knopf: { text, ziel } mit ziel aus ziele.json oder szene:<kennung>. bild: was die Zeichnung zeigt. p = Stelle der Zeitachse in haus.js, pz = Stelle für Kern und Licht (sonst p), ue = Übergang zu dieser Szene (fahrt = der Aufzug fährt, blende = die Kamera fliegt hin), zone = Ecke im Raum.",
+  "_hinweis": "Die Fahrt in 10 Szenen, in der Reihenfolge der Fahrt. Hier steht nur der ABLAUF: welche Szene, welche Art, wo die Zeichnung steht. Was in einem Raum zu sehen und zu wählen ist (Name, Sätze, Leistungen, Preise), steht in raeume.json. art: eingang | problem | empfang | raum | tuer | finale. raum (nur bei art raum): Kennung aus raeume.json. bild: was die Zeichnung zeigt. p = Stelle der Zeitachse in haus.js (je Etage: 0.27 + Nummer der Etage × 0.077 + 0.0531 = im Raum; + 0.0308 bis + 0.066 = vor dem Raum, der Aufzug ist da), pz = Stelle für Kern und Licht (sonst p), pab = Stelle, von der aus die Fahrt zur nächsten Szene beginnt (nur vor der geschlossenen Tür: p = der Aufzug ist gerade angekommen, pab = Ende der Etage; das Bild ist an beiden Stellen dasselbe, die Fahrt läuft so ohne Stillstand weiter), ue = Übergang zu dieser Szene (fahrt = der Aufzug fährt, blende = die Kamera fliegt hin), kam = eigene Lage der Kamera, zone = Blickrichtung im Raum, fz/dx/dy (am Handy fzn/dxn/dyn) = näher heran und seitlich versetzt, solange die Kamera vor dem Haus steht. alt: frühere Kennungen dieser Szene (alte Adressen ?szene=… führen hierher). bild.tz = Tageszeit der Szene von 0 (Vormittag) bis 1 (Nacht): 0.34 Mittag, 0.6 goldene Stunde, 0.8 Sonnenuntergang, 0.9 Dämmerung; zwischen den Szenen wird überblendet, auf dem Dach läuft danach die Dämmerung von selbst.",
   "szenen": [
     {
       "id": "eingang",
       "art": "eingang",
-      "stufe": null,
       "titel": "Wir bringen innovative Ideen in die Sichtbarkeit.",
       "pitch": "Mit MAKE Innovation wirst du sichtbar, an deinem Standort und digital. Für Gründer und Unternehmer, die mit etwas Neuem durchstarten.",
       "hinweis": "Steig ein, wir zeigen dir das Haus",
       "bild": {
-        "p": 0.03
+        "p": 0.03,
+        "tz": 0.05
       }
     },
     {
       "id": "problem",
       "art": "problem",
-      "stufe": null,
       "links": "Die besten Ideen scheitern nicht an der Innovation, sondern daran, ihre Zielgruppe nicht zu erreichen und nicht im richtigen Licht zu stehen.",
-      "rechts": "MAKE Innovation bringt Lösungen für Analyse & KI, digitale Sichtbarkeit, Sichtbarkeit & Vertrauen, Vertrieb und Events.",
+      "rechts": "MAKE Innovation bringt die Lösungen dafür: MAKE Studios, MAKE Revenue, MAKE Innovation, PR & Kommunikation und die Bühne.",
       "bild": {
         "p": 0.25,
         "kam": {
@@ -26,66 +25,31 @@
           "z": -36,
           "cy": 0.62
         },
-        "ue": "blende"
-      }
-    },
-    {
-      "id": "fahrt",
-      "art": "fahrt",
-      "stufe": null,
-      "kopf": "Für klein bis groß · die Fahrt",
-      "text": "Ob Einzelunternehmen, Café oder Mittelständler: Du startest da, wo du stehst, und baust Schritt für Schritt aus. Wir fahren mit dir vom Fundament bis aufs Dach, wo unsere Events stattfinden. Etage für Etage siehst du, was in welcher Phase wichtig ist.",
-      "klein": "8 Halte · etwa 2 Minuten",
-      "bild": {
-        "p": 0.864,
-        "pz": 0.864,
-        "ue": "blende"
+        "ue": "blende",
+        "tz": 0.1
       }
     },
     {
       "id": "eg",
-      "art": "etage",
-      "stufe": "fundament",
+      "art": "empfang",
+      "alt": [
+        "fahrt",
+        "tresen"
+      ],
       "etage": {
         "nr": "Erdgeschoss",
-        "name": "Entdeckt werden"
-      },
-      "satz": "Jeden Tag gehen Menschen an deinem Unternehmen vorbei, digital wie vor Ort. Wie bringst du sie dazu, reinzukommen? Das finden wir mit Analysen und Checks heraus.",
-      "mit": "Dein Stand in zwei Werten: Sichtbarkeit und Vertrieb. Der Check dauert 7 Minuten.",
-      "kacheln": [
-        {
-          "t": "Check für Sichtbarkeit",
-          "d": "7 Minuten, kostenlos"
-        },
-        {
-          "t": "Check für Vertrieb",
-          "d": "7 Minuten, kostenlos"
-        },
-        {
-          "t": "Innovations-Check",
-          "d": "Rund 10 Minuten, kostenlos"
-        }
-      ],
-      "knopf": {
-        "text": "Kostenlosen Check starten · 7 Min.",
-        "ziel": "check"
-      },
-      "bild": {
-        "p": 0.2993,
-        "ue": "blende",
-        "cyn": 0.32
-      }
-    },
-    {
-      "id": "tresen",
-      "art": "tresen",
-      "stufe": "fundament",
-      "etage": {
-        "nr": "Eingangshalle",
-        "name": "Tresen"
+        "kurz": "EG",
+        "name": "Empfang"
       },
       "satz": "Schön, dass du da bist! Wie können wir dir helfen?",
-      "foto": "[FOTO KEVIN UND MALIN AM TRESEN]",
+      "zeile": "Kevin und Malin leiten jedes Projekt persönlich.",
+      "foto": {
+        "datei": "assets/team/kevin-malin.jpg",
+        "breite": 933,
+        "hoehe": 1400,
+        "alt": "Kevin und Malin von MAKE Innovation",
+        "platzhalter": "[FOTO KEVIN UND MALIN]"
+      },
       "weichen": [
         {
           "t": "Ich weiß, was ich suche",
@@ -100,321 +64,115 @@
           "aktion": "weiter"
         }
       ],
-      "zeile": "Kevin und Malin leiten jedes Projekt persönlich.",
       "bild": {
         "p": 0.3231,
         "zone": 1,
-        "cyn": 0.37
+        "cyn": 0.37,
+        "ue": "blende",
+        "tz": 0.18
       }
     },
     {
       "id": "e1",
-      "art": "etage",
-      "stufe": "fundament",
-      "etage": {
-        "nr": "Etage 1",
-        "name": "Analyse & Strategie"
-      },
-      "satz": "Bevor wir loslegen, schauen wir genau hin: Wo stehst du, was fehlt, wo hilft KI? Hier entstehen Strategie und Plan, und von hier aus wird jedes Projekt gesteuert.",
-      "mit": "Fester Ablauf, ein Ansprechpartner, Update jede Woche.",
-      "kacheln": [
-        {
-          "t": "Analysen & Checks"
-        },
-        {
-          "t": "Workshops, einzeln buchbar"
-        },
-        {
-          "t": "KI & Innovation"
-        }
-      ],
-      "preis": {
-        "label": "Workshops",
-        "angebote": [
-          "tagesworkshop",
-          "scoping-workshop"
-        ],
-        "zusatz": "Tagesworkshop, Scoping-Workshop, Innovations-Check"
-      },
-      "knopf": {
-        "text": "Workshops ansehen",
-        "ziel": "workshops"
-      },
+      "art": "raum",
+      "raum": "studios",
       "bild": {
         "p": 0.40013,
-        "zone": 1
+        "cyn": 0.27,
+        "tz": 0.3
       }
     },
     {
       "id": "e2",
-      "art": "etage",
-      "stufe": "wachstum",
-      "etage": {
-        "nr": "Etage 2",
-        "name": "Digitale Sichtbarkeit"
-      },
-      "satz": "Gefunden werden, wo gesucht wird: Website, Google, Video und Social Media aus einer Hand.",
-      "mit": "Eine Website, die in fünf Sekunden klar ist, und Videos in drei Bildformaten mit Untertiteln.",
-      "kacheln": [
-        {
-          "t": "Website"
-        },
-        {
-          "t": "Google-Profil & KI-Suche"
-        },
-        {
-          "t": "Video & Social Media"
-        }
-      ],
-      "preis": {
-        "label": "Website",
-        "angebote": [
-          "homepage-landing"
-        ]
-      },
-      "absender": "von MAKE Studios",
-      "knopf": {
-        "text": "Mehr erfahren",
-        "ziel": "sichtbarkeit"
-      },
+      "art": "raum",
+      "raum": "revenue",
       "bild": {
         "p": 0.47713,
-        "zone": 1
+        "cyn": 0.27,
+        "tz": 0.4
       }
     },
     {
-      "id": "e3a",
-      "art": "etage",
-      "stufe": "wachstum",
-      "etage": {
-        "nr": "Etage 3",
-        "name": "Sichtbarkeit & Vertrauen",
-        "unter": "Presse & Persönlichkeit"
-      },
-      "satz": "Menschen vertrauen Menschen. Wir holen dich und dein Unternehmen ins Licht, in den Medien, auf Bühnen und in Berlin.",
-      "mit": "Ein Themenplan je Quartal und eine Pressemappe, mit der Redaktionen arbeiten können.",
-      "kacheln": [
-        {
-          "t": "PR & Presse"
-        },
-        {
-          "t": "Gründer ins Licht",
-          "d": "Gründungsstory, Personenmarke"
-        },
-        {
-          "t": "Corporate Influencer"
-        }
+      "id": "e3",
+      "art": "raum",
+      "raum": "innovation",
+      "alt": [
+        "e3a",
+        "e3b"
       ],
-      "preis": {
-        "label": "PR und Kommunikation",
-        "angebote": [
-          "pr-kommunikation"
-        ]
-      },
-      "knopf": {
-        "text": "Mehr erfahren",
-        "ziel": "pr"
-      },
       "bild": {
         "p": 0.55413,
-        "zone": 1
-      }
-    },
-    {
-      "id": "e3b",
-      "art": "etage",
-      "stufe": "wachstum",
-      "etage": {
-        "nr": "Etage 3",
-        "name": "Sichtbarkeit & Vertrauen",
-        "unter": "Events, Community & Kundenbindung"
-      },
-      "satz": "Aus Besuchern werden Stammkunden: mit Events, Community und Ideen, die Menschen wiederkommen lassen.",
-      "kacheln": [
-        {
-          "t": "Eventmanagement in Berlin"
-        },
-        {
-          "t": "Community-Aufbau",
-          "d": "z. B. Laufclubs"
-        },
-        {
-          "t": "Kundenbindung",
-          "d": "E-Mail, digitales Stempelsystem und Marketingstrategie"
-        }
-      ],
-      "knopf": {
-        "text": "Mehr erfahren",
-        "ziel": "events"
-      },
-      "bild": {
-        "p": 0.55413,
-        "zone": 3
+        "cyn": 0.27,
+        "tz": 0.52
       }
     },
     {
       "id": "e4",
-      "art": "etage",
-      "stufe": "wachstum",
-      "etage": {
-        "nr": "Etage 4",
-        "name": "Vertrieb"
-      },
-      "satz": "Aus Aufmerksamkeit werden Kunden: ein fester Ablauf, der nicht mehr an dir hängt.",
-      "mit": "Ein Ablauf im CRM und Zahlen, an denen du ihn misst.",
-      "kacheln": [
-        {
-          "t": "Vertrieb mit System",
-          "d": "CRM, Leitfäden"
-        },
-        {
-          "t": "Wochenreport"
-        },
-        {
-          "t": "Vertriebsleitung auf Zeit"
-        }
-      ],
-      "preis": {
-        "teile": [
-          {
-            "label": "Tagesworkshop",
-            "angebote": [
-              "tagesworkshop"
-            ]
-          },
-          {
-            "label": "Vertriebsleitung auf Zeit",
-            "angebote": [
-              "head-of-sales"
-            ]
-          }
-        ]
-      },
-      "foto": "[FOTO KEVIN]",
-      "fotoSatz": "Hier leitet Kevin.",
-      "absender": "von MAKE Revenue",
-      "knopf": {
-        "text": "Mehr erfahren",
-        "ziel": "vertrieb"
-      },
+      "art": "raum",
+      "raum": "pr",
       "bild": {
         "p": 0.63113,
-        "zone": 1
+        "cyn": 0.27,
+        "tz": 0.64
       }
     },
     {
-      "id": "e5a",
-      "art": "etage",
-      "stufe": "skalieren",
+      "id": "e5",
+      "art": "tuer",
+      "alt": [
+        "e5a",
+        "e5b"
+      ],
       "etage": {
         "nr": "Etage 5",
+        "kurz": "5",
         "name": "Podcast „Fokus Innovation“",
-        "tag": "bald"
+        "tag": "Eröffnet bald"
       },
-      "satz": "Unser Podcast über Innovation: besondere Persönlichkeiten, von Unternehmern bis Spitzensportlern, die durch neues Denken vorangekommen sind. Bald hier.",
+      "satz": "Unser Podcast über Innovation: besondere Persönlichkeiten, von Unternehmern bis Spitzensportlern, die durch neues Denken vorangekommen sind.",
+      "frage": "Sag uns, ob wir dir Bescheid geben sollen, wenn es losgeht.",
       "newsletter": true,
       "bild": {
-        "p": 0.70813,
-        "zone": 0
-      }
-    },
-    {
-      "id": "e5b",
-      "art": "etage",
-      "stufe": "skalieren",
-      "etage": {
-        "nr": "Etage 5",
-        "name": "Deine Bühne"
-      },
-      "satz": "Du willst selbst ins Licht? Wir interviewen dich, schneiden daraus Shorts, und du hast Content für Wochen.",
-      "mit": "Ein Gespräch über dein Produkt, das bleibt.",
-      "kacheln": [
-        {
-          "t": "Interview mit dir"
-        },
-        {
-          "t": "Shorts daraus"
-        },
-        {
-          "t": "Content für Wochen"
-        }
-      ],
-      "kennzeichen": "In Skalieren enthalten · zu Wachstum zubuchbar",
-      "knopf": {
-        "text": "Pakete ansehen",
-        "ziel": "szene:pakete"
-      },
-      "leise": {
-        "text": "Gast vorschlagen",
-        "aktion": "gast"
-      },
-      "bild": {
-        "p": 0.70813,
-        "zone": 0,
-        "zoom": 0.7
+        "p": 0.6843,
+        "fz": 1.3,
+        "dx": 1.2,
+        "fzn": 1.68,
+        "dxn": 2.2,
+        "cyn": 0.3,
+        "dyn": 0.8,
+        "pab": 0.732,
+        "tz": 0.74
       }
     },
     {
       "id": "dach",
-      "art": "etage",
-      "stufe": "skalieren",
-      "etage": {
-        "nr": "Dach",
-        "name": "Fokus Abend"
-      },
-      "satz": "Ganz oben: der Fokus Abend. Jeden Monat 30 bis 40 Menschen, die Neues umsetzen. Kein Verkaufsvortrag, keine Teilnehmerlisten.",
-      "mit": "Film, Fotos und Gespräche, an die dein Vertrieb anknüpft.",
-      "kacheln": [
-        {
-          "t": "Zwei Impulse"
-        },
-        {
-          "t": "Thementische"
-        },
-        {
-          "t": "Gezielte Vorstellungen"
-        }
-      ],
-      "kennzeichen": "Erster Fokus Abend im Januar 2027 · 30 bis 40 Plätze · auf Einladung",
-      "knopf": {
-        "text": "Einladung anfragen",
-        "ziel": "einladung"
-      },
-      "leise": {
-        "text": "Öffentliche Innovationsabende kommen per Newsletter →",
-        "ziel": "szene:e5a"
-      },
+      "art": "raum",
+      "raum": "buehne",
       "bild": {
         "p": 0.7874,
-        "zone": 0,
         "dz": 4.4,
-        "cyd": 0.21,
-        "fzd": 1.5
-      }
-    },
-    {
-      "id": "pakete",
-      "art": "pakete",
-      "stufe": null,
-      "kopf": "Deine Pakete",
-      "text": "Klein anfangen, Schritt für Schritt ausbauen.",
-      "bild": {
-        "p": 0.864
+        "cyd": 0.26,
+        "fzd": 1.8,
+        "tz": 0.8
       }
     },
     {
       "id": "finale",
       "art": "finale",
-      "stufe": null,
+      "alt": [
+        "pakete"
+      ],
       "titel": "Mach deine Innovation sichtbar.",
+      "auswahl": "Deine Auswahl",
       "knopf": {
         "text": "Erstgespräch buchen",
         "ziel": "erstgespraech"
       },
-      "mikro": "30 Minuten · kostenlos · kein Verkaufsgespräch",
-      "foto": "[FOTO KEVIN UND MALIN]",
+      "mikro": "30 Min. · kostenlos · kein Verkaufsgespräch",
       "bild": {
-        "p": 0.93
+        "p": 0.93,
+        "ue": "blende",
+        "tz": 1
       }
     }
   ]

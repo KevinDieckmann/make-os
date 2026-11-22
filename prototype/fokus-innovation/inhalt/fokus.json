@@ -161,9 +161,9 @@
         "titel": "Netzwerk und Events",
         "text": "Manche Kunden lernt man am besten persönlich kennen. Wir laden dich zu unseren Events ein und stellen Kontakte her, wo es passt. Was du dafür brauchst, besprechen wir im Gespräch."
       },
-      "kurz": "Wir machen dein Angebot verständlich und bekannt: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo}, Social Media ab {ab:social-media} im Monat sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.",
+      "kurz": "Sichtbar werden als Unternehmen heißt: klar sagen, was du machst, und dort auftauchen, wo Kunden suchen. Dafür bekommst du bei MAKE Innovation Positionierung, Website, Erklärvideo, Social Media sowie PR und Kommunikation, Website, Video und Social Media setzt unsere Marke MAKE Studios um. Das Angebot richtet sich an Gründer, Start-ups und Unternehmer mit fertigem Produkt. Alle Preise sind netto: Positionierung ab {ab:positionierung}, Website {preis:homepage-landing} (fertig in 10 bis 25 Werktagen), Erklärvideo {preis:erklaervideo}, Social Media {preis:social-media} im Monat, PR und Kommunikation {preis:pr-kommunikation} im Monat. Jedes Angebot hat einen festen Ablauf, die Texte schreiben wir.",
       "auf_anfrage": [],
-      "anzeige": "Digitale Sichtbarkeit"
+      "anzeige": "MAKE Studios"
     },
     "vertrieb": {
       "nr": "02",
@@ -217,12 +217,12 @@
           "text": "Head of Sales oder Chief Sales Officer"
         }
       ],
-      "kurz": "Wir bauen deinen Vertrieb auf, bis dein Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop für {preis:tagesworkshop} netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.",
+      "kurz": "Hier siehst du, welche Vertriebsunterstützung du bei MAKE Innovation bekommst und was sie kostet. Sie ist gedacht für Unternehmer mit fertigem Produkt, deren Vertrieb heute am Gründer hängt. Willst du erst testen, startest du mit dem Tagesworkshop {preis:tagesworkshop} netto, der beim Mandat voll angerechnet wird. Dauerhaft begleiten wir dich als Head of Sales ({preis:head-of-sales} im Monat) oder als Chief Sales Officer ({preis:cso} im Monat), jeweils für 6 oder 12 Monate. Wie wir den Vertrieb aufbauen, steht ausführlich bei unserer Marke MAKE Revenue.",
       "leiter": {
         "titel": "Dein Vertriebsleiter kommt nicht in Fahrt?",
         "text": "Meist fehlt ihm ein System, nach dem er führen kann. Das bauen wir mit ihm auf, arbeiten ihn ein und übergeben ihm dann den Vertrieb. Danach hängt der Vertrieb nicht mehr an der Geschäftsführung."
       },
-      "anzeige": "Vertrieb"
+      "anzeige": "MAKE Revenue"
     },
     "innovation": {
       "nr": "03",
@@ -260,12 +260,12 @@
       ],
       "mehr_als_ki": "Innovation heißt auch Automatisierung, neue Software und die Daten dahinter. Alles braucht dieselbe Grundlage: klare Abläufe und saubere Daten.",
       "brain": {
-        "titel": "KI-Brain",
+        "titel": "Eigene Wissensbasis mit KI",
         "stand": "In Vorbereitung",
         "text": "KI ist nur so gut wie die Daten, auf die sie zugreift. Wir bringen mit dir Wissen, Abläufe und Daten an einen Ort, auf den sie sich verlassen kann.",
-        "betreff": "Interesse: KI-Brain"
+        "betreff": "Interesse: Eigene Wissensbasis mit KI"
       },
-      "kurz": "Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Der Weg hat drei Schritte: der kostenlose Innovations-Check, der Scoping-Workshop ab {preis:scoping-workshop}, der auf das Projekt angerechnet wird, und das Umsetzungsprojekt ab {preis:umsetzungsprojekte}, alles netto.",
+      "kurz": "Willst du KI im Unternehmen einführen, ordnen wir bei MAKE Innovation zuerst deine Abläufe und Daten. Danach führen wir KI, Automatisierung und neue Software ein, bis dein Team damit arbeitet. Das Angebot richtet sich an Unternehmer und Mittelständler, die Neues einführen wollen. Der Weg hat drei Schritte: der kostenlose Innovations-Check, der Scoping-Workshop {preis:scoping-workshop} (wird auf das Projekt angerechnet) und das Umsetzungsprojekt {preis:umsetzungsprojekte}. Alle Preise sind netto.",
       "schritte_titel": "Drei Schritte: Check, Workshop, Projekt.",
       "schritte_lead": "Der Check zeigt, wo du stehst. Im Workshop klären wir Umfang, Abläufe und Daten. Im Projekt führen wir KI und Software ein, bis sie im Alltag genutzt werden.",
       "schritt_texte": {
@@ -281,7 +281,7 @@
         },
         {
           "titel": "Daten und Wissen",
-          "text": "Wissen, Abläufe und Daten sauber an einem Ort, damit KI und Automatisierung darauf zugreifen können. Wir nennen es KI-Brain."
+          "text": "Wissen, Abläufe und Daten sauber an einem Ort, damit KI und Automatisierung darauf zugreifen können, zum Beispiel als eigene Wissensbasis mit KI."
         },
         {
           "titel": "KI im Alltag",
@@ -297,11 +297,12 @@
       ],
       "felder_titel": "Erst Struktur, dann Tempo.",
       "felder_lead": "Wir gehen in dieser Reihenfolge vor: Abläufe ordnen, Daten an einen Ort, dann KI und Automatisierung. So macht KI schneller, was funktioniert, und nicht, was heute schon hakt.",
-      "anzeige": "Analyse & KI"
+      "anzeige": "MAKE Innovation"
     }
   },
   "events": {
     "titel": "MAKE Innovation · Events",
+    "kurz": "Zum Fokus Abend laden wir jeden Monat in Berlin ein: 30 bis 40 Gäste, die Neues umsetzen, dazu zwei Impulse, Thementische und Zeit zum Austausch. Du trägst dich auf die Gästeliste ein und bekommst die nächste Einladung; gedacht ist der Abend für Gründer, Unternehmer und Mittelständler. Für Gäste und Kunden ist er kostenlos. Unternehmen können als Abendpartner einen Abend begleiten, {preis:abendpartner} je Abend netto.",
     "satz": "Verschiedene Formate. Ein Fokus. Menschen zusammenbringen, die Neues umsetzen.",
     "text": "Jeden Monat der Fokus Abend in Berlin mit 30 bis 40 Gästen, die Neues umsetzen. Kuratiert und auf Einladung, für Gäste und Kunden kostenlos. Malin ist Gastgeberin.",
     "kosten": "Für Gäste und Kunden kostenlos",
@@ -335,7 +336,7 @@
       "name": "Fokus Abend",
       "titel": "Fokus Abend.",
       "ruhig": "Jeden Monat in Berlin.",
-      "lead": "30 bis 40 Gäste, die Neues umsetzen: zwei Impulse à 15 Minuten, Thementische in 2 Runden, offenes Netzwerken und gezielte Vorstellungen. Die Kamera läuft mit.",
+      "lead": "Unsere monatliche Einladung an Unternehmer in Berlin: 30 bis 40 Gäste, die Neues umsetzen, zwei Impulse à 15 Minuten, Thementische in 2 Runden, offenes Netzwerken und gezielte Vorstellungen. Die Kamera läuft mit.",
       "merkmale": [
         "2 Impulse à 15 Minuten",
         "Thementische in 2 Runden",
@@ -522,6 +523,7 @@
       }
     },
     "naechster": "Erster Fokus Abend im Januar 2027 · 30 bis 40 Plätze · auf Einladung",
+    "start_monat": "2027-01",
     "regeln_kurz": [
       "Kein Verkaufsvortrag",
       "Keine Teilnehmerlisten",
@@ -529,8 +531,7 @@
     ],
     "gastgeberin": {
       "marke": "Gastgeberin",
-      "h2": "Malin bringt Menschen zusammen.",
-      "foto": "[FOTO MALIN]"
+      "h2": "Malin bringt Menschen zusammen."
     },
     "einladung_knopf": "Platz auf der Gästeliste sichern",
     "partner_link": "Abendpartner werden"
@@ -549,7 +550,7 @@
     ]
   },
   "podcast": {
-    "hinweis": "Der Podcast (Kevin 18.11.). Es gibt genau diese Aussage und diesen Aufruf: kein Rhythmus, kein Startdatum, keine Plattformen, keine Folgen. „Fokus Innovation“ ist nur der Name des Podcasts, nie der Firma oder der Website (der Prüfer in bauen.mjs achtet darauf).",
+    "hinweis": "Der Podcast (Kevin 18.11.). Es gibt genau diese Aussage und diesen Aufruf: kein Rhythmus, kein Startdatum, keine Plattformen, keine Folgen. „Fokus Innovation“ ist nur der Name des Podcasts, nie der Firma oder der Website (der Prüfer in bauen.mjs achtet darauf). Seit 21.11. ist der Podcast noch zu: Die Seite bleibt gebaut, trägt „Eröffnet bald“ und noindex und steht weder in Menü, Sitemap noch llms.",
     "name": "Fokus Innovation",
     "zusatz": "Der Podcast",
     "vorzeile": "Podcast",
@@ -560,7 +561,8 @@
     "knopf": "Als Gast vorschlagen",
     "anlass": "podcast-gast",
     "betreff": "Podcast Fokus Innovation: Gast vorschlagen",
-    "bild_alt": "Zwei Menschen sitzen sich an einem Tisch gegenüber und sprechen miteinander"
+    "bild_alt": "Zwei Menschen sitzen sich an einem Tisch gegenüber und sprechen miteinander",
+    "bald": "Eröffnet bald"
   },
   "warum_wir": [
     {
@@ -694,6 +696,7 @@
   ],
   "kurztexte": {
     "hinweis": "Ein Satz je Angebot in den Listen, wo das Produktblatt keinen hat.",
+    "head-of-sales": "Head of Sales buchen: Wir bauen dir einen Vertrieb mit System, den dein Team ohne dich bedienen kann, für 6 oder 12 Monate.",
     "positionierung": "In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.",
     "umsetzungsprojekte": "Wir ordnen zuerst Abläufe und Daten und führen dann KI und Software ein, bis sie im Alltag genutzt werden. Mit klarem Umfang, vorab vereinbart.",
     "scoping-workshop": "Umfang, Abläufe und Daten klären, bevor gebaut wird.",
@@ -781,7 +784,7 @@
     ],
     [
       "Leistungen",
-      "Positionierung, Websites, Videos, Social Media sowie PR und Kommunikation; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, vom Scoping-Workshop bis zum Umsetzungsprojekt; der monatliche Fokus Abend, weitere Events und der Podcast Fokus Innovation"
+      "Positionierung, Websites, Videos, Social Media sowie PR und Kommunikation; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, vom Scoping-Workshop bis zum Umsetzungsprojekt; der monatliche Fokus Abend in Berlin; der Podcast Fokus Innovation eröffnet bald"
     ],
     [
       "Einstieg",
@@ -804,6 +807,140 @@
       "Deutschland und Europa, auf Deutsch"
     ]
   ],
+  "fragen_bereiche": {
+      "sichtbarkeit": {
+        "titel": "Fragen zu Website, Video und Social Media",
+        "alt": [
+          "sind-eure-videos-ki-generiert",
+          "sind-die-preise-netto"
+        ],
+        "neu": [
+          {
+            "f": "Was kostet eine Website, und wie lange dauert sie?",
+            "a": "Websites gibt es in drei Paketen mit festem Preis: Landing {preis:homepage-landing} in 10 Werktagen, Story {preis:homepage-story} in 15 und Cinematic {preis:homepage-cinematic} in 25 Werktagen, jeweils netto und einmalig. Hosting und Domain laufen über dich. Mit Express halbiert sich die Lieferzeit."
+          },
+          {
+            "f": "Was muss auf die Startseite einer Unternehmenswebsite?",
+            "a": "Die Startseite muss in fünf Sekunden drei Fragen beantworten: Was machst du? Für wen? Was soll ich als Nächstes tun? Danach zählen Belege, die man prüfen kann, eine ruhige Gestaltung, die auch auf dem Handy funktioniert, und eine kurze Ladezeit."
+          },
+          {
+            "f": "Warum bringt meine Website keine Anfragen?",
+            "a": "Meist verstehen Besucher nicht schnell genug, was du machst, und wissen nicht, was sie als Nächstes tun sollen. Hilfreich sind ein Kernsatz ganz oben, ein klarer nächster Schritt, Belege statt Behauptungen, ein kurzes Video und eine eigene Seite je Angebot. Neu bauen musst du die Seite dafür meist nicht."
+          },
+          {
+            "f": "Brauche ich eine Positionierung, bevor ich eine Website bauen lasse?",
+            "a": "Ja, zumindest die fünf Sätze: für wen du da bist, welches Problem du löst, wie du es löst, was dich unterscheidet und woran man sieht, dass es stimmt. Sonst schreibst du die Texte der Website ohne Richtung und musst sie später neu schreiben. Die Positionierung gibt es in drei Tiefen ab {ab:positionierung}."
+          },
+          {
+            "f": "Was kostet ein Erklärvideo, und muss ich vor die Kamera?",
+            "a": "Ein Erklärvideo kostet {preis:erklaervideo} netto, einmalig. Vor die Kamera musst du nicht: Es entsteht ohne Dreh vor Ort aus KI-Szenen, deinem Material und einer KI-Stimme oder Untertiteln, in 10 Werktagen ab vollständigem Formular und Zahlungseingang."
+          }
+        ]
+      },
+      "vertrieb": {
+        "titel": "Fragen zu Vertriebsunterstützung und Head of Sales",
+        "alt": [
+          "was-ist-der-unterschied-zwischen-head",
+          "was-kostet-der-tagesworkshop-und-was"
+        ],
+        "neu": [
+          {
+            "f": "Wie baue ich einen Vertrieb von null auf?",
+            "a": "Vertrieb wird planbar, wenn fünf Dinge stehen: eine klare Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein Team, das trainiert ist. Halte diese Reihenfolge ein, sonst hat ein neues Werkzeug oder der erste Vertriebler nichts, worauf er aufsetzen kann."
+          },
+          {
+            "f": "Brauche ich einen Vertriebsleiter, oder reicht ein Head of Sales auf Zeit?",
+            "a": "Ein Head of Sales auf Zeit lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Er baut das System, setzt es mit deinem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das Mandat kostet {preis:head-of-sales} netto im Monat und läuft 6 oder 12 Monate."
+          },
+          {
+            "f": "Welches CRM passt für ein kleines Team?",
+            "a": "Eines, das dein Team jeden Tag nutzt. Wichtiger als das Werkzeug sind klare Stufen, Pflichtfelder und Wiedervorlagen. Am Start reicht eine Tabelle, solange sie gepflegt wird; ein CRM lohnt sich, sobald mehrere Personen verkaufen."
+          },
+          {
+            "f": "Wie lange dauert es, bis ein Vertrieb planbar läuft?",
+            "a": "Das hängt vom Ausgangspunkt ab. In unserem Mandat als Head of Sales läuft ab Monat 3 jedes Gespräch nach Prozess im CRM, und jeden Freitag kommt der Wochenreport. Ziel bis Monat 6 ist, dass dein Team ohne den Gründer abschließt. Wir schulden die Leistung, nicht den Umsatz."
+          },
+          {
+            "f": "Wie erkenne ich, ob mein Vertrieb funktioniert?",
+            "a": "Fünf Zahlen reichen für einen kleinen Vertrieb: wie viele Angebote im Monat rausgehen, wie viele davon zum Auftrag werden, wie lange es vom ersten Gespräch bis zum Abschluss dauert, welche Chancen offen sind und mit welchem Wert, und ob jedes offene Angebot ein Datum zum Nachfassen hat."
+          }
+        ]
+      },
+      "innovation": {
+        "titel": "Fragen zu KI im Unternehmen",
+        "alt": [
+          "sind-die-preise-netto"
+        ],
+        "neu": [
+          {
+            "f": "Wie führe ich KI in meinem Unternehmen ein, und wo fange ich an?",
+            "a": "Mit einem ehrlichen Blick auf den eigenen Stand. Danach wählst du die drei Anwendungsfälle mit dem größten Nutzen und führst sie nacheinander ein: Erst wenn der erste im Alltag läuft, kommt der nächste. Den Einstieg macht der kostenlose Innovations-Check, er dauert rund 10 Minuten."
+          },
+          {
+            "f": "Wie finde ich die KI-Anwendungsfälle mit dem größten Nutzen?",
+            "a": "Sammle Ideen, beschreibe jeden Kandidaten in einem kurzen Steckbrief und bewerte ihn nach sechs Kriterien: Zeit heute, weiterer Nutzen, gleiche Form, Datenlage, Fehlerfolgen und Aufwand. Kein Ablauf mit hohen Fehlerfolgen kommt zuerst, keiner ohne greifbare Daten. Dann wählst du einen einzigen Ablauf für 30 Tage."
+          },
+          {
+            "f": "Was kostet es, KI einzuführen?",
+            "a": "Der Innovations-Check und das Erstgespräch sind kostenlos. Der Scoping-Workshop kostet {preis:scoping-workshop} netto und wird auf das Projekt angerechnet. Umsetzungsprojekte beginnen {preis:umsetzungsprojekte} netto, mit klarem Umfang, vorab vereinbart."
+          },
+          {
+            "f": "Wie nehme ich mein Team bei KI mit?",
+            "a": "Fang in den ersten 30 Tagen klein an: mit einem einzigen Ablauf, einer Firmenlizenz, die das Unternehmen verwaltet, wenigen schriftlichen Regeln und einer Messung vorher und nachher. Wir schulen dein Team, bis es damit arbeitet."
+          },
+          {
+            "f": "Dürfen Kundendaten in ein KI-Werkzeug?",
+            "a": "Das hängt vom Werkzeug, vom Vertrag und von den Daten ab. Kläre das vor dem Start mit der Person, die bei dir für Datenschutz zuständig ist, und schreib die Antwort in deine Regeln. Bis dahin gilt: keine vertraulichen Kundendaten. Das ist ein Hinweis, keine Rechtsberatung."
+          },
+          {
+            "f": "Reicht ein Pilotprojekt, oder brauche ich zuerst eine KI-Strategie?",
+            "a": "Für den Anfang reicht ein kleiner Pilot: ein einziger Ablauf, 30 Tage, mit Messung vorher und nachher. Am Tag 30 entscheidest du anhand der Zahlen, ob du ausweitest, anpasst oder aufhörst."
+          }
+        ]
+      },
+      "pr-kommunikation": {
+        "titel": "Häufige Fragen",
+        "neu": [
+          {
+            "f": "Brauche ich als Start-up oder Mittelständler PR?",
+            "a": "PR hilft, wenn dein Produkt gut ist, aber außerhalb deines Kundenkreises kaum jemand es kennt. Sie macht dich in Medien, Podcasts und auf Bühnen sichtbar, vom Markteintritt bis zur Krisenkommunikation. Besonders sinnvoll ist sie vor Markteintritt, Produktstart, Finanzierungsrunde oder Expansion."
+          },
+          {
+            "f": "Wie komme ich an Journalisten und Redaktionen?",
+            "a": "Wir sprechen Redaktionen in vier Stufen an: überregionale Leitmedien, Fach- und Branchenmedien, regionale Medien und Podcasts, mit Themen, die Redaktionen interessieren. Was erscheint, entscheiden die Redaktionen, Veröffentlichungen garantieren wir nicht."
+          },
+          {
+            "f": "Wie messe ich, ob PR wirkt?",
+            "a": "Ab Monat 3 kommt jeden Monat ein Bericht mit Ansprachen, Gesprächen mit Redaktionen, Veröffentlichungen, Auftritten und den Anfragen, die daraus im Vertrieb ankommen."
+          }
+        ]
+      },
+      "events": {
+        "titel": "Fragen zum Fokus Abend",
+        "neu": [
+          {
+            "f": "Wie komme ich auf die Gästeliste des Fokus Abends in Berlin?",
+            "a": "Ja: den Fokus Abend, jeden Monat in Berlin. 30 bis 40 Gäste, die Neues umsetzen, treffen sich zu zwei Impulsen, Thementischen und offenem Netzwerken. Der Abend läuft auf Einladung und ist für Gäste kostenlos."
+          },
+          {
+            "f": "Für wen ist der Fokus Abend gedacht?",
+            "a": "Für Menschen, die Neues umsetzen. Wir laden selbst ein und mischen bewusst, zum Beispiel Start-ups mit Mittelständlern oder Leute aus der Technik mit Leuten aus dem Vertrieb. Ein Verkaufsvortrag ist es nicht."
+          },
+          {
+            "f": "Wie läuft ein Abend ab?",
+            "a": "Von 18:30 bis 22:00 Uhr: Ankommen, Begrüßung, zwei Impulse à 15 Minuten, dann Thementische in 2 Runden und offenes Netzwerken. Dazu gibt es gezielte Vorstellungen."
+          },
+          {
+            "f": "Wie melde ich mich an?",
+            "a": "Der Abend läuft auf Einladung. Trag dich auf die Gästeliste ein, dann bekommst du die nächste Einladung. Orte, Termine und Themen stehen in jeder Einladung."
+          }
+        ]
+      }
+    },
+  "kurz_angebote": {
+    "_hinweis": "Kurz gesagt auf Angebotsseiten, die in Haus und Suche ein eigener Bereich sind: Was, für wen, ab wann und was.",
+    "pr-kommunikation": "PR und Kommunikation von MAKE Innovation bringt Unternehmen mit Neuem in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation. Das Angebot richtet sich an Unternehmer und Mittelstand mit 10 bis 50 Mitarbeitenden. Das Mandat läuft 6 oder 12 Monate und kostet {preis:pr-kommunikation} netto im Monat. Veröffentlichungen garantieren wir nicht, denn die Redaktionen entscheiden."
+  },
   "seo": {
     "hinweis": "Suchmaschinen und KI-Suchen (27.10.2026). „oeffentlich“ bleibt false, bis Kevin die Seite für Google freigibt: dann robots, robots.txt und der Kopf X-Robots-Tag im Caddyfile öffnen. Titel ≤ 65 Zeichen, Beschreibungen 120–165 Zeichen (der Prüfer meldet Abweichungen). Platzhalter wie in wissen.json.",
     "oeffentlich": false,
@@ -824,28 +961,28 @@
     ],
     "seiten": {
       "start": {
-        "titel": "MAKE Innovation · Mach deine Innovation sichtbar",
-        "beschreibung": "Mit MAKE Innovation wirst du sichtbar, an deinem Standort und digital. Für Gründer und Unternehmer, die mit etwas Neuem durchstarten. Aus Berlin."
+        "titel": "MAKE Innovation: sichtbar werden, Kunden gewinnen, KI einführen",
+        "beschreibung": "Du setzt Neues um und willst gesehen werden? MAKE Innovation macht deine Idee sichtbar: Website, Video, Vertrieb, KI und PR. Aus Berlin, mit festem Preis und Ablauf."
       },
       "sichtbarkeit": {
-        "titel": "Sichtbarkeit: Pakete und Preise · MAKE Innovation",
-        "beschreibung": "Preisblatt Sichtbarkeit: Positionierung ab {ab:positionierung}, Homepages ab {preis:homepage-landing}, Erklärvideos ab {preis:erklaervideo}, Social Media ab {ab:social-media} im Monat, alles netto."
+        "titel": "Sichtbar werden als Unternehmen: Leistungen und Preise",
+        "beschreibung": "Sichtbar werden als Unternehmen: Positionierung, Website, Video, Social Media und PR mit festem Preis. Umgesetzt von MAKE Studios, Websites {preis:homepage-landing} netto."
       },
       "vertrieb": {
-        "titel": "Vertrieb: Leistungen und Preise · MAKE Innovation",
-        "beschreibung": "Preisblatt Vertrieb: Tagesworkshop für {preis:tagesworkshop}, Head of Sales und Chief Sales Officer auf Zeit für 6 oder 12 Monate. Vorgehen und Ablauf zeigt MAKE Revenue."
+        "titel": "Vertriebsunterstützung: Workshop, Head of Sales, CSO, Preise",
+        "beschreibung": "Vertriebsunterstützung mit festem Preis: Tagesworkshop {preis:tagesworkshop}, Head of Sales {preis:head-of-sales} und CSO {preis:cso} im Monat, netto. Fachseiten bei MAKE Revenue."
       },
       "innovation": {
-        "titel": "Innovation: KI, Automatisierung, Software · MAKE Innovation",
-        "beschreibung": "KI, Automatisierung und neue Software in drei Schritten: kostenloser Innovations-Check, Scoping-Workshop ab {preis:scoping-workshop} und Umsetzungsprojekt ab {preis:umsetzungsprojekte}, netto."
+        "titel": "KI im Unternehmen einführen · MAKE Innovation",
+        "beschreibung": "KI, Automatisierung und neue Software einführen, bis dein Team damit arbeitet: Innovations-Check kostenlos, Scoping-Workshop {preis:scoping-workshop}, Projekt {preis:umsetzungsprojekte}, netto."
       },
       "tagesworkshop": {
         "titel": "Tagesworkshop Vertrieb und Markteintritt · MAKE Innovation",
         "beschreibung": "Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten umsetzen. {preis:tagesworkshop} netto, beim Mandat angerechnet."
       },
       "head-of-sales": {
-        "titel": "Head of Sales auf Zeit · MAKE Innovation",
-        "beschreibung": "Vertriebsleitung auf Zeit für 6 oder 12 Monate: Wir bauen deinen Vertrieb auf, machen deinem Team vor und übergeben ein System. {preis:head-of-sales} netto im Monat."
+        "titel": "Head of Sales buchen: Preise und Ablauf · MAKE Innovation",
+        "beschreibung": "Head of Sales buchen: {preis:head-of-sales} netto im Monat, 6 oder 12 Monate. Preis, Ablauf, Leistungen und Vertrag auf einen Blick. Die Fachseite führt MAKE Revenue."
       },
       "cso": {
         "titel": "Chief Sales Officer auf Zeit (CSO) · MAKE Innovation",
@@ -908,7 +1045,7 @@
         "beschreibung": "Ratgeber aus unserer Arbeit: Vertrieb aufbauen, Head of Sales auf Zeit, Positionierung, Homepage, Erklärvideo und KI im Mittelstand. Praktisch und mit Quellen."
       },
       "preise": {
-        "titel": "Preise: alle Angebote im Überblick · MAKE Innovation",
+        "titel": "Preise für Website, Video, Vertrieb, KI und PR · MAKE Innovation",
         "beschreibung": "Alle Preise auf einer Seite: Positionierung, Homepages, Videos, Social Media, PR, Vertrieb auf Zeit und Umsetzungsprojekte. Netto, mit Laufzeit und Lieferzeit."
       },
       "fragen": {
@@ -928,8 +1065,8 @@
         "beschreibung": "Studien zu Sichtbarkeit, Vertrieb und KI in deutschen Unternehmen, kurz erklärt. Jede Zahl mit Herausgeber, Jahr und Link zur Quelle."
       },
       "events": {
-        "titel": "Fokus Abend und Events in Berlin · MAKE Innovation",
-        "beschreibung": "Fokus Abend: erster Abend im Januar 2027 in Berlin, 30 bis 40 Gäste, zwei Impulse, Thementische und Netzwerken. Auf Einladung, für Gäste kostenlos."
+        "titel": "Fokus Abend: auf die Gästeliste oder als Abendpartner dabei",
+        "beschreibung": "Gästeliste und Einladung zum Fokus Abend in Berlin, für Gäste kostenlos. Unternehmen begleiten einen Abend als Abendpartner, {preis:abendpartner} netto je Abend."
       },
       "social-media": {
         "titel": "Social Media in drei Paketen: S, M, L · MAKE Innovation",
@@ -940,8 +1077,8 @@
         "beschreibung": "Fokus Innovation ist unser Podcast über Innovationen aus Deutschland: Menschen, die etwas Neues gebaut haben, erzählen, was es kann und wie es dazu kam."
       },
       "pr-kommunikation": {
-        "titel": "PR und Kommunikation auf Zeit · MAKE Innovation",
-        "beschreibung": "Auftritte und Beiträge in Leitmedien, Fachmedien, regionalen Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krise. Ab {ab:pr-kommunikation} netto im Monat."
+        "titel": "PR und Kommunikation für Start-ups und Mittelstand",
+        "beschreibung": "PR für Start-ups und Mittelstand: Kernbotschaften, Pressemappe, Medienarbeit, Podcasts und Bühnen, vom Markteintritt bis zur Krise. Mandat {preis:pr-kommunikation} netto im Monat."
       },
       "in-den-markt": {
         "titel": "Innovation in den Markt bringen · MAKE Innovation",
@@ -1119,8 +1256,8 @@
         "name": "MAKE Studios",
         "url": "https://makestudios.de/",
         "thema": "Sichtbarkeit und Video",
-        "satz": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Video, Fotos und Social Media.",
-        "anriss": "MAKE Studios baut deine Website, pflegt dein Google-Profil und macht Video und Fotos. Deine sozialen Medien betreuen wir in drei Paketen. Damit Kunden dich finden und schnell verstehen, was du machst.",
+        "satz": "MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Google-Profil, Foto, Video, Social Media und Websites.",
+        "anriss": "MAKE Studios macht dich sichtbar auf allen Ebenen: Google-Profil, Fotos, Video, Reels, Social Media und Website. KI-gestützt und aus einer Hand. Damit Kunden dich finden und schnell verstehen, was du machst.",
         "themen": [
           "Websites",
           "Google-Profil",
@@ -1128,11 +1265,11 @@
           "Social Media"
         ],
         "dort": "Problem, Beispiele und Ablauf",
-        "preise_link": "Pakete und Preise",
+        "preise_link": "Leistungen und Preise",
         "blatt": {
           "titel": "Gefunden werden, wo gesucht wird.",
-          "text": "Alle Pakete mit Preis, Umfang und Lieferzeit: Website, Google, Video und Social Media aus einer Hand.",
-          "angebote_titel": "Alle Pakete mit Preis"
+          "text": "Sichtbar werden mit Positionierung, Website, Video und Social Media: Alle Leistungen mit Preis, Umfang und Lieferzeit auf einen Blick.",
+          "angebote_titel": "Alle Leistungen mit Preis"
         },
         "link_text": "Beispiele ansehen",
         "hinweis_text": "Fertige Beispielseiten und den Ablauf siehst du bei MAKE Studios."
@@ -1154,7 +1291,7 @@
         "preise_link": "Leistungen und Preise",
         "blatt": {
           "titel": "Aus Aufmerksamkeit werden Kunden.",
-          "text": "Tagesworkshop, Head of Sales und Chief Sales Officer mit Preis, Umfang und Laufzeit: ein fester Ablauf, der nicht mehr an dir hängt.",
+          "text": "Vertriebsunterstützung mit festem Ablauf: Tagesworkshop, Head of Sales und Chief Sales Officer mit Preis, Umfang und Laufzeit, damit dein Vertrieb nicht mehr an dir hängt.",
           "angebote_titel": "Alle Leistungen mit Preis"
         },
         "link_text": "So gehen wir vor",
@@ -1486,7 +1623,7 @@
     },
     "tagesworkshop": {
       "punkte": [
-        "Am Abend kennst du deine fünf größten Hebel. Drei davon kannst du sofort umsetzen.",
+        "Du buchst einen einzelnen Tag, kein Mandat.",
         "Startest du danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Workshop voll an."
       ]
     },
@@ -1584,7 +1721,7 @@
         },
         {
           "frage": "Was bringt mir der Tag?",
-          "antwort": "Am Abend kennst du deine fünf größten Hebel. Drei davon kannst du sofort umsetzen."
+          "antwort": "Du bekommst den Blick von außen: deine fünf größten Hebel nach Aufwand und Wirkung geordnet, einen 90-Tage-Plan und die Antwort, ob du ein Markt- oder ein Produktproblem hast."
         },
         {
           "frage": "Strategie oder operativ: Was heißt das?",
@@ -1692,93 +1829,60 @@
     "bedingungen_hinweis": "Fragen vor dem Kauf? Schreib uns an kevin@makeinnovation.de oder vereinbare ein kostenloses Erstgespräch von 30 Minuten."
   },
   "kurz": {
-    "_hinweis": "Kurz-Startseite nach der Fahrt (Konzept Malin 18.11.): alle Texte in Du. Platzhalter stehen in eckigen Klammern. Ziele: Pfad der Website oder angebot:<kennung>.",
-    "pitch_h2": "Wir bringen innovative Ideen in die Sichtbarkeit.",
-    "pitch": "Mit MAKE Innovation wirst du sichtbar, an deinem Standort und digital. Für Gründer und Unternehmer, die mit etwas Neuem durchstarten.",
-    "foto_beide": "[FOTO KEVIN UND MALIN]",
+    "_hinweis": "Kurz-Startseite nach der Fahrt (Konzept Malin 18.11., Bereiche wie im Haus seit 21.11.): alle Texte in Du. Name, Nutzenzeile, Etage und (ohne eigenen satz) der Satz der Bereiche kommen aus haus/raeume.json. Der Ab-Preis wird aus der Preisliste gerechnet. Platzhalter stehen in eckigen Klammern. Ziele: Pfad der Website oder angebot:<kennung>.",
+    "pitch_h2": "Sichtbar werden, planbar verkaufen.",
+    "bild_titel": "Wir bringen innovative Ideen in die Sichtbarkeit.",
+    "bild_vorzeile": "Studios · Revenue · Innovation · PR · Bühne",
+    "pitch": "Mit MAKE Innovation wirst du sichtbar, an deinem Standort und digital. Für Gründer und Unternehmer, die mit etwas Neuem durchstarten. Feste Preise, offen einsehbar: Website {preis:homepage-landing}, Tagesworkshop {preis:tagesworkshop}, netto.",
     "mikro": "30 Min. · kostenlos · kein Verkaufsgespräch",
     "fahrt": "Fahrt durchs Haus starten",
     "problem": {
       "links": "Die besten Ideen scheitern nicht an der Innovation, sondern daran, ihre Zielgruppe nicht zu erreichen und nicht im richtigen Licht zu stehen.",
-      "rechts": "MAKE Innovation bringt Lösungen für Analyse & KI, digitale Sichtbarkeit, Sichtbarkeit & Vertrauen, Vertrieb und Events."
+      "rechts": "MAKE Innovation bringt dir Lösungen für Website, Video und Social Media, Vertrieb, Analyse und KI, PR und Events."
     },
     "bereiche_titel": "Fünf Bereiche, ein Ziel.",
     "bereiche": [
       {
-        "name": "Analyse & KI",
-        "satz": "Bevor wir loslegen, schauen wir genau hin: Wo stehst du, was fehlt, wo hilft KI?",
-        "ziel": "/innovation/"
-      },
-      {
-        "name": "Digitale Sichtbarkeit",
-        "satz": "Gefunden werden, wo gesucht wird: Website, Google, Video und Social Media aus einer Hand.",
+        "raum": "studios",
+        "preis_namen": { "video": "Video", "social": "Social Media" },
         "ziel": "/sichtbarkeit/"
       },
       {
-        "name": "Sichtbarkeit & Vertrauen",
-        "satz": "Menschen vertrauen Menschen. Wir holen dich und dein Unternehmen ins Licht: in den Medien, auf Bühnen und in Berlin.",
-        "ziel": "angebot:pr-kommunikation"
-      },
-      {
-        "name": "Vertrieb",
-        "satz": "Aus Aufmerksamkeit werden Kunden: ein fester Ablauf, der nicht mehr an dir hängt.",
+        "raum": "revenue",
+        "preis_namen": { "tagesworkshop": "Tagesworkshop", "vertriebsleitung": "Vertriebsleitung" },
         "ziel": "/vertrieb/"
       },
       {
-        "name": "Events",
-        "satz": "Aus Besuchern werden Stammkunden: mit Events, Community und Ideen, die Menschen wiederkommen lassen.",
-        "ziel": "/events/"
+        "raum": "innovation",
+        "preis_namen": { "check": "Check", "scoping": "Workshop" },
+        "ziel": "/innovation/"
+      },
+      {
+        "raum": "pr",
+        "preis_namen": { "pr-kommunikation": "PR", "positionierung": "Positionierung" },
+        "ziel": "/sichtbarkeit/pr-kommunikation/",
+        "satz": "Menschen vertrauen Menschen. Wir holen dich und dein Unternehmen ins Licht."
+      },
+      {
+        "raum": "buehne",
+        "preis_namen": { "abend": "Fokus Abend", "abendpartner": "Abendpartner" },
+        "ziel": "/events/",
+        "satz": "Jeden Monat 30 bis 40 Menschen, die Neues umsetzen."
       }
     ],
     "mehr": "Mehr erfahren",
-    "pakete": {
-      "marke": "Deine Pakete",
-      "h2": "Klein anfangen, Schritt für Schritt ausbauen.",
-      "ab": "[AB-PREIS FOLGT]",
-      "empfehlung": "Unsere Empfehlung",
-      "stufen": [
-        {
-          "name": "Fundament",
-          "satz": "Du weißt, wo du stehst, und hast einen klaren Plan.",
-          "punkte": [
-            "Analysen und Checks",
-            "Workshops",
-            "KI und Innovation"
-          ],
-          "ziel": "/innovation/"
-        },
-        {
-          "name": "Wachstum",
-          "satz": "Du wirst gefunden, gewinnst Vertrauen und machst aus Interesse Kunden.",
-          "punkte": [
-            "Digitale Sichtbarkeit",
-            "Sichtbarkeit und Vertrauen",
-            "Vertrieb"
-          ],
-          "ziel": "/sichtbarkeit/",
-          "empfohlen": true
-        },
-        {
-          "name": "Skalieren",
-          "satz": "Du bekommst eine eigene Bühne und eine Community, die über dich spricht.",
-          "punkte": [
-            "Podcast und deine Bühne",
-            "Fokus Abend",
-            "Alles aus Wachstum"
-          ],
-          "ziel": "/events/"
-        }
-      ],
-      "zusagen": "Festpreis vorab, keine Stunden · Workshop-Preis wird beim Start angerechnet · Upgrade später, du zahlst nur die Differenz",
-      "unsicher": "Unsicher, welches passt? Lass uns kurz sprechen"
+    "paket_selbst": {
+      "marke": "Dein Paket",
+      "h2": "Stell dir dein Paket selbst zusammen.",
+      "text": "Im Haus wählst du in jedem Raum Leistungen an und ab und siehst sofort den Ab-Preis.",
+      "knopf": "Ins Haus",
+      "menue": "Dein Paket im Haus zusammenstellen"
     },
     "team": {
       "marke": "Wer dich begleitet",
       "h2": "Kevin und Malin leiten jedes Projekt persönlich.",
       "kevin": "Kevin kommt aus der Vertriebsführung und verantwortet bei MAKE Innovation Vertrieb und Umsetzung.",
       "malin": "Malin ist Mitgründerin und Gastgeberin unserer Events und verantwortet Bühne und Netzwerk.",
-      "foto_kevin": "[FOTO KEVIN]",
-      "foto_malin": "[FOTO MALIN]",
       "link": "Über uns"
     },
     "referenzen_platz": "Hier folgt später die Sektion Referenzen (Kundenstimmen, Logos, Fallstudien).",
@@ -1790,20 +1894,20 @@
         "text": "Erster Fokus Abend im Januar 2027 · 30 bis 40 Plätze · auf Einladung",
         "knopf": "Einladung anfragen"
       },
-      "podcast": {
-        "titel": "Podcast „Fokus Innovation“",
-        "text": "Unser Podcast über Innovation: besondere Persönlichkeiten, von Unternehmern bis Spitzensportlern, die durch neues Denken vorangekommen sind. Bald hier.",
-        "link": "Zum Podcast"
-      },
       "newsletter": {
         "titel": "Newsletter",
         "text": "Podcast, Event-Einladungen und Updates, wenn es etwas Neues gibt.",
         "knopf": "Newsletter abonnieren"
-      }
+      },
+      "podcast_zu": "Podcast Fokus Innovation: eröffnet bald"
     },
     "fragen_titel": "Bevor du fragst",
     "fragen_hinweis": "Noch etwas offen? Schreib uns, wir antworten persönlich.",
     "fragen": [
+      {"f": "Wie mache ich meine innovative Idee sichtbar?", "a": "Mit einer klaren Positionierung, einer Website, die in fünf Sekunden erklärt, was du machst, und Videos, Social Media und PR, die deine Geschichte tragen. Bei MAKE Studios gibt es dafür feste Pakete: Positionierung ab {ab:positionierung}, Websites {preis:homepage-landing}, netto. Wo du anfängst, klären wir im kostenlosen Erstgespräch."},
+      {"f": "Wie verkaufe ich planbar statt auf Zuruf?", "a": "Vertrieb wird planbar, wenn eine klare Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein trainiertes Team stehen. MAKE Revenue baut das mit dir auf, auf Wunsch als Head of Sales auf Zeit. Zum Testen gibt es den Tagesworkshop {preis:tagesworkshop} netto."},
+      {"f": "Wie führe ich KI in meinem Unternehmen ein?", "a": "Mit einem ehrlichen Blick auf den eigenen Stand, dann mit den drei Anwendungsfällen, die den größten Nutzen bringen, nacheinander. Den Einstieg macht der kostenlose Innovations-Check, er dauert rund 10 Minuten. Danach folgen Scoping-Workshop und Umsetzungsprojekt."},
+      {"f": "Wo treffe ich Menschen, die auch Neues umsetzen?", "a": "Beim Fokus Abend: jeden Monat in Berlin, 30 bis 40 Gäste, zwei Impulse, Thementische und offenes Netzwerken. Er läuft auf Einladung und ist für Gäste kostenlos."},
       {
         "f": "Wer arbeitet an meinem Projekt?",
         "a": "Du arbeitest direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Die Fachleute für Produktion, Technik und Medienarbeit sind im Team. Du sprichst immer mit uns, und wir stimmen alles Weitere im Team ab."
@@ -1819,15 +1923,16 @@
     ],
     "finale": {
       "h2": "Mach deine Innovation sichtbar."
-    }
+    },
+    "raum_ansehen": "Raum ansehen"
   },
   "ueber_uns": {
-    "hinweis": "Seite /ueber-uns/ (Umbau 19.11., Konzept Malin). Gründungsgeschichte und Fotos sind Platzhalter, bis Kevin und Malin sie liefern.",
+    "hinweis": "Seite /ueber-uns/ (Umbau 19.11., Konzept Malin). Die Gründungsgeschichte steht nur auf der Seite, wenn unter gruendung.text Absätze stehen (Du-Form, keine erfundenen Fakten); bis dahin erscheint der Abschnitt nicht. Fotos: fokus.json › fotos.",
     "gruendung": {
       "marke": "Unsere Geschichte",
       "h2": "Wie MAKE Innovation entstanden ist.",
-      "platzhalter": "[GRÜNDUNGSGESCHICHTE FOLGT]",
-      "fragen": [
+      "text": [],
+      "leitfragen_intern": [
         "Wie habt ihr euch gefunden?",
         "Welches Problem habt ihr selbst erlebt?",
         "Warum gibt es MAKE Innovation?"
@@ -1845,8 +1950,6 @@
       "Sie verantwortet Bühne und Netzwerk.",
       "Bei jeder Einladung überlegt sie, wer wen kennenlernen sollte."
     ],
-    "foto_kevin": "[FOTO KEVIN]",
-    "foto_malin": "[FOTO MALIN]",
     "team_satz": "Hinter uns steht ein festes Netzwerk aus Fachleuten für Film, Design, Technik und PR.",
     "regeln_marke": "So arbeiten wir",
     "regeln_h2": "Drei Regeln, die du prüfen kannst.",
@@ -1866,5 +1969,28 @@
     ],
     "finale": "Sprechen wir darüber."
   },
-  "pr_bereich": "Sichtbarkeit & Vertrauen"
+  "pr_bereich": "PR & Kommunikation",
+  "fotos": {
+    "_hinweis": "Echte Fotos aus assets/team (Dateien nie verändern). Maße liest der Bau aus der Datei, die Lage des Gesichts steht in css/fokus.css unter foto-<schlüssel>.",
+    "beide_quer": {
+      "datei": "assets/team/kevin-malin-quer.jpg",
+      "alt": "Kevin Dieckmann und Malin, die Gründer von MAKE Innovation, lächelnd nebeneinander am Wasser"
+    },
+    "beide": {
+      "datei": "assets/team/kevin-malin.jpg",
+      "alt": "Kevin Dieckmann und Malin, die Gründer von MAKE Innovation, lächelnd vor einer Holzwand mit Efeu"
+    },
+    "kevin": {
+      "datei": "assets/team/kevin.jpg",
+      "alt": "Kevin Dieckmann, Gründer von MAKE Innovation, im hellen Sakko"
+    },
+    "malin": {
+      "datei": "assets/team/malin.jpg",
+      "alt": "Malin, Mitgründerin von MAKE Innovation, in einer roten Bluse"
+    },
+    "malin2": {
+      "datei": "assets/team/malin-2.jpg",
+      "alt": "Malin, Gastgeberin des Fokus Abends, in einer orangefarbenen Bluse"
+    }
+  }
 }

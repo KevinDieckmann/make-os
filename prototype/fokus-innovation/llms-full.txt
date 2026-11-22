@@ -1,6 +1,6 @@
 # MAKE Innovation: alle Inhalte als Klartext
 
-Stand: 2026-11-19. Website: https://makeinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
+Stand: 2026-11-22. Website: https://makeinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
 
 ## Wer wir sind
 
@@ -9,7 +9,7 @@ MAKE Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Inno
 - Was wir sind: Eine Agentur für Sichtbarkeit, Vertrieb und Innovation, die selbst mit umsetzt.
 - Sitz: Schönefeld bei Berlin
 - Für wen: Gründer, Start-ups und Unternehmer, die wachsen möchten, und Mittelstand, der Neues einführt
-- Leistungen: Positionierung, Websites, Videos, Social Media sowie PR und Kommunikation; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, vom Scoping-Workshop bis zum Umsetzungsprojekt; der monatliche Fokus Abend, weitere Events und der Podcast Fokus Innovation
+- Leistungen: Positionierung, Websites, Videos, Social Media sowie PR und Kommunikation; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, vom Scoping-Workshop bis zum Umsetzungsprojekt; der monatliche Fokus Abend in Berlin; der Podcast Fokus Innovation eröffnet bald
 - Einstieg: Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose Erstgespräch
 - Gründer: Kevin Dieckmann (Vertrieb und Umsetzung) und Malin (Bühne und Netzwerk)
 - Fachleute: Film, Design, Entwicklung, PR, Daten und Leadgenerierung im Team
@@ -26,14 +26,13 @@ Was wir nicht sind: Keine reine Werbe- oder PR-Agentur (Keine Kampagne und keine
 
 ## Leistungen und Preise
 
-### Sichtbarkeit: Gesehen werden.
+### MAKE Studios: Sichtbar auf allen Ebenen: Website, Video, Social Media
 
-Dieses Thema liefert die Marke [MAKE Studios](https://makestudios.de/). Hier stehen Preise und Umfang.
+Dieses Thema liefert die Marke [MAKE Studios](https://makestudios.de/).
 
-Wir machen dein Angebot verständlich und bekannt: Positionierung ab 1.990 €, Websites ab 2.990 € mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab 1.490 €, Social Media ab 990 € im Monat sowie PR und Kommunikation ab 2.990 € im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.
+Sichtbar werden als Unternehmen heißt: klar sagen, was du machst, und dort auftauchen, wo Kunden suchen. Dafür bekommst du bei MAKE Innovation Positionierung, Website, Erklärvideo, Social Media sowie PR und Kommunikation, Website, Video und Social Media setzt unsere Marke MAKE Studios um. Das Angebot richtet sich an Gründer, Start-ups und Unternehmer mit fertigem Produkt. Alle Preise sind netto: Positionierung ab 1.990 €, Website ab 2.990 € (fertig in 10 bis 25 Werktagen), Erklärvideo ab 1.490 €, Social Media ab 990 € im Monat, PR und Kommunikation ab 2.990 € im Monat. Jedes Angebot hat einen festen Ablauf, die Texte schreiben wir.
 
 - [Positionierung S, M, L](https://makeinnovation.de/sichtbarkeit/positionierung/): ab 1.990 € netto (einmalig, KI-gestützt vorbereitet, Workshop mit Kevin). In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.
-- [PR und Kommunikation](https://makeinnovation.de/sichtbarkeit/pr-kommunikation/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation.
 - [Homepage Landing](https://makeinnovation.de/sichtbarkeit/homepage-landing/): ab 2.990 € netto (einmalig, fertig in 10 Werktagen). Ein One-Pager in deiner CI, der Besucher zur Anfrage führt. Fertig in 10 Werktagen.
 - [Homepage Story](https://makeinnovation.de/sichtbarkeit/homepage-story/): ab 4.990 € netto (einmalig, fertig in 15 Werktagen). Deine Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.
 - [Homepage Cinematic](https://makeinnovation.de/sichtbarkeit/homepage-cinematic/): ab 9.990 € netto (einmalig, fertig in 25 Werktagen). Wir entwickeln deine Geschichte im Story-Workshop und bauen daraus eine Website mit 3D-Szenen und Erklärvideo. Fertig in 25 Werktagen.
@@ -42,23 +41,37 @@ Wir machen dein Angebot verständlich und bekannt: Positionierung ab 1.990 €, 
 - [Video Serie](https://makeinnovation.de/sichtbarkeit/video-serie/): ab 1.990 € netto (pro Monat, mindestens 3 Monate). Jeden Monat 2 neue Videos, ohne dass du planen oder schneiden musst.
 - [Social Media S, M, L](https://makeinnovation.de/sichtbarkeit/social-media/): ab 990 € netto (pro Monat, mindestens 3 Monate). Wir betreuen deine sozialen Medien in drei Paketen: vom Redaktionsplan mit Texten und Reels bis zum monatlichen Dreh. Pakete: S ab 990 € im Monat (Redaktionsplan, Texte für deine Beiträge, 2 Reels im Monat, Bilder lieferst du); M ab 1.490 € im Monat (Alles aus S, 2 Reels je Woche aus deinem Material); L ab 2.490 € im Monat (Alles aus M, 3 Storys je Woche, 1 Dreh im Monat, Kommentare und Nachrichten beantworten).
 
-### Vertrieb: Planbar verkaufen.
+### MAKE Revenue: Planbar verkaufen
 
-Dieses Thema liefert die Marke [MAKE Revenue](https://makerevenue.de/). Hier stehen Preise und Umfang.
+Dieses Thema liefert die Marke [MAKE Revenue](https://makerevenue.de/).
 
-Wir bauen deinen Vertrieb auf, bis dein Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop ab 1.900 € netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.
+Hier siehst du, welche Vertriebsunterstützung du bei MAKE Innovation bekommst und was sie kostet. Sie ist gedacht für Unternehmer mit fertigem Produkt, deren Vertrieb heute am Gründer hängt. Willst du erst testen, startest du mit dem Tagesworkshop ab 1.900 € netto, der beim Mandat voll angerechnet wird. Dauerhaft begleiten wir dich als Head of Sales (ab 2.990 € im Monat) oder als Chief Sales Officer (ab 4.990 € im Monat), jeweils für 6 oder 12 Monate. Wie wir den Vertrieb aufbauen, steht ausführlich bei unserer Marke MAKE Revenue.
 
 - [Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit](https://makeinnovation.de/vertrieb/tagesworkshop/): ab 1.900 € netto (einmalig, wird beim Mandatsstart voll angerechnet). Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
-- [Head of Sales](https://makeinnovation.de/vertrieb/head-of-sales/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Wir bauen dir einen Vertrieb mit System, den dein Team ohne dich bedienen kann.
+- [Head of Sales](https://makeinnovation.de/vertrieb/head-of-sales/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Head of Sales buchen: Wir bauen dir einen Vertrieb mit System, den dein Team ohne dich bedienen kann, für 6 oder 12 Monate.
 - [Chief Sales Officer (CSO)](https://makeinnovation.de/vertrieb/cso/): ab 4.990 € netto (pro Monat, 6 oder 12 Monate). Wir führen deinen Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis deine eigene Vertriebsleitung übernimmt.
 
-### Innovation: Im Alltag ankommen.
+### MAKE Innovation: Analyse, KI und Umsetzung
 
-Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Der Weg hat drei Schritte: der kostenlose Innovations-Check, der Scoping-Workshop ab 1.900 €, der auf das Projekt angerechnet wird, und das Umsetzungsprojekt ab 9.990 €, alles netto.
+Willst du KI im Unternehmen einführen, ordnen wir bei MAKE Innovation zuerst deine Abläufe und Daten. Danach führen wir KI, Automatisierung und neue Software ein, bis dein Team damit arbeitet. Das Angebot richtet sich an Unternehmer und Mittelständler, die Neues einführen wollen. Der Weg hat drei Schritte: der kostenlose Innovations-Check, der Scoping-Workshop ab 1.900 € (wird auf das Projekt angerechnet) und das Umsetzungsprojekt ab 9.990 €. Alle Preise sind netto.
 
 - [Innovations-Check](https://makeinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt, wo dein Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit deiner Branche und mit zwei nächsten Schritten. Die kurze Fassung dauert rund 10 Minuten und zeigt das Ergebnis sofort, die ausführliche rund 25 Minuten, danach kommt der vollständige Bericht per E-Mail.
 - [Scoping-Workshop](https://makeinnovation.de/innovation/#scoping-workshop): ab 1.900 € netto (einmalig, wird auf das Projekt angerechnet). Umfang, Abläufe und Daten klären, bevor gebaut wird.
 - [Umsetzungsprojekte: KI und Software einführen](https://makeinnovation.de/innovation/umsetzungsprojekte/): ab 9.990 € netto (Projekt-Festpreis mit klarem Umfang vorab). Wir ordnen zuerst Abläufe und Daten und führen dann KI und Software ein, bis sie im Alltag genutzt werden. Mit klarem Umfang, vorab vereinbart.
+
+### PR & Kommunikation: Sichtbarkeit & Vertrauen
+
+PR und Kommunikation von MAKE Innovation bringt Unternehmen mit Neuem in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation. Das Angebot richtet sich an Unternehmer und Mittelstand mit 10 bis 50 Mitarbeitenden. Das Mandat läuft 6 oder 12 Monate und kostet ab 2.990 € netto im Monat. Veröffentlichungen garantieren wir nicht, denn die Redaktionen entscheiden.
+
+- [PR und Kommunikation](https://makeinnovation.de/sichtbarkeit/pr-kommunikation/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation.
+
+### Die Bühne: Fokus Abend
+
+Zum Fokus Abend laden wir jeden Monat in Berlin ein: 30 bis 40 Gäste, die Neues umsetzen, dazu zwei Impulse, Thementische und Zeit zum Austausch. Du trägst dich auf die Gästeliste ein und bekommst die nächste Einladung; gedacht ist der Abend für Gründer, Unternehmer und Mittelständler. Für Gäste und Kunden ist er kostenlos. Unternehmen können als Abendpartner einen Abend begleiten, ab 1.990 € je Abend netto.
+
+- [Fokus Abend und Events](https://makeinnovation.de/events/): Netzwerkabend, jeden Monat in Berlin, für Gäste kostenlos.
+- [Abendpartner](https://makeinnovation.de/events/abendpartner/): ab 1.990 € netto je Abend.
+- Podcast „Fokus Innovation“: eröffnet bald.
 
 Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sales, CSO sowie PR und Kommunikation: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn du die volle Laufzeit vorab zahlst; Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, zahlbar in 14 Tagen; wir starten nach Zahlungseingang; Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung.
 
@@ -66,7 +79,7 @@ Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sale
 
 Quelle: https://makeinnovation.de/events/
 
-Fokus Abend: Jeden Monat in Berlin. 30 bis 40 Gäste, die Neues umsetzen: zwei Impulse à 15 Minuten, Thementische in 2 Runden, offenes Netzwerken und gezielte Vorstellungen. Die Kamera läuft mit. Kein Verkaufsvortrag. Keine Teilnehmerlisten. Fotos nur mit Einwilligung.
+Fokus Abend: Jeden Monat in Berlin. Unsere monatliche Einladung an Unternehmer in Berlin: 30 bis 40 Gäste, die Neues umsetzen, zwei Impulse à 15 Minuten, Thementische in 2 Runden, offenes Netzwerken und gezielte Vorstellungen. Die Kamera läuft mit. Kein Verkaufsvortrag. Keine Teilnehmerlisten. Fotos nur mit Einwilligung.
 
 Ablauf: 18:30 Ankommen · 19:00 Begrüßung · 19:10 Impuls von einem Unternehmer, der umgesetzt hat · 19:30 Impuls von einem Experten · 19:50 Thementische in 2 Runden · 20:40 Offenes Netzwerken · 22:00 Ende.
 
@@ -75,6 +88,18 @@ Rollen:
 - Abendpartner: Preis: ab 1.990 € je Abend; Sichtbarkeit: Logo und Nennung auf Einladung und Anmeldeseite, Begrüßung 3 Minuten, Beitrag im Nachbericht; Vorstellungen: Thementische und offenes Netzwerken; Bericht: Partnerbericht in 3 Werktagen, dazu 15 Minuten Feedback-Gespräch; Verkauf am Abend: nein
 
 Alle Preise netto. Kein Verkaufsvortrag. Keine Teilnehmerlisten. Fotos nur mit Einwilligung.
+
+Frage: Wie komme ich auf die Gästeliste des Fokus Abends in Berlin?
+Antwort: Ja: den Fokus Abend, jeden Monat in Berlin. 30 bis 40 Gäste, die Neues umsetzen, treffen sich zu zwei Impulsen, Thementischen und offenem Netzwerken. Der Abend läuft auf Einladung und ist für Gäste kostenlos.
+
+Frage: Für wen ist der Fokus Abend gedacht?
+Antwort: Für Menschen, die Neues umsetzen. Wir laden selbst ein und mischen bewusst, zum Beispiel Start-ups mit Mittelständlern oder Leute aus der Technik mit Leuten aus dem Vertrieb. Ein Verkaufsvortrag ist es nicht.
+
+Frage: Wie läuft ein Abend ab?
+Antwort: Von 18:30 bis 22:00 Uhr: Ankommen, Begrüßung, zwei Impulse à 15 Minuten, dann Thementische in 2 Runden und offenes Netzwerken. Dazu gibt es gezielte Vorstellungen.
+
+Frage: Wie melde ich mich an?
+Antwort: Der Abend läuft auf Einladung. Trag dich auf die Gästeliste ein, dann bekommst du die nächste Einladung. Orte, Termine und Themen stehen in jeder Einladung.
 
 Frage: Was kostet der Abend für Gäste?
 Antwort: Nichts. Für Gäste und Kunden ist der Abend immer kostenlos.
@@ -107,11 +132,95 @@ Antwort: Ab 1.990 € je Abend, netto zuzüglich Umsatzsteuer.
 Frage: Werden Fotos gemacht?
 Antwort: Nur mit Einwilligung. Darauf weisen wir bei der Anmeldung und am Eingang hin.
 
-## Podcast: Fokus Innovation
+## Fragen und Antworten zu den Bereichen
 
-Quelle: https://makeinnovation.de/podcast/
+### Allgemein
 
-Fokus Innovation ist unser Podcast. Hier stellen wir Innovationen aus Deutschland vor: Menschen, die etwas Neues gebaut haben, erzählen, was es kann und wie es dazu kam. Du hast etwas Neues gebaut? Schlag dich oder jemanden vor, der hier sitzen sollte.
+Frage: Wie mache ich meine innovative Idee sichtbar?
+Antwort: Mit einer klaren Positionierung, einer Website, die in fünf Sekunden erklärt, was du machst, und Videos, Social Media und PR, die deine Geschichte tragen. Bei MAKE Studios gibt es dafür feste Pakete: Positionierung ab 1.990 €, Websites ab 2.990 €, netto. Wo du anfängst, klären wir im kostenlosen Erstgespräch.
+
+Frage: Wie verkaufe ich planbar statt auf Zuruf?
+Antwort: Vertrieb wird planbar, wenn eine klare Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein trainiertes Team stehen. MAKE Revenue baut das mit dir auf, auf Wunsch als Head of Sales auf Zeit. Zum Testen gibt es den Tagesworkshop ab 1.900 € netto.
+
+Frage: Wie führe ich KI in meinem Unternehmen ein?
+Antwort: Mit einem ehrlichen Blick auf den eigenen Stand, dann mit den drei Anwendungsfällen, die den größten Nutzen bringen, nacheinander. Den Einstieg macht der kostenlose Innovations-Check, er dauert rund 10 Minuten. Danach folgen Scoping-Workshop und Umsetzungsprojekt.
+
+Frage: Wo treffe ich Menschen, die auch Neues umsetzen?
+Antwort: Beim Fokus Abend: jeden Monat in Berlin, 30 bis 40 Gäste, zwei Impulse, Thementische und offenes Netzwerken. Er läuft auf Einladung und ist für Gäste kostenlos.
+
+Frage: Wer arbeitet an meinem Projekt?
+Antwort: Du arbeitest direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Die Fachleute für Produktion, Technik und Medienarbeit sind im Team. Du sprichst immer mit uns, und wir stimmen alles Weitere im Team ab.
+
+Frage: Was kostet das?
+Antwort: Jedes Angebot steht mit Startpreis, festem Ablauf und klaren Konditionen auf seiner Seite; den genauen Festpreis bekommst du vor dem Start. Homepages und Videos haben eine feste Lieferzeit in Werktagen, Mandate einen festen Monatspreis und eine klare Laufzeit. Im Mandat siehst du den Fortschritt schwarz auf weiß: Zwischenbilanz in Woche 8, im Vertrieb ab Monat 3 jeden Freitag der Wochenreport.
+
+Frage: Ist das Erstgespräch ein Verkaufsgespräch?
+Antwort: Nein, es ist ein Gespräch über deine Lage, kostenlos und per Video. Am Ende sagen wir dir klar, ob wir helfen können und womit. Und wenn nicht, sagen wir auch das.
+
+### MAKE Studios
+
+Frage: Was kostet eine Website, und wie lange dauert sie?
+Antwort: Websites gibt es in drei Paketen mit festem Preis: Landing ab 2.990 € in 10 Werktagen, Story ab 4.990 € in 15 und Cinematic ab 9.990 € in 25 Werktagen, jeweils netto und einmalig. Hosting und Domain laufen über dich. Mit Express halbiert sich die Lieferzeit.
+
+Frage: Was muss auf die Startseite einer Unternehmenswebsite?
+Antwort: Die Startseite muss in fünf Sekunden drei Fragen beantworten: Was machst du? Für wen? Was soll ich als Nächstes tun? Danach zählen Belege, die man prüfen kann, eine ruhige Gestaltung, die auch auf dem Handy funktioniert, und eine kurze Ladezeit.
+
+Frage: Warum bringt meine Website keine Anfragen?
+Antwort: Meist verstehen Besucher nicht schnell genug, was du machst, und wissen nicht, was sie als Nächstes tun sollen. Hilfreich sind ein Kernsatz ganz oben, ein klarer nächster Schritt, Belege statt Behauptungen, ein kurzes Video und eine eigene Seite je Angebot. Neu bauen musst du die Seite dafür meist nicht.
+
+Frage: Brauche ich eine Positionierung, bevor ich eine Website bauen lasse?
+Antwort: Ja, zumindest die fünf Sätze: für wen du da bist, welches Problem du löst, wie du es löst, was dich unterscheidet und woran man sieht, dass es stimmt. Sonst schreibst du die Texte der Website ohne Richtung und musst sie später neu schreiben. Die Positionierung gibt es in drei Tiefen ab 1.990 €.
+
+Frage: Was kostet ein Erklärvideo, und muss ich vor die Kamera?
+Antwort: Ein Erklärvideo kostet ab 1.490 € netto, einmalig. Vor die Kamera musst du nicht: Es entsteht ohne Dreh vor Ort aus KI-Szenen, deinem Material und einer KI-Stimme oder Untertiteln, in 10 Werktagen ab vollständigem Formular und Zahlungseingang.
+
+### MAKE Revenue
+
+Frage: Wie baue ich einen Vertrieb von null auf?
+Antwort: Vertrieb wird planbar, wenn fünf Dinge stehen: eine klare Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein Team, das trainiert ist. Halte diese Reihenfolge ein, sonst hat ein neues Werkzeug oder der erste Vertriebler nichts, worauf er aufsetzen kann.
+
+Frage: Brauche ich einen Vertriebsleiter, oder reicht ein Head of Sales auf Zeit?
+Antwort: Ein Head of Sales auf Zeit lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Er baut das System, setzt es mit deinem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das Mandat kostet ab 2.990 € netto im Monat und läuft 6 oder 12 Monate.
+
+Frage: Welches CRM passt für ein kleines Team?
+Antwort: Eines, das dein Team jeden Tag nutzt. Wichtiger als das Werkzeug sind klare Stufen, Pflichtfelder und Wiedervorlagen. Am Start reicht eine Tabelle, solange sie gepflegt wird; ein CRM lohnt sich, sobald mehrere Personen verkaufen.
+
+Frage: Wie lange dauert es, bis ein Vertrieb planbar läuft?
+Antwort: Das hängt vom Ausgangspunkt ab. In unserem Mandat als Head of Sales läuft ab Monat 3 jedes Gespräch nach Prozess im CRM, und jeden Freitag kommt der Wochenreport. Ziel bis Monat 6 ist, dass dein Team ohne den Gründer abschließt. Wir schulden die Leistung, nicht den Umsatz.
+
+Frage: Wie erkenne ich, ob mein Vertrieb funktioniert?
+Antwort: Fünf Zahlen reichen für einen kleinen Vertrieb: wie viele Angebote im Monat rausgehen, wie viele davon zum Auftrag werden, wie lange es vom ersten Gespräch bis zum Abschluss dauert, welche Chancen offen sind und mit welchem Wert, und ob jedes offene Angebot ein Datum zum Nachfassen hat.
+
+### MAKE Innovation
+
+Frage: Wie führe ich KI in meinem Unternehmen ein, und wo fange ich an?
+Antwort: Mit einem ehrlichen Blick auf den eigenen Stand. Danach wählst du die drei Anwendungsfälle mit dem größten Nutzen und führst sie nacheinander ein: Erst wenn der erste im Alltag läuft, kommt der nächste. Den Einstieg macht der kostenlose Innovations-Check, er dauert rund 10 Minuten.
+
+Frage: Wie finde ich die KI-Anwendungsfälle mit dem größten Nutzen?
+Antwort: Sammle Ideen, beschreibe jeden Kandidaten in einem kurzen Steckbrief und bewerte ihn nach sechs Kriterien: Zeit heute, weiterer Nutzen, gleiche Form, Datenlage, Fehlerfolgen und Aufwand. Kein Ablauf mit hohen Fehlerfolgen kommt zuerst, keiner ohne greifbare Daten. Dann wählst du einen einzigen Ablauf für 30 Tage.
+
+Frage: Was kostet es, KI einzuführen?
+Antwort: Der Innovations-Check und das Erstgespräch sind kostenlos. Der Scoping-Workshop kostet ab 1.900 € netto und wird auf das Projekt angerechnet. Umsetzungsprojekte beginnen ab 9.990 € netto, mit klarem Umfang, vorab vereinbart.
+
+Frage: Wie nehme ich mein Team bei KI mit?
+Antwort: Fang in den ersten 30 Tagen klein an: mit einem einzigen Ablauf, einer Firmenlizenz, die das Unternehmen verwaltet, wenigen schriftlichen Regeln und einer Messung vorher und nachher. Wir schulen dein Team, bis es damit arbeitet.
+
+Frage: Dürfen Kundendaten in ein KI-Werkzeug?
+Antwort: Das hängt vom Werkzeug, vom Vertrag und von den Daten ab. Kläre das vor dem Start mit der Person, die bei dir für Datenschutz zuständig ist, und schreib die Antwort in deine Regeln. Bis dahin gilt: keine vertraulichen Kundendaten. Das ist ein Hinweis, keine Rechtsberatung.
+
+Frage: Reicht ein Pilotprojekt, oder brauche ich zuerst eine KI-Strategie?
+Antwort: Für den Anfang reicht ein kleiner Pilot: ein einziger Ablauf, 30 Tage, mit Messung vorher und nachher. Am Tag 30 entscheidest du anhand der Zahlen, ob du ausweitest, anpasst oder aufhörst.
+
+### PR & Kommunikation
+
+Frage: Brauche ich als Start-up oder Mittelständler PR?
+Antwort: PR hilft, wenn dein Produkt gut ist, aber außerhalb deines Kundenkreises kaum jemand es kennt. Sie macht dich in Medien, Podcasts und auf Bühnen sichtbar, vom Markteintritt bis zur Krisenkommunikation. Besonders sinnvoll ist sie vor Markteintritt, Produktstart, Finanzierungsrunde oder Expansion.
+
+Frage: Wie komme ich an Journalisten und Redaktionen?
+Antwort: Wir sprechen Redaktionen in vier Stufen an: überregionale Leitmedien, Fach- und Branchenmedien, regionale Medien und Podcasts, mit Themen, die Redaktionen interessieren. Was erscheint, entscheiden die Redaktionen, Veröffentlichungen garantieren wir nicht.
+
+Frage: Wie messe ich, ob PR wirkt?
+Antwort: Ab Monat 3 kommt jeden Monat ein Bericht mit Ansprachen, Gesprächen mit Redaktionen, Veröffentlichungen, Auftritten und den Anfragen, die daraus im Vertrieb ankommen.
 
 ## Häufige Fragen
 
@@ -163,7 +272,6 @@ Antwort: Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich a
 - Go-to-Market: Der Weg eines Produkts in den Markt: Zielgruppe, Botschaft, Kanäle, Vertrieb und Preise. Im Deutschen oft Markteintritt.
 - Head of Sales auf Zeit: Eine Vertriebsleitung für einige Monate, die das System aufbaut, mit deinem Team umsetzt und so übergibt, dass der Vertrieb ohne sie läuft. Auch Interim Head of Sales genannt.
 - Innovations-Check: Unser kostenloser Check, kurz in rund 10 oder ausführlich in rund 25 Minuten. Er zeigt, wo dein Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, und nennt die nächsten Schritte.
-- KI-Brain: Wissen, Abläufe und Daten eines Unternehmens sauber an einem Ort, damit KI im Alltag darauf zugreifen kann. Bei uns in Vorbereitung.
 - Landingpage: Eine einzelne Seite, die ein Angebot und einen nächsten Schritt in den Mittelpunkt stellt, oft als Ziel einer Anzeige. Eine ganze Website auf einer Seite heißt One-Pager; unser Paket Homepage Landing ist so eine.
 - Lead: Ein Kontakt, der Interesse an deinem Angebot gezeigt hat oder gut zu deiner Zielgruppe passt.
 - Lead-Scoring: Eine Einteilung der Kontakte danach, wie gut sie passen, zum Beispiel in A, B und C. A-Kontakte bekommen zuerst Zeit.
@@ -177,11 +285,12 @@ Antwort: Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich a
 - Tagesworkshop: Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
 - Videostory: Ein Video, das die Geschichte deiner Firma in 90 Sekunden erzählt: warum es dich gibt und wofür du stehst.
 - Wiedervorlage: Ein fester Termin im CRM, an dem eine offene Anfrage wieder bearbeitet wird. So bleibt keine Anfrage liegen.
+- Wissensbasis mit KI: Wissen, Abläufe und Daten eines Unternehmens sauber an einem Ort, damit KI im Alltag darauf zugreifen kann. Bei uns in Vorbereitung.
 - Wochenreport: Ein kurzer Bericht jeden Freitag: die Zahlen des Vertriebs und ein Satz dazu, was nächste Woche anders läuft.
 
 # Ratgeber
 
-## Vertrieb aufbauen: vom Gründer zum System
+## Erste Kunden systematisch gewinnen: vom Gründer zum System
 
 Quelle: https://makeinnovation.de/wissen/vertrieb-aufbauen/ · Kevin Dieckmann · 2026-10-27
 
@@ -262,7 +371,7 @@ Antwort: Wenige: Erstkontakte, Termine, Angebote und Abschlüsse je Woche, dazu 
 Frage: Wie lange dauert es, bis Vertrieb planbar läuft?
 Antwort: Das hängt vom Ausgangspunkt ab. In unserem Mandat als Head of Sales läuft ab Monat 3 jedes Gespräch nach Prozess im CRM, und jeden Freitag kommt der Wochenreport. Ziel bis Monat 6 ist, dass dein Team ohne den Gründer abschließt. Wir schulden die Leistung, nicht den Umsatz.
 
-## Head of Sales auf Zeit: was er macht und wann er sich lohnt
+## Head of Sales: was er macht und wann er sich lohnt
 
 Quelle: https://makeinnovation.de/wissen/head-of-sales-auf-zeit/ · Kevin Dieckmann · 2026-10-27
 

@@ -1,0 +1,842 @@
+[
+ {
+  "name": "studios",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   900,
+   "stand:Raum"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-karte",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   1400,
+   "stand:Karte"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-variante",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   900,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-wahl button[data-v=\"2\"]",
+   1200,
+   "stand:Variante"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-website-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-an",
+   5200,
+   "'website heraus: u = '+__haus.raeume().studios.nach.website.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-video-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   5200,
+   "'video heraus: u = '+__haus.raeume().studios.nach.video.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-social-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"social\"] .rl-an",
+   5200,
+   "'social heraus: u = '+__haus.raeume().studios.nach.social.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-alle-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   200,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-an",
+   200,
+   "klicksel:#szene-e1 .rl-z[data-l=\"social\"] .rl-an",
+   5600,
+   "'alle heraus · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-finale",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   300,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   700,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-wahl button[data-v=\"1\"]",
+   500,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-zurueck",
+   500,
+   "ort:10",
+   1500,
+   "stand:Raum"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-1280",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1280,
+  "h": 720,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   900,
+   "stand:Raum"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-1280-karte",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1280,
+  "h": 720,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   1400,
+   "stand:Karte"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-1280-variante",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1280,
+  "h": 720,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   900,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-wahl button[data-v=\"2\"]",
+   1200,
+   "stand:Variante"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-1280-website-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1280,
+  "h": 720,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-an",
+   5200,
+   "'website heraus: u = '+__haus.raeume().studios.nach.website.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-1280-video-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1280,
+  "h": 720,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   5200,
+   "'video heraus: u = '+__haus.raeume().studios.nach.video.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-1280-social-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1280,
+  "h": 720,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"social\"] .rl-an",
+   5200,
+   "'social heraus: u = '+__haus.raeume().studios.nach.social.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-1280-alle-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1280,
+  "h": 720,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   200,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-an",
+   200,
+   "klicksel:#szene-e1 .rl-z[data-l=\"social\"] .rl-an",
+   5600,
+   "'alle heraus · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-1280-finale",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1280,
+  "h": 720,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   300,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   700,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-wahl button[data-v=\"1\"]",
+   500,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-zurueck",
+   500,
+   "ort:10",
+   1500,
+   "stand:Raum"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-390",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 390,
+  "h": 844,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   900,
+   "stand:Raum"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-390-karte",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 390,
+  "h": 844,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   1400,
+   "stand:Karte"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-390-variante",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 390,
+  "h": 844,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   900,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-wahl button[data-v=\"2\"]",
+   1200,
+   "stand:Variante"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-390-website-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 390,
+  "h": 844,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-an",
+   5200,
+   "'website heraus: u = '+__haus.raeume().studios.nach.website.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-390-video-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 390,
+  "h": 844,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   5200,
+   "'video heraus: u = '+__haus.raeume().studios.nach.video.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-390-social-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 390,
+  "h": 844,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"social\"] .rl-an",
+   5200,
+   "'social heraus: u = '+__haus.raeume().studios.nach.social.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-390-alle-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 390,
+  "h": 844,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   200,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-an",
+   200,
+   "klicksel:#szene-e1 .rl-z[data-l=\"social\"] .rl-an",
+   5600,
+   "'alle heraus · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-390-finale",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 390,
+  "h": 844,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   300,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   700,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-wahl button[data-v=\"1\"]",
+   500,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-zurueck",
+   500,
+   "ort:10",
+   1500,
+   "stand:Raum"
+  ],
+  "touch": true,
+  "zeig": true
+ },
+ {
+  "name": "studios-375",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 375,
+  "h": 667,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   900,
+   "stand:Raum"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-375-karte",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 375,
+  "h": 667,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   1400,
+   "stand:Karte"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-375-variante",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 375,
+  "h": 667,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   900,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-wahl button[data-v=\"2\"]",
+   1200,
+   "stand:Variante"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-375-website-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 375,
+  "h": 667,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-an",
+   5200,
+   "'website heraus: u = '+__haus.raeume().studios.nach.website.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-375-video-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 375,
+  "h": 667,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   5200,
+   "'video heraus: u = '+__haus.raeume().studios.nach.video.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-375-social-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 375,
+  "h": 667,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"social\"] .rl-an",
+   5200,
+   "'social heraus: u = '+__haus.raeume().studios.nach.social.u+' · Paket: '+document.querySelector('#szene-e1 [data-summe]').textContent+' · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-375-alle-raus",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 375,
+  "h": 667,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   200,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-an",
+   200,
+   "klicksel:#szene-e1 .rl-z[data-l=\"social\"] .rl-an",
+   5600,
+   "'alle heraus · Höhe der Paket-Leiste: '+Math.round(document.querySelector('#szene-e1 .rp').getBoundingClientRect().height)"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-375-finale",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 375,
+  "h": 667,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   300,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   700,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-wahl button[data-v=\"1\"]",
+   500,
+   "klicksel:#szene-e1 .rk[data-l=\"website\"] .rk-zurueck",
+   500,
+   "ort:10",
+   1500,
+   "stand:Raum"
+  ],
+  "touch": true,
+  "zeig": true
+ },
+ {
+  "name": "studios-schwelle",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   300,
+   "ort:4,0.02",
+   900,
+   "stand:Raum"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-aufstehen",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "(()=>{const r=__haus.raeume().studios.nach;r.website.drin=false;r.website.fest=0.12;r.video.drin=false;r.video.fest=0.06;r.social.drin=false;r.social.fest=0.07;__haus.neu();return 'festgehalten'})()",
+   900
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-weg-mitte",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "(()=>{const r=__haus.raeume().studios.nach;r.website.drin=false;r.website.fest=0.5;r.video.drin=false;r.video.fest=0.42;r.social.drin=false;r.social.fest=0.5;__haus.neu();return 'festgehalten'})()",
+   900
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-tuer",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "(()=>{const r=__haus.raeume().studios.nach;r.website.drin=false;r.website.fest=0.88;r.video.drin=false;r.video.fest=0.8;r.social.drin=false;r.social.fest=0.84;__haus.neu();return 'festgehalten'})()",
+   900
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-kommt",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "(()=>{const r=__haus.raeume().studios.nach;r.website.drin=true;r.website.fest=0.6;r.video.drin=true;r.video.fest=0.55;r.social.drin=true;r.social.fest=0.5;__haus.neu();return 'festgehalten'})()",
+   900
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-umkehr",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   1500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   450,
+   "'mitten im Gehen zurückgeholt: u = '+__haus.raeume().studios.nach.video.u.toFixed(2)"
+  ],
+  "zeig": true,
+  "ms": 0
+ },
+ {
+  "name": "studios-umkehr-danach",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   1500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   4200,
+   "'wieder am Platz: u = '+__haus.raeume().studios.nach.video.u+' · drin = '+__haus.raeume().studios.nach.video.drin"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-tastatur",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "document.querySelector('#szene-e1 .rl-z[data-l=\"video\"] .rl-an').focus({focusVisible:true});'Fokus auf der Zeile Video'",
+   700
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-zeigen-klick",
+  "zeig": true,
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   600,
+   "(()=>{const r=document.querySelector('#szene-e1 .schild[data-l=\"video\"]').getBoundingClientRect(),x=r.left+r.width/2,y=r.bottom+80,b=document.getElementById('seqLayer');b.dispatchEvent(new PointerEvent('pointermove',{pointerType:'mouse',clientX:x,clientY:y,bubbles:true}));return 'Zeiger auf der Figur Video'})()",
+   500,
+   "JSON.stringify({zeileHebt:document.querySelector('#szene-e1 .rl-z[data-l=\"video\"]').classList.contains('hebt'),schildHebt:document.querySelector('#szene-e1 .schild[data-l=\"video\"]').classList.contains('hebt'),zeiger:document.getElementById('seq').style.cursor,karteVideo:!document.querySelector('#szene-e1 .rk[data-l=\"video\"]').hidden,fokus:(document.activeElement.className||document.activeElement.tagName)})",
+   "(()=>{const r=document.querySelector('#szene-e1 .schild[data-l=\"video\"]').getBoundingClientRect(),x=r.left+r.width/2,y=r.bottom+80,b=document.getElementById('seqLayer');b.dispatchEvent(new MouseEvent('click',{clientX:x,clientY:y,bubbles:true}));return 'Klick auf die Figur'})()",
+   1100,
+   "JSON.stringify({zeileHebt:document.querySelector('#szene-e1 .rl-z[data-l=\"video\"]').classList.contains('hebt'),schildHebt:document.querySelector('#szene-e1 .schild[data-l=\"video\"]').classList.contains('hebt'),zeiger:document.getElementById('seq').style.cursor,karteVideo:!document.querySelector('#szene-e1 .rk[data-l=\"video\"]').hidden,fokus:(document.activeElement.className||document.activeElement.tagName)})",
+   "(()=>{const b=document.getElementById('seqLayer');b.dispatchEvent(new MouseEvent('click',{clientX:1000,clientY:150,bubbles:true}));return 'Klick daneben'})()",
+   900,
+   "JSON.stringify({zeileHebt:document.querySelector('#szene-e1 .rl-z[data-l=\"video\"]').classList.contains('hebt'),schildHebt:document.querySelector('#szene-e1 .schild[data-l=\"video\"]').classList.contains('hebt'),zeiger:document.getElementById('seq').style.cursor,karteVideo:!document.querySelector('#szene-e1 .rk[data-l=\"video\"]').hidden,fokus:(document.activeElement.className||document.activeElement.tagName)})"
+  ]
+ },
+ {
+  "name": "studios-figur-klick",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   600,
+   "klicksel:#szene-e1 .schild[data-l=\"social\"]",
+   1300,
+   "taste:Escape",
+   1100,
+   "JSON.stringify({karteOffen: !!document.querySelector('.rk:not([hidden])'), aufBuehne: scrollY > 100})",
+   "stand:Raum"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-umsehen",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   500,
+   "dispatchEvent(new PointerEvent('pointermove',{pointerType:'mouse',clientX:1400,clientY:300,bubbles:true}));'Zeiger rechts oben'",
+   1500,
+   "stand:Umsehen"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "studios-weniger-bewegung",
+  "url": "http://localhost:3391/?fahrt=1",
+  "w": 1440,
+  "h": 900,
+  "reduziert": true,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   "document.querySelector('#szene-e1').scrollIntoView();'zum Raum'",
+   1500,
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   300,
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-mehr",
+   1200,
+   "JSON.stringify({statisch:document.documentElement.classList.contains('statisch'),karte:!document.querySelector('#szene-e1 .rk[data-l=\"website\"]').hidden,video:document.querySelector('#szene-e1 .rl-z[data-l=\"video\"] .rl-an').getAttribute('aria-pressed'),summe:document.querySelector('#szene-e1 [data-summe]').textContent,fehler:document.documentElement.dataset.fehler})"
+  ],
+  "zeig": true
+ },
+ {
+  "name": "",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 900,
+  "js": [
+   "try{localStorage.removeItem('make-auswahl')}catch(e){};location.reload();1",
+   1800,
+   900,
+   "__haus.zeiten();1",
+   3000,
+   "'in Ruhe (3 s): '+JSON.stringify(__haus.zeiten())",
+   "new Promise((ok)=>{let n=0;const t=setInterval(()=>{dispatchEvent(new PointerEvent('pointermove',{pointerType:'mouse',clientX:900+400*Math.sin(n/9),clientY:400+200*Math.cos(n/7),bubbles:true}));if(++n>180){clearInterval(t);ok('beim Umsehen (3 s): '+JSON.stringify(__haus.zeiten()))}},16)})",
+   "klicksel:#szene-e1 .rl-z[data-l=\"video\"] .rl-an",
+   "__haus.zeiten();1",
+   3000,
+   "'während zwei Menschen gehen (3 s): '+JSON.stringify(__haus.zeiten())",
+   "klicksel:#szene-e1 .rl-z[data-l=\"website\"] .rl-an",
+   100,
+   "klicksel:#szene-e1 .rl-z[data-l=\"social\"] .rl-an",
+   "__haus.zeiten();1",
+   2500,
+   "'während vier Menschen gehen bzw. Türen (2,5 s): '+JSON.stringify(__haus.zeiten())"
+  ],
+  "zeig": true,
+  "titel": "studios-bildzeiten"
+ }
+]

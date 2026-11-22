@@ -52,26 +52,11 @@
    1500,
    "stand:Pfeil runter",
    "taste:ArrowDown",
-   1500,
-   "stand:Pfeil runter",
-   "taste:ArrowDown",
-   1500,
-   "stand:Pfeil runter",
-   "taste:ArrowDown",
-   1500,
-   "stand:Pfeil runter",
-   "taste:ArrowDown",
-   1500,
-   "stand:Pfeil runter",
-   "taste:ArrowDown",
-   1500,
-   "stand:Pfeil runter",
-   "taste:ArrowDown",
    1700,
    "stand:nach der letzten Szene: Kurz-Startseite",
    "taste:ArrowUp",
    1700,
-   "stand:Pfeil hoch: zurück in Szene 15",
+   "stand:Pfeil hoch: zurück in Szene 10",
    "taste:PageUp",
    1500,
    "taste:PageUp",
@@ -100,7 +85,7 @@
  {
   "name": "",
   "titel": "e03-leisten-und-direkteinstiege",
-  "url": "http://localhost:3391/?fahrt=1&szene=e2",
+  "url": "http://localhost:3391/?fahrt=1&szene=e1",
   "w": 1440,
   "h": 900,
   "bereit": true,
@@ -108,13 +93,13 @@
   "zeig": true,
   "js": [
    700,
-   "stand:?szene=e2",
+   "stand:?szene=e1",
    "klicksel:#etagen a[data-szenen~=\"dach\"]",
    1800,
    "stand:Etagenanzeige: Dach",
-   "klicksel:#stufen a[data-stufe=\"fundament\"]",
+   "klicksel:#etagen a[data-szenen~=\"eg\"]",
    1800,
-   "stand:Stufenleiste: Fundament",
+   "stand:Etagenanzeige: EG",
    "taste:Home",
    1800,
    "klicksel:.sz.an a[href^='#szene-']",
@@ -158,13 +143,68 @@
   "zeig": true,
   "js": [
    700,
-   "stand:?szene=15"
+   "stand:?szene=15 (alte Nummer): Finale"
+  ]
+ },
+ {
+  "url": "http://localhost:3391/?fahrt=1&szene=tresen",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 1500,
+  "js": [
+   700,
+   "stand:?szene=tresen (alt): Empfang"
+  ]
+ },
+ {
+  "url": "http://localhost:3391/?fahrt=1&szene=e5b",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 1500,
+  "js": [
+   700,
+   "stand:?szene=e5b (alt): Etage 5"
+  ]
+ },
+ {
+  "url": "http://localhost:3391/?fahrt=1&szene=pakete",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 1500,
+  "js": [
+   700,
+   "stand:?szene=pakete (alt): Finale"
+  ]
+ },
+ {
+  "url": "http://localhost:3391/?fahrt=1&etage=3",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 1500,
+  "js": [
+   700,
+   "stand:?etage=3: MAKE Innovation"
+  ]
+ },
+ {
+  "url": "http://localhost:3391/?fahrt=1#newsletter",
+  "w": 1440,
+  "h": 900,
+  "bereit": true,
+  "lade": 1500,
+  "js": [
+   700,
+   "stand:#newsletter: Etage 5"
   ]
  },
  {
   "name": "",
   "titel": "e04-halt-und-fahrt",
-  "url": "http://localhost:3391/?fahrt=1&szene=7",
+  "url": "http://localhost:3391/?fahrt=1&szene=5",
   "w": 1440,
   "h": 900,
   "bereit": true,
@@ -172,7 +212,7 @@
   "zeig": true,
   "js": [
    700,
-   "ort:7,0.2",
+   "ort:5,0.2",
    1600,
    "stand:im Halt (20 %): bleibt stehen",
    "rad:720,450,120",
@@ -182,23 +222,23 @@
    1600,
    "stand:im Halt ein Stück zurück: bleibt stehen",
    "dispatchEvent(new PointerEvent('pointerdown',{pointerType:'mouse',buttons:1,bubbles:true}));'Zeiger gedrückt: kein Gleiten'",
-   "ort:7,f0.1",
+   "ort:5,f0.1",
    150,
    "stand:Fahrt 10 %: Tafel blendet aus",
-   "ort:7,f0.5",
+   "ort:5,f0.5",
    150,
    "stand:Fahrt 50 %: keine Tafel",
-   "ort:7,f0.9",
+   "ort:5,f0.9",
    150,
    "stand:Fahrt 90 %: nächste Tafel blendet ein",
    "dispatchEvent(new PointerEvent('pointerup',{pointerType:'mouse',bubbles:true}));'Zeiger los'",
-   "ort:7,f0.3",
+   "ort:5,f0.3",
    1800,
    "stand:in der Fahrt stehen geblieben (30 %): zurück zum Halt",
-   "ort:7,f0.7",
+   "ort:5,f0.7",
    1800,
    "stand:in der Fahrt stehen geblieben (70 %): weiter zum nächsten Halt",
-   "ort:7,f0.4",
+   "ort:5,f0.4",
    1250,
    "rad:720,450,160",
    150,
@@ -269,7 +309,7 @@
  {
   "name": "",
   "titel": "e07-feld-dialog-menue",
-  "url": "http://localhost:3391/?fahrt=1&szene=11",
+  "url": "http://localhost:3391/?fahrt=1&szene=8",
   "w": 1440,
   "h": 900,
   "bereit": true,
@@ -277,7 +317,7 @@
   "zeig": true,
   "js": [
    700,
-   "ort:11,f0.3",
+   "ort:8,f0.3",
    "document.querySelector('.sz input[type=email]').focus({preventScroll:true});'Feld hat den Fokus'",
    1700,
    "stand:Feld im Fokus: kein Gleiten",
@@ -307,7 +347,7 @@
  {
   "name": "",
   "titel": "e08-groesse-aendern",
-  "url": "http://localhost:3391/?fahrt=1&szene=8",
+  "url": "http://localhost:3391/?fahrt=1&szene=5",
   "w": 1440,
   "h": 900,
   "bereit": true,
@@ -351,7 +391,7 @@
   ]
  },
  {
-  "name": "e10-wischen-durch-15-szenen-handy",
+  "name": "e10-wischen-durch-alle-szenen-handy",
   "url": "http://localhost:3391/?fahrt=1",
   "w": 390,
   "h": 844,
@@ -361,24 +401,6 @@
   "js": [
    1200,
    "stand:Handy Start",
-   "finger:200,700,260,160",
-   1500,
-   "stand:Wisch",
-   "finger:200,700,260,160",
-   1500,
-   "stand:Wisch",
-   "finger:200,700,260,160",
-   1500,
-   "stand:Wisch",
-   "finger:200,700,260,160",
-   1500,
-   "stand:Wisch",
-   "finger:200,700,260,160",
-   1500,
-   "stand:Wisch",
-   "finger:200,700,260,160",
-   1500,
-   "stand:Wisch",
    "finger:200,700,260,160",
    1500,
    "stand:Wisch",

@@ -1,8 +1,8 @@
 <!-- MAKE Innovation · „Das Haus“: Rahmen der Bühne (QUELLE). bauen.mjs setzt ihn an den Anfang der Startseite.
-     Platzhalter: {{ziel:name}} = Linkziel aus ziele.json (der Bau löst es über die Helfer der Website auf), {{szenen}} = die 15 Szenen aus szenen.json,
-     {{snaps}} = die Raststellen, {{etagen}}, {{stufen}} = die Leisten, {{wahl}} = die Liste der Etagenwahl. -->
+     Platzhalter: {{ziel:name}} = Linkziel aus ziele.json (der Bau löst es über die Helfer der Website auf), {{szenen}} = die Szenen aus szenen.json und raeume.json,
+     {{anzahl}} = ihre Zahl, {{snaps}} = die Raststellen, {{etagen}} = die Leiste der Etagen, {{wahl}} = die Liste der Etagenwahl. -->
 <script src="/js/haus-frueh.js"></script>
-<section id="top" class="track haus" aria-label="Das Haus: die Fahrt durch 15 Szenen">
+<section id="top" class="track haus" aria-label="Das Haus: die Fahrt in {{anzahl}} Szenen">
   <svg class="haus-zeichen" width="0" height="0" aria-hidden="true" focusable="false">
     <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10"/><path d="M17 8v9H8"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
@@ -22,9 +22,7 @@
     </div>
 
     {{etagen}}
-    {{stufen}}
     <a class="ueberspringen" id="ueberspringen" href="#kurz"><span>Fahrt überspringen</span><svg aria-hidden="true"><use href="#i-close"/></svg></a>
-    <p class="zaehler t-caption" id="zaehler" aria-hidden="true"></p>
 
     <!-- Übergang: der Kreis -->
     <div class="star" id="star" aria-hidden="true">
@@ -32,7 +30,7 @@
     </div>
   </div>
 
-  <!-- Etagenwahl: erreichbar über den Tresen -->
+  <!-- Etagenwahl: erreichbar über den Empfang -->
   <dialog class="wahl haus" id="etagenwahl" aria-labelledby="wahl-h">
     <div class="wahl-innen">
       <button type="button" class="wahl-zu" id="wahlZu" aria-label="Etagenwahl schließen"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
@@ -42,21 +40,4 @@
     </div>
   </dialog>
 
-  <!-- Gast vorschlagen: kleines Formular, keine Kontaktdaten der vorgeschlagenen Person -->
-  <dialog class="wahl haus" id="gastwunsch" aria-labelledby="gast-h">
-    <form class="wahl-innen gast" id="gastForm" novalidate>
-      <button type="button" class="wahl-zu" id="gastZu" aria-label="Formular schließen"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
-      <h2 class="t-caption" id="gast-h">Gast vorschlagen</h2>
-      <label class="gast-feld"><span>Dein Name</span><input type="text" name="name" autocomplete="name" required></label>
-      <label class="gast-feld"><span>Deine E-Mail-Adresse</span><input type="email" name="email" autocomplete="email" inputmode="email" required></label>
-      <label class="gast-feld"><span>Name des Gastes</span><input type="text" name="gast" required></label>
-      <label class="gast-feld"><span>Warum passt er oder sie?</span><textarea name="warum" rows="3" required></textarea></label>
-      <fieldset class="gast-wahl"><legend>Kennst du die Person persönlich?</legend>
-        <label><input type="radio" name="kennt" value="ja"><span>Ja</span></label><label><input type="radio" name="kennt" value="nein" checked><span>Nein</span></label></fieldset>
-      <p class="gast-hinweis" id="gastHinweis" hidden>Wir melden uns bei dir, und du stellst den Kontakt her.</p>
-      <p class="gast-recht">Wir fragen bewusst keine Kontaktdaten der vorgeschlagenen Person ab.</p>
-      <p class="gast-meldung" role="status" aria-live="polite"></p>
-      <button type="submit" class="alink mehr"><span class="t-caption">Vorschlag senden</span></button>
-    </form>
-  </dialog>
 </section>

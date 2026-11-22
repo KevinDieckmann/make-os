@@ -21,7 +21,7 @@
       .then((j) => {
         if (!j || !j.ok || !j.aktiv) return zeigeErsatz();
         if (j.newsletter && j.newsletter.wortlaut) {
-          haken.querySelector('span').textContent = `${j.newsletter.wortlaut} Der Newsletter kommt erst, wenn du die Anmeldung über den Link in unserer E-Mail bestätigen.`;
+          haken.querySelector('span').textContent = `${j.newsletter.wortlaut} Der Newsletter kommt erst, wenn du die Anmeldung über den Link in unserer E-Mail bestätigst.`;
           fassung = j.newsletter.fassung;
           haken.hidden = false;
         }

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // ─── MAKE Innovation · Arbeitsprobe (11.11.2026) ────────────────────────────────────────────────────────────────────
 // Die zwei Bildschirmfotos im Abschnitt „Diese Website ist unsere Arbeitsprobe“ (Sichtbarkeit, Homepage-Pakete):
-//   assets/bild/arbeitsprobe/rechner.jpg  1440 × 900   die Fahrt („Das Haus“) in Etage 2, Digitale Sichtbarkeit (Website, Google, Video und Social Media)
+//   assets/bild/arbeitsprobe/rechner.jpg  1440 × 900   die Fahrt („Das Haus“) in Etage 1, MAKE Studios (Website, Video und Social Media)
 //   assets/bild/arbeitsprobe/handy.jpg     780 × 1688  dieselbe Stelle am Handy (390 × 844, doppelte Auflösung)
-// Die Stelle kommt über die Adresse (?fahrt=1&szene=e2: die Fahrt springt in die Szene der Etage 2, siehe LIESMICH › Startseite: „Das Haus“).
+// Die Stelle kommt über die Adresse (?fahrt=1&szene=e1: die Fahrt springt in den Raum von MAKE Studios, siehe LIESMICH › Startseite: „Das Haus“).
 // Aufgenommen mit einem unsichtbaren Chrome von der laufenden Vorschau. Nach einem neuen Zeichen, Kopf oder einer Änderung am Haus
 // einmal laufen lassen:
 //   node prototype/fokus-innovation/arbeitsprobe.mjs [http://localhost:3019]
@@ -51,8 +51,8 @@ async function bild({ datei, pfad, breite, hoehe, mass, handy, vorher, wartezeit
 try {
   mkdirSync(ZIEL, { recursive: true });
   await cdp('Page.enable'); await cdp('Runtime.enable');
-  // Beide Bilder: Szene der Etage 2 (Digitale Sichtbarkeit mit dem Angebot Website). Zum Angebot der Homepage-Pakete passt das am besten.
-  const STELLE = '/?fahrt=1&szene=e2';
+  // Beide Bilder: der Raum von MAKE Studios (Etage 1, mit dem Angebot Website). Zum Angebot der Homepage-Pakete passt das am besten.
+  const STELLE = '/?fahrt=1&szene=e1';
   await bild({ datei: 'rechner.jpg', pfad: STELLE, breite: 1440, hoehe: 900, mass: 1, handy: false, guete: 88, wartezeit: 4500 });
   await bild({ datei: 'handy.jpg', pfad: STELLE, breite: 390, hoehe: 844, mass: 2, handy: true, guete: 84, wartezeit: 4500 });
 } finally {

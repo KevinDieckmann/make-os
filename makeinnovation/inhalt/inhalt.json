@@ -208,7 +208,8 @@
    "regeln": [
     "Wechsel zum CSO jederzeit"
    ],
-   "cta": "Gespräch vereinbaren"
+   "cta": "Gespräch vereinbaren",
+   "hervorheben": true
   },
   {
    "id": "cso",
@@ -227,8 +228,7 @@
     "Sales Playbook Teil 3 und Übergabeplan an deine Vertriebsleitung"
    ],
    "regeln": [],
-   "cta": "Gespräch vereinbaren",
-   "hervorheben": true
+   "cta": "Gespräch vereinbaren"
   },
   {
    "id": "ki-crm",

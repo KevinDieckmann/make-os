@@ -1,0 +1,765 @@
+{
+  "_hinweis": "Die Menschen des Hauses als Daten (das Figuren-System in haus/figuren.js zeichnet sie; welche Figur wo steht, sagt raeume.json › leistungen › figur). Je Mensch: gr = Körpergröße (1 = 1,74 m), statur = schmal | mittel | kraeftig, form = a (breitere Schultern) | b (schmalere Schultern, breitere Hüfte), haut und haar als Farbwert, frisur = kurz | bob | lang | dutt | zopf | locken, bart, brille, kopfhoerer (true | false), ober { art: pulli | shirt | hemd | bluse | blazer | hoodie, farbe, zwei = zweite Farbe (Hemd unter dem Blazer) }, unter { art: hose | rock, farbe }, schuhe { farbe, sohle }, tasche = Farbe der Tasche. Der Farbwert „akzent“ nimmt die Farbe des Raums, in dem der Mensch steht (je Raum ein Kleidungsstück in der Akzentfarbe). Die Menschen sind erfunden; niemand soll wie eine bestimmte echte Person aussehen. Merkmale seit dem 22.11. (alle freiwillig): pony (true), scheitel = links | rechts | mitte, ohrring (true), uhr (true), augen (Farbwert), ober.aermel = \"hoch\" (Hemd bzw. Bluse hochgekrempelt), unter.schnitt = schmal | gerade | weit, schuhe.art = sneaker | leder (sonst folgt es aus der Farbe der Sohle). Haltung seit dem 22.11. (zweite Runde, alle freiwillig): stand = wie der Mensch dasteht, wenn er frei steht: l, r = was der freie Arm tut (haengt | tasche | huefte | kreuz + kreuzu | quer + kinn | becher | mappe | ruecken | gefasst; Paare brauchen beide Arme frei), breit = Füße weiter auseinander (Meter), vor = rechter Fuß weiter vorn (Meter, negativ = der linke), aus = Füße nach außen gedreht (0,1 … 0,3), spitze = das Spielbein steht auf der Fußspitze, kopf = Kopf zur Seite geneigt. sitzt = gerade | versetzt | weit | zurueck | ueber (ein Bein über dem anderen). rund = runder Rücken, Kopf vorn (0 … 1). Statur und Alter (freiwillig): bauch (0 … 1), schulter (Faktor der Schulterbreite, 0,94 … 1,06), kopfgr (Faktor der Kopfgröße), nase (Faktor, 0,8 … 1,25), alter = alt (Falten in der großen Stufe), ansatz = hoch (Haaransatz höher, Schläfen frei). Kleidung: ober.offen (Blazer fällt offen und zeigt Hemd und Gürtel), ober.kragen = rolli (Rollkragen am Pulli), unter.laenge = kurz (7/8-Hose, der Knöchel ist zu sehen).",
+  "menschen": {
+    "jana": {
+      "gr": 0.96,
+      "form": "b",
+      "statur": "schmal",
+      "haut": "#d9a784",
+      "haar": "#3a2418",
+      "frisur": "dutt",
+      "ober": {
+        "art": "pulli",
+        "farbe": "akzent"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#3a3f5c"
+      },
+      "schuhe": {
+        "farbe": "#ece7de"
+      },
+      "tasche": "#5a4a3c",
+      "ohrring": true,
+      "stand": {
+        "r": "tasche",
+        "vor": 0.06,
+        "aus": 0.24
+      },
+      "sitzt": "versetzt"
+    },
+    "tom": {
+      "gr": 1.05,
+      "form": "a",
+      "statur": "kraeftig",
+      "haut": "#7d4f38",
+      "haar": "#17120f",
+      "frisur": "kurz",
+      "bart": true,
+      "ober": {
+        "art": "hoodie",
+        "farbe": "#4b5868"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#2e3038"
+      },
+      "schuhe": {
+        "farbe": "akzent",
+        "sohle": "#f0ebe2"
+      },
+      "tasche": "#2c2b33",
+      "uhr": true,
+      "stand": {
+        "l": "tasche",
+        "r": "tasche",
+        "breit": 0.04,
+        "aus": 0.3
+      },
+      "sitzt": "weit",
+      "bauch": 0.4,
+      "schulter": 1.06,
+      "nase": 1.1
+    },
+    "lea": {
+      "gr": 0.98,
+      "form": "b",
+      "statur": "mittel",
+      "haut": "#e6b998",
+      "haar": "#8a4a2a",
+      "frisur": "lang",
+      "ober": {
+        "art": "blazer",
+        "farbe": "#e9dfcf",
+        "zwei": "akzent",
+        "offen": true
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#4a4250"
+      },
+      "schuhe": {
+        "farbe": "#3a3034",
+        "sohle": "#2a2226"
+      },
+      "scheitel": "mitte",
+      "ohrring": true,
+      "stand": {
+        "l": "kreuz",
+        "r": "kreuzu",
+        "vor": -0.05,
+        "spitze": true
+      },
+      "sitzt": "ueber"
+    },
+    "mika": {
+      "gr": 1.0,
+      "form": "a",
+      "statur": "schmal",
+      "haut": "#b98058",
+      "haar": "#1c1512",
+      "frisur": "locken",
+      "ober": {
+        "art": "shirt",
+        "farbe": "#ede6da"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#667048",
+        "laenge": "kurz"
+      },
+      "schuhe": {
+        "farbe": "#f0ebe2"
+      },
+      "tasche": "akzent",
+      "uhr": true,
+      "stand": {
+        "l": "tasche",
+        "spitze": true,
+        "kopf": 0.05
+      },
+      "sitzt": "zurueck",
+      "rund": 0.2
+    },
+    "paul": {
+      "gr": 1.03,
+      "form": "a",
+      "statur": "mittel",
+      "haut": "#e0b090",
+      "haar": "#9a9690",
+      "frisur": "kurz",
+      "brille": true,
+      "ober": {
+        "art": "hemd",
+        "farbe": "akzent",
+        "aermel": "hoch"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#4a4640"
+      },
+      "schuhe": {
+        "farbe": "#5a4030",
+        "sohle": "#2a2018"
+      },
+      "tasche": "#3c3430",
+      "uhr": true,
+      "stand": {
+        "l": "quer",
+        "r": "kinn",
+        "breit": 0.01
+      },
+      "sitzt": "gerade",
+      "rund": 0.4,
+      "bauch": 0.3,
+      "nase": 1.2,
+      "alter": "alt",
+      "ansatz": "hoch"
+    },
+    "nora": {
+      "gr": 0.97,
+      "form": "b",
+      "statur": "mittel",
+      "haut": "#a9714f",
+      "haar": "#201612",
+      "frisur": "bob",
+      "kopfhoerer": true,
+      "ober": {
+        "art": "blazer",
+        "farbe": "#2f3f6a",
+        "zwei": "#e6ecf6"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#d9d2c4"
+      },
+      "schuhe": {
+        "farbe": "akzent",
+        "sohle": "#eef2f8"
+      },
+      "tasche": "#27304a",
+      "pony": true,
+      "ohrring": true,
+      "stand": {
+        "l": "mappe",
+        "vor": 0.05
+      },
+      "sitzt": "versetzt"
+    },
+    "aylin": {
+      "gr": 0.97,
+      "form": "b",
+      "statur": "schmal",
+      "haut": "#c68e68",
+      "haar": "#161214",
+      "frisur": "zopf",
+      "ober": {
+        "art": "pulli",
+        "farbe": "akzent"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#e4ddd0"
+      },
+      "schuhe": {
+        "farbe": "#f0ebe2"
+      },
+      "tasche": "#4a4458",
+      "scheitel": "mitte",
+      "stand": {
+        "l": "gefasst",
+        "r": "gefasst",
+        "aus": 0.12,
+        "breit": -0.02
+      },
+      "sitzt": "gerade"
+    },
+    "david": {
+      "gr": 1.02,
+      "form": "a",
+      "statur": "mittel",
+      "haut": "#c99676",
+      "haar": "#4a3626",
+      "frisur": "kurz",
+      "bart": true,
+      "ober": {
+        "art": "shirt",
+        "farbe": "#d8d4e6"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#3d3a52",
+        "schnitt": "schmal"
+      },
+      "schuhe": {
+        "farbe": "akzent",
+        "sohle": "#f0ebe2"
+      },
+      "tasche": "#33303e",
+      "stand": {
+        "l": "huefte",
+        "breit": 0.03
+      },
+      "sitzt": "weit",
+      "schulter": 1.03
+    },
+    "sven": {
+      "gr": 1.06,
+      "form": "a",
+      "statur": "schmal",
+      "haut": "#ecc4a4",
+      "haar": "#b08a4c",
+      "frisur": "kurz",
+      "kopfhoerer": true,
+      "ober": {
+        "art": "hoodie",
+        "farbe": "#57507a"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#2f2e3a"
+      },
+      "schuhe": {
+        "farbe": "#e9e4dc"
+      },
+      "tasche": "akzent",
+      "scheitel": "rechts",
+      "augen": "#4a6a8a",
+      "stand": {
+        "r": "tasche",
+        "aus": 0.16
+      },
+      "sitzt": "zurueck",
+      "rund": 0.8,
+      "schulter": 0.94,
+      "kopfgr": 0.97
+    },
+    "clara": {
+      "gr": 0.99,
+      "form": "b",
+      "statur": "mittel",
+      "haut": "#8a5a40",
+      "haar": "#17110f",
+      "frisur": "locken",
+      "ober": {
+        "art": "blazer",
+        "farbe": "akzent",
+        "zwei": "#f0ece4",
+        "offen": true
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#34304a",
+        "schnitt": "weit"
+      },
+      "schuhe": {
+        "farbe": "#2a2630",
+        "sohle": "#1c1a22"
+      },
+      "tasche": "#3a3450",
+      "ohrring": true,
+      "stand": {
+        "r": "huefte",
+        "spitze": true,
+        "vor": 0.07
+      },
+      "sitzt": "ueber",
+      "nase": 0.95
+    },
+    "jonas": {
+      "gr": 1.04,
+      "form": "a",
+      "statur": "kraeftig",
+      "haut": "#dca886",
+      "haar": "#5a3a22",
+      "frisur": "kurz",
+      "brille": true,
+      "ober": {
+        "art": "hemd",
+        "farbe": "#e8e2d6",
+        "aermel": "hoch"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#4c4860"
+      },
+      "schuhe": {
+        "farbe": "#6a4a34",
+        "sohle": "#2a2018"
+      },
+      "tasche": "akzent",
+      "uhr": true,
+      "stand": {
+        "l": "kreuz",
+        "r": "kreuzu",
+        "breit": 0.05,
+        "aus": 0.3
+      },
+      "sitzt": "weit",
+      "rund": 0.2,
+      "bauch": 0.7,
+      "ansatz": "hoch"
+    },
+    "rosa": {
+      "gr": 0.94,
+      "form": "b",
+      "statur": "kraeftig",
+      "haut": "#e8bfa2",
+      "haar": "#c9c2ba",
+      "frisur": "bob",
+      "brille": true,
+      "ober": {
+        "art": "bluse",
+        "farbe": "#d9c7e8"
+      },
+      "unter": {
+        "art": "rock",
+        "farbe": "#3a3558"
+      },
+      "schuhe": {
+        "farbe": "#2a2630",
+        "sohle": "#1c1a22"
+      },
+      "pony": true,
+      "ohrring": true,
+      "stand": {
+        "l": "gefasst",
+        "r": "gefasst",
+        "aus": 0.14
+      },
+      "sitzt": "gerade",
+      "rund": 0.3,
+      "bauch": 0.5,
+      "kopfgr": 1.03,
+      "alter": "alt"
+    },
+    "emil": {
+      "gr": 1.01,
+      "form": "a",
+      "statur": "mittel",
+      "haut": "#9c6a4a",
+      "haar": "#1a1412",
+      "frisur": "kurz",
+      "ober": {
+        "art": "blazer",
+        "farbe": "#3a3a48",
+        "zwei": "#e8e4dc"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#3a3a48"
+      },
+      "schuhe": {
+        "farbe": "#2a2420",
+        "sohle": "#1a1614"
+      },
+      "uhr": true,
+      "scheitel": "rechts",
+      "stand": {
+        "l": "tasche",
+        "breit": 0.02
+      },
+      "sitzt": "ueber",
+      "schulter": 1.02
+    },
+    "hanna": {
+      "gr": 0.98,
+      "form": "b",
+      "statur": "schmal",
+      "haut": "#f0cdb0",
+      "haar": "#d8b070",
+      "frisur": "lang",
+      "ober": {
+        "art": "pulli",
+        "farbe": "#e6dcc8",
+        "kragen": "rolli"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#5a4a6a"
+      },
+      "schuhe": {
+        "farbe": "#f0ebe2"
+      },
+      "scheitel": "mitte",
+      "augen": "#4a6a8a",
+      "stand": {
+        "r": "becher",
+        "vor": -0.06,
+        "spitze": true
+      },
+      "sitzt": "versetzt",
+      "nase": 0.9
+    },
+    "omar": {
+      "gr": 1.03,
+      "form": "a",
+      "statur": "mittel",
+      "haut": "#b07a56",
+      "haar": "#141010",
+      "frisur": "kurz",
+      "bart": true,
+      "ober": {
+        "art": "pulli",
+        "farbe": "#7a4a3a"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#35384a"
+      },
+      "schuhe": {
+        "farbe": "#e6e1d8"
+      },
+      "uhr": true,
+      "stand": {
+        "l": "ruecken",
+        "r": "ruecken",
+        "breit": 0.04
+      },
+      "sitzt": "gerade",
+      "bauch": 0.2,
+      "nase": 1.2
+    },
+    "yuki": {
+      "gr": 0.93,
+      "form": "b",
+      "statur": "schmal",
+      "haut": "#e8c4a0",
+      "haar": "#141216",
+      "frisur": "bob",
+      "ober": {
+        "art": "shirt",
+        "farbe": "#3f6a6a"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#d8d0c0",
+        "laenge": "kurz"
+      },
+      "schuhe": {
+        "farbe": "#2a2a30",
+        "sohle": "#e8e4dc"
+      },
+      "pony": true,
+      "stand": {
+        "kopf": 0.07,
+        "vor": 0.05,
+        "spitze": true
+      },
+      "sitzt": "zurueck",
+      "schulter": 0.95,
+      "kopfgr": 1.04,
+      "nase": 0.8
+    },
+    "ben": {
+      "gr": 1.02,
+      "form": "a",
+      "statur": "mittel",
+      "haut": "#c08a64",
+      "haar": "#2a1d14",
+      "frisur": "kurz",
+      "tasche": "#3a3a4a",
+      "ober": {
+        "art": "shirt",
+        "farbe": "#8aa0c8"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#2f3444"
+      },
+      "schuhe": {
+        "farbe": "#ece7de"
+      },
+      "scheitel": "rechts",
+      "stand": {
+        "l": "tasche",
+        "r": "tasche",
+        "breit": 0.03
+      },
+      "sitzt": "weit",
+      "rund": 0.2,
+      "bauch": 0.15
+    },
+    "ida": {
+      "gr": 0.95,
+      "form": "b",
+      "statur": "schmal",
+      "haut": "#f1d3b8",
+      "haar": "#a6552e",
+      "frisur": "bob",
+      "tasche": "#6a4a3a",
+      "ober": {
+        "art": "bluse",
+        "farbe": "#e8d6a8"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#3a3a58"
+      },
+      "schuhe": {
+        "farbe": "#8a6a52",
+        "sohle": "#2a2018"
+      },
+      "pony": true,
+      "augen": "#5a7a4a",
+      "stand": {
+        "l": "kinn",
+        "r": "quer"
+      },
+      "sitzt": "versetzt"
+    },
+    "karl": {
+      "gr": 1.07,
+      "form": "a",
+      "statur": "kraeftig",
+      "haut": "#e8c0a0",
+      "haar": "#8d8d8d",
+      "frisur": "kurz",
+      "bart": true,
+      "brille": true,
+      "tasche": "#2c2b33",
+      "ober": {
+        "art": "pulli",
+        "farbe": "#3d4f5e"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#2c2c34"
+      },
+      "schuhe": {
+        "farbe": "#2a2420",
+        "sohle": "#e8e4dc"
+      },
+      "uhr": true,
+      "stand": {
+        "l": "ruecken",
+        "r": "ruecken",
+        "breit": 0.05,
+        "aus": 0.28
+      },
+      "sitzt": "weit",
+      "rund": 0.6,
+      "bauch": 0.9,
+      "schulter": 1.04,
+      "kopfgr": 0.98,
+      "nase": 1.25,
+      "alter": "alt",
+      "ansatz": "hoch"
+    },
+    "mia": {
+      "gr": 0.96,
+      "form": "b",
+      "statur": "mittel",
+      "haut": "#7a4a34",
+      "haar": "#120d0c",
+      "frisur": "dutt",
+      "tasche": "#5a4466",
+      "ober": {
+        "art": "hemd",
+        "farbe": "#c9d4ea",
+        "aermel": "hoch"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#3a3248"
+      },
+      "schuhe": {
+        "farbe": "#f0ebe2"
+      },
+      "ohrring": true,
+      "stand": {
+        "l": "huefte",
+        "r": "huefte",
+        "breit": 0.03
+      },
+      "sitzt": "gerade"
+    },
+    "noah": {
+      "gr": 1.0,
+      "form": "a",
+      "statur": "schmal",
+      "haut": "#e3b894",
+      "haar": "#3b2a1a",
+      "frisur": "locken",
+      "kopfhoerer": true,
+      "tasche": "#2c3a58",
+      "ober": {
+        "art": "hoodie",
+        "farbe": "#3a4a6a"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#34343e",
+        "schnitt": "schmal"
+      },
+      "schuhe": {
+        "farbe": "#ece7de"
+      },
+      "stand": {
+        "l": "tasche",
+        "spitze": true
+      },
+      "sitzt": "zurueck",
+      "rund": 0.6,
+      "schulter": 0.95
+    },
+    "lina": {
+      "gr": 0.97,
+      "form": "b",
+      "statur": "schmal",
+      "haut": "#d4a07c",
+      "haar": "#5b3a22",
+      "frisur": "zopf",
+      "ober": {
+        "art": "shirt",
+        "farbe": "#f0e6d6"
+      },
+      "unter": {
+        "art": "rock",
+        "farbe": "#44406a"
+      },
+      "schuhe": {
+        "farbe": "#2a2630",
+        "sohle": "#1c1a22"
+      },
+      "pony": true,
+      "ohrring": true,
+      "stand": {
+        "l": "mappe",
+        "aus": 0.12,
+        "vor": 0.04
+      },
+      "sitzt": "gerade",
+      "kopfgr": 1.03,
+      "nase": 0.85
+    },
+    "tara": {
+      "gr": 0.98,
+      "form": "b",
+      "statur": "mittel",
+      "haut": "#b98a68",
+      "haar": "#2a1a14",
+      "frisur": "lang",
+      "ober": {
+        "art": "blazer",
+        "farbe": "#6a5aa8",
+        "zwei": "#efe9df"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#2f2c3e"
+      },
+      "schuhe": {
+        "farbe": "#2a2630",
+        "sohle": "#1c1a22"
+      },
+      "tasche": "#3a3050",
+      "scheitel": "mitte",
+      "ohrring": true,
+      "stand": {
+        "r": "becher",
+        "vor": -0.04
+      },
+      "sitzt": "ueber"
+    },
+    "finn": {
+      "gr": 1.04,
+      "form": "a",
+      "statur": "mittel",
+      "haut": "#e6bc9a",
+      "haar": "#6a4a2a",
+      "frisur": "locken",
+      "bart": true,
+      "brille": true,
+      "ober": {
+        "art": "hemd",
+        "farbe": "#cfd6e6",
+        "aermel": "hoch"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#4a4a58"
+      },
+      "schuhe": {
+        "farbe": "#6a5040",
+        "sohle": "#2a2018"
+      },
+      "tasche": "#44403a",
+      "stand": {
+        "l": "tasche",
+        "breit": 0.03,
+        "kopf": -0.05
+      },
+      "sitzt": "versetzt",
+      "rund": 0.3,
+      "nase": 1.15
+    },
+    "tess": {
+      "gr": 1.0,
+      "form": "a",
+      "statur": "mittel",
+      "haut": "#d8a888",
+      "haar": "#3a2a20",
+      "frisur": "kurz",
+      "ober": {
+        "art": "hemd",
+        "farbe": "akzent"
+      },
+      "unter": {
+        "art": "hose",
+        "farbe": "#3a3850",
+        "laenge": "kurz"
+      },
+      "schuhe": {
+        "farbe": "#e9e4dc"
+      },
+      "scheitel": "rechts",
+      "ohrring": true,
+      "stand": {
+        "r": "tasche",
+        "spitze": true
+      },
+      "sitzt": "versetzt"
+    }
+  }
+}

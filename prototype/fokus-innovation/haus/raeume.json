@@ -1,0 +1,887 @@
+{
+  "_hinweis": "Alles, was einen Raum beschreibt, steht hier (die Reihenfolge der Etagen steht in szenen.json). Je Raum: etage (nr = Zeile über dem Namen, kurz = Marke in der Etagenleiste), name, nutzen (Nutzenzeile), satz, farbe (studios | revenue | lavendel; die Farbwerte stehen in haus.css und haus.js), zeichnung (welche Raumzeichnung in haus.js: studios | revenue | innovation | pr | dach), optional link { text, ziel } (ziel aus ziele.json) und kennzeichen. plan: tuer = [x0, x1] = die Tür in der Rückwand (dorthin geht, wer den Raum verlässt). leistungen: die Menschen im Raum, in der Reihenfolge der Liste. Je Leistung: id (nur Kleinbuchstaben, bleibt gleich: daran hängt die gemerkte Auswahl), name (Kurzname im Haus), dann EINE der Formen: (1) angebot = Kennung eines Angebots in makeinnovation/inhalt/inhalt.json; (2) varianten = Liste aus { name, angebot } (die erste ist vorgewählt); (3) angebot + stufen: true = die Stufen dieses Angebots als Varianten; oder (4) frei = Text statt Preis (z. B. kostenlos), zählt in keiner Summe. Preise, Rhythmus (einmalig, im Monat, je Abend), Laufzeit-Hinweis, Satz, Stichpunkte und der Link „Mehr dazu“ kommen beim Bau aus dem Angebot; hier stehen NIE Preise. satz und punkte (höchstens drei) nur angeben, wo das Angebot keine hat oder ein anderer Wortlaut aus den vorhandenen Texten gelten soll. knopf { text, ziel } = eigener Knopf in der Karte statt „Mehr dazu“. platz = [x, z] in Metern im Raum (x: −6 links bis 6 rechts, z: Tiefe, 9 = Rückwand). figur: mensch = Kennung aus figuren.json · haltung = tippt | sitzt | sitzt-spricht | sitzt-sessel | sessel-spricht | kamera | vor-kamera | aufnahme | filmt | zeigt | schreibt | haelt | spricht | steht | telefon (Liste HALT in haus.js) · blick in Grad (0 = schaut in den Raum hinein, wir sehen den Rücken; 90 = nach rechts; 180 = zu uns; −90 = nach links) · weg = Wegpunkte [x, z] vom Platz um die Möbel herum bis vor die Tür (die Tür selbst hängt der Raum an) · licht = [x, y, z] die Lichtquelle an diesem Platz (für Lichtkante und Schatten) · fokus = { x, d }: wo die Kamera steht, solange die Karte dieser Leistung offen ist (x = seitlich neben dem Platz, d = Abstand; sonst genau davor in 3,9 m) · schild = [dx, dy]: das Schild steht um so viele Meter neben bzw. über dem Kopf (zwischen zwei Menschen, über einer Wandtafel statt davor) · sessel: true = sitzt in einem Sessel statt auf einem Stuhl (dazu die Haltungen sitzt-sessel bzw. sessel-spricht) · gespraech = Kennzahl eines Gesprächs (für beide Gesprächspartner dieselbe Zahl, im ganzen Haus nur einmal vergeben) und teil = 0 | 1: Die zwei reden abwechselnd, nie zugleich (wer tippt oder die Kamera führt, bleibt bei der Arbeit; wer schreibt, nickt) · haltung steht = der Mensch steht in seiner eigenen Standhaltung aus figuren.json (Hand in der Tasche, Arme verschränkt, Becher, Tablet im Arm) · boden = Höhe des Platzes über dem Boden (Podest) · tasche: false = geht ohne Tasche · mit = weitere Menschen derselben Leistung (je mensch, haltung, platz, blick, weg; sie gehen und kommen mit). Auf dem Dach: figur.art = gruppe | buehne (die Zeichnung des Dachs stellt die Menschen selbst).",
+  "raeume": [
+    {
+      "id": "studios",
+      "etage": {
+        "nr": "Etage 1",
+        "kurz": "1"
+      },
+      "name": "MAKE Studios",
+      "nutzen": "Sichtbar auf allen Ebenen: Website, Video, Social Media",
+      "satz": "Aus jedem Dreh, Projekt und Event wird Inhalt, der dich sichtbar macht. KI-gestützt, aus einer Hand.",
+      "farbe": "studios",
+      "zeichnung": "studios",
+      "link": {
+        "text": "Beispiele ansehen",
+        "ziel": "studios-seite"
+      },
+      "leistungen": [
+        {
+          "id": "website",
+          "name": "Website",
+          "varianten": [
+            {
+              "name": "Landing",
+              "angebot": "homepage-landing"
+            },
+            {
+              "name": "Story",
+              "angebot": "homepage-story"
+            },
+            {
+              "name": "Cinematic",
+              "angebot": "homepage-cinematic"
+            }
+          ],
+          "figur": {
+            "mensch": "jana",
+            "haltung": "tippt",
+            "blick": 0,
+            "licht": [
+              0.75,
+              1.9,
+              8.4
+            ],
+            "weg": [
+              [
+                1.5,
+                7.15
+              ],
+              [
+                2.55,
+                7.3
+              ],
+              [
+                3.45,
+                8.0
+              ]
+            ],
+            "fokus": {
+              "x": -0.6,
+              "d": 3.9
+            },
+            "schild": [
+              0,
+              0.66
+            ]
+          },
+          "platz": [
+            0.75,
+            7.5
+          ]
+        },
+        {
+          "id": "video",
+          "name": "Video",
+          "varianten": [
+            {
+              "name": "Erklärvideo",
+              "angebot": "erklaervideo"
+            },
+            {
+              "name": "Videostory",
+              "angebot": "videostory"
+            },
+            {
+              "name": "Video Serie",
+              "angebot": "video-serie"
+            }
+          ],
+          "figur": {
+            "mensch": "tom",
+            "gespraech": 1,
+            "teil": 1,
+            "haltung": "kamera",
+            "blick": -48,
+            "licht": [
+              -2.85,
+              2.0,
+              7.9
+            ],
+            "weg": [
+              [
+                0.35,
+                6.45
+              ],
+              [
+                1.6,
+                6.7
+              ],
+              [
+                2.95,
+                7.4
+              ]
+            ],
+            "mit": [
+              {
+                "mensch": "lea",
+                "gespraech": 1,
+                "teil": 0,
+                "haltung": "vor-kamera",
+                "platz": [
+                  -1.85,
+                  7.85
+                ],
+                "blick": 140,
+                "tasche": false,
+                "licht": [
+                  -2.85,
+                  2.0,
+                  7.9
+                ],
+                "weg": [
+                  [
+                    -1.35,
+                    7.3
+                  ],
+                  [
+                    -0.35,
+                    6.85
+                  ],
+                  [
+                    0.5,
+                    6.55
+                  ],
+                  [
+                    1.7,
+                    6.75
+                  ],
+                  [
+                    2.95,
+                    7.4
+                  ]
+                ]
+              }
+            ],
+            "fokus": {
+              "x": -0.62,
+              "d": 4.3
+            }
+          },
+          "platz": [
+            -0.38,
+            6.15
+          ]
+        },
+        {
+          "id": "social",
+          "name": "Social Media",
+          "angebot": "social-media",
+          "stufen": true,
+          "figur": {
+            "mensch": "mika",
+            "haltung": "aufnahme",
+            "blick": -52,
+            "licht": [
+              1.02,
+              1.5,
+              5.65
+            ],
+            "weg": [
+              [
+                1.75,
+                6.05
+              ],
+              [
+                2.6,
+                6.5
+              ],
+              [
+                3.25,
+                7.3
+              ]
+            ],
+            "schild": [
+              0,
+              0.3
+            ],
+            "fokus": {
+              "x": -0.25,
+              "d": 3.5
+            }
+          },
+          "platz": [
+            1.52,
+            5.3
+          ]
+        }
+      ],
+      "plan": {
+        "tuer": [
+          3.2,
+          4.1
+        ]
+      }
+    },
+    {
+      "id": "revenue",
+      "etage": {
+        "nr": "Etage 2",
+        "kurz": "2"
+      },
+      "name": "MAKE Revenue",
+      "nutzen": "Planbar verkaufen",
+      "satz": "Aus Aufmerksamkeit werden Kunden: ein fester Ablauf, der nicht mehr an dir hängt.",
+      "farbe": "revenue",
+      "zeichnung": "revenue",
+      "leistungen": [
+        {
+          "id": "tagesworkshop",
+          "name": "Tagesworkshop",
+          "angebot": "tagesworkshop",
+          "figur": {
+            "mensch": "paul",
+            "gespraech": 7,
+            "teil": 0,
+            "haltung": "zeigt",
+            "blick": -90,
+            "weg": [
+              [
+                3.0,
+                7.75
+              ],
+              [
+                1.3,
+                7.75
+              ],
+              [
+                0.1,
+                8.0
+              ]
+            ],
+            "fokus": {
+              "x": -0.8,
+              "d": 4.4
+            },
+            "mit": [
+              {
+                "mensch": "ida",
+                "gespraech": 7,
+                "teil": 1,
+                "haltung": "sitzt",
+                "platz": [
+                  1.2,
+                  6.0
+                ],
+                "blick": 0,
+                "weg": [
+                  [
+                    0.5,
+                    6.0
+                  ],
+                  [
+                    0.3,
+                    7.2
+                  ],
+                  [
+                    -0.1,
+                    8.0
+                  ]
+                ]
+              },
+              {
+                "mensch": "karl",
+                "haltung": "tippt",
+                "platz": [
+                  2.1,
+                  6.0
+                ],
+                "blick": 0,
+                "weg": [
+                  [
+                    2.1,
+                    5.3
+                  ],
+                  [
+                    0.5,
+                    5.35
+                  ],
+                  [
+                    0.3,
+                    7.2
+                  ],
+                  [
+                    -0.1,
+                    8.0
+                  ]
+                ]
+              },
+              {
+                "mensch": "mia",
+                "gespraech": 7,
+                "teil": 1,
+                "haltung": "schreibt",
+                "platz": [
+                  2.8,
+                  6.75
+                ],
+                "blick": -90,
+                "tasche": false,
+                "weg": [
+                  [
+                    3.1,
+                    7.1
+                  ],
+                  [
+                    2.95,
+                    7.7
+                  ],
+                  [
+                    1.3,
+                    7.75
+                  ],
+                  [
+                    0.1,
+                    8.0
+                  ]
+                ]
+              }
+            ]
+          },
+          "platz": [
+            3.1,
+            7.9
+          ]
+        },
+        {
+          "id": "vertriebsleitung",
+          "name": "Vertriebsleitung auf Zeit",
+          "varianten": [
+            {
+              "name": "Head of Sales",
+              "angebot": "head-of-sales"
+            },
+            {
+              "name": "Chief Sales Officer",
+              "angebot": "cso"
+            }
+          ],
+          "figur": {
+            "mensch": "emil",
+            "gespraech": 2,
+            "teil": 1,
+            "haltung": "tippt",
+            "blick": 0,
+            "weg": [
+              [
+                -2.85,
+                6.3
+              ],
+              [
+                -1.6,
+                6.4
+              ],
+              [
+                -0.8,
+                7.7
+              ]
+            ],
+            "fokus": {
+              "x": 0.9,
+              "d": 4.5
+            },
+            "mit": [
+              {
+                "mensch": "nora",
+                "gespraech": 2,
+                "teil": 0,
+                "haltung": "sitzt-spricht",
+                "platz": [
+                  -1.85,
+                  7.3
+                ],
+                "blick": -50,
+                "weg": [
+                  [
+                    -1.95,
+                    6.3
+                  ],
+                  [
+                    -1.6,
+                    6.4
+                  ],
+                  [
+                    -0.8,
+                    7.7
+                  ]
+                ],
+                "licht": [
+                  -1.8,
+                  1.2,
+                  8.4
+                ]
+              }
+            ],
+            "schild": [
+              0.5,
+              0.08
+            ],
+            "licht": [
+              -2.85,
+              1.3,
+              8.4
+            ]
+          },
+          "platz": [
+            -2.85,
+            7.35
+          ]
+        }
+      ],
+      "plan": {
+        "tuer": [
+          -1.1,
+          -0.2
+        ]
+      },
+      "link": {
+        "text": "Mehr zu MAKE Revenue",
+        "ziel": "vertrieb"
+      }
+    },
+    {
+      "id": "innovation",
+      "etage": {
+        "nr": "Etage 3",
+        "kurz": "3"
+      },
+      "name": "MAKE Innovation",
+      "nutzen": "Analyse, KI und Umsetzung",
+      "satz": "Bevor wir loslegen, schauen wir genau hin: Wo stehst du, was fehlt, wo hilft KI?",
+      "farbe": "lavendel",
+      "zeichnung": "innovation",
+      "leistungen": [
+        {
+          "id": "check",
+          "name": "Innovations-Check",
+          "frei": "kostenlos",
+          "satz": "In rund 10 Minuten siehst du, wo dein Unternehmen steht.",
+          "punkte": [
+            "Strategie, KI im Alltag, Abläufe, Daten und Team",
+            "Vergleich mit deiner Branche",
+            "Zwei nächste Schritte"
+          ],
+          "knopf": {
+            "text": "Check starten",
+            "ziel": "innovations-check"
+          },
+          "figur": {
+            "mensch": "aylin",
+            "gespraech": 3,
+            "teil": 1,
+            "haltung": "schreibt",
+            "blick": 90,
+            "weg": [
+              [
+                -3.0,
+                6.4
+              ],
+              [
+                -1.5,
+                6.3
+              ],
+              [
+                -0.9,
+                7.7
+              ]
+            ],
+            "fokus": {
+              "x": 0.9,
+              "d": 4.2
+            },
+            "mit": [
+              {
+                "mensch": "lina",
+                "gespraech": 3,
+                "teil": 0,
+                "haltung": "steht",
+                "platz": [
+                  -2.0,
+                  7.3
+                ],
+                "blick": -90,
+                "tasche": false,
+                "weg": [
+                  [
+                    -2.0,
+                    6.4
+                  ],
+                  [
+                    -1.5,
+                    6.3
+                  ],
+                  [
+                    -0.9,
+                    7.7
+                  ]
+                ]
+              }
+            ],
+            "schild": [
+              0.5,
+              0.55
+            ]
+          },
+          "platz": [
+            -3.0,
+            7.3
+          ]
+        },
+        {
+          "id": "scoping",
+          "name": "Scoping-Workshop",
+          "angebot": "scoping-workshop",
+          "punkte": [
+            "Wird auf das Projekt angerechnet"
+          ],
+          "figur": {
+            "mensch": "david",
+            "gespraech": 5,
+            "teil": 0,
+            "haltung": "zeigt",
+            "blick": 180,
+            "weg": [
+              [
+                -0.1,
+                8.35
+              ],
+              [
+                -0.6,
+                8.4
+              ]
+            ],
+            "fokus": {
+              "x": -0.3,
+              "d": 4.4
+            },
+            "mit": [
+              {
+                "mensch": "noah",
+                "gespraech": 5,
+                "teil": 1,
+                "haltung": "schreibt",
+                "platz": [
+                  0.9,
+                  7.85
+                ],
+                "blick": 180,
+                "tasche": false,
+                "weg": [
+                  [
+                    0.9,
+                    8.35
+                  ],
+                  [
+                    -0.6,
+                    8.4
+                  ]
+                ]
+              }
+            ],
+            "schild": [
+              0.5,
+              0.53
+            ]
+          },
+          "platz": [
+            -0.1,
+            7.85
+          ]
+        },
+        {
+          "id": "projekt",
+          "name": "Umsetzungsprojekt",
+          "angebot": "umsetzungsprojekte",
+          "figur": {
+            "mensch": "sven",
+            "gespraech": 4,
+            "teil": 1,
+            "haltung": "tippt",
+            "blick": 0,
+            "weg": [
+              [
+                1.8,
+                7.5
+              ],
+              [
+                1.25,
+                8.1
+              ],
+              [
+                -0.6,
+                8.3
+              ]
+            ],
+            "fokus": {
+              "x": -1.0,
+              "d": 4.4
+            },
+            "mit": [
+              {
+                "mensch": "ben",
+                "gespraech": 4,
+                "teil": 0,
+                "haltung": "steht",
+                "platz": [
+                  3.25,
+                  7.15
+                ],
+                "blick": -90,
+                "tasche": false,
+                "weg": [
+                  [
+                    3.0,
+                    6.6
+                  ],
+                  [
+                    1.8,
+                    6.95
+                  ],
+                  [
+                    1.28,
+                    8.05
+                  ],
+                  [
+                    -0.6,
+                    8.3
+                  ]
+                ]
+              }
+            ],
+            "schild": [
+              0.35,
+              0.84
+            ]
+          },
+          "platz": [
+            2.35,
+            7.4
+          ]
+        }
+      ],
+      "plan": {
+        "tuer": [
+          -1.5,
+          -0.6
+        ]
+      },
+      "link": {
+        "text": "Mehr zu MAKE Innovation",
+        "ziel": "innovation"
+      }
+    },
+    {
+      "id": "pr",
+      "etage": {
+        "nr": "Etage 4",
+        "kurz": "4"
+      },
+      "name": "PR & Kommunikation",
+      "nutzen": "Sichtbarkeit & Vertrauen",
+      "satz": "Menschen vertrauen Menschen. Wir holen dich und dein Unternehmen ins Licht, in den Medien, auf Bühnen und in Berlin.",
+      "farbe": "lavendel",
+      "zeichnung": "pr",
+      "leistungen": [
+        {
+          "id": "pr-kommunikation",
+          "name": "PR und Kommunikation",
+          "angebot": "pr-kommunikation",
+          "figur": {
+            "mensch": "clara",
+            "gespraech": 6,
+            "teil": 0,
+            "haltung": "sessel-spricht",
+            "blick": 90,
+            "weg": [
+              [
+                0.3,
+                7.75
+              ],
+              [
+                -0.45,
+                8.05
+              ]
+            ],
+            "fokus": {
+              "x": -0.6,
+              "d": 4.3
+            },
+            "mit": [
+              {
+                "mensch": "finn",
+                "gespraech": 6,
+                "teil": 1,
+                "haltung": "sitzt-sessel",
+                "platz": [
+                  2.4,
+                  7.1
+                ],
+                "blick": -90,
+                "tasche": false,
+                "weg": [
+                  [
+                    2.4,
+                    6.2
+                  ],
+                  [
+                    0.4,
+                    6.3
+                  ],
+                  [
+                    -0.3,
+                    7.5
+                  ],
+                  [
+                    -0.6,
+                    8.1
+                  ]
+                ],
+                "sessel": true
+              },
+              {
+                "mensch": "tara",
+                "haltung": "kamera",
+                "platz": [
+                  3.05,
+                  7.92
+                ],
+                "blick": -105,
+                "tasche": false,
+                "weg": [
+                  [
+                    2.8,
+                    8.3
+                  ],
+                  [
+                    0.5,
+                    8.2
+                  ],
+                  [
+                    -0.35,
+                    8.05
+                  ]
+                ]
+              }
+            ],
+            "schild": [
+              0.85,
+              0.3
+            ],
+            "sessel": true
+          },
+          "platz": [
+            0.65,
+            7.1
+          ]
+        },
+        {
+          "id": "positionierung",
+          "name": "Positionierung",
+          "angebot": "positionierung",
+          "stufen": true,
+          "figur": {
+            "mensch": "jonas",
+            "haltung": "schreibt",
+            "blick": 15,
+            "weg": [
+              [
+                -2.2,
+                8.0
+              ],
+              [
+                -1.8,
+                8.3
+              ]
+            ],
+            "fokus": {
+              "x": 0.9,
+              "d": 4.2
+            },
+            "schild": [
+              0,
+              0.57
+            ]
+          },
+          "platz": [
+            -2.65,
+            7.65
+          ]
+        }
+      ],
+      "plan": {
+        "tuer": [
+          -1.5,
+          -0.6
+        ]
+      },
+      "link": {
+        "text": "Mehr zu PR & Kommunikation",
+        "ziel": "pr"
+      }
+    },
+    {
+      "id": "buehne",
+      "etage": {
+        "nr": "Dach",
+        "kurz": "Dach"
+      },
+      "name": "Die Bühne",
+      "nutzen": "Fokus Abend",
+      "satz": "Ganz oben: der Fokus Abend. Jeden Monat 30 bis 40 Menschen, die Neues umsetzen. Kein Verkaufsvortrag, keine Teilnehmerlisten.",
+      "kennzeichen": "Erster Fokus Abend im Januar 2027 · 30 bis 40 Plätze · auf Einladung",
+      "farbe": "lavendel",
+      "zeichnung": "dach",
+      "leistungen": [
+        {
+          "id": "abend",
+          "name": "Fokus Abend",
+          "frei": "für Gäste kostenlos",
+          "satz": "30 bis 40 Gäste, die Neues umsetzen: zwei Impulse à 15 Minuten, Thementische in 2 Runden, offenes Netzwerken und gezielte Vorstellungen. Die Kamera läuft mit.",
+          "punkte": [
+            "2 Impulse à 15 Minuten",
+            "Thementische in 2 Runden",
+            "Offenes Netzwerken"
+          ],
+          "knopf": {
+            "text": "Platz auf der Gästeliste anfragen",
+            "ziel": "einladung"
+          },
+          "figur": {
+            "art": "gruppe",
+            "fokus": {
+              "x": 1.7,
+              "d": 7.4
+            }
+          },
+          "platz": [
+            -3.5,
+            1.9
+          ],
+          "hoch": 2.25
+        },
+        {
+          "id": "abendpartner",
+          "name": "Abendpartner",
+          "angebot": "abendpartner",
+          "figur": {
+            "art": "buehne",
+            "fokus": {
+              "x": -1.0,
+              "d": 9.2
+            }
+          },
+          "platz": [
+            2.2,
+            8.5
+          ],
+          "hoch": 2.75
+        }
+      ],
+      "link": {
+        "text": "Mehr zum Fokus Abend",
+        "ziel": "events"
+      }
+    }
+  ]
+}

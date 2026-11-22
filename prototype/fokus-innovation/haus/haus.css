@@ -7,16 +7,18 @@
    Jede Szene hat einen HALT (der Raum steht, die Tafel ist voll da, man kann hineinsehen) und danach eine FAHRT zur nächsten Szene (Aufzug bzw. Kamera fährt).
    „Länger im Raum bleiben“ = Halt größer · „langsamer fahren“ = Fahrt größer · „kürzer“ = Zahlen kleiner. Sonst ist nichts zu ändern: Die Höhe der Spur ergibt sich
    von selbst, haus.js misst diese Längen. Wie sich das Scrollen anfühlt (Bremse, Weichheit, Einrasten, Tasten), steht in haus.js unter „STELLWERTE DES SCROLLENS“.
-   Zusammen am Rechner: 3 × 1,8 + 10 × 2,5 + 2,2 + 1,2 + 0,6 = rund 34 Fensterhöhen. */
+   Zusammen am Rechner (10 Szenen): 2 × 1,8 + 6 × 2,5 + 1,8 + 1,2 + 0,6 = rund 22 Fensterhöhen. Die Werte je Gruppe sind dieselben wie vor dem Umbau;
+   neu ist nur der kurze Halt vor der geschlossenen Tür (--halt-tuer). */
 .track {
-  --halt-auftakt: 90vh;   --fahrt-auftakt: 90vh;    /* Szenen 1 bis 3: vor dem Haus */
-  --halt-etage: 140vh;    --fahrt-etage: 110vh;     /* Szenen 4 bis 13: Erdgeschoss bis Dach */
-  --halt-schluss: 120vh;  --fahrt-schluss: 100vh;   /* Szene 14 (Pakete) und 15 (Finale): Halt beider Szenen · Fahrt von 14 nach 15 */
-  --kreis: 60vh;                                    /* nach dem Halt von Szene 15: der Kreis wächst, dann beginnt die Kurz-Startseite */
+  --halt-auftakt: 90vh;   --fahrt-auftakt: 90vh;    /* Eingang und Problem: vor dem Haus */
+  --halt-etage: 140vh;    --fahrt-etage: 110vh;     /* Empfang, die Räume, das Dach */
+  --halt-tuer: 70vh;      --fahrt-tuer: 110vh;      /* Etage mit geschlossener Tür (Podcast): kurzer Halt, dann weiter */
+  --halt-schluss: 120vh;                            /* Finale: sein Halt */
+  --kreis: 60vh;                                    /* nach dem Halt des Finales: der Kreis wächst, dann beginnt die Kurz-Startseite */
 }
 /* Mit dem Finger (Handy, Tablet): eine Fensterhöhe je Szene, kein Halt. Dort rastet der Browser selbst Szene für Szene (ein Wisch, eine Szene). */
 @media (pointer: coarse) {
-  .track { --halt-auftakt: 0px; --fahrt-auftakt: 100vh; --halt-etage: 0px; --fahrt-etage: 100vh; --halt-schluss: 0px; --fahrt-schluss: 100vh; --kreis: 50vh; }
+  .track { --halt-auftakt: 0px; --fahrt-auftakt: 100vh; --halt-etage: 0px; --fahrt-etage: 100vh; --halt-tuer: 0px; --fahrt-tuer: 100vh; --halt-schluss: 0px; --kreis: 50vh; }
 }
 
 /* ── Einheit des Hauses: 16px bei 1440 Breite, darunter und darüber läuft sie mit ── */
@@ -121,7 +123,9 @@
 .haus-zeichen { position: absolute; }
 .dl-durch { display: contents; }
 /* ── Die eine Farbe des Erstgesprächs: nur dieser Knopf (.alink.erst), sonst nirgends in der Fahrt ── */
-:root { --cta: #7C3AED; --cta-text: #F6F4F0; --stufe-fundament: #A78BFA; --stufe-wachstum: #7DB7FF; --stufe-skalieren: #FF5A1F; }
+:root { --cta: #7C3AED; --cta-text: #F6F4F0; }
+/* Farbe je Etage: eine Klasse am Raum, an der Marke der Etagenleiste und in der Etagenwahl (raeume.json › farbe) */
+.f-lavendel { --akz: var(--raw-lavendel); --c: var(--raw-lavendel); } .f-studios { --akz: var(--raw-signal); --c: var(--raw-signal); } .f-revenue { --akz: var(--raw-hellblau); --c: var(--raw-hellblau); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .abs-fill { position: absolute; inset: 0; }
 
@@ -133,7 +137,7 @@
 .t-caption { font-size: var(--font-size-caption); letter-spacing: var(--tracking-caps); text-transform: uppercase; font-weight: 500; line-height: var(--leading-display); }
 .t-lead { font-size: var(--font-size-lead); font-weight: 500; letter-spacing: var(--tracking-copy); }
 
-/* ── Spur und Bühne: 15 Szenen. Die Bühne bleibt stehen, die Spur gibt ihr den Scrollweg: je Szene ein Halt und eine Fahrt (Stellwerte ganz oben in dieser Datei),
+/* ── Spur und Bühne. Die Bühne bleibt stehen, die Spur gibt ihr den Scrollweg: je Szene ein Halt und eine Fahrt (Stellwerte ganz oben in dieser Datei),
       danach der Kreis und eine Fensterhöhe zum Hinausschieben. Die Länge der Spur ergibt sich aus den Raststellen (.snaps liegt mit der Bühne in derselben Rasterzelle
       und gibt die Höhe vor); haus.js misst Halt und Fahrt an den Raststellen (.snap). ── */
 .track { position: relative; z-index: 1; background: var(--background); display: grid; grid-template-columns: minmax(0, 1fr); }
@@ -146,6 +150,7 @@ html.still-s .snaps { display: none; }
 .seq-shade { position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(130% 95% at 50% 45%, transparent 52%, rgb(5 6 9 / .6) 100%), linear-gradient(to bottom, rgb(5 6 9 / .4), transparent 24%, transparent 68%, rgb(5 6 9 / .55)); }
 .grain { position: absolute; inset: 0; pointer-events: none; opacity: .045; background-size: 160px 160px; }
+html[data-stufe="1"] .grain { display: none; } /* schwaches Gerät (Selbstschutz in haus.js): eine bildfüllende Ebene weniger */
 
 /* Raststellen: je Szene eine, so lang wie Halt + Fahrt der Szene; der Halt ist ihr padding-top (dort misst haus.js). Bewusst vh und nicht dvh: vh bleibt gleich,
    wenn am Handy die Adressleiste ein- und ausfährt, die Raststellen wandern nicht. Am Rechner (Maus, Trackpad) rastet nichts per CSS: Dort scrollt die Seite weich (Lenis),
@@ -156,7 +161,7 @@ html.still-s .snaps { display: none; }
 .snap { display: block; box-sizing: border-box; scroll-snap-align: start; scroll-snap-stop: always; }
 .snap-auftakt { height: calc(var(--halt-auftakt) + var(--fahrt-auftakt)); padding-top: var(--halt-auftakt); }
 .snap-etage { height: calc(var(--halt-etage) + var(--fahrt-etage)); padding-top: var(--halt-etage); }
-.snap-schluss { height: calc(var(--halt-schluss) + var(--fahrt-schluss)); padding-top: var(--halt-schluss); }
+.snap-tuer { height: calc(var(--halt-tuer) + var(--fahrt-tuer)); padding-top: var(--halt-tuer); }
 .snap-ende { height: calc(var(--halt-schluss) + var(--kreis)); padding-top: var(--halt-schluss); }
 html.rast-fest { scroll-snap-type: y mandatory; scroll-padding-top: 0; }
 html.rast-fest :is(#kurz, #einstieg) { scroll-snap-align: start; scroll-snap-stop: always; }
@@ -171,10 +176,11 @@ html.fahrt-aus .kopf { position: sticky; }
 .szenen { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
 .sz { position: absolute; inset: 0; visibility: hidden; }
 .sz.an, .sz.zeigt { visibility: visible; }
+.sz.vor { visibility: visible; pointer-events: none; } /* die nächste Tafel, fast unsichtbar vorab im Bild (haus.js › tafeln) */
 /* Die Deckkraft (--tafel) setzt haus.js nach der Scroll-Lage: Überblendung zwischen zwei Szenen. Sie liegt auf der Tafel selbst, nicht auf der Szene:
    So bleibt der unscharfe, dunkle Grund der Tafel auch halb durchsichtig erhalten, der Text ist bis zuletzt lesbar. Bedienbar ist nur .an. */
 .sz > .sz-innen { opacity: var(--tafel, 1); }
-.sz.zeigt > .sz-innen { will-change: opacity, transform; }
+.sz.zeigt > .sz-innen, .sz.vor > .sz-innen { will-change: opacity, transform; }
 .sz-innen { position: absolute; pointer-events: auto; }
 .sz h1, .sz h2 { text-wrap: balance; }
 
@@ -193,11 +199,9 @@ html.fahrt-aus .kopf { position: sticky; }
 .alink.erst.gross { min-height: 4.25rem; padding: 1.2rem 2.4rem; }
 .alink.erst.gross .t-caption { font-size: 1.0625rem; letter-spacing: .1em; font-weight: 600; }
 .alink.erst:focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; }
-.sz-textlink { display: inline-flex; align-items: center; min-height: 44px; color: var(--foreground); border-bottom: 1px solid var(--fg-30); }
-.sz-textlink:hover { border-bottom-color: var(--foreground); }
 
 /* ── Szene 1: Eingang ── */
-.sz-eingang .sz-innen { left: 2.5rem; right: 2.5rem; top: 0; bottom: 0; pointer-events: none; background: radial-gradient(58rem 30rem at 16% 30%, rgb(5 6 9 / .5), rgb(5 6 9 / 0) 70%), radial-gradient(36rem 16rem at 12% 84%, rgb(5 6 9 / .55), rgb(5 6 9 / 0) 70%); }
+.sz-eingang .sz-innen { left: 2.5rem; right: 2.5rem; top: 0; bottom: 0; pointer-events: none; background: radial-gradient(58rem 30rem at 16% 30%, rgb(9 20 46 / .6), rgb(9 20 46 / 0) 70%), radial-gradient(36rem 16rem at 12% 84%, rgb(9 20 46 / .66), rgb(9 20 46 / 0) 70%); }
 .sz-eingang .sz-titel { position: absolute; left: 0; top: calc(var(--kopf) + 4.5rem); max-width: 46rem; font-size: 5.6rem; line-height: .98; letter-spacing: var(--tracking-display); font-weight: 500; text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
 .sz-eingang .sz-pitch { position: absolute; left: 0; bottom: 8.5rem; max-width: 28rem; font-size: 1.1875rem; line-height: 1.5; color: var(--fg-95); text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
 .sz-hinweis { position: absolute; left: 0; bottom: 2.5rem; display: inline-flex; align-items: center; gap: .8rem; min-height: 44px; pointer-events: auto; font-size: .9375rem; color: var(--fg-95); text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
@@ -206,62 +210,38 @@ html.fahrt-aus .kopf { position: sticky; }
 html.statisch .sz-pfeil { animation: none; }
 
 /* ── Szene 2: Das Problem ── */
-.sz-problem .sz-innen { inset: 0; pointer-events: none; background: radial-gradient(52rem 28rem at 18% 30%, rgb(5 6 9 / .6), rgb(5 6 9 / 0) 70%), radial-gradient(34rem 16rem at 86% 86%, rgb(5 6 9 / .6), rgb(5 6 9 / 0) 70%); }
+.sz-problem .sz-innen { inset: 0; pointer-events: none; background: radial-gradient(52rem 28rem at 18% 30%, rgb(9 20 46 / .64), rgb(9 20 46 / 0) 70%), radial-gradient(34rem 16rem at 86% 86%, rgb(9 20 46 / .66), rgb(9 20 46 / 0) 70%); } /* seit dem Tagesverlauf steht hinter diesen Texten heller Vormittag: der Schleier ist tiefblau statt schwarz und etwas dichter */
 .sz-problem .sz-links { position: absolute; left: 2.5rem; top: calc(var(--kopf) + 4.5rem); max-width: 40rem; font-size: 3rem; line-height: 1.08; letter-spacing: var(--tracking-title); font-weight: 500; text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
 .sz-problem .sz-rechts { position: absolute; right: 2.5rem; bottom: 4rem; width: 24rem; font-size: 1.1875rem; line-height: 1.5; color: var(--fg-95); text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
 
-/* ── Szene 3: Für klein bis groß ── */
-.sz-fahrt .sz-innen { left: 2.5rem; top: calc(var(--kopf) + 4.5rem); max-width: 40rem; display: flex; flex-direction: column; gap: 1.6rem; padding: 1.5rem 1.7rem 1.6rem; border-radius: .4rem; background: rgb(11 14 16 / .86); pointer-events: none; }
-.sz-kopf-klein { font-size: .8125rem; letter-spacing: var(--tracking-caps); text-transform: uppercase; font-weight: 500; color: var(--fg-85); }
-.sz-lead { font-size: 1.6rem; line-height: 1.32; letter-spacing: var(--tracking-title); font-weight: 500; text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
-.sz-stufenzeile { display: flex; flex-wrap: wrap; gap: .6rem; }
-.sz-stufenzeile li { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem 1rem; border: 1px solid var(--fg-30); border-radius: 2rem; font-size: .9375rem; background: rgb(11 14 16 / .6); }
-.sz-stufenzeile li::before { content: ""; width: .6rem; height: .6rem; border-radius: 50%; background: var(--c); }
-.st-fundament { --c: var(--stufe-fundament); } .st-wachstum { --c: var(--stufe-wachstum); } .st-skalieren { --c: var(--stufe-skalieren); }
-.sz-klein { font-size: .8125rem; letter-spacing: .14em; text-transform: uppercase; color: var(--fg-85); font-weight: 500; }
+
+
 
 /* ── Etagen: überall genau dieselben Plätze (Kopf oben, Knopf unten, dazwischen von oben nach unten) ── */
-.sz-etage, .sz-tresen { --akz: var(--raw-lavendel); }
-.sz-e2 { --akz: var(--raw-signal); }
-.sz-e4 { --akz: var(--raw-hellblau); }
+.sz-etage { --akz: var(--raw-lavendel); }
+.etagen a { --c: var(--raw-lavendel); }
+
 /* Die Tafel steht über die ganze Höhe, der Inhalt beginnt oben und bildet einen Block; der Rahmen-Knopf sitzt in jeder Etage am Boden der Tafel (an derselben Stelle). */
-.sz-etage .sz-innen, .sz-tresen .sz-innen { left: 0; top: 0; bottom: auto; min-height: 47rem; max-height: 100dvh; width: 45%; display: flex; flex-direction: column; justify-content: flex-start; gap: 1.4rem; padding: calc(var(--kopf) + 1.7rem) 1.6rem 2.4rem 4.7rem;
+.sz-etage .sz-innen { left: 0; top: 0; bottom: auto; min-height: 47rem; max-height: 100dvh; width: 45%; display: flex; flex-direction: column; justify-content: flex-start; gap: 1.4rem; padding: calc(var(--kopf) + 1.7rem) 1.6rem 2.4rem 4.7rem;
   background: rgb(13 15 19 / .97); border-right: 1px solid var(--fg-08); border-bottom: 1px solid var(--fg-12); overflow: hidden; }
-.sz-etage .sz-fuss, .sz-tresen .sz-fuss { margin-top: auto; }
-.sz-tresen .sz-zeile { margin-top: auto; }
+
 .sz-kopfblock { display: flex; flex-direction: column; gap: .7rem; }
-.sz-e4 .sz-innen { background: color-mix(in srgb, var(--raw-tiefblau) 17%, rgb(11 13 17 / .97)); border-right-color: rgb(125 183 255 / .45); }
-.sz-e2 .sz-innen { background: color-mix(in srgb, #FF5A1F 8%, rgb(11 13 17 / .97)); border-right-color: rgb(255 90 31 / .4); }
+
 .sz-kopf { font-size: 1.7rem; line-height: 1.14; letter-spacing: var(--tracking-title); font-weight: 500; }
-.sz-etage .sz-kopf, .sz-tresen .sz-kopf { display: flex; flex-direction: column; gap: .45rem; }
+.sz-etage .sz-kopf { display: flex; flex-direction: column; gap: .45rem; }
 .sz-vor { display: flex; flex-wrap: wrap; align-items: center; font-size: max(12px, .875rem); line-height: 1.2; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: var(--fg-70); }
 .sz-nr { color: var(--akz); } .sz-sep { color: var(--fg-30); white-space: pre; } .sz-stufe { color: var(--fg-70); }
 .sz-name { display: block; font-size: 3.2rem; line-height: 1.05; letter-spacing: var(--tracking-display); font-weight: 500; color: var(--foreground); }
 .sz-unter { display: block; font-size: 1.4rem; line-height: 1.2; letter-spacing: var(--tracking-title); font-weight: 400; color: var(--fg-85); }
 .sz-tag { display: inline-block; padding: .1rem .6rem; border: 1px solid var(--akz); border-radius: 1rem; font-size: max(11px, .75rem); letter-spacing: .1em; color: var(--akz); }
 .sz-satz { font-size: 1.25rem; line-height: 1.5; letter-spacing: var(--tracking-copy); color: var(--fg-95); max-width: 34rem; }
-.sz-mit { font-size: max(14px, .9375rem); line-height: 1.5; color: var(--fg-85); max-width: 34rem; border-left: 2px solid var(--akz); padding-left: 1rem; }
+
 .sz-cap { display: block; font-size: max(11px, .75rem); letter-spacing: .18em; text-transform: uppercase; font-weight: 600; color: var(--akz); margin-bottom: .3rem; }
-.sz-kacheln { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; flex: 1 1 7rem; max-height: 11rem; }
-.sz-kacheln:not(:has(li span)) { max-height: 6.4rem; flex-basis: 6.4rem; }
-.sz-kacheln li { display: flex; flex-direction: column; gap: .4rem; padding: .95rem .8rem 1rem; min-height: 0; border: 1px solid color-mix(in srgb, var(--akz) 50%, transparent); border-top: 3px solid var(--akz); border-radius: .25rem; background: rgb(11 14 16 / .62); min-width: 0; }
-.sz-kacheln b { font-size: max(15px, 1rem); line-height: 1.25; font-weight: 600; letter-spacing: -.005em; overflow-wrap: break-word; hyphens: auto; hyphenate-limit-chars: 10 4 4; }
-.sz-kacheln span { font-size: max(14px, .875rem); line-height: 1.4; color: var(--fg-85); overflow-wrap: anywhere; }
-.sz-preis { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .9rem; }
-.sz-preis b { font-size: 1.5rem; line-height: 1.3; font-weight: 600; letter-spacing: -.01em; }
-.sz-preis span { font-size: max(14px, .875rem); color: var(--fg-85); flex-basis: 100%; }
-.sz-preis small { font-size: max(12px, .75rem); color: var(--fg-70); }
-.sz-absender { font-size: max(12px, .8125rem); letter-spacing: .04em; color: var(--fg-70); }
+
 .sz-kennzeichen { font-size: max(12px, .8125rem); line-height: 1.4; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; color: var(--akz); }
-.sz-fuss { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: .55rem; }
-.sz-leise { display: inline-flex; align-items: center; min-height: 44px; font-size: max(14px, .9375rem); color: var(--fg-95); border-bottom: 1px solid var(--fg-30); text-align: left; }
-.sz-leise:hover { border-bottom-color: var(--foreground); }
-button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
+
 .sz-foto { display: grid; place-items: center; padding: 1rem; border: 1px dashed var(--fg-30); border-radius: .25rem; background: rgb(246 244 240 / .05); text-align: center; color: var(--fg-85); font-size: .75rem; letter-spacing: .14em; font-weight: 500; text-transform: uppercase; }
 .sz-foto-gross { min-height: clamp(4.4rem, 11vh, 6.6rem); }
-.sz-kevin { display: flex; align-items: center; gap: .9rem; }
-.sz-kevin .sz-foto { width: 5.2rem; height: 5.2rem; padding: .3rem; flex: none; font-size: .5625rem; letter-spacing: .08em; }
-.sz-kevin p { font-size: max(14px, .9375rem); line-height: 1.4; color: var(--fg-95); }
 
 /* Tresen: drei gleich große Karten, am Rechner nebeneinander, am Handy untereinander */
 .sz-weichen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; flex: 1 1 7.5rem; max-height: 10.5rem; }
@@ -277,10 +257,10 @@ button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
 .nl-zeile { display: flex; flex-direction: column; gap: .6rem; }
 .nl-feld input { width: 100%; min-height: 3rem; padding: .7rem 1rem; border: 1px solid var(--fg-30); border-radius: .25rem; background: rgb(11 14 16 / .6); color: var(--foreground); font: inherit; font-size: 1rem; }
 .nl-feld input::placeholder { color: var(--fg-70); }
-.nl-feld input:focus-visible, .gast-feld :is(input, textarea):focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
-.nl-wahl, .gast-wahl { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; }
-.nl-wahl label, .gast-wahl label { display: inline-flex; align-items: center; gap: .55rem; min-height: 44px; font-size: .9375rem; cursor: pointer; }
-.nl-wahl input, .gast-wahl input { width: 1.2rem; height: 1.2rem; accent-color: var(--akz); flex: none; }
+.nl-feld input:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
+.nl-wahl { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; }
+.nl-wahl label { display: inline-flex; align-items: center; gap: .55rem; min-height: 44px; font-size: .9375rem; cursor: pointer; }
+.nl-wahl input { width: 1.2rem; height: 1.2rem; accent-color: var(--akz); flex: none; }
 .nl-einw { display: flex; align-items: flex-start; gap: .55rem; font-size: .8125rem; line-height: 1.45; color: var(--fg-85); max-width: 29rem; cursor: pointer; }
 .nl-einw[hidden] { display: none; }
 .nl-einw input { width: 1.2rem; height: 1.2rem; accent-color: var(--akz); flex: none; margin-top: .1rem; }
@@ -291,54 +271,30 @@ button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
 .nl .alink.mehr { align-self: flex-start; }
 .nl-ohne { display: none; }
 
-/* ── Szene 14: Pakete ── */
-.sz-pakete .sz-innen { inset: 0; pointer-events: none; }
-.sz-pakete .sz-innen::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgb(11 14 16 / .9) 0, rgb(11 14 16 / .88) 20%, rgb(11 14 16 / 0) 38%, rgb(11 14 16 / 0) 55%, rgb(11 14 16 / .84) 70%, rgb(11 14 16 / .94) 100%); }
-.sz-pakete .sz-kopf-klein { position: absolute; left: 5.4rem; top: calc(var(--kopf) + 2.4rem); }
-.sz-pakete .sz-lead { position: absolute; left: 5.4rem; top: calc(var(--kopf) + 4.4rem); max-width: 34rem; }
-.sz-pakete .sz-pakete { position: absolute; left: 5.4rem; right: 5.6rem; bottom: 8rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem; pointer-events: auto; }
-.fs-paket { position: relative; display: flex; flex-direction: column; gap: .7rem; padding: 1.2rem 1.3rem 1.3rem; border: 1px solid var(--fg-18); border-top: 3px solid var(--c); border-radius: .25rem; background: rgb(13 15 19 / .94); --akz: var(--c); }
-.fs-paket.ist-empfohlen { border: 2px solid var(--c); border-top-width: 3px; background: color-mix(in srgb, var(--c) 12%, rgb(13 15 19 / .88)); }
-.fs-paket-emp { position: absolute; right: 1rem; top: -.75rem; padding: .15rem .7rem; border-radius: 1rem; background: var(--c); color: var(--raw-nacht); font-size: .6875rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
-.fs-paket h3 { font-size: 1.5rem; font-weight: 500; letter-spacing: var(--tracking-title); }
-.fs-paket-satz { font-size: .9375rem; line-height: 1.4; color: var(--fg-85); min-height: 2.8em; }
-.fs-paket-punkte { display: flex; flex-direction: column; gap: .3rem; }
-.fs-paket-punkte li { position: relative; padding-left: 1rem; font-size: .9375rem; line-height: 1.35; color: var(--fg-95); }
-.fs-paket-punkte li::before { content: ""; position: absolute; left: 0; top: .5em; width: .4rem; height: .4rem; background: var(--c); }
-.fs-paket-ab { font-size: .9375rem; font-weight: 600; letter-spacing: .02em; color: var(--foreground); padding-top: .5rem; border-top: 1px solid var(--fg-12); }
-.sz-zusagen { position: absolute; left: 5.4rem; right: 5.6rem; bottom: 4.4rem; font-size: .9375rem; line-height: 1.4; color: var(--fg-95); text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
-.sz-pakete .sz-leise { position: absolute; left: 5.4rem; bottom: 1.4rem; margin: 0; pointer-events: auto; }
-.sz-pakete .sz-textlink { font-size: .9375rem; }
 
-/* ── Szene 15: Finale ── */
+/* ── Finale: der Satz, darunter „Deine Auswahl“ je Raum mit dessen Ab-Summen (keine Gesamtsumme), darunter der große Knopf.
+      Alles steht in einer Spalte links (.fz): Die Lichtkegel über dem Dach bleiben frei. ── */
 .sz-finale .sz-innen { inset: 0; pointer-events: none; }
+.fz { position: absolute; left: 2.5rem; top: calc(var(--kopf) + 1.6rem); bottom: 1.8rem; width: 34rem; display: flex; flex-direction: column; justify-content: center; gap: 1.25rem; }
 .sz-finale .sz-innen::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgb(11 14 16 / .86) 0, rgb(11 14 16 / .72) 34%, rgb(11 14 16 / 0) 62%); }
-.sz-titel-final { position: absolute; left: 2.5rem; top: 50%; translate: 0 -50%; max-width: 44rem; font-size: 5.2rem; line-height: 1; letter-spacing: var(--tracking-display); font-weight: 500; text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
-.sz-finale .sz-foto { position: absolute; right: 2.5rem; top: calc(var(--kopf) + 4.6rem); width: 17rem; height: 13rem; }
-.sz-final-knopf { position: absolute; left: 2.5rem; bottom: 6.8rem; pointer-events: auto; }
-.sz-mikro { position: absolute; left: 2.5rem; bottom: 4.2rem; font-size: .9375rem; color: var(--fg-95); text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
+.sz-titel-final { font-size: 4.1rem; line-height: 1; letter-spacing: var(--tracking-display); font-weight: 500; text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
+.sz-final-knopf { pointer-events: auto; margin-top: .2rem; }
+.sz-mikro { margin-top: -.55rem; font-size: .9375rem; color: var(--fg-95); text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
 
-/* ── Leisten: links die Etagen, rechts die drei Stufen (ab Szene 4 sichtbar) ── */
-.etagen, .fahrt-stufen { position: absolute; z-index: 20; opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility 0s linear .3s; }
-.etagen.an, .fahrt-stufen.an { opacity: 1; visibility: visible; transition: opacity .3s ease; }
+/* ── Leiste links: die Etagen (ab dem Empfang sichtbar) ── */
+.etagen { position: absolute; z-index: 20; opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility 0s linear .3s; }
+.etagen.an { opacity: 1; visibility: visible; transition: opacity .3s ease; }
 .etagen { left: .9rem; top: 50%; translate: 0 -46%; }
 .etagen ol { display: flex; flex-direction: column; }
-.etagen a { display: grid; place-items: center; width: 3.1rem; min-width: 44px; height: 3.1rem; min-height: 44px; position: relative; font-size: max(12px, .875rem); font-weight: 500; letter-spacing: .06em; font-variant-numeric: tabular-nums; color: var(--fg-70); border-left: 2px solid var(--fg-22); transition: color var(--duration-fast), border-color var(--duration-fast), background-color var(--duration-fast); }
+.etagen a { display: grid; place-items: center; width: 3.1rem; min-width: 44px; height: 3.1rem; min-height: 44px; position: relative; font-size: max(12px, .875rem); font-weight: 500; letter-spacing: .06em; color: var(--fg-70); border-left: 2px solid var(--fg-22); transition: color var(--duration-fast), border-color var(--duration-fast), background-color var(--duration-fast); }
 .etagen a:hover { color: var(--foreground); background: rgb(246 244 240 / .06); }
 .etagen a.jetzt { color: var(--foreground); border-left: 4px solid var(--c); background: color-mix(in srgb, var(--c) 24%, rgb(11 14 16 / .7)); font-weight: 700; font-size: max(13px, 1rem); }
 .etagen a.jetzt::after { content: ""; position: absolute; right: .35rem; top: 50%; width: .4rem; height: .4rem; margin-top: -.2rem; border-radius: 50%; background: var(--c); }
 .etagen li[hidden] { display: none; }
-.fahrt-stufen { right: .9rem; top: calc(var(--kopf) + 4.4rem); bottom: 2.2rem; width: 3rem; }
-.fahrt-stufen ol { height: 100%; display: flex; flex-direction: column; gap: .35rem; }
-.fahrt-stufen li { position: relative; flex: 1; min-height: 44px; width: 100%; }
-.fahrt-stufen li:nth-child(1) { flex: 3; } .fahrt-stufen li:nth-child(2) { flex: 4; } .fahrt-stufen li:nth-child(3) { flex: 3; }
-.fahrt-stufen a { position: absolute; inset: 0; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); border-radius: .25rem; background: rgb(11 14 16 / .6); color: var(--fg-70); overflow: hidden; transition: background-color var(--duration-normal), color var(--duration-normal), border-color var(--duration-normal); }
-.fahrt-stufen a span { writing-mode: vertical-rl; rotate: 180deg; font-size: max(12px, .8125rem); letter-spacing: .16em; text-transform: uppercase; font-weight: 500; white-space: nowrap; position: relative; }
-.fahrt-stufen a::before { content: ""; position: absolute; right: 0; bottom: 0; width: .28rem; height: var(--fuell, 0%); background: var(--c); }
-.fahrt-stufen a.jetzt { background: color-mix(in srgb, var(--c) 26%, rgb(11 14 16 / .78)); color: var(--foreground); border-color: var(--c); border-width: 2px; }
-.fahrt-stufen a.jetzt span { font-weight: 700; font-size: max(13px, .9375rem); }
-.fahrt-stufen a:hover { color: var(--foreground); }
-.fahrt-stufen a:focus-visible, .etagen a:focus-visible, .ueberspringen:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
+
+
+
+.etagen a:focus-visible, .ueberspringen:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
 
 /* ── Fahrt überspringen: klein, kontrastreich, ab der ersten Sekunde da ── */
 .ueberspringen { position: absolute; z-index: 40; right: 2.5rem; top: calc(var(--kopf) + .8rem); display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; padding: 0 1rem 0 1.15rem; border: 1px solid var(--fg-30); border-radius: 2rem;
@@ -359,14 +315,6 @@ button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
 .wahl-liste a { display: flex; align-items: center; gap: 1rem; min-height: 48px; padding: .3rem .2rem; border-bottom: 1px solid var(--fg-10); font-size: 1.0625rem; --akz: var(--c); }
 .wahl-liste a:hover { background: rgb(246 244 240 / .06); }
 .wahl-liste b { width: 3.1rem; flex: none; font-size: .8125rem; letter-spacing: .1em; font-weight: 600; color: var(--c); }
-.gast-feld { display: flex; flex-direction: column; gap: .35rem; font-size: .875rem; color: var(--fg-85); }
-.gast-feld :is(input, textarea) { width: 100%; padding: .7rem .9rem; border: 1px solid var(--fg-30); border-radius: .25rem; background: rgb(11 14 16 / .7); color: var(--foreground); font: inherit; font-size: 1rem; }
-.gast-wahl legend { font-size: .875rem; color: var(--fg-85); padding: 0; margin-bottom: .2rem; }
-.gast { --akz: var(--raw-lavendel); }
-.gast-hinweis { font-size: .9375rem; color: var(--akz); }
-.gast-hinweis[hidden] { display: none; }
-.gast-recht { font-size: .8125rem; color: var(--fg-70); }
-.gast-meldung { min-height: 1.2em; font-size: .875rem; color: var(--akz); }
 
 /* ── Übergang: der Kreis, die runde Öffnung aus dem Zeichen ── */
 .star { pointer-events: none; position: absolute; left: 50%; top: 50%; z-index: 30; aspect-ratio: 1; width: var(--size-star); translate: -50% -50%; will-change: transform; visibility: hidden; }
@@ -382,76 +330,65 @@ button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
   .sz-hinweis { bottom: 1.6rem; }
   .sz-problem .sz-links { left: 1.5rem; right: 1.5rem; top: calc(var(--kopf) + 3.4rem); font-size: 1.55rem; }
   .sz-problem .sz-rechts { left: 1.5rem; right: 1.5rem; width: auto; bottom: 2rem; font-size: 1rem; }
-  .sz-fahrt .sz-innen { left: 1.5rem; right: 1.5rem; top: calc(var(--kopf) + 3.4rem); gap: 1rem; }
-  .sz-lead { font-size: 1.15rem; }
-  .sz-stufenzeile li { padding: .4rem .8rem; font-size: .875rem; }
-  .sz-etage .sz-innen, .sz-tresen .sz-innen { top: auto; width: auto; left: 0; right: 0; bottom: 0; min-height: 0; max-height: 80dvh; justify-content: flex-start; gap: .7rem; padding: 1rem 1.5rem 1.2rem 1.5rem; border-right: 0; border-bottom: 0; border-top: 1px solid var(--fg-12); }
-  .sz-etage .sz-fuss, .sz-tresen .sz-fuss { margin-top: auto; padding-top: 0; }
-  .sz-etage .sz-kopf, .sz-tresen .sz-kopf { gap: .25rem; }
+
+
+  .sz-etage .sz-innen { top: auto; width: auto; left: 0; right: 0; bottom: 0; min-height: 0; max-height: 80dvh; justify-content: flex-start; gap: .7rem; padding: 1rem 1.5rem 1.2rem 1.5rem; border-right: 0; border-bottom: 0; border-top: 1px solid var(--fg-12); }
+
+  .sz-etage .sz-kopf { gap: .25rem; }
   .sz-name { font-size: 1.85rem; line-height: 1.08; } .sz-unter { font-size: 1.05rem; }
   .sz-satz { font-size: 1rem; line-height: 1.42; }
-  .sz-mit { font-size: max(15px, .875rem); line-height: 1.42; }
-  .sz-kacheln, .sz-kacheln:not(:has(li span)) { grid-template-columns: 1fr; gap: .4rem; flex: none; max-height: none; }
-  .sz-kacheln li { min-height: 0; flex-direction: column; gap: .05rem; padding: .55rem .8rem .6rem; border-top-width: 1px; border-left: 3px solid var(--akz); }
-  .sz-kacheln b { font-size: max(16px, 1rem); } .sz-kacheln span { font-size: max(15px, .875rem); }
-  .sz-preis b { font-size: 1.125rem; } .sz-preis span { display: none; } .sz-preis small { font-size: 12px; }
+
+
+
   .sz-kennzeichen { font-size: 12px; }
   .alink.mehr { min-height: 44px; padding: .5rem 1.1rem; }
-  .sz-fuss { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; }
+
   .sz-foto-gross { min-height: 3.6rem; max-height: 4rem; }
-  .sz-kevin .sz-foto { display: none; }
-  .sz-kevin p { font-size: max(15px, .875rem); }
+
   .sz-weichen { grid-template-columns: 1fr; gap: .4rem; flex: none; max-height: none; }
   .weiche { min-height: 3.2rem; flex-direction: row; align-items: center; justify-content: space-between; padding: .5rem .9rem; border-top-width: 1px; border-left: 3px solid var(--akz); font-size: max(16px, 1rem); }
   .weiche svg { align-self: center; }
   .sz-zeile { font-size: max(15px, .875rem); margin-top: 0; }
   .nl-zeile { gap: .4rem; } .nl-feld input { min-height: 44px; padding: .5rem .8rem; }
   .nl-recht { font-size: .75rem; }
-  .sz-pakete .sz-kopf-klein { left: 1.5rem; top: calc(var(--kopf) + 3.2rem); }
-  .sz-pakete .sz-lead { left: 1.5rem; right: 1.5rem; top: calc(var(--kopf) + 4.8rem); font-size: 1.05rem; }
-  .sz-pakete .sz-pakete { left: 1.5rem; right: 1.5rem; bottom: 6.6rem; grid-template-columns: 1fr; gap: .45rem; max-height: 56dvh; overflow: hidden; }
-  .fs-paket { display: grid; grid-template-columns: 1fr auto; gap: .15rem .8rem; padding: .6rem .8rem; align-items: center; }
-  .fs-paket h3 { font-size: 1.05rem; grid-column: 1; }
-  .fs-paket-satz, .fs-paket-punkte { display: none; }
-  .fs-paket-ab { grid-column: 1; border: 0; padding: 0; font-size: .75rem; }
-  .fs-paket .alink { grid-column: 2; grid-row: 1 / span 2; min-height: 44px; padding: .3rem .8rem; }
-  .fs-paket .alink svg { display: none; }
-  .fs-paket-emp { right: auto; left: .8rem; top: -.6rem; }
-  .sz-zusagen { left: 1.5rem; right: 1.5rem; bottom: 3.2rem; font-size: .75rem; }
-  .sz-pakete .sz-leise { left: 1.5rem; bottom: .6rem; }
+
+
+
+
+
+
+
+
   .sz-finale .sz-innen::before { background: linear-gradient(180deg, rgb(11 14 16 / .9) 0, rgb(11 14 16 / .78) 34%, rgb(11 14 16 / 0) 52%, rgb(11 14 16 / 0) 62%, rgb(11 14 16 / .8) 82%, rgb(11 14 16 / .9) 100%); }
-  .sz-titel-final { left: 1.5rem; right: 1.5rem; top: calc(var(--kopf) + 3.6rem); translate: none; font-size: 2.6rem; }
-  .sz-finale .sz-foto { right: 1.5rem; left: 1.5rem; width: auto; top: auto; bottom: 11.2rem; height: 6rem; }
-  .sz-final-knopf { left: 1.5rem; right: 1.5rem; bottom: 4.8rem; } .sz-final-knopf .alink { width: 100%; justify-content: center; }
-  .sz-mikro { left: 1.5rem; bottom: 2.4rem; font-size: .8125rem; }
+  .fz { left: 1.3rem; right: 1.3rem; width: auto; top: calc(var(--kopf) + 3.2rem); bottom: 1.2rem; justify-content: flex-start; gap: .8rem; }
+  .sz-titel-final { font-size: 2rem; }
+  .sz-final-knopf .alink { width: 100%; justify-content: center; }
+  .sz-mikro { font-size: .8125rem; margin-top: -.4rem; }
   .ueberspringen { right: 1rem; top: calc(var(--kopf) + .4rem); }
   .etagen { left: .2rem; top: calc(var(--kopf) + 3.4rem); translate: none; }
   .etagen a { width: 2.7rem; }
   .etagen li { display: none; } .etagen li:has(a.jetzt) { display: block; } /* am Handy nur die aktuelle Etage; alle stehen in der Etagenwahl am Tresen */
-  .fahrt-stufen { right: .3rem; top: calc(var(--kopf) + 3.4rem); bottom: auto; width: 2.5rem; height: 9.4rem; }
-  .fahrt-stufen a span { font-size: 12px; letter-spacing: .1em; }
+
 }
 /* Tablet breit und kleine Laptops: Etagenspalte schmaler und Schrift kleiner, wenn die Höhe knapp ist */
-@media (min-width: 768px) and (max-width: 1100px) and (min-aspect-ratio: 9/10) { .sz-etage .sz-innen, .sz-tresen .sz-innen { width: 54%; } .sz-name { font-size: 2.6rem; } .sz-unter { font-size: 1.2rem; } .sz-satz { font-size: 1.125rem; } .sz-etage .sz-innen, .sz-tresen .sz-innen { padding-left: 4.4rem; padding-right: 1.1rem; } .sz-kacheln { gap: .5rem; } .sz-kacheln li { padding: .8rem .55rem .9rem; } .weiche { padding: .9rem .6rem; } .sz-eingang .sz-titel { font-size: 4.2rem; } .sz-titel-final { font-size: 4rem; } .sz-problem .sz-links { font-size: 2.3rem; } }
+@media (min-width: 768px) and (max-width: 1100px) and (min-aspect-ratio: 9/10) { .sz-etage .sz-innen { width: 54%; } .sz-name { font-size: 2.6rem; } .sz-unter { font-size: 1.2rem; } .sz-satz { font-size: 1.125rem; } .sz-etage .sz-innen { padding-left: 4.4rem; padding-right: 1.1rem; }   .weiche { padding: .9rem .6rem; } .sz-eingang .sz-titel { font-size: 4.2rem; } .sz-titel-final { font-size: 4rem; } .sz-problem .sz-links { font-size: 2.3rem; } }
 @media (min-width: 768px) and (max-height: 820px) and (min-aspect-ratio: 9/10) {
-  .sz-etage .sz-innen, .sz-tresen .sz-innen { gap: .9rem; padding-top: calc(var(--kopf) + .9rem); padding-bottom: 1.3rem; }
-  .sz-kacheln, .sz-weichen { flex: 1 1 5rem; max-height: 9rem; }
+  .sz-etage .sz-innen { gap: .9rem; padding-top: calc(var(--kopf) + .9rem); padding-bottom: 1.3rem; }
+  .sz-weichen { flex: 1 1 5rem; max-height: 9rem; }
   .sz-name { font-size: 2.35rem; } .sz-unter { font-size: 1.2rem; } .sz-satz { font-size: 1.0625rem; line-height: 1.42; }
-  .sz-kacheln li { padding: .7rem .8rem .8rem; min-height: 0; }
-  .sz-preis b { font-size: 1.2rem; } .sz-preis span { display: none; }
+
   .alink.mehr { min-height: 2.9rem; padding: .55rem 1.2rem; }
   .sz-foto-gross { min-height: 4rem; } .weiche { min-height: 6.2rem; }
-  .sz-pakete .sz-pakete { bottom: 6.4rem; } .fs-paket { padding: .9rem 1rem 1rem; gap: .5rem; } .fs-paket-satz { min-height: 0; }
-  .sz-zusagen { bottom: 4.4rem; } .sz-pakete .sz-leise { bottom: .8rem; } .sz-lead { font-size: 1.35rem; }
+
   .sz-eingang .sz-titel { font-size: 4.6rem; } .sz-titel-final { font-size: 4.4rem; }
 }
 
 /* Keine automatische Silbentrennung in Kacheln und Karten: lange Wörter wie „Kundenbindung“ bleiben ganz.
    Wo drei Spalten für sie zu eng werden (Tablet quer, kleine Laptops), stehen Kacheln und Tresen-Karten untereinander als Zeilen. */
-.sz-kacheln b, .sz-kacheln span, .weiche b, .sz-name, .sz-unter, .sz-kopf { hyphens: manual; -webkit-hyphens: manual; overflow-wrap: normal; }
+.weiche b, .sz-name, .sz-unter, .sz-kopf { hyphens: manual; -webkit-hyphens: manual; overflow-wrap: normal; }
 @media (min-width: 768px) and (max-width: 1260px) and (min-aspect-ratio: 9/10) {
-  .sz-kacheln, .sz-kacheln:not(:has(li span)), .sz-weichen { grid-template-columns: 1fr; gap: .4rem; flex: none; max-height: none; }
-  .sz-kacheln li { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 .7rem; padding: .6rem .9rem; border-top-width: 1px; border-left: 3px solid var(--akz); }
+  .sz-weichen { grid-template-columns: 1fr; gap: .4rem; flex: none; max-height: none; }
+
   .weiche { flex-direction: row; align-items: center; justify-content: space-between; min-height: 3.3rem; padding: .5rem .9rem; border-top-width: 1px; border-left: 3px solid var(--akz); }
   .weiche svg { align-self: center; }
   .sz-foto-gross { min-height: 3.6rem; max-height: 4.4rem; }
@@ -460,7 +397,7 @@ button.sz-leise { border: 0; border-bottom: 1px solid var(--fg-30); }
 html:not(.fahrt-aus) .start .kopf { position: fixed; left: 0; right: 0; }
 html:not(.fahrt-aus) .start .sprung { position: fixed; }
 .kopf.ueber-film { color: var(--hell); border-color: transparent; }
-.kopf.ueber-film::before { opacity: 0; }
+.kopf.ueber-film::before { opacity: 0; -webkit-backdrop-filter: none; backdrop-filter: none; } /* über der Fahrt keine Unschärfe: Unter dem fast deckenden dunklen Glas sieht man sie nicht, sie müsste aber bei jedem Bild der Zeichnung neu gerechnet werden */
 .kopf.ueber-film.film-geht::before { opacity: 1; background: rgba(11, 12, 15, .86); }
 .kopf.ueber-film .wortbild .wb-zusatz { fill: var(--grau); }
 .kopf.ueber-film .zeichen .kern { fill: var(--kern-nacht); }
@@ -469,89 +406,287 @@ html:not(.fahrt-aus) .start .sprung { position: fixed; }
 .kopf.ueber-film .knopf { background: var(--hell); color: var(--nacht); border-color: var(--hell); }
 .kopf.ueber-film .menue summary { border-color: rgba(242, 243, 243, .34); }
 
-/* ── Ohne Skript und bei „weniger Bewegung“: die 15 Szenen stehen als normale, untereinander lesbare Abschnitte (mit ruhigem Bild, wenn das Skript es malt) ── */
+/* ── Ohne Skript und bei „weniger Bewegung“: die Szenen stehen als normale, untereinander lesbare Abschnitte (mit ruhigem Bild, wenn das Skript es malt) ── */
 html:not(.js) .track, html.statisch .track { height: auto; display: block; }
 html:not(.js) .stage, html.statisch .stage { position: static; height: auto; overflow: visible; }
-html:not(.js) :is(.snaps, .etagen, .fahrt-stufen, .star, .grain, .seq-shade, .ueberspringen) , html.statisch :is(.snaps, .etagen, .fahrt-stufen, .star, .grain, .seq-shade) { display: none; }
+html:not(.js) :is(.snaps, .etagen, .star, .grain, .seq-shade, .ueberspringen) , html.statisch :is(.snaps, .etagen, .star, .grain, .seq-shade) { display: none; }
 html:not(.js) .seq, html.statisch .seq { display: none; }
 html:not(.js) .szenen, html.statisch .szenen { position: static; }
 html:not(.js) .sz, html.statisch .sz { position: relative; inset: auto; opacity: 1; visibility: visible; min-height: 100vh; min-height: 100dvh; background-color: var(--raw-nacht); background-size: cover; background-position: center; border-bottom: 1px solid var(--fg-12); transition: none; }
 html:not(.js) .sz-innen, html.statisch .sz-innen { position: relative; inset: auto; width: auto; max-height: none; max-width: 62rem; min-height: inherit; padding: calc(var(--kopf) + 3rem) 2.5rem 3rem; margin: 0 auto; display: flex; flex-direction: column; gap: 1.2rem; background: none; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; pointer-events: auto; overflow: visible; }
 html:not(.js) .sz-innen > *, html.statisch .sz-innen > * { position: static !important; translate: none !important; max-width: 40rem; }
-html:not(.js) .sz-innen .sz-pakete, html.statisch .sz-innen .sz-pakete { max-width: none; }
+
 html.statisch .sz-innen { background: rgb(13 15 19 / .78); border-radius: .4rem; margin-top: 3rem; margin-bottom: 3rem; min-height: 0; padding: 2rem 2.2rem; }
 html.statisch .sz { display: grid; align-items: center; }
-html:not(.js) .sz-pakete .sz-pakete, html.statisch .sz-pakete .sz-pakete { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+
 html:not(.js) .sz-eingang .sz-titel, html.statisch .sz-eingang .sz-titel { font-size: 3.4rem; }
 html:not(.js) .sz-titel-final, html.statisch .sz-titel-final { font-size: 3rem; }
-html:not(.js) .sz-fuss, html.statisch .sz-fuss { margin-top: .6rem; }
+
 html:not(.js) .start .kopf { position: absolute; }
 html:not(.js) .nl, html.statisch .nl { display: flex; }
 html:not(.js) .nl { display: none; }
 html:not(.js) .nl-ohne { display: block; }
-html:not(.js) .sz-leise[data-aktion], html:not(.js) .weiche[data-aktion] { display: none; }
+html:not(.js) .weiche[data-aktion] { display: none; }
 html:not(.js) .ueberspringen { position: static; margin: 5rem 2.5rem 0; }
 
 /* Handy: die Stufen als Reihe neben „Fahrt überspringen“, die Etagen der aktuellen Stufe links darunter; alles auf eigener Fläche, damit es über jedem Bild lesbar bleibt */
 @media (max-width: 767.98px), (max-width: 1100px) and (max-aspect-ratio: 9/10) {
-  .fahrt-stufen { left: .5rem; right: 11.1rem; top: calc(var(--kopf) + .4rem); bottom: auto; width: auto; height: 44px; }
+
   .ueberspringen { font-size: .72rem; padding: 0 .8rem 0 .9rem; gap: .4rem; }
-  .fahrt-stufen ol { flex-direction: row-reverse; gap: .2rem; }
-  .fahrt-stufen li, .fahrt-stufen li:nth-child(n) { flex: 1; min-height: 44px; width: auto; }
-  .fahrt-stufen a span { writing-mode: horizontal-tb; rotate: none; font-size: .75rem; letter-spacing: 0; text-transform: none; white-space: nowrap; }
-  .fahrt-stufen li { transition: flex-grow var(--duration-normal) var(--ease-glide); }
-  .fahrt-stufen li:has(> a.jetzt) { flex-grow: 3.2; }
-  .fahrt-stufen ol:has(> li > a.jetzt) a:not(.jetzt) span { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* Namen nur für Vorlesegeräte; sehen kann man ihn bei der aktuellen Stufe; ohne aktuelle Stufe (Pakete) stehen alle drei Namen da */
-  .fahrt-stufen ol:not(:has(> li > a.jetzt)) a span { font-size: .6875rem; }
-  .fahrt-stufen a::before { left: 0; right: auto; top: auto; bottom: 0; width: var(--fuell, 0%); height: .22rem; }
+
+
+
+   /* Namen nur für Vorlesegeräte; sehen kann man ihn bei der aktuellen Stufe; ohne aktuelle Stufe (Pakete) stehen alle drei Namen da */
+
   .etagen { left: .5rem; top: calc(var(--kopf) + 3.6rem); }
   .seq-shade { background: radial-gradient(130% 95% at 50% 45%, transparent 52%, rgb(5 6 9 / .6) 100%), linear-gradient(to bottom, rgb(5 6 9 / .82) 0, rgb(5 6 9 / .5) 8.5rem, transparent 14rem), linear-gradient(to bottom, transparent 68%, rgb(5 6 9 / .55)); } /* Stufen-Reihe und Etagenmarke liegen über der Zeichnung: der Streifen dahinter ist abgedunkelt, damit nichts Wichtiges darunter liegt */
   .etagen a { background: rgb(11 14 16 / .66); color: var(--foreground); margin-bottom: .2rem; }
-  .sz-fahrt .sz-innen { padding: 1rem 1.1rem 1.1rem; background: rgb(11 14 16 / .92); border-radius: .4rem; left: 1rem; right: 1rem; }
+
   .sz-problem .sz-links { text-shadow: 0 1px 2px rgb(5 6 9 / .55); }
-  .sz-pakete .sz-pakete { bottom: 9rem; }
-  .sz-zusagen { bottom: 5rem; font-size: .6875rem; }
-  .sz-pakete .sz-leise { bottom: .3rem; font-size: .8125rem; line-height: 1.3; }
+
+
   /* Etagen am Handy: die Tafel bleibt klein, damit die Zeichnung darüber Platz hat (Bild mindestens etwa ein Drittel bis zwei Fünftel der Höhe).
      Kacheln als Zeilen (Name und Zusatz nebeneinander), „Das nimmst du mit“ mit der Überschrift in der ersten Zeile, engere Abstände. */
-  .sz-etage .sz-innen, .sz-tresen .sz-innen { gap: .4rem; padding: .7rem 1.3rem .85rem; }
-  .sz-etage .sz-kopf, .sz-tresen .sz-kopf { gap: .1rem; }
+  .sz-etage .sz-innen { gap: .4rem; padding: .7rem 1.3rem .85rem; }
+  .sz-etage .sz-kopf { gap: .1rem; }
   .sz-vor { line-height: 1.1; }
   .sz-name { font-size: 1.6rem; line-height: 1.05; }
   .sz-unter { font-size: .95rem; line-height: 1.15; }
   .sz-satz { font-size: max(15px, .86rem); line-height: 1.36; }
-  .sz-mit { font-size: max(15px, .84rem); line-height: 1.33; padding-left: .7rem; }
+
   .sz-cap { display: inline; margin: 0 .5em 0 0; }
-  .sz-kacheln, .sz-kacheln:not(:has(li span)) { gap: .3rem; }
-  .sz-kacheln li { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: flex-start; gap: 0 .65rem; padding: .35rem .75rem; min-height: 44px; align-content: center; }
-  .sz-kacheln b { font-size: max(15px, .9rem); line-height: 1.25; }
-  .sz-kacheln span { font-size: max(14px, .8rem); line-height: 1.25; }
+
+
+
   .weiche { min-height: 2.65rem; padding: .35rem .8rem; }
   .sz-weichen { gap: .3rem; }
-  .sz-preis b { font-size: 1rem; line-height: 1.25; }
+
   .sz-zeile { line-height: 1.35; }
   .sz-foto-gross { min-height: 3rem; max-height: 3.4rem; }
-  .sz-fuss { gap: 0 1rem; }
+
   .alink.mehr { min-height: 44px; padding: .35rem 1rem; }
-  .sz-leise { min-height: 44px; }
+
 }
 @media (max-width: 767.98px) and (max-height: 740px), (max-width: 1100px) and (max-aspect-ratio: 9/10) and (max-height: 740px) {
-  .sz-etage .sz-innen, .sz-tresen .sz-innen { max-height: 72dvh; gap: .4rem; padding-top: .65rem; padding-bottom: .7rem; }
-  .sz-mit { display: none; }
-  .sz-kacheln, .sz-kacheln:not(:has(li span)) { display: flex; flex-wrap: wrap; gap: .3rem; } /* ganz niedrige Fenster: die Kacheln als Marken in Reihen */
-  .sz-kacheln li { padding: .3rem .7rem; min-height: 0; flex: 0 1 auto; }
-  .sz-kacheln span { display: none; }
-  .nl-wahl, .gast-wahl { gap: 0 .7rem; } .nl-wahl label { min-height: 44px; gap: .35rem; font-size: 14px; } .nl-wahl input { width: 1.05rem; height: 1.05rem; }
+  .sz-etage .sz-innen { max-height: 72dvh; gap: .4rem; padding-top: .65rem; padding-bottom: .7rem; }
+
+   /* ganz niedrige Fenster: die Kacheln als Marken in Reihen */
+
+  .nl-wahl { gap: 0 .7rem; } .nl-wahl label { min-height: 44px; gap: .35rem; font-size: 14px; } .nl-wahl input { width: 1.05rem; height: 1.05rem; }
   .nl { gap: .45rem; } .nl-recht { line-height: 1.3; }
   .sz-vor { font-size: 12px; }
   .sz-name { font-size: 1.6rem; } .sz-unter { font-size: .95rem; }
   .sz-foto-gross { min-height: 2.6rem; max-height: 3rem; }
   .sz-satz { font-size: max(15px, .875rem); line-height: 1.38; }
-  .sz-kevin { display: none; }
+
   .sz-eingang .sz-pitch { bottom: 5rem; }
   .etagen li { display: none; } .etagen li:has(a.jetzt) { display: block; } /* auf kleinen Bildschirmen nur die aktuelle Etage; alle Etagen stehen in der Etagenwahl am Tresen */
 }
+/* ═══════════════ Die Räume zum Hineingehen (Umbau 21.11.) ═══════════════
+   Ein Raum ist eine Szene über die ganze Bühne (.sz-innen = eine Ebene, Deckkraft und Versatz liegen wie bei jeder Tafel direkt auf ihr): links die Tafel mit der
+   Liste der Leistungen (.rt), unten im Raum die Paket-Leiste (.rp), über den Figuren die Schilder (.schild, haus.js setzt nur transform und opacity am Schild selbst)
+   und je Leistung eine Karte (.rk), die an der Stelle der Tafel aufgeht. Am Handy: Raum oben, Tafel und Leiste als Blatt unten (.rblatt), die Karte als Blatt darüber.
+   Regeln gegen Ruckeln bleiben: kein backdrop-filter, kein großer weicher Schatten, keine Variablen pro Bild auf Elternelementen. */
+.sz-etage .sz-innen { width: 42%; top: 0; bottom: 0; min-height: 0; max-height: none; border-bottom: 0; }
+.sz-raum .sz-innen { inset: 0; pointer-events: none; }
+.rblatt { display: contents; }
+.rt { position: absolute; left: 0; top: 0; bottom: 0; width: 42%; display: flex; flex-direction: column; justify-content: flex-start; gap: 1.15rem; padding: calc(var(--kopf) + 1.7rem) 1.6rem 1.6rem 4.7rem;
+  background: color-mix(in srgb, var(--akz) 5%, rgb(12 14 18 / .975)); border-right: 1px solid color-mix(in srgb, var(--akz) 42%, transparent); pointer-events: auto; overflow: hidden; }
+.sz-raum .sz-kopf { display: flex; flex-direction: column; gap: .45rem; }
+.sz-raum .sz-unter { color: var(--akz); font-weight: 500; }
+.rl { display: flex; flex-direction: column; gap: .5rem; }
+.rl-z { display: flex; align-items: stretch; gap: .4rem; }
+.rl-an { flex: 1; min-width: 0; display: flex; align-items: center; gap: .8rem; min-height: 3.5rem; padding: .55rem .9rem; border: 1px solid color-mix(in srgb, var(--akz) 55%, transparent); border-left: 3px solid var(--akz);
+  border-radius: .25rem; background: rgb(11 14 16 / .62); color: var(--foreground); text-align: left; transition: background-color var(--duration-fast), border-color var(--duration-fast), opacity var(--duration-fast); }
+.rl-an:hover, .rl-z.hebt .rl-an { background: color-mix(in srgb, var(--akz) 16%, rgb(11 14 16 / .62)); border-color: var(--akz); }
+.rl-haken { position: relative; flex: none; width: 1.35rem; height: 1.35rem; border: 1.5px solid var(--akz); border-radius: .25rem; background: var(--akz); }
+.rl-haken::after { content: ""; position: absolute; left: 50%; top: 44%; width: .36rem; height: .68rem; border: solid var(--raw-nacht); border-width: 0 2px 2px 0; translate: -50% -50%; rotate: 45deg; }
+[aria-pressed="false"] > .rl-haken { background: none; } [aria-pressed="false"] > .rl-haken::after { display: none; }
+.rl-an[aria-pressed="false"] { border-style: dashed; background: rgb(11 14 16 / .4); }
+.rl-an[aria-pressed="false"] b { color: var(--fg-70); }
+.rl-t { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .55rem; }
+.rl-t b { font-size: max(15px, 1.0625rem); line-height: 1.25; font-weight: 600; letter-spacing: -.005em; }
+.rl-var { font-size: max(13px, .8125rem); color: var(--fg-70); } .rl-var:empty { display: none; }
+.rl-preis { flex: none; font-size: max(14px, .9375rem); font-weight: 600; white-space: nowrap; }
+.rl-mehr { flex: none; display: inline-flex; align-items: center; gap: .25rem; min-width: 44px; padding: 0 .55rem 0 .85rem; border: 1px solid var(--fg-22); border-radius: .25rem; font-size: max(13px, .8125rem); color: var(--fg-85); background: rgb(11 14 16 / .4); transition: color var(--duration-fast), border-color var(--duration-fast); }
+.rl-mehr:hover { color: var(--foreground); border-color: var(--fg-70); }
+.rl-mehr svg, .rk-zurueck svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.rl-hilfe { font-size: max(13px, .8125rem); line-height: 1.45; color: var(--fg-70); max-width: 30rem; }
+.rt-link { margin-top: auto; }
+.sz-raum :is(.rl-an, .rl-mehr, .rk-zurueck, .rk-schalter, .rk-wahl button):focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
+
+/* Paket-Leiste: unten im Raum. Die Summen sind Ab-Preise und heißen auch so. */
+.rp { position: absolute; left: 42%; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 1.2rem; padding: .9rem 2.2rem 1rem 1.8rem; background: rgb(11 13 17 / .93); border-top: 1px solid color-mix(in srgb, var(--akz) 35%, transparent); pointer-events: auto; }
+.rp-text { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.rp-text .sz-cap { margin: 0; }
+.rp-text b { font-size: 1.3rem; line-height: 1.25; font-weight: 600; letter-spacing: -.01em; }
+.rp-text small { display: flex; flex-wrap: wrap; gap: 0 .9rem; font-size: max(12px, .75rem); line-height: 1.4; color: var(--fg-70); }
+.rp-text small span:empty { display: none; }
+.rp .alink.erst { flex: none; }
+
+/* Schilder über den Figuren: Name und „ab … €“. Sie liegen unter Tafel und Karte; haus.js schiebt jedes Schild einzeln (transform) und blendet es (opacity). */
+.schilder { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.rt, .rp { z-index: 2; } .rk { z-index: 3; }
+.schild { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: .05rem; padding: .32rem .7rem .38rem; border: 1px solid color-mix(in srgb, var(--akz) 65%, transparent); border-radius: .3rem;
+  background: rgb(11 13 17 / .86); color: var(--foreground); white-space: nowrap; line-height: 1.2; opacity: 0; visibility: hidden; pointer-events: none; will-change: transform, opacity; transition: background-color var(--duration-fast), color var(--duration-fast), border-color var(--duration-fast); }
+.schild.da { visibility: visible; pointer-events: auto; }
+.schild::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: var(--stiel, .7rem); background: color-mix(in srgb, var(--akz) 65%, transparent); }
+.schild b { font-size: max(13px, .8125rem); font-weight: 600; letter-spacing: .01em; }
+.schild span { font-size: max(12px, .75rem); font-weight: 600; color: var(--akz); }
+.schild.hebt, .schild:hover { background: var(--akz); border-color: var(--akz); color: var(--raw-nacht); }
+.schild.hebt span, .schild:hover span { color: var(--raw-nacht); }
+.schild.leer { border-style: dashed; background: rgb(11 13 17 / .66); }
+/* „Alle wieder im Raum“: klein und ruhig unten links in der freien Fläche, nur zu sehen, solange etwas abgewählt ist (haus.js setzt hidden und die Stelle) */
+.raum-alle { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: auto; display: inline-flex; align-items: center; gap: .45rem; min-height: 2.25rem; padding: .35rem .8rem .4rem .65rem; border: 1px solid var(--fg-30); border-radius: 99rem; background: rgb(11 13 17 / .82); color: var(--fg-85); font: inherit; font-size: max(13px, .8125rem); font-weight: 500; cursor: pointer; }
+.raum-alle[hidden] { display: none; }
+.raum-alle svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.raum-alle:hover, .raum-alle:focus-visible { border-color: var(--akz); color: var(--fg); }
+.sz-raum.karte-offen .raum-alle, html.statisch .raum-alle, html:not(.js) .raum-alle { display: none; }
+.schild.leer b { color: var(--fg-70); font-weight: 500; }
+.sz-raum.karte-offen .schild { visibility: hidden; }
+
+/* Karte einer Leistung: geht an der Stelle der Tafel auf (am Handy als Blatt von unten). */
+.rk { position: absolute; left: 0; top: 0; bottom: 0; width: 42%; display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; padding: calc(var(--kopf) + 1.3rem) 1.8rem 1.6rem 4.7rem;
+  background: color-mix(in srgb, var(--akz) 7%, rgb(12 14 18)); border-right: 1px solid var(--akz); pointer-events: auto; overflow: hidden; animation: karte-auf .28s var(--ease-glide); }
+.rk[hidden] { display: none; }
+@keyframes karte-auf { from { opacity: 0; translate: -1.2rem 0; } to { opacity: 1; translate: 0 0; } }
+.rk-zurueck { display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; margin-left: -.3rem; padding: 0 .6rem 0 .2rem; font-size: max(14px, .9375rem); color: var(--fg-85); border-radius: .25rem; }
+.rk-zurueck:hover { color: var(--foreground); }
+.rk-name { font-size: 2.6rem; line-height: 1.06; letter-spacing: var(--tracking-display); font-weight: 500; }
+.rk-wahl { display: flex; flex-wrap: wrap; gap: .4rem; }
+.rk-wahl button { min-height: 44px; padding: .4rem 1rem; border: 1px solid color-mix(in srgb, var(--akz) 55%, transparent); border-radius: 2rem; font-size: max(14px, .9375rem); font-weight: 500; color: var(--fg-85); background: rgb(11 14 16 / .5); transition: background-color var(--duration-fast), color var(--duration-fast); }
+.rk-wahl button[aria-pressed="true"] { background: var(--akz); border-color: var(--akz); color: var(--raw-nacht); font-weight: 600; }
+.rk-v { display: flex; flex-direction: column; align-items: flex-start; gap: .75rem; width: 100%; }
+.rk-v[hidden] { display: none; }
+.rk-v .sz-cap { margin: 0; }
+.rk-satz { font-size: 1.125rem; line-height: 1.48; color: var(--fg-95); max-width: 32rem; }
+.rk-punkte { display: flex; flex-direction: column; gap: .4rem; max-width: 32rem; }
+.rk-punkte li { position: relative; padding-left: 1.1rem; font-size: max(14px, .9375rem); line-height: 1.4; color: var(--fg-95); }
+.rk-punkte li::before { content: ""; position: absolute; left: 0; top: .5em; width: .4rem; height: .4rem; background: var(--akz); }
+.rk-preis { display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem .8rem; }
+.rk-preis b { font-size: 1.7rem; line-height: 1.2; font-weight: 600; letter-spacing: -.01em; }
+.rk-preis span { font-size: max(13px, .8125rem); color: var(--fg-70); }
+.rk-schalter { display: inline-flex; align-items: center; gap: .7rem; min-height: 3rem; margin-top: auto; padding: .5rem 1.2rem .5rem .8rem; border: 1px solid var(--akz); border-radius: .25rem; font-size: max(15px, 1rem); font-weight: 600; background: color-mix(in srgb, var(--akz) 14%, rgb(11 14 16 / .6)); }
+.rk-schalter[aria-pressed="false"] { border-style: dashed; background: rgb(11 14 16 / .4); font-weight: 500; }
+
+/* Empfang: Foto von Kevin und Malin neben den drei Wegen; Tür: Frage und Formular */
+.sz-empfang-reihe { display: grid; grid-template-columns: 11.5rem minmax(0, 1fr); gap: 1rem; align-items: stretch; }
+.sz-empfang-reihe .sz-weichen { grid-template-columns: 1fr; flex: none; max-height: none; gap: .5rem; }
+.sz-empfang-reihe .weiche { flex-direction: row; align-items: center; justify-content: space-between; padding: .8rem 1rem; border-top-width: 1px; border-left: 3px solid var(--akz); }
+.sz-empfang-reihe .weiche svg { align-self: center; }
+.sz-bild { margin: 0; aspect-ratio: 933 / 1400; border-radius: .25rem; overflow: hidden; background: rgb(246 244 240 / .06); }
+.sz-bild img { width: 100%; height: 100%; object-fit: cover; }
+.sz-empfang .sz-foto { min-height: 0; }
+.sz-empfang .sz-zeile { margin-top: 0; }
+.sz-frage { font-size: 1.125rem; line-height: 1.45; font-weight: 500; color: var(--foreground); max-width: 30rem; }
+.sz-tuer .sz-tag { text-transform: uppercase; }
+
+/* Finale: „Deine Auswahl“, je Raum eine Zeile: Name, was gewählt ist, die Summen der Ab-Preise dieses Raums */
+.fa { display: flex; flex-direction: column; gap: .4rem; pointer-events: auto; --akz: var(--raw-lavendel); }
+.fa .sz-cap { margin: 0; }
+.fa-liste { display: flex; flex-direction: column; border-top: 1px solid var(--fg-18); }
+.fa-liste a { display: grid; grid-template-columns: 10.5rem minmax(0, 1fr); gap: 0 1rem; align-items: baseline; padding: .5rem 0; border-bottom: 1px solid var(--fg-12); font-size: max(14px, .9375rem); line-height: 1.35; }
+.fa-liste a:hover b { text-decoration: underline; text-underline-offset: .2em; }
+.fa-liste b { grid-row: 1 / span 2; font-weight: 600; }
+.fa-liste [data-was] { grid-column: 2; color: var(--fg-85); }
+.fa-liste [data-ab] { grid-column: 2; font-weight: 600; color: var(--akz); } .fa-liste [data-ab]:empty { display: none; }
+.fa-hinweis { font-size: max(12px, .75rem); line-height: 1.4; color: var(--fg-70); }
+
+@media (min-width: 768px) and (max-width: 1100px) and (min-aspect-ratio: 9/10) {
+  .sz-etage .sz-innen, .rt, .rk { width: 50%; } .rp { left: 50%; padding-left: 1.2rem; padding-right: 1.2rem; }
+  .rt, .rk { padding-left: 4.4rem; padding-right: 1.1rem; }
+  .rk-name { font-size: 2.2rem; } .rp-text b { font-size: 1.1rem; }
+  .fz { width: 27rem; } .sz-titel-final { font-size: 3.2rem; }
+}
+@media (min-width: 768px) and (max-height: 820px) and (min-aspect-ratio: 9/10) {
+  .rt { gap: .8rem; padding-top: calc(var(--kopf) + .9rem); padding-bottom: 1.1rem; }
+  .rk { gap: .7rem; padding-top: calc(var(--kopf) + .6rem); padding-bottom: 1.1rem; }
+  .rl-an { min-height: 3.1rem; } .rl-hilfe { display: none; }
+  .rk-name { font-size: 2.1rem; } .rk-satz { font-size: 1rem; line-height: 1.42; } .rk-preis b { font-size: 1.45rem; }
+  .rp { padding-top: .6rem; padding-bottom: .7rem; } .rp-text b { font-size: 1.15rem; }
+  .sz-empfang-reihe { grid-template-columns: 9rem minmax(0, 1fr); }
+  .fz { top: calc(var(--kopf) + .8rem); bottom: 1rem; gap: .9rem; } .sz-titel-final { font-size: 3.1rem; }
+  .fa-liste a { padding: .32rem 0; }
+}
+/* Handy und Tablet hochkant: Raum oben, Tafel und Leiste als ein Blatt unten, die Karte als Blatt darüber. Nichts rollt in sich. */
+@media (max-width: 767.98px), (max-width: 1100px) and (max-aspect-ratio: 9/10) {
+  .sz-etage .sz-innen { width: auto; top: auto; max-height: 80dvh; }
+  .sz-raum .sz-innen { display: flex; flex-direction: column; justify-content: flex-end; }
+  .rblatt { display: flex; flex-direction: column; background: color-mix(in srgb, var(--akz) 5%, rgb(12 14 18 / .975)); border-top: 1px solid color-mix(in srgb, var(--akz) 42%, transparent); pointer-events: auto; position: relative; z-index: 2; }
+  .rt { position: static; width: auto; gap: .45rem; padding: .7rem 1.3rem .55rem; background: none; border: 0; overflow: visible; }
+  .sz-raum .sz-kopf { gap: .1rem; }
+  .sz-raum .sz-satz, .rl-hilfe { display: none; }
+  .rl { gap: .3rem; }
+  .rl-an { min-height: 46px; padding: .3rem .7rem; gap: .6rem; }
+  .rl-t b { font-size: max(15px, .9375rem); } .rl-var { font-size: 13px; } .rl-preis { font-size: 14px; }
+  .rl-mehr { padding: 0 .3rem 0 .6rem; } .rl-mehr span { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .rt-link { margin-top: 0; } .rt-link .alink.mehr { min-height: 44px; padding: .2rem .9rem; border-color: transparent; background: none; padding-left: 0; }
+  .rp { position: static; flex-direction: column; align-items: stretch; gap: .45rem; padding: .5rem 1.3rem .75rem; background: rgb(8 10 13 / .6); }
+  .rp-text { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 .6rem; }
+  .rp-text b { font-size: max(15px, .9375rem); } .rp-text small span:last-child { display: none; }
+  .rp .alink.erst { width: 100%; justify-content: center; min-height: 46px; padding: .5rem 1rem; }
+  .schild { padding: .22rem .5rem .26rem; } .schild b { font-size: 12px; } .schild span { font-size: 12px; }
+  .rk { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 82dvh; gap: .55rem; padding: .5rem 1.3rem .9rem; border-right: 0; border-top: 2px solid var(--akz); animation-name: karte-hoch; }
+  @keyframes karte-hoch { from { opacity: 0; translate: 0 1.6rem; } to { opacity: 1; translate: 0 0; } }
+  .rk-zurueck { min-height: 44px; }
+  .rk-name { font-size: 1.6rem; } .rk-v { gap: .45rem; }
+  .rk-satz { font-size: max(15px, .9rem); line-height: 1.38; }
+  .rk-punkte { gap: .2rem; } .rk-punkte li { font-size: max(14px, .85rem); line-height: 1.32; }
+  .rk-wahl button { min-height: 44px; padding: .3rem .85rem; }
+  .rk-preis b { font-size: 1.3rem; }
+  .rk .alink.mehr { min-height: 44px; }
+  .rk-schalter { margin-top: .2rem; width: 100%; min-height: 46px; }
+  .sz-empfang-reihe { grid-template-columns: 6.6rem minmax(0, 1fr); gap: .6rem; }
+  .sz-empfang-reihe .sz-weichen { gap: .3rem; }
+  .sz-empfang-reihe .weiche { padding: .3rem .7rem; min-height: 2.9rem; font-size: max(15px, .9rem); }
+  .sz-frage { font-size: max(15px, .95rem); line-height: 1.35; }
+  .sz-tuer .nl-zeile { flex-direction: row; align-items: stretch; gap: .4rem; } .sz-tuer .nl-feld { flex: 1; min-width: 0; }
+  .sz-tuer .nl .alink.mehr { align-self: stretch; padding: 0 .8rem; } .sz-tuer .nl .alink.mehr .t-caption { font-size: 12px; letter-spacing: .08em; }
+  .sz-tuer .nl-wahl { gap: 0 .55rem; flex-wrap: nowrap; } .sz-tuer .nl-wahl label { font-size: 13px; gap: .3rem; white-space: nowrap; } .sz-tuer .nl-wahl input { width: 1.1rem; height: 1.1rem; }
+  .rl-an { min-height: 44px; }
+  .sz-finale .sz-innen::before { background: rgb(11 14 16 / .8); }
+  .fa { gap: .25rem; }
+  .fa-liste a { grid-template-columns: minmax(0, 1fr); gap: 0; min-height: 44px; align-content: center; padding: .28rem 0; font-size: 14px; line-height: 1.3; }
+  .fa-liste b { grid-row: auto; } .fa-liste [data-ab] { grid-column: 1; font-size: 13px; }
+  .fa-liste [data-was] { grid-column: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fa-hinweis { font-size: 12px; line-height: 1.3; }
+  .sz-final-knopf .alink.erst.gross { min-height: 3.4rem; padding: .8rem 1rem; gap: .6rem; } .sz-final-knopf .alink.erst.gross .t-caption { font-size: .9375rem; letter-spacing: .08em; white-space: nowrap; }
+}
+@media (max-width: 767.98px) and (max-height: 740px), (max-width: 1100px) and (max-aspect-ratio: 9/10) and (max-height: 740px) {
+  .rt-link, .rk-satz, .sz-tuer .sz-satz { display: none; }
+  .rp .alink.erst { min-height: 44px; } .rp { padding-top: .35rem; padding-bottom: .55rem; gap: .3rem; }
+  .sz-etage .sz-innen { max-height: 72dvh; }
+  .fz { top: calc(var(--kopf) + 2.9rem); gap: .55rem; } .fa-hinweis { display: none; }
+  .fa-liste a { min-height: 0; padding: .2rem 0; line-height: 1.25; }
+  .sz-titel-final { font-size: 1.6rem; }
+}
+/* Handy: Das Blatt unten bleibt niedrig, damit der Raum hoch steht (bei 375 × 667 rund 340 px statt 220 px). Etage und Name teilen sich eine Zeile,
+   die Nutzenzeile steht nur auf hohen Geräten. Die Paket-Leiste hat eine FESTE Höhe: links zwei Zeilen für die Summen, rechts der Knopf, darunter über die ganze Breite eine Zeile für die Laufzeit;
+   sie ändert ihre Höhe beim Umschalten nicht. Nichts rollt in sich. (haus.js legt die Bildmitte des Raums in die freie Fläche über dem Blatt.) */
+@media (max-width: 767.98px) {
+  html:not(.statisch) .sz-raum .sz-kopfblock { flex-direction: row-reverse; justify-content: space-between; align-items: baseline; gap: .8rem; }
+  html:not(.statisch) .sz-raum .sz-vor { flex: none; font-size: 12px; }
+  html:not(.statisch) .sz-raum .sz-name { font-size: 1.4rem; }
+  html:not(.statisch) .rt { padding: .55rem 1.3rem .5rem; gap: .4rem; }
+  html:not(.statisch) .rl-an { min-height: 44px; padding: .25rem .7rem; }
+  html:not(.statisch) .rp { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .2rem .7rem; padding: .45rem 1.3rem .55rem; }
+  html:not(.statisch) .rp-text { display: contents; }
+  html:not(.statisch) .rp-text .sz-cap { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  html:not(.statisch) .rp-text b { grid-column: 1; grid-row: 1; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2.5em; font-size: 14px; line-height: 1.25; }
+  html:not(.statisch) .rp-text small { grid-column: 1 / -1; grid-row: 2; display: block; min-height: 1.35em; font-size: 12px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  html:not(.statisch) .rp .alink.erst { grid-column: 2; grid-row: 1; width: auto; min-height: 44px; padding: .4rem .7rem; gap: 0; }
+  html:not(.statisch) .rp .alink.erst svg { display: none; } html:not(.statisch) .rp .alink.erst .t-caption { font-size: 11.5px; letter-spacing: .04em; white-space: nowrap; }
+}
+@media (max-width: 767.98px) and (max-height: 740px) { html:not(.statisch) .sz-raum .sz-unter { display: none; } }
+/* Ohne Skript und bei „weniger Bewegung“: Tafel, Karten und Leiste stehen untereinander im Text. Ohne Skript sind alle Karten aufgeklappt (ihr Text bleibt lesbar), Schalter gibt es dann nicht. */
+html:not(.js) .sz-raum .sz-innen, html.statisch .sz-raum .sz-innen { pointer-events: auto; }
+html:not(.js) :is(.rt, .rp, .rk, .fa, .fz), html.statisch :is(.rt, .rp, .rk, .fa, .fz) { position: static; width: auto; padding: 0; background: none; border: 0; overflow: visible; animation: none; }
+html:not(.js) .rblatt, html.statisch .rblatt { display: contents; }
+html:not(.js) .rk[hidden] { display: flex; } html:not(.js) .rk-v[hidden] { display: flex; }
+html:not(.js) :is(.schilder, .rk-zurueck, .rk-schalter, .rk-wahl, .rl-mehr, .rl-hilfe, .rl-haken), html.statisch :is(.schilder, .rl-hilfe) { display: none; }
+html:not(.js) .rk, html.statisch .rk { padding-top: 1rem; border-top: 1px solid var(--fg-12); }
+html.statisch .rk { padding: 1rem; border: 1px solid var(--akz); border-radius: .3rem; }
+html:not(.js) .rp, html.statisch .rp { flex-direction: column; align-items: flex-start; }
+html:not(.js) .sz-bild, html.statisch .sz-bild { max-width: 14rem; }
 /* Druck: die Fahrt ist ein Bildschirm-Erlebnis, auf Papier beginnt die Seite mit dem ersten hellen Abschnitt */
 @media print { .haus { display: none !important; } }
-/* Farbe der Stufe an den Etagen links */
-.etagen a[data-stufe="fundament"] { --c: var(--stufe-fundament); } .etagen a[data-stufe="wachstum"] { --c: var(--stufe-wachstum); } .etagen a[data-stufe="skalieren"] { --c: var(--stufe-skalieren); }

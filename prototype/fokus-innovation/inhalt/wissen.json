@@ -4,8 +4,8 @@
     {
       "id": "vertrieb-aufbauen",
       "bereich": "vertrieb",
-      "titel": "Vertrieb aufbauen: vom Gründer zum System",
-      "seo_titel": "Vertrieb aufbauen im Start-up: fünf Schritte zum System",
+      "titel": "Erste Kunden systematisch gewinnen: vom Gründer zum System",
+      "seo_titel": "Erste Kunden systematisch gewinnen: fünf Schritte im Start-up",
       "beschreibung": "So baust du Vertrieb auf, der ohne den Gründer läuft: Zielgruppe, Ansprache, Prozess im CRM, Kennzahlen und ein trainiertes Team, in dieser Reihenfolge.",
       "veroeffentlicht": "2026-10-27",
       "aktualisiert": "2026-10-27",
@@ -152,8 +152,8 @@
     {
       "id": "head-of-sales-auf-zeit",
       "bereich": "vertrieb",
-      "titel": "Head of Sales auf Zeit: was er macht und wann er sich lohnt",
-      "seo_titel": "Head of Sales auf Zeit: Aufgaben, Ablauf und Kosten",
+      "titel": "Head of Sales: was er macht und wann er sich lohnt",
+      "seo_titel": "Wann lohnt sich ein Head of Sales? Aufgaben, Ablauf, Kosten",
       "beschreibung": "Was ein Head of Sales auf Zeit in sechs Monaten aufbaut, wann er sich gegenüber einer festen Einstellung lohnt und was das Mandat bei MAKE Innovation kostet.",
       "veroeffentlicht": "2026-10-27",
       "aktualisiert": "2026-10-27",
@@ -2560,10 +2560,10 @@
       "link": "/innovations-check/"
     },
     {
-      "id": "ki-brain",
-      "name": "KI-Brain",
+      "id": "wissensbasis-ki",
+      "name": "Wissensbasis mit KI",
       "text": "Wissen, Abläufe und Daten eines Unternehmens sauber an einem Ort, damit KI im Alltag darauf zugreifen kann. Bei uns in Vorbereitung.",
-      "link": "/innovation/#ki-brain"
+      "link": "/innovation/#wissensbasis"
     },
     {
       "id": "landingpage",

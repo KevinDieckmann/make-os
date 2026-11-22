@@ -3,7 +3,9 @@
    Bewegung nur, wo sie etwas zeigt (der Weg zeichnet sich einmal), und still bei „Bewegung reduzieren“.
    Keine fremden Quellen, keine Inline-Skripte oder -Stile (CSP 'self'). */
 
-@font-face { font-family: "Schibsted Grotesk"; src: url("/assets/schriften/schibsted-grotesk-latin.woff2") format("woff2"); font-weight: 400 800; font-display: optional; }
+@font-face { font-family: "Schibsted Grotesk"; src: url("/assets/schriften/schibsted-grotesk-latin.woff2") format("woff2"); font-weight: 400 800; font-display: swap; }
+/* Ersatzschrift mit den Maßen der Schibsted Grotesk (gemessen: Breite 103 %, Oberlänge 98 %, Unterlänge 26 % der Schriftgröße), damit der Wechsel von der Ersatzschrift zur Webschrift nichts verschiebt (CLS). */
+@font-face { font-family: "Schibsted Ersatz"; src: local("Arial"); size-adjust: 103%; ascent-override: 95%; descent-override: 25%; line-gap-override: 0%; }
 
 /* ── Farben: EINE Stelle. Vorerst das Lavendel aus dem Logo (Kevin 25.10.: „ändern wir später nochmal“).
       Film und Szene lesen dieselben Werte — hier ändern genügt. ── */
@@ -33,7 +35,7 @@
   --haar-mittel: rgba(17, 19, 22, .3);
   --haar-dunkel: rgba(242, 243, 243, .13);
   --leise-dunkel: rgba(242, 243, 243, .68);
-  --schrift: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --schrift: "Schibsted Grotesk", "Schibsted Ersatz", "Helvetica Neue", Arial, sans-serif;
   --rand: clamp(20px, 4.4vw, 64px);
   --breite: 1200px;
   --rinne: clamp(20px, 3vw, 40px);
@@ -156,7 +158,7 @@ table { border-collapse: collapse; }
 .unter .unter-alles { font-weight: 600; border-bottom: 1px solid var(--haar); border-radius: 6px 6px 0 0; margin-bottom: 4px; }
 /* Leistungen (31.10.): drei Bereiche nebeneinander, unten je Bereich die Bausteine, darunter die Preisseite. */
 /* Das Feld hängt am Menüpunkt (linke Kante bei „Leistungen“); das Skript (seite.js) schiebt es nur, wenn es sonst rechts aus dem Fenster ragen würde. */
-.unter-leistungen { top: calc(100% - 6px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; width: min(560px, calc(100vw - 2 * var(--rand))); min-width: 0; padding: 10px; }
+.unter-leistungen { top: calc(100% - 6px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 10px; width: min(500px, calc(100vw - 2 * var(--rand))); min-width: 0; padding: 10px; }
 .unter-leistungen::before { top: -26px; height: 26px; }
 .unter-spalte { display: flex; flex-direction: column; min-width: 0; }
 .unter-leistungen a { gap: 12px; }
@@ -191,7 +193,7 @@ html.menue-offen { overflow: hidden; }
 .held-raster.mitte { align-items: center; }
 .held-raster.einspaltig > div { max-width: 52rem; }
 .brotkrumen { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 32px; font-size: .9rem; color: var(--tinte-leise); }
-.brotkrumen a { display: inline-flex; align-items: center; min-height: 44px; }
+.brotkrumen a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
 .brotkrumen a:hover { color: var(--tinte); text-decoration: underline; text-underline-offset: .25em; }
 .brotkrumen [aria-current] { color: var(--tinte-text); }
 .held h1, .held h2:where(.held-titel) { margin-top: 22px; font-size: var(--t-held); letter-spacing: -.035em; line-height: 1.03; }
@@ -278,7 +280,7 @@ html.menue-offen { overflow: hidden; }
 .zitat blockquote p { font-size: clamp(1.35rem, 2.3vw, 1.85rem); line-height: 1.38; letter-spacing: -.015em; color: var(--tinte); font-weight: 500; }
 .zitat figcaption { margin-top: 20px; font-size: .92rem; color: var(--tinte-leise); }
 .zitat figcaption b { display: block; color: var(--tinte); font-weight: 600; }
-.zitat cite a { text-decoration: underline; text-decoration-color: var(--haar-mittel); text-underline-offset: .2em; }
+.zitat cite a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: underline; text-decoration-color: var(--haar-mittel); text-underline-offset: .2em; }
 
 /* ── Raster: gleichwertige Spalten mit Haarlinien ── */
 .raster { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--tinte); }
@@ -365,6 +367,7 @@ html.menue-offen { overflow: hidden; }
 .haken-tabelle td { width: 27%; }
 .knoten { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: var(--akzent-papier); }
 .nein { color: var(--tinte-leise); }
+.nein .strich { display: inline-block; width: 12px; height: 2px; vertical-align: middle; border-radius: 1px; background: currentColor; opacity: .55; }
 .tabelle-huelle + .knoepfe { margin-top: 28px; }
 * + .gruppe-titel + .tabelle-huelle { margin-top: 0; }
 
@@ -1570,7 +1573,6 @@ html.menue-offen { overflow: hidden; }
 .mikro { margin-top: 12px; font-size: .9rem; line-height: 1.4; color: var(--tinte-leise); }
 .dunkel .mikro { color: var(--leise-dunkel); }
 .unter-titel { padding: 8px 12px 4px; font-size: .72rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); }
-.unter-leistungen .unter-spalte + .unter-spalte { border-left: 1px solid var(--haar); padding-left: 6px; }
 .kopf.ueber-film .unter, .kopf.ueber-film .menue-blatt { color: var(--tinte); }
 
 .kurz { padding: clamp(64px, 9vw, 128px) 0 clamp(72px, 9vw, 120px); }
@@ -1594,24 +1596,13 @@ html.menue-offen { overflow: hidden; }
 .kachel-mehr { display: inline-flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 8px; min-height: 44px; font-weight: 600; color: var(--tinte); }
 .kachel-mehr .pfeil { width: 16px; height: 16px; transition: translate .35s var(--ease); }
 @media (hover: hover) { .kacheln a:hover { border-color: var(--haar-mittel); box-shadow: 0 24px 48px -32px rgba(167, 139, 250, .5); } .kacheln a:hover .pfeil { translate: 4px 0; } }
-.kpakete { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--rinne); align-items: stretch; }
-.kpaket { position: relative; display: flex; flex-direction: column; gap: 14px; padding: clamp(24px, 2.6vw, 36px); background: var(--papier-hell); border: 1px solid var(--haar-mittel); border-radius: 12px; }
-.kpaket.empfohlen { border: 2px solid var(--tinte); }
-.kpaket-marke { position: absolute; top: -13px; left: clamp(24px, 2.6vw, 36px); padding: 4px 14px; border-radius: 999px; background: var(--tinte); color: var(--papier-hell); font-size: .78rem; font-weight: 600; letter-spacing: .04em; }
-.kpaket h3 { font-size: 1.7rem; letter-spacing: -.025em; }
-.kpaket-satz { color: var(--tinte-text); }
-.kpaket-punkte li { position: relative; padding: 8px 0 8px 22px; border-top: 1px solid var(--haar); font-weight: 500; color: var(--tinte); }
-.kpaket-punkte li::before { content: ""; position: absolute; left: 2px; top: 1.1em; width: 8px; height: 8px; border-radius: 50%; background: var(--akzent-papier); }
-.kpaket-ab { margin-top: auto; padding-top: 8px; font-weight: 600; color: var(--tinte); }
-.kpaket .knopf { width: 100%; }
-.zusagen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px var(--rinne); margin-top: clamp(28px, 3vw, 44px); }
-.zusagen li { padding-top: 14px; border-top: 1px solid var(--tinte); font-weight: 500; color: var(--tinte); }
 .band .satz-unter { margin-top: 28px; }
 .kurz-team { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rinne); }
-.kurz-person { display: grid; gap: 14px; align-content: start; max-width: 36rem; }
-.kurz-person h3 { margin-top: 6px; font-size: 1.4rem; }
-.kurz-person .foto-platz { aspect-ratio: 16 / 10; max-width: 32rem; }
-.community { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--rinne); }
+.kurz-person { display: grid; grid-template-columns: minmax(104px, 168px) minmax(0, 1fr); gap: 20px; align-items: center; padding: 20px; background: var(--papier-hell); border: 1px solid var(--haar); border-radius: 12px; }
+.kurz-person .foto-echt.hoch { max-width: none; aspect-ratio: 4 / 5; }
+.kurz-person h3 { margin-bottom: 6px; font-size: 1.4rem; }
+@media (max-width: 560px) { .kurz-person { grid-template-columns: minmax(0, 1fr); align-items: start; } .kurz-person .foto-echt.hoch { max-width: 11rem; } }
+.community { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rinne); }
 .community-karte { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: clamp(24px, 2.6vw, 36px); border: 1px solid var(--haar); border-radius: 12px; background: var(--papier-hell); }
 .community-karte h3 { font-size: 1.4rem; letter-spacing: -.02em; }
 .community-karte p { color: var(--tinte-text); }
@@ -1619,7 +1610,7 @@ html.menue-offen { overflow: hidden; }
 .knopf.cta-unten { display: none; }
 @media (max-width: 1100px) { .kacheln { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 860px) {
-  .kurz-raster, .problem-paar, .kpakete, .zusagen, .kurz-team, .community { grid-template-columns: minmax(0, 1fr); }
+  .kurz-raster, .problem-paar, .kurz-team, .community { grid-template-columns: minmax(0, 1fr); }
   .kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kurz-bild { order: -1; }
   .foto-platz { aspect-ratio: 16 / 10; }
@@ -1637,10 +1628,7 @@ html.menue-offen { overflow: hidden; }
 
 /* ── Umbau 19.11., Runde 2a: Über uns, Events, Abendpartner, Preise ── */
 .schlussakt.erst .schluss-bild .kern, .schlussakt.erst .schluss-zeichen .kern { fill: var(--akzent); filter: drop-shadow(0 0 26px rgba(167, 139, 250, .45)); }
-.geschichte { display: grid; gap: 20px; max-width: 52rem; padding: clamp(24px, 3vw, 40px); border: 1.5px dashed var(--haar-mittel); border-radius: 12px; background: var(--papier-hell); }
-.geschichte-platz { font-size: 1.25rem; }
-.leitfragen { display: grid; gap: 6px; color: var(--tinte-leise); font-size: .95rem; }
-.leitfragen li::before { content: "· "; }
+.geschichte-text { display: grid; gap: 16px; max-width: 46rem; font-size: 1.15rem; }
 .personen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rinne); }
 .person-karte { display: grid; gap: 18px; align-content: start; max-width: 36rem; scroll-margin-top: calc(var(--kopf) + 20px); }
 .person-karte h3 { margin-top: 6px; font-size: 1.5rem; letter-spacing: -.02em; }
@@ -1662,3 +1650,39 @@ html.menue-offen { overflow: hidden; }
 @media (min-width: 1100px) { .schlussakt.erst .w { min-height: clamp(18rem, 24vw, 22rem); } }
 .person-karte h3 + p, .gastgeberin h3 + p { margin-top: 10px; }
 @media (max-width: 860px) { .person-karte .foto-platz, .gastgeberin .foto-platz { aspect-ratio: 16 / 10; max-width: none; } }
+
+/* Umbau 21.11.: Bereiche wie im Haus, Paket selbst zusammenstellen, echte Fotos, Podcast zu */
+.unter-leistungen a b { font-weight: 600; white-space: nowrap; }
+.unter-leistungen .unter-baustein { margin-top: 4px; }
+/* Bereichs-Kacheln: jede Kachel ist ein Teilraster (subgrid) über sechs Zeilen, damit Name, Nutzen, Satz, Preise und Wege in allen Kacheln auf gleicher Höhe stehen. */
+.bereiche-raster { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); column-gap: var(--rinne); row-gap: 0; }
+.bereiche-raster li { display: grid; grid-row: span 6; grid-template-rows: subgrid; row-gap: 10px; margin-bottom: var(--rinne); padding: 24px; background: var(--papier-hell); border: 1px solid var(--haar); border-radius: 12px; }
+.bereich-kachel { display: contents; }
+@media (max-width: 1100px) { .bereiche-raster { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .bereiche-raster { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .bereiche-raster { grid-template-columns: minmax(0, 1fr); } }
+.bereich-kachel .nr { font-size: .8rem; font-weight: 600; letter-spacing: .1em; color: var(--tinte-leise); }
+.bereich-kachel h3 { font-size: 1.2rem; line-height: 1.2; letter-spacing: -.02em; color: var(--tinte); }
+.kachel-nutzen { font-size: .9rem; font-weight: 500; color: var(--tinte-leise); }
+.kachel-preis { display: grid; align-content: start; gap: 4px; padding-top: 12px; border-top: 1px solid var(--haar); font-size: .95rem; font-weight: 600; line-height: 1.35; color: var(--tinte); }
+.kachel-wege { display: flex; flex-direction: column; align-items: flex-start; gap: 0; align-self: end; }
+.kachel-wege .textlink { min-height: 44px; }
+.paket-hinweis { margin-top: 20px; max-width: 40rem; color: var(--tinte-text); }
+.paket-hinweis .textlink { display: inline-flex; min-height: 0; margin-left: 6px; }
+.podcast-zu { margin-top: 20px; color: var(--tinte-leise); font-size: .98rem; }
+.bald-hinweis { margin: 4px 0 14px; }
+.bald-hinweis .marke-bald { margin-left: 0; }
+/* Wer die Fahrt schon kennt, lädt css/haus.css nicht (js/haus-lader.js): das Haus bleibt dann ausgeblendet. */
+html.fahrt-aus .track { display: none; }
+.foto-echt picture, .vorlage-blatt picture, .regal-blatt picture, .geraet picture { display: contents; }
+.foto-echt { margin: 0; overflow: hidden; border-radius: 12px; background: var(--papier-hell); }
+.foto-echt img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.foto-echt.quer { aspect-ratio: 4 / 3; }
+.foto-echt.hoch { aspect-ratio: 4 / 5; width: 100%; max-width: 22rem; }
+.foto-beide_quer img { object-position: 50% 32%; }
+.foto-kevin img { object-position: 50% 14%; }
+.foto-malin img, .foto-malin2 img { object-position: 50% 16%; }
+@media (max-width: 860px) { .foto-echt.quer { aspect-ratio: 3 / 2; } .foto-echt.hoch { max-width: 18rem; } }
+
+/* Tippflächen (Endprüfung 21.11.): Quellenlinks und Vergleichsköpfe mindestens 44 px hoch */
+.karte-quelle a, .zahl cite a, table thead th a { display: inline-flex; align-items: center; min-height: 44px; }

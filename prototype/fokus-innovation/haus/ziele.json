@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Alle Linkziele des Hauses an EINER Stelle. In szenen.json, stufen.json und haus.js stehen die Namen, nie die Adressen. Werte: ein Pfad der Website (beginnt mit /), „erstgespraech“ (Buchung wie überall), „check:sichtbarkeit“ und „check:innovation“ (die Checks der Anwendung), „anfrage:einladung|abendpartner|podcast“ (Formular der Anwendung mit Anlass, wie auf /events/ und /podcast/). Szenen verweisen mit „szene:<kennung>“ auf eine andere Szene der Fahrt (das löst das Skript auf, im Markup steht dann #szene-<kennung>). bauen.mjs löst die Ziele mit den Helfern der Website auf und prüft jedes.",
+  "_hinweis": "Alle Linkziele des Hauses an EINER Stelle. In szenen.json, raeume.json und haus.js stehen die Namen, nie die Adressen. Werte: ein Pfad der Website (beginnt mit /), „erstgespraech“ (Buchung wie überall), „check:sichtbarkeit“ und „check:innovation“ (die Checks der Anwendung), „anfrage:einladung|abendpartner|podcast“ (Formular der Anwendung mit Anlass, wie auf /events/ und /podcast/), „marke:studios“ (die Adresse der Marke aus inhalt/fokus.json › familie.marken). Szenen verweisen mit „szene:<kennung>“ auf eine andere Szene der Fahrt (das löst das Skript auf, im Markup steht dann #szene-<kennung>). bauen.mjs löst die Ziele mit den Helfern der Website auf und prüft jedes.",
   "erstgespraech": "erstgespraech",
   "check": "check:sichtbarkeit",
   "innovations-check": "check:innovation",
@@ -10,6 +10,8 @@
   "vertrieb": "/vertrieb/",
   "einladung": "anfrage:einladung",
   "gast-vorschlagen": "anfrage:podcast",
-  "pakete": "/#pakete",
-  "newsletter": "/newsletter"
+  "studios-seite": "marke:studios",
+  "podcast": "/podcast/",
+  "newsletter": "/newsletter",
+  "innovation": "/innovation/"
 }
