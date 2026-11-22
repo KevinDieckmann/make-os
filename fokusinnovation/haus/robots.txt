@@ -1,3 +1,0 @@
-# Vorschau: noch nicht für Suchmaschinen freigegeben.
-User-agent: *
-Disallow: /
