@@ -4,6 +4,10 @@
 
 const wenigBewegung = matchMedia('(prefers-reduced-motion: reduce)');
 const sparsam = () => navigator.connection?.saveData === true;
+// Filme laden erst nach der ersten Eingabe (Scrollen, Tippen, Taste, Maus): vorher steht nur das Poster, der erste Bildschirm bleibt leicht.
+let eingabe = false;
+const wartende = new Set();
+['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach((n) => addEventListener(n, () => { if (eingabe) return; eingabe = true; wartende.forEach((f) => f()); }, { passive: true }));
 
 /**
  * @param {HTMLElement} rahmen  Element mit .film-poster, .film-video und .film-knopf
@@ -19,7 +23,7 @@ export function filmEinrichten(rahmen) {
   let liefSchon = false;
   let gewaehlt = false;
 
-  const darf = () => !wenigBewegung.matches && !sparsam() && !defekt;
+  const darf = () => eingabe && !wenigBewegung.matches && !sparsam() && !defekt;
 
   // Auf breiten Fenstern die größere Fassung nehmen (nur vor dem ersten Laden)
   function quelleWaehlen() {
@@ -49,6 +53,7 @@ export function filmEinrichten(rahmen) {
   }
 
   video.muted = true;
+  wartende.add(abgleichen);
   video.addEventListener('playing', () => { liefSchon = true; rahmen.classList.add('laeuft'); knopfZeigen(); });
   video.addEventListener('error', () => { defekt = true; rahmen.classList.remove('laeuft', 'blende'); knopfZeigen(); });
   // Kurz vor dem Ende blendet das Video auf das Poster (= erstes Bild) über: die Schleife springt nicht.

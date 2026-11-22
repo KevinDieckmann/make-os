@@ -6,6 +6,11 @@ import { abonnieren } from './feder.js';
 
 const NAHT = 0.55; // Sekunden vor dem Ende, ab denen der Film auf das Standbild blendet
 
+// Filme laden erst nach der ersten Eingabe (Scrollen, Tippen, Taste, Maus): vorher steht nur das Poster, der erste Bildschirm bleibt leicht.
+let eingabe = false;
+const wartende = new Set();
+['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach((n) => addEventListener(n, () => { if (eingabe) return; eingabe = true; wartende.forEach((f) => f()); }, { passive: true }));
+
 function sparen() {
   const netz = navigator.connection;
   return Boolean(netz && netz.saveData) || matchMedia('(prefers-reduced-data: reduce)').matches;
@@ -50,11 +55,12 @@ export function filme({ ruhe = false, bereit = Promise.resolve() } = {}) {
       if (knopf) knopf.hidden = true;
     };
     const spielen = () => {
-      if (kaputt || angehalten || !sichtbar || document.hidden) return;
+      if (kaputt || angehalten || !sichtbar || document.hidden || !eingabe) return;
       const p = video.play();
       if (p && p.catch) p.catch(e => { if (e && e.name === 'NotSupportedError') aus(); });
     };
     const ruhen = () => { if (!video.paused) video.pause(); };
+    wartende.add(() => spielen());
     const zeichnen = () => {
       if (!knopf) return;
       knopf.classList.toggle('steht', angehalten);

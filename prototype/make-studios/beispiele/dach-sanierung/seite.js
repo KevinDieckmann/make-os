@@ -152,7 +152,7 @@ function eroeffnung() {
 async function glatt() {
   if (RUHE) return;
   try {
-    const m = await import('../vendor/lenis/lenis.mjs');
+    const m = await import('../vendor/lenis/lenis.js');
     lenis = new m.default({ autoRaf: true });
     if (html.classList.contains('oe-laeuft') || html.classList.contains('gesperrt')) lenis.stop();
   } catch (e) {

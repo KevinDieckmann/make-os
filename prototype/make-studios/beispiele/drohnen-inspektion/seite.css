@@ -1,0 +1,371 @@
+/* ─── Havelblick Luftservice · Drohnen-Dienstleister (Beispielseite) ───────────────────────────────
+   Leitidee: der Blick von oben als Messinstrument. Graphit, ein Signalorange, die Falschfarben des Wärmebilds.
+   Aufbau: Grundlagen · Kopf und Menü · Flug (Einstieg und Szene) · Bausteine · Leistungen · Ergebnisse · Ablauf ·
+           Nachweise · Einsatzbeispiel · Preis · Fragen · Anfrage · Fuß · Druck                                   */
+
+@font-face { font-family: "Sora"; src: url("schriften/sora.woff2") format("woff2"); font-weight: 100 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "Messmono"; src: url("schriften/jetbrains-mono.woff2") format("woff2"); font-weight: 400 600; font-style: normal; font-display: swap; }
+
+:root {
+  --nacht: #0A0F13;
+  --flaeche: #10171D;
+  --flaeche-2: #172029;
+  --linie: rgba(168, 196, 212, .16);
+  --linie-stark: rgba(168, 196, 212, .32);
+  --text: #E7EEF2;
+  --leise: #93A6B2;
+  --signal: #FF6A2B;
+  --signal-2: #FFB020;
+  --kalt: #5CC8E8;
+  --papier: #EEF1F3;
+  --tinte: #14202A;
+  --sora: "Sora", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Messmono", ui-monospace, "SF Mono", Menlo, monospace;
+  --rand: clamp(20px, 5.4vw, 96px);
+  --luft: clamp(84px, 11vw, 168px);
+  --weich: cubic-bezier(.2, .7, .15, 1);
+  --kopf-hoehe: 72px;
+  --leiste: 96px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: calc(var(--kopf-hoehe) + 12px); scroll-padding-bottom: 112px; background: var(--nacht); }
+body { margin: 0; background: var(--nacht); color: var(--text); font: 400 17px/1.6 var(--sora); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; overflow-x: clip; }
+img, svg, video, canvas { display: block; max-width: 100%; }
+img { height: auto; }
+a { color: inherit; }
+h1, h2, h3, p, ul, ol, dl, dd, figure { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+button, input, select, textarea { font: inherit; color: inherit; }
+::selection { background: var(--signal); color: var(--nacht); }
+:focus-visible { outline: 2px solid var(--signal-2); outline-offset: 3px; border-radius: 3px; }
+.vorrat { position: absolute; width: 0; height: 0; overflow: hidden; }
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+html.gesperrt { overflow: hidden; }
+
+.sprung { position: fixed; z-index: 100; top: 10px; left: 10px; padding: 12px 18px; background: var(--signal); color: var(--nacht); font: 600 15px/1.2 var(--sora); text-decoration: none; border-radius: 4px; transform: translateY(-160%); }
+.sprung:focus { transform: none; }
+
+/* ─── Bausteine ─── */
+.etikett { font: 500 12.5px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--signal-2); }
+h2 { font-weight: 600; font-size: clamp(32px, 4.4vw, 68px); line-height: 1.04; letter-spacing: -.035em; text-wrap: balance; }
+h2 em, h1 em { font-style: normal; color: var(--signal); }
+h3 { font-weight: 600; letter-spacing: -.015em; }
+.abschnitt-kopf { display: grid; gap: 18px; padding: 0 var(--rand); margin-bottom: clamp(44px, 6vw, 88px); max-width: 1500px; }
+.abschnitt-satz { max-width: 36em; font-size: clamp(17px, 1.3vw, 20px); line-height: 1.55; color: var(--leise); }
+section[id] { position: relative; }
+
+.knopf { display: inline-flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 24px; border: 0; border-radius: 999px; background: var(--signal); color: var(--nacht); font: 600 15.5px/1.2 var(--sora); text-decoration: none; cursor: pointer; transition: background .3s, transform .3s var(--weich); }
+.knopf svg { width: 21px; height: 21px; transition: transform .4s var(--weich); }
+.knopf:hover { background: #FF8550; }
+.knopf:hover svg { transform: translateX(4px); }
+.knopf-klein { min-height: 44px; padding: 0 20px; font-size: 14.5px; }
+.textlink { background: none; border: 0; padding: 8px 0; color: var(--signal-2); font-weight: 500; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+
+/* ─── Kopf und Menü ─── */
+.kopf { position: fixed; z-index: 50; inset: 0 0 auto 0; height: var(--kopf-hoehe); display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 0 var(--rand); transition: background .4s, transform .5s var(--weich); }
+.kopf.fest { background: rgba(10, 15, 19, .84); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 1px 0 var(--linie); }
+.kopf.weg { transform: translateY(-100%); }
+.marke { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); }
+.marke-zeichen { width: 34px; height: 34px; color: var(--signal); }
+.marke-text { display: grid; line-height: 1.05; }
+.marke-text b { font-weight: 700; font-size: 18px; letter-spacing: -.02em; }
+.marke-text i { font-style: normal; font: 500 10.5px/1.2 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--leise); margin-top: 3px; }
+.menue { display: flex; align-items: center; gap: 28px; }
+.menue-liste { display: flex; gap: 6px; }
+.menue-liste a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; font-size: 14.5px; font-weight: 500; color: var(--leise); text-decoration: none; transition: color .25s; }
+.menue-liste a:hover, .menue-liste a[aria-current] { color: var(--text); }
+.menue-liste a[aria-current] { box-shadow: inset 0 -2px 0 var(--signal); }
+.menue-knopf { display: none; }
+
+@media (max-width: 959px) {
+  .menue-knopf { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 4px 0 12px; background: none; border: 0; font: 500 14px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; color: var(--text); }
+  .menue-knopf-strich { position: relative; width: 24px; height: 10px; }
+  .menue-knopf-strich::before, .menue-knopf-strich::after { content: ""; position: absolute; left: 0; width: 100%; height: 2px; background: currentColor; transition: transform .4s var(--weich), top .4s var(--weich); }
+  .menue-knopf-strich::before { top: 0; } .menue-knopf-strich::after { top: 8px; }
+  .kopf.offen .menue-knopf-strich::before { top: 4px; transform: rotate(45deg); } .kopf.offen .menue-knopf-strich::after { top: 4px; transform: rotate(-45deg); }
+  .menue { position: fixed; inset: var(--kopf-hoehe) 0 0 0; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 24px; padding: 28px var(--rand) 40px; background: var(--nacht); overflow-y: auto; visibility: hidden; opacity: 0; transition: opacity .35s, visibility .35s; }
+  .kopf.offen { background: var(--nacht); }
+  .kopf.offen .menue { visibility: visible; opacity: 1; }
+  .menue-liste { flex-direction: column; width: 100%; gap: 0; }
+  .menue-liste a { width: 100%; min-height: 60px; padding: 0; font-size: 26px; font-weight: 600; letter-spacing: -.02em; color: var(--text); border-bottom: 1px solid var(--linie); box-shadow: none !important; }
+}
+
+/* ─── Flug: Einstieg und Szene ─── */
+.flug { position: relative; height: 520svh; }
+.flug-buehne { position: sticky; top: 0; height: 100svh; min-height: 520px; overflow: hidden; background: var(--nacht); isolation: isolate; }
+.flug-poster, .flug-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.flug-poster { object-fit: cover; }
+.flug-canvas { display: none; }
+html.js .flug-canvas { display: block; }
+html.js .flug.bereit .flug-poster { visibility: hidden; }
+.flug-schleier { position: absolute; inset: 0; pointer-events: none; opacity: var(--hero, 1);
+  background: linear-gradient(90deg, rgba(10, 15, 19, .94) 0%, rgba(10, 15, 19, .7) 34%, rgba(10, 15, 19, 0) 72%), linear-gradient(0deg, rgba(10, 15, 19, .9) 0%, rgba(10, 15, 19, 0) 34%); }
+.flug-buehne::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 160px 40px rgba(10, 15, 19, .8); }
+
+.flug-kopf { position: absolute; z-index: 3; left: var(--rand); bottom: calc(var(--leiste) + clamp(24px, 6vh, 72px)); width: min(46rem, calc(100% - 2 * var(--rand))); display: grid; gap: 22px; opacity: var(--hero, 1); transform: translateY(calc((1 - var(--hero, 1)) * -36px)); }
+.flug-kopf h1 { font-weight: 700; font-size: clamp(36px, 5.4vw, 88px); line-height: 1; letter-spacing: -.045em; text-wrap: balance; }
+.flug-satz { max-width: 31em; font-size: clamp(17px, 1.35vw, 21px); line-height: 1.5; color: #B9C8D1; }
+.flug-wege { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; }
+.flug-runter { display: inline-flex; align-items: center; gap: 12px; font: 500 12.5px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--leise); }
+.flug-runter i { position: relative; width: 1px; height: 34px; background: var(--linie-stark); overflow: hidden; }
+.flug-runter i::after { content: ""; position: absolute; left: 0; top: -40%; width: 1px; height: 40%; background: var(--signal); animation: tropfen 2.2s var(--weich) infinite; }
+@keyframes tropfen { to { top: 110%; } }
+
+.flug-hud { position: absolute; z-index: 2; inset: 0; pointer-events: none; opacity: var(--hud, 0); }
+.flug-hud > * { pointer-events: auto; }
+.ansicht { position: absolute; top: calc(var(--kopf-hoehe) + 14px); right: var(--rand); display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 999px; background: rgba(10, 15, 19, .78); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: inset 0 0 0 1px var(--linie-stark); }
+.ansicht-titel { padding: 0 8px 0 12px; font: 500 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--leise); }
+.ansicht-knopf { min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: transparent; font-size: 14px; font-weight: 600; color: var(--leise); cursor: pointer; transition: background .3s, color .3s; position: relative; }
+.ansicht-knopf:hover { color: var(--text); }
+.ansicht-knopf[aria-pressed="true"] { background: var(--signal); color: var(--nacht); }
+.ansicht-knopf.hinweis::after { content: ""; position: absolute; inset: -5px; border-radius: 999px; border: 2px solid var(--signal); animation: puls 1.6s var(--weich) infinite; }
+@keyframes puls { 0% { opacity: .9; transform: scale(.94); } 100% { opacity: 0; transform: scale(1.14); } }
+.skala { position: absolute; top: calc(var(--kopf-hoehe) + 82px); right: var(--rand); display: none; align-items: center; gap: 10px; font: 500 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--leise); }
+.skala i { width: 120px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #0E0630, #461078 25%, #A8207A 45%, #F0501E 65%, #FFB820 85%, #FFFAE0); }
+.flug-buehne[data-modus="waerme"] .skala { display: flex; }
+
+.schritt { position: absolute; left: var(--rand); bottom: var(--leiste); width: min(31rem, calc(100% - 2 * var(--rand))); padding: 18px 22px 20px; border-radius: 16px; background: rgba(10, 15, 19, .8); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px var(--linie-stark); }
+.schritt-nr { display: flex; justify-content: space-between; gap: 12px; font: 500 12px/1.2 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--signal-2); }
+.schritt-nr span:last-child { color: var(--text); }
+.schritt-text { margin-top: 10px; font-size: 16px; line-height: 1.5; color: #D4DFE5; min-height: 3em; }
+.schritt-faden { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 14px; }
+.schritt-faden i { position: relative; height: 3px; border-radius: 2px; background: var(--linie-stark); overflow: hidden; }
+.schritt-faden i::after { content: ""; position: absolute; inset: 0; background: var(--signal); transform: scaleX(var(--f, 0)); transform-origin: left; }
+.zahlen { position: absolute; right: var(--rand); bottom: var(--leiste); display: flex; gap: 28px; }
+.zahlen li { display: grid; text-align: right; }
+.zahlen b { font: 600 clamp(32px, 3.4vw, 52px)/1 var(--mono); letter-spacing: -.04em; color: var(--text); font-variant-numeric: tabular-nums; }
+.zahlen span { margin-top: 6px; font: 500 11px/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--leise); }
+.hinweis-ill { position: absolute; right: var(--rand); bottom: calc(var(--leiste) - 34px); font: 500 11px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--leise); }
+.callout { position: absolute; left: 0; top: 0; z-index: 3; width: 0; height: 0; pointer-events: none; will-change: transform; }
+.callout i { position: absolute; left: 0; bottom: 28px; width: 1px; height: 34px; background: #fff; opacity: .8; }
+.callout span { position: absolute; left: -1px; bottom: 62px; display: grid; gap: 2px; width: max-content; max-width: 220px; padding: 9px 13px; border-radius: 8px; background: rgba(10, 15, 19, .88); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .5); font-size: 13px; line-height: 1.35; color: #C9D6DE; }
+.callout span b { font-weight: 600; color: #fff; }
+.callout.links span { left: auto; right: -1px; text-align: right; }
+
+/* ─── Leistungen ─── */
+.leistungen { padding: var(--luft) 0; background: var(--nacht); }
+.kacheln { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 0 var(--rand); }
+.kachel { display: flex; flex-direction: column; gap: 12px; padding: 26px 24px 26px; border-radius: 18px; background: var(--flaeche); box-shadow: inset 0 0 0 1px var(--linie); transition: box-shadow .4s, background .4s, transform .5s var(--weich); }
+.kachel:hover { background: var(--flaeche-2); box-shadow: inset 0 0 0 1px var(--linie-stark); transform: translateY(-4px); }
+.kachel-bild { width: 100%; max-width: 168px; height: auto; margin-bottom: 14px; color: var(--leise); transition: color .4s; }
+.kachel:hover .kachel-bild { color: var(--text); }
+.kachel-nr { font: 500 12px/1 var(--mono); letter-spacing: .14em; color: var(--signal-2); }
+.kachel h3 { font-size: 24px; line-height: 1.1; }
+.kachel p:not(.kachel-nr):not(.kachel-preis) { font-size: 15.5px; line-height: 1.55; color: var(--leise); }
+.kachel-preis { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--linie); font: 500 11.5px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text); }
+.kachel .lupe, .kachel .kontur, .kachel .glut, .kachel .sonne { transition: transform .8s var(--weich), opacity .6s; transform-box: fill-box; transform-origin: center; }
+.kachel:hover .lupe { transform: translate(-30px, -6px); }
+.kachel:hover .kontur { stroke-dasharray: 6 5; animation: lauf 1.4s linear infinite; }
+@keyframes lauf { to { stroke-dashoffset: -22; } }
+.kachel:hover .glut { transform: scale(1.7); }
+.kachel:hover .sonne { transform: translate(-22px, 10px); }
+
+/* ─── Ergebnisse ─── */
+.ergebnisse { padding: var(--luft) 0; background: var(--flaeche); background-image: linear-gradient(var(--linie) 1px, transparent 1px), linear-gradient(90deg, var(--linie) 1px, transparent 1px); background-size: 72px 72px; background-position: -1px -1px; }
+.ergebnis { padding: 0 var(--rand); max-width: 1500px; }
+.reiter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.reiter-knopf { display: grid; gap: 4px; align-content: start; min-height: 72px; padding: 14px 18px; border: 0; border-radius: 14px; background: rgba(10, 15, 19, .75); box-shadow: inset 0 0 0 1px var(--linie); text-align: left; cursor: pointer; transition: background .3s, box-shadow .3s; }
+.reiter-knopf b { font-size: 16px; font-weight: 600; }
+.reiter-knopf span { font-size: 13.5px; color: var(--leise); }
+.reiter-knopf:hover { box-shadow: inset 0 0 0 1px var(--linie-stark); }
+.reiter-knopf[aria-selected="true"] { background: var(--nacht); box-shadow: inset 0 0 0 2px var(--signal); }
+.tafel { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); gap: 14px; }
+.tafel-bild { position: relative; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: var(--nacht); box-shadow: inset 0 0 0 1px var(--linie); }
+.tafel-bild canvas { width: 100%; height: 100%; }
+.tafel-text { align-self: start; display: grid; align-content: start; gap: 12px; padding: 26px 26px; border-radius: 16px; background: rgba(10, 15, 19, .82); box-shadow: inset 0 0 0 1px var(--linie); }
+.tafel-titel { font-size: 26px; font-weight: 600; letter-spacing: -.025em; line-height: 1.1; }
+.tafel-klein { font: 500 11.5px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--leise); }
+.bericht { position: absolute; inset: 0; overflow: auto; padding: clamp(16px, 2.6vw, 34px); background: var(--papier); color: var(--tinte); font-size: clamp(12.5px, 1.1vw, 15px); line-height: 1.45; }
+.bericht[hidden] { display: none; }
+.bericht-kopf { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 2px solid var(--tinte); font-size: 1.4em; }
+.bericht-kopf b { font-weight: 700; letter-spacing: -.02em; } .bericht-kopf span { align-self: end; font: 500 .62em/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #5C6C77; }
+.bericht-daten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 18px; margin: 14px 0; }
+.bericht-daten dt { font: 500 .78em/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #5C6C77; }
+.bericht-daten dd { margin-top: 3px; font-weight: 500; }
+.bericht-tabelle { width: 100%; border-collapse: collapse; }
+.bericht-tabelle th { text-align: left; padding: 8px 10px; background: var(--tinte); color: var(--papier); font: 500 .8em/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.bericht-tabelle td { padding: 9px 10px; border-bottom: 1px solid #C9D2D8; vertical-align: top; }
+.bericht-tabelle td:first-child { font: 600 1em/1 var(--mono); }
+.bericht-fuss { margin-top: 12px; font-size: .85em; color: #5C6C77; }
+
+/* ─── Ablauf ─── */
+.ablauf { padding: var(--luft) 0; background: var(--nacht); }
+.schritte { --lauf: 0; position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0 22px; padding: 18px var(--rand) 0; }
+.schritte::before, .schritte::after { content: ""; position: absolute; top: 30px; left: var(--rand); right: var(--rand); height: 2px; background: var(--linie-stark); }
+.schritte::after { background: var(--signal); transform: scaleX(var(--lauf)); transform-origin: left; }
+.schritt-karte { position: relative; display: grid; gap: 10px; align-content: start; padding-top: 36px; }
+.schritt-punkt { position: absolute; top: 3px; left: 0; width: 16px; height: 16px; margin-top: 9px; border-radius: 50%; background: var(--nacht); box-shadow: inset 0 0 0 2px var(--linie-stark); transition: background .4s, box-shadow .4s; z-index: 1; }
+.schritt-karte.aktiv .schritt-punkt { background: var(--signal); box-shadow: 0 0 0 6px rgba(255, 106, 43, .22); }
+.schritt-karte-nr { font: 500 12px/1 var(--mono); letter-spacing: .14em; color: var(--signal-2); margin-top: 6px; }
+.schritt-karte h3 { font-size: 22px; line-height: 1.15; }
+.schritt-karte p:not(.schritt-karte-nr) { font-size: 15.5px; line-height: 1.55; color: var(--leise); max-width: 20em; }
+
+/* ─── Nachweise ─── */
+.nachweise { padding: var(--luft) 0; background: var(--flaeche); }
+.nachweis-liste { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 0 var(--rand); }
+.nachweis { display: grid; gap: 12px; align-content: start; padding: 28px 28px 26px; border-radius: 18px; background: var(--nacht); box-shadow: inset 0 0 0 1px var(--linie); }
+.nachweis-marke { font: 500 11.5px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--signal-2); }
+.nachweis h3 { font-size: 24px; line-height: 1.15; }
+.nachweis p:not(.nachweis-marke):not(.nachweis-platz) { color: var(--leise); font-size: 15.5px; line-height: 1.6; }
+.nachweis-platz { margin-top: 6px; padding: 12px 14px; border-left: 3px solid var(--signal-2); border-radius: 0 8px 8px 0; background: rgba(255, 176, 32, .08); font: 500 13px/1.45 var(--mono); letter-spacing: .03em; color: var(--signal-2); }
+.nachweis-quelle { padding: 22px var(--rand) 0; font-size: 14px; color: var(--leise); }
+.nachweis-quelle a { color: var(--text); text-underline-offset: 3px; }
+
+/* ─── Einsatzbeispiel ─── */
+.einsatz { padding: var(--luft) 0; background: var(--nacht); }
+.vergleich-zeile { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 64px); align-items: center; padding: 0 var(--rand); }
+.vergleich { --x: 50; position: relative; aspect-ratio: 5 / 3; border-radius: 18px; overflow: hidden; background: var(--flaeche); box-shadow: inset 0 0 0 1px var(--linie); touch-action: pan-y; }
+.vergleich canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.v-waerme { clip-path: inset(0 0 0 calc(var(--x) * 1%)); }
+.v-linie { position: absolute; top: 0; bottom: 0; left: calc(var(--x) * 1%); width: 2px; margin-left: -1px; background: #fff; pointer-events: none; }
+.v-linie i { position: absolute; top: 50%; left: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: var(--nacht); box-shadow: 0 0 0 2px #fff, 0 6px 20px rgba(0, 0, 0, .5); }
+.v-linie i::before, .v-linie i::after { content: ""; position: absolute; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-top: 2px solid #fff; border-left: 2px solid #fff; }
+.v-linie i::before { left: 15px; transform: rotate(-45deg); } .v-linie i::after { right: 15px; transform: rotate(135deg); }
+.v-regler { position: absolute; inset: 0; cursor: ew-resize; }
+.v-regler input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; -webkit-appearance: none; appearance: none; }
+.vergleich:has(input:focus-visible) { outline: 2px solid var(--signal-2); outline-offset: 3px; }
+.v-marke { position: absolute; top: 14px; padding: 6px 12px; border-radius: 999px; background: rgba(10, 15, 19, .8); font: 500 11.5px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; pointer-events: none; }
+.v-marke-l { left: 14px; } .v-marke-r { right: 14px; }
+.v-ring { position: absolute; width: 11%; aspect-ratio: 1; margin: -5.5% 0 0 -5.5%; border-radius: 50%; border: 2px solid #fff; pointer-events: none; opacity: calc((var(--x) - 38) / 14); }
+.vergleich figcaption { position: absolute; left: 14px; bottom: 12px; padding: 5px 10px; border-radius: 6px; background: rgba(10, 15, 19, .8); font: 500 11px/1.2 var(--mono); letter-spacing: .06em; color: var(--leise); pointer-events: none; }
+.einsatz-folge { display: grid; gap: 0; counter-reset: e; }
+.einsatz-folge li { position: relative; display: grid; gap: 4px; padding: 22px 0 22px 56px; border-top: 1px solid var(--linie); counter-increment: e; }
+.einsatz-folge li:last-child { border-bottom: 1px solid var(--linie); }
+.einsatz-folge li::before { content: counter(e, decimal-leading-zero); position: absolute; left: 0; top: 24px; font: 500 12px/1 var(--mono); letter-spacing: .14em; color: var(--signal-2); }
+.einsatz-folge b { font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
+.einsatz-folge span { color: var(--leise); font-size: 16px; line-height: 1.55; }
+
+/* ─── Preis ─── */
+.preis { padding: var(--luft) 0; background: var(--flaeche); }
+.faktoren { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; padding: 0 var(--rand); border-top: 1px solid var(--linie-stark); margin: 0 var(--rand); padding: 0; }
+.faktoren li { display: grid; gap: 8px; align-content: start; padding: 26px 22px 6px 0; }
+.faktoren li + li { padding-left: 22px; border-left: 1px solid var(--linie); }
+.faktoren b { font-size: 22px; font-weight: 600; letter-spacing: -.02em; line-height: 1.15; }
+.faktoren span { color: var(--leise); font-size: 15.5px; line-height: 1.5; }
+
+/* ─── Fragen ─── */
+.fragen { padding: var(--luft) 0; background: var(--nacht); }
+.fragen-liste { max-width: 980px; margin: 0 var(--rand); border-top: 1px solid var(--linie-stark); }
+.frage { border-bottom: 1px solid var(--linie); }
+.frage summary { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 76px; padding: 18px 0; list-style: none; cursor: pointer; font-size: clamp(18px, 1.6vw, 22px); font-weight: 600; letter-spacing: -.015em; line-height: 1.3; }
+.frage summary::-webkit-details-marker { display: none; }
+.frage summary i { position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--linie-stark); transition: background .3s, transform .5s var(--weich); }
+.frage summary i::before, .frage summary i::after { content: ""; position: absolute; top: 50%; left: 50%; width: 14px; height: 2px; margin: -1px 0 0 -7px; background: var(--text); transition: transform .4s var(--weich); }
+.frage summary i::after { transform: rotate(90deg); }
+.frage[open] summary i { background: var(--signal); } .frage[open] summary i::before, .frage[open] summary i::after { background: var(--nacht); }
+.frage[open] summary i::after { transform: rotate(0); }
+.frage p { max-width: 42em; padding: 0 56px 26px 0; color: var(--leise); font-size: 16.5px; line-height: 1.65; }
+
+/* ─── Anfrage ─── */
+.anfrage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: clamp(36px, 6vw, 104px); padding: var(--luft) var(--rand); background: var(--flaeche); background-image: linear-gradient(var(--linie) 1px, transparent 1px), linear-gradient(90deg, var(--linie) 1px, transparent 1px); background-size: 72px 72px; background-position: -1px -1px; }
+.anfrage-text { display: grid; gap: 22px; align-content: start; }
+.kontakt { display: grid; gap: 14px; margin-top: 12px; }
+.kontakt div { display: grid; gap: 2px; padding-top: 14px; border-top: 1px solid var(--linie); }
+.kontakt dt { font: 500 11.5px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--signal-2); }
+.kontakt dd { font-size: 17px; }
+.formular { display: grid; gap: 20px; padding: clamp(22px, 3vw, 40px); border-radius: 20px; background: rgba(10, 15, 19, .9); box-shadow: inset 0 0 0 1px var(--linie-stark); }
+.feld { display: grid; gap: 8px; }
+.feld-zeile { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.feld label { font-size: 14.5px; font-weight: 500; }
+.feld-leise { font-weight: 400; color: var(--leise); }
+.feld input, .feld select, .feld textarea { width: 100%; min-height: 52px; padding: 12px 14px; border: 0; border-radius: 10px; background: var(--flaeche-2); box-shadow: inset 0 0 0 1px var(--linie-stark); font-size: 16px; color: var(--text); }
+.feld textarea { resize: vertical; min-height: 96px; }
+.feld select { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--leise) 50%), linear-gradient(135deg, var(--leise) 50%, transparent 50%); background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 40px; }
+.feld input::placeholder, .feld textarea::placeholder { color: #66798A; }
+.feld input:focus-visible, .feld select:focus-visible, .feld textarea:focus-visible { outline: 2px solid var(--signal-2); outline-offset: 1px; }
+.feld input[aria-invalid="true"] { box-shadow: inset 0 0 0 2px #FF7A66; }
+.feld-fehler { font-size: 14px; color: #FF9A88; }
+.formular-fuss { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; }
+.formular-hinweis { font-size: 14px; color: var(--leise); }
+.formular-danke { display: grid; justify-items: start; gap: 14px; padding: clamp(28px, 4vw, 48px); border-radius: 20px; background: rgba(10, 15, 19, .9); box-shadow: inset 0 0 0 1px var(--linie-stark); }
+.formular-danke[hidden] { display: none; }
+.formular-danke svg { width: 56px; height: 56px; color: var(--signal); }
+.formular-danke h3 { font-size: 34px; }
+.formular-danke p { color: var(--leise); }
+
+/* ─── Fuß ─── */
+.fuss { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px 60px; padding: 64px var(--rand) 32px; background: var(--nacht); box-shadow: inset 0 1px 0 var(--linie); }
+.fuss-marke { display: grid; gap: 18px; justify-items: start; }
+.fuss-marke p { color: var(--leise); font-size: 15px; line-height: 1.6; }
+.fuss-wege ul { display: grid; grid-template-columns: repeat(2, auto); gap: 4px 36px; justify-content: start; }
+.fuss-wege a { display: inline-flex; align-items: center; min-height: 44px; color: var(--leise); text-decoration: none; font-size: 15px; }
+.fuss-wege a:hover { color: var(--text); }
+.fuss-klein { grid-column: 1 / -1; padding-top: 24px; border-top: 1px solid var(--linie); font-size: 13.5px; line-height: 1.6; color: var(--leise); max-width: 60em; }
+
+/* ─── Einblenden (nur mit Skript und ohne „weniger Bewegung“) ─── */
+html.belebt [data-zeig] { opacity: 0; transform: translateY(20px); transition: opacity .8s var(--weich), transform .9s var(--weich); }
+html.belebt [data-zeig].da { opacity: 1; transform: none; }
+html.belebt .kacheln > li:nth-child(2) { transition-delay: .08s; } html.belebt .kacheln > li:nth-child(3) { transition-delay: .16s; } html.belebt .kacheln > li:nth-child(4) { transition-delay: .24s; }
+
+/* ─── Schmale Fenster ─── */
+@media (max-width: 1180px) {
+  .kacheln { grid-template-columns: repeat(2, 1fr); }
+  .faktoren { grid-template-columns: repeat(2, 1fr); }
+  .faktoren li:nth-child(3) { padding-left: 0; border-left: 0; }
+  .faktoren li:nth-child(n + 3) { border-top: 1px solid var(--linie); margin-top: 22px; }
+  .tafel { grid-template-columns: 1fr; }
+  .vergleich-zeile { grid-template-columns: 1fr; }
+}
+@media (max-width: 959px) {
+  .schritte { grid-template-columns: 1fr; gap: 0; padding-top: 0; }
+  .schritte::before, .schritte::after { top: 12px; bottom: 12px; left: calc(var(--rand) + 7px); right: auto; width: 2px; height: auto; }
+  .schritte::after { transform: scaleY(var(--lauf)); transform-origin: top; }
+  .schritt-karte { padding: 0 0 34px 44px; }
+  .schritt-punkt { top: 0; margin-top: 3px; left: 0; }
+  .schritt-karte-nr { margin-top: 0; }
+  .anfrage { grid-template-columns: 1fr; }
+  .fuss { grid-template-columns: 1fr; }
+  .nachweis-liste { grid-template-columns: 1fr; }
+  .reiter { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 720px) {
+  :root { --kopf-hoehe: 64px; --leiste: 92px; }
+  body { font-size: 16.5px; }
+  .kacheln { grid-template-columns: 1fr; }
+  .flug-kopf { bottom: calc(var(--leiste) + 18px); gap: 18px; }
+  .flug-runter { display: none; }
+  .ansicht { left: var(--rand); right: var(--rand); justify-content: space-between; top: calc(var(--kopf-hoehe) + 8px); }
+  .ansicht-titel { display: none; }
+  .ansicht-knopf { flex: 1; padding: 0 8px; font-size: 13.5px; }
+  .skala { top: calc(var(--kopf-hoehe) + 74px); left: var(--rand); right: auto; }
+  .zahlen { display: none; }
+  .hinweis-ill { left: var(--rand); right: auto; bottom: auto; top: calc(var(--kopf-hoehe) + 74px); }
+  .flug-buehne[data-modus="waerme"] .hinweis-ill { top: calc(var(--kopf-hoehe) + 98px); }
+  .callout span { max-width: 176px; font-size: 12.5px; }
+  .schritt { padding: 14px 16px 16px; }
+  .schritt-text { font-size: 15px; }
+  .feld-zeile { grid-template-columns: 1fr; }
+  .bericht-daten { grid-template-columns: 1fr; }
+  .bericht-tabelle th:nth-child(3), .bericht-tabelle td:nth-child(3) { display: none; }
+  .fuss-wege ul { grid-template-columns: repeat(2, 1fr); }
+  .frage p { padding-right: 0; }
+  .faktoren { grid-template-columns: 1fr; }
+  .faktoren li, .faktoren li + li { padding-left: 0; border-left: 0; }
+  .faktoren li + li { border-top: 1px solid var(--linie); margin-top: 18px; }
+  .faktoren li:nth-child(n + 3) { margin-top: 18px; }
+}
+
+/* ─── ruhige Fassung: ohne Skript und bei „weniger Bewegung“ steht der Flug als ein Bild, alles bleibt lesbar ─── */
+html:not(.belebt) .flug { height: auto; }
+html:not(.belebt) .flug-buehne { position: relative; min-height: 100svh; height: auto; }
+html:not(.belebt) .flug-schleier { opacity: 1; }
+html:not(.belebt) .flug-buehne { min-height: max(100svh, 820px); }
+html:not(.belebt) .flug-kopf { bottom: auto; top: calc(var(--kopf-hoehe) + 96px); }
+html:not(.belebt) .flug-hud { opacity: 1; }
+html:not(.belebt) .flug-runter { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+/* ─── Druck ─── */
+@media print {
+  .kopf, .ms-leiste, .ms-platz, .flug-hud, .flug-canvas { display: none !important; }
+  .flug { height: auto; } .flug-buehne { position: relative; height: auto; min-height: 0; }
+  body, section, .fuss { background: #fff !important; color: #000 !important; }
+}
+
+/* Tippflächen am Handy: Wortmarke, Telefon- und Quellenlinks mindestens 44 px hoch */
+.marke { min-height: 44px; }
+a[href^="tel:"], a[href^="http"] { display: inline-block; padding: 12px 0; margin: -12px 0; }

@@ -44,3 +44,14 @@ Selbst gehostet, zur Laufzeit wird nichts nachgeladen.
 
 - `instrument-sans.woff2`: Instrument Sans (SIL Open Font License), statische Datei von `fonts.gstatic.com/s/instrumentsans/v4/`.
 - `geist-mono.woff2`: Geist Mono (SIL Open Font License), statische Datei von `fonts.gstatic.com/s/geistmono/v6/`.
+
+## Reel „Dach und Sanierung“ (`reels/dach-sanierung.mp4`, ersetzt am 21.11.2026)
+
+Die Schritte 2 und 3 des Reels (Dachstuhl mit Zimmerleuten, rotes Ziegeldach von oben) stammen von Pexels, die Seiten wurden am 21.11.2026 geöffnet und lesbar mit der Kennzeichnung „Free“. Lizenz: Pexels-Lizenz, frei nutzbar. Die Filme sind zugeschnitten, mit Text und Farbton versehen.
+
+| Einstellung | Quelle | Urheber |
+|---|---|---|
+| Dachstuhl, Zimmerleute | https://www.pexels.com/video/aerial-view-of-construction-workers-building-roof-31025088/ | K (@kelly) |
+| Rotes Ziegeldach von oben | https://www.pexels.com/video/an-aerial-view-of-a-roof-with-a-chimney-19582357/ | K (@kelly) |
+
+Die übrigen Einstellungen (Walmdach mit Holzplatten, Dach mit Unterspannbahn) blieben unverändert aus der ersten Fassung.

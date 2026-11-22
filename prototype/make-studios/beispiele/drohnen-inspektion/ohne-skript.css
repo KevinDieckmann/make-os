@@ -1,0 +1,9 @@
+/* Nur ohne JavaScript: das Menü steht offen im Kopf, alles bleibt lesbar und erreichbar. */
+@media (max-width: 959px) {
+  .kopf { position: absolute; height: auto; flex-wrap: wrap; gap: 4px 24px; padding-top: 10px; padding-bottom: 10px; background: var(--nacht); }
+  .menue-knopf { display: none; }
+  .menue { position: static; inset: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0 18px; padding: 0; overflow: visible; visibility: visible; opacity: 1; background: none; }
+  .menue-liste { flex-direction: row; flex-wrap: wrap; gap: 0 18px; width: auto; }
+  .menue-liste a { width: auto; min-height: 44px; font-size: 15px; font-weight: 500; letter-spacing: 0; border-bottom: 0; color: var(--leise); }
+  .flug-kopf { top: 190px !important; }
+}

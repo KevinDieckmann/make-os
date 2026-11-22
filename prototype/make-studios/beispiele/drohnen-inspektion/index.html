@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beispiel · Havelblick Luftservice · MAKE Studios</title>
+<meta name="description" content="Beispielseite: Havelblick Luftservice, Drohnen-Dienstleister für Inspektion, Thermografie, Vermessung und Luftaufnahmen in Berlin und Brandenburg.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0A0F13">
+<link rel="icon" href="../../zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/sora.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../leiste.css">
+<link rel="stylesheet" href="seite.css">
+<noscript><link rel="stylesheet" href="ohne-skript.css"></noscript>
+<script type="module" src="seite.js"></script>
+</head>
+<body>
+
+<svg class="vorrat" aria-hidden="true" focusable="false" width="0" height="0">
+  <symbol id="drohne" viewBox="0 0 40 40">
+    <path d="M9 9l22 22M31 9L9 31" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="31" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <circle cx="9" cy="31" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="31" cy="31" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <rect x="15" y="14" width="10" height="12" rx="3.5" fill="currentColor"/>
+  </symbol>
+  <symbol id="pfeil" viewBox="0 0 24 24">
+    <path d="M5 12h13M12.5 6.5 18 12l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>
+
+<a class="sprung" href="#inhalt">Zum Inhalt springen</a>
+
+<header class="kopf" id="kopf">
+  <a class="marke" href="#start" aria-label="Havelblick Luftservice, zum Seitenanfang">
+    <svg class="marke-zeichen" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><use href="#drohne"/></svg>
+    <span class="marke-text"><b>Havelblick</b><i>Luftservice</i></span>
+  </a>
+  <button class="menue-knopf" type="button" aria-expanded="false" aria-controls="menue">
+    <span class="menue-knopf-text">Menü</span>
+    <span class="menue-knopf-strich" aria-hidden="true"></span>
+  </button>
+  <nav class="menue" id="menue" aria-label="Hauptmenü">
+    <ul class="menue-liste">
+      <li><a href="#leistungen">Leistungen</a></li>
+      <li><a href="#ergebnisse">Ergebnisse</a></li>
+      <li><a href="#ablauf">Ablauf</a></li>
+      <li><a href="#nachweise">Nachweise</a></li>
+      <li><a href="#einsatz">Einsatzbeispiel</a></li>
+      <li><a href="#fragen">Fragen</a></li>
+    </ul>
+    <a class="knopf knopf-klein" href="#anfrage">Einsatz anfragen</a>
+  </nav>
+</header>
+
+<main id="inhalt">
+
+  <!-- ═══ Der Flug: Einstieg und Szene in einem. Das Scrollen steuert die Drohne. ═══ -->
+  <section class="flug" id="start" aria-labelledby="flug-titel">
+    <div class="flug-buehne">
+      <img class="flug-poster" src="medien/szene-poster.jpg" srcset="medien/szene-poster-800.jpg 800w, medien/szene-poster.jpg 1600w" sizes="100vw" width="1600" height="900" alt="" decoding="async" fetchpriority="high">
+      <canvas class="flug-canvas" id="szene" aria-hidden="true"></canvas>
+      <div class="flug-schleier" aria-hidden="true"></div>
+
+      <div class="flug-kopf" id="flug-kopf">
+        <p class="etikett">Drohnen-Dienstleister · Berlin und Brandenburg</p>
+        <h1 id="flug-titel">Was von unten verborgen bleibt, <em>zeigt der Flug.</em></h1>
+        <p class="flug-satz">Inspektion, Thermografie, Vermessung und Luftaufnahmen für Unternehmen, Hausverwaltungen und Betreiber von Photovoltaik-Anlagen.</p>
+        <p class="flug-wege">
+          <a class="knopf" href="#anfrage">Einsatz anfragen<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#pfeil"/></svg></a>
+          <span class="flug-runter"><i aria-hidden="true"></i>Scrollen Sie, die Drohne fliegt mit</span>
+        </p>
+      </div>
+
+      <div class="flug-hud" id="flug-hud" hidden>
+        <div class="ansicht" role="group" aria-label="Ansicht der Szene wählen">
+          <p class="ansicht-titel">Ansicht</p>
+          <button type="button" class="ansicht-knopf" data-modus="foto" aria-pressed="true">Luftbild</button>
+          <button type="button" class="ansicht-knopf" data-modus="waerme" aria-pressed="false">Wärmebild</button>
+          <button type="button" class="ansicht-knopf" data-modus="hoehe" aria-pressed="false">Vermessung</button>
+        </div>
+        <div class="skala" id="skala" aria-hidden="true"><span>kühl</span><i></i><span>warm</span></div>
+
+        <div class="schritt" aria-live="polite">
+          <p class="schritt-nr"><span id="schritt-zahl">01 / 03</span><span id="schritt-name">Planen</span></p>
+          <p class="schritt-text" id="schritt-text">Vor dem Start steht die Bahn fest: Streifen mit Überlappung, damit aus vielen Einzelbildern ein Ganzes wird.</p>
+          <div class="schritt-faden" aria-hidden="true"><i></i><i></i><i></i></div>
+        </div>
+
+        <ul class="zahlen" aria-label="Stand des Flugs in der Illustration">
+          <li><b id="zahl-streifen">0</b><span>von 7 Streifen</span></li>
+          <li><b id="zahl-bilder">0</b><span>Aufnahmen</span></li>
+        </ul>
+        <p class="hinweis-ill">Illustration, kein echtes Messergebnis</p>
+        <div class="callout" id="callout" hidden><i aria-hidden="true"></i><span><b>Auffälliges Modul</b>deutlich wärmer als seine Nachbarn</span></div>
+      </div>
+      <p class="sr">Die Szene zeigt von oben eine gezeichnete Gewerbeanlage mit Halle, Photovoltaik-Feld, Bürotrakt und Parkplatz. Eine Drohne fliegt in sieben Streifen darüber. Sie können zwischen Luftbild, Wärmebild und Vermessung wechseln. Im Wärmebild fällt ein Solarmodul auf, das heißer ist als seine Nachbarn. Es handelt sich um eine Illustration.</p>
+    </div>
+  </section>
+
+  <!-- ═══ Leistungen ═══ -->
+  <section class="leistungen" id="leistungen" aria-labelledby="leistungen-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Leistungen</p>
+      <h2 id="leistungen-titel" data-zeig>Vier Arten, <em>von oben hinzusehen.</em></h2>
+      <p class="abschnitt-satz" data-zeig>Jeder Einsatz endet mit einem Ergebnis, das Sie weitergeben können: an die Versicherung, den Planer, die Eigentümer.</p>
+    </header>
+    <ul class="kacheln">
+      <li class="kachel" data-zeig>
+        <svg class="kachel-bild" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
+          <path d="M8 62 60 20l52 42" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M22 62v12h76V62" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".5"/>
+          <circle class="lupe" cx="78" cy="38" r="13" fill="none" stroke="var(--signal)" stroke-width="2.2"/>
+          <path d="m88 48 12 12" stroke="var(--signal)" stroke-width="2.6" stroke-linecap="round"/>
+        </svg>
+        <p class="kachel-nr">01</p>
+        <h3>Inspektion</h3>
+        <p>Dächer, Fassaden, Schornsteine und Anlagen prüfen, ohne Gerüst und ohne Betreten. Befunde stehen mit Foto und Position im Bericht.</p>
+        <p class="kachel-preis">Preis nach Aufwand, vorab genannt</p>
+      </li>
+      <li class="kachel" data-zeig>
+        <svg class="kachel-bild" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
+          <defs><linearGradient id="kw" x1="0" x2="1"><stop offset="0" stop-color="#46107A"/><stop offset=".45" stop-color="#A8207A"/><stop offset=".75" stop-color="#F0501E"/><stop offset="1" stop-color="#FFD060"/></linearGradient></defs>
+          <rect x="10" y="12" width="100" height="56" rx="4" fill="url(#kw)" opacity=".9"/>
+          <g fill="none" stroke="#0A0F13" stroke-width="1.2" opacity=".55"><path d="M10 31h100M10 50h100M43 12v56M76 12v56"/></g>
+          <circle class="glut" cx="84" cy="40" r="7" fill="#FFF6D6"/>
+        </svg>
+        <p class="kachel-nr">02</p>
+        <h3>Thermografie</h3>
+        <p>Photovoltaik und Dächer mit der Wärmebildkamera: Auffällige Module und Wärmebrücken werden sichtbar. Berichte zu PV-Anlagen orientieren sich an DIN IEC/TS 62446-3.</p>
+        <p class="kachel-preis">Preis nach Aufwand, vorab genannt</p>
+      </li>
+      <li class="kachel" data-zeig>
+        <svg class="kachel-bild" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
+          <g fill="currentColor"><circle cx="20" cy="20" r="2"/><circle cx="44" cy="20" r="2"/><circle cx="68" cy="20" r="2"/><circle cx="92" cy="20" r="2"/><circle cx="20" cy="40" r="2"/><circle cx="44" cy="40" r="2"/><circle cx="68" cy="40" r="2"/><circle cx="92" cy="40" r="2"/><circle cx="20" cy="60" r="2"/><circle cx="44" cy="60" r="2"/><circle cx="68" cy="60" r="2"/><circle cx="92" cy="60" r="2"/></g>
+          <path class="kontur" d="M30 52 54 24l36 10 4 24z" fill="none" stroke="var(--signal)" stroke-width="2.2" stroke-linejoin="round"/>
+        </svg>
+        <p class="kachel-nr">03</p>
+        <h3>Vermessung</h3>
+        <p>Orthofoto, 3D-Modell und digitales Dachaufmaß aus Photogrammetrie, auf Wunsch mit Höhenlinien und Flächenangaben.</p>
+        <p class="kachel-preis">Preis nach Aufwand, vorab genannt</p>
+      </li>
+      <li class="kachel" data-zeig>
+        <svg class="kachel-bild" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
+          <rect x="14" y="12" width="92" height="56" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M14 56l26-22 20 16 18-12 28 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" opacity=".7"/>
+          <circle class="sonne" cx="84" cy="28" r="6" fill="var(--signal)"/>
+          <path d="M20 20v-6h6M100 14h6v6M106 60v6h-6M26 66h-6v-6" fill="none" stroke="var(--signal)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <p class="kachel-nr">04</p>
+        <h3>Luftaufnahmen</h3>
+        <p>Foto und Film für Website, Exposé, Baufortschritt und Pressematerial. Ruhige Fahrten, ausgearbeitet und geschnitten.</p>
+        <p class="kachel-preis">Preis nach Aufwand, vorab genannt</p>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ═══ Ergebnisse: was Sie bekommen ═══ -->
+  <section class="ergebnisse" id="ergebnisse" aria-labelledby="ergebnisse-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Was Sie bekommen</p>
+      <h2 id="ergebnisse-titel" data-zeig>Kein Bildordner, <em>sondern ein Ergebnis.</em></h2>
+      <p class="abschnitt-satz" data-zeig>Wählen Sie eine Ausgabe. Alle Bilder hier sind gezeichnete Beispiele zur Anschauung.</p>
+    </header>
+    <div class="ergebnis" data-zeig>
+      <div class="reiter" role="tablist" aria-label="Ausgaben">
+        <button type="button" role="tab" class="reiter-knopf" id="tab-ortho" aria-controls="tafel" aria-selected="true" data-ebene="foto"><b>Orthofoto</b><span>maßstäbliches Luftbild</span></button>
+        <button type="button" role="tab" class="reiter-knopf" id="tab-waerme" aria-controls="tafel" aria-selected="false" data-ebene="waerme"><b>Wärmebild-Auswertung</b><span>Auffälligkeiten markiert</span></button>
+        <button type="button" role="tab" class="reiter-knopf" id="tab-modell" aria-controls="tafel" aria-selected="false" data-ebene="hoehe"><b>3D-Modell und Höhen</b><span>Messpunkte und Stufen</span></button>
+        <button type="button" role="tab" class="reiter-knopf" id="tab-bericht" aria-controls="tafel" aria-selected="false" data-ebene="bericht"><b>Bericht</b><span>Befunde, Fotos, Empfehlung</span></button>
+      </div>
+      <div class="tafel" id="tafel" role="tabpanel" aria-labelledby="tab-ortho">
+        <div class="tafel-bild">
+          <canvas id="ergebnis-bild" width="1280" height="720" aria-hidden="true"></canvas>
+          <div class="bericht" id="ergebnis-bericht" hidden>
+            <p class="bericht-kopf"><b>Prüfbericht</b><span>Beispiel, Illustration</span></p>
+            <dl class="bericht-daten"><div><dt>Objekt</dt><dd>Gewerbehalle mit Photovoltaik-Anlage</dd></div><div><dt>Verfahren</dt><dd>Befliegung mit Wärmebild- und Fotokamera</dd></div><div><dt>Datum</dt><dd>Tag des Einsatzes laut Auftrag</dd></div></dl>
+            <table class="bericht-tabelle">
+              <thead><tr><th scope="col">Nr.</th><th scope="col">Befund</th><th scope="col">Ort</th><th scope="col">Empfehlung</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>Modul deutlich wärmer als die Nachbarn</td><td>Feld 1, Reihe 5</td><td>Vor Ort prüfen</td></tr>
+                <tr><td>2</td><td>Zwei Module leicht erwärmt</td><td>Feld 1, Reihe 10 und 11</td><td>Beobachten</td></tr>
+                <tr><td>3</td><td>Ablagerung am Dachrand</td><td>Südseite</td><td>Reinigen</td></tr>
+              </tbody>
+            </table>
+            <p class="bericht-fuss">Bildseiten mit Position und Foto zu jedem Befund folgen im vollständigen Bericht.</p>
+          </div>
+        </div>
+        <div class="tafel-text">
+          <p class="tafel-titel" id="tafel-titel">Orthofoto</p>
+          <p id="tafel-satz">Aus vielen überlappenden Einzelbildern entsteht ein entzerrtes Luftbild, in dem sich Flächen und Abstände messen lassen.</p>
+          <p class="tafel-klein" id="tafel-klein">Gezeichnete Illustration.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Ablauf ═══ -->
+  <section class="ablauf" id="ablauf" aria-labelledby="ablauf-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Ablauf</p>
+      <h2 id="ablauf-titel" data-zeig>Von der Anfrage <em>bis zur Übergabe.</em></h2>
+    </header>
+    <ol class="schritte" id="schritte">
+      <li class="schritt-karte" data-zeig>
+        <span class="schritt-punkt" aria-hidden="true"></span>
+        <p class="schritt-karte-nr">01</p>
+        <h3>Anfrage</h3>
+        <p>Sie schildern Objekt, Ort und Zweck. Wir melden uns mit Rückfragen.</p>
+      </li>
+      <li class="schritt-karte" data-zeig>
+        <span class="schritt-punkt" aria-hidden="true"></span>
+        <p class="schritt-karte-nr">02</p>
+        <h3>Einsatzplanung</h3>
+        <p>Wir prüfen Flugraum und Genehmigung, klären den Zugang und legen das Wetterfenster fest.</p>
+      </li>
+      <li class="schritt-karte" data-zeig>
+        <span class="schritt-punkt" aria-hidden="true"></span>
+        <p class="schritt-karte-nr">03</p>
+        <h3>Flug</h3>
+        <p>Der Flug folgt einer festgelegten Bahn. Wo es nötig ist, sprechen wir uns vor Ort mit Ihnen ab.</p>
+      </li>
+      <li class="schritt-karte" data-zeig>
+        <span class="schritt-punkt" aria-hidden="true"></span>
+        <p class="schritt-karte-nr">04</p>
+        <h3>Auswertung</h3>
+        <p>Aus den Bildern entstehen Orthofoto, Modell und Befunde, je nach Auftrag.</p>
+      </li>
+      <li class="schritt-karte" data-zeig>
+        <span class="schritt-punkt" aria-hidden="true"></span>
+        <p class="schritt-karte-nr">05</p>
+        <h3>Übergabe</h3>
+        <p>Sie erhalten Bericht und Daten und besprechen die Befunde mit uns.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ═══ Nachweise ═══ -->
+  <section class="nachweise" id="nachweise" aria-labelledby="nachweise-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Zulassungen und Sicherheit</p>
+      <h2 id="nachweise-titel" data-zeig>Wer über Ihrem Gelände fliegt, <em>sollte es belegen können.</em></h2>
+      <p class="abschnitt-satz" data-zeig>Auf Wunsch senden wir Ihnen die Nachweise vorab. Was wir jedem Angebot beilegen, steht unter den vier Punkten.</p>
+    </header>
+    <ul class="nachweis-liste">
+      <li class="nachweis" data-zeig>
+        <p class="nachweis-marke">Registrierung</p>
+        <h3>Betreiberregistrierung</h3>
+        <p>Als Betreiber von Drohnen sind wir bei der Luftfahrtbehörde registriert. Die Betreibernummer steht auf jedem Bericht.</p>
+        <p class="nachweis-platz">Die Betreibernummer legen wir jedem Angebot bei.</p>
+      </li>
+      <li class="nachweis" data-zeig>
+        <p class="nachweis-marke">Qualifikation</p>
+        <h3>Kompetenznachweis und Zeugnis</h3>
+        <p>Für die offene Kategorie gilt der EU-Kompetenznachweis, für die Unterkategorie A2 zusätzlich das Fernpiloten-Zeugnis. Der Nachweis ist laut Luftfahrt-Bundesamt fünf Jahre gültig.</p>
+        <p class="nachweis-platz">Die Nachweise der eingesetzten Piloten legen wir mit Gültigkeit bei.</p>
+      </li>
+      <li class="nachweis" data-zeig>
+        <p class="nachweis-marke">Genehmigung</p>
+        <h3>Offene und spezielle Kategorie</h3>
+        <p>Einfache Einsätze fliegen wir in der offenen Kategorie. Komplexere Einsätze brauchen eine Betriebsgenehmigung in der speziellen Kategorie. Welche gilt, klären wir in der Einsatzplanung.</p>
+        <p class="nachweis-platz">Eine nötige Genehmigung legen wir Ihnen vor dem Einsatz vor.</p>
+      </li>
+      <li class="nachweis" data-zeig>
+        <p class="nachweis-marke">Versicherung</p>
+        <h3>Haftpflicht</h3>
+        <p>Der Drohnenbetrieb ist haftpflichtversichert. Den Nachweis legen wir Ihnen auf Anfrage vor.</p>
+        <p class="nachweis-platz">Versicherer und Deckungssumme nennen wir im Angebot.</p>
+      </li>
+    </ul>
+    <p class="nachweis-quelle">Quelle zu Kategorien und Nachweisen: <a href="https://uas-operations.bund.de/homepage/en/information/categorizing-drone-operations/open-category/" rel="noopener noreferrer">Luftfahrt-Bundesamt, Offene Kategorie</a></p>
+  </section>
+
+  <!-- ═══ Einsatzbeispiel: Foto gegen Wärmebild ═══ -->
+  <section class="einsatz" id="einsatz" aria-labelledby="einsatz-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Einsatzbeispiel</p>
+      <h2 id="einsatz-titel" data-zeig>Im Foto sieht alles gleich aus. <em>Im Wärmebild nicht.</em></h2>
+      <p class="abschnitt-satz" data-zeig>Photovoltaik auf einer Gewerbehalle. Ziehen Sie den Regler.</p>
+    </header>
+    <div class="vergleich-zeile">
+      <figure class="vergleich" id="vergleich" data-zeig>
+        <canvas id="v-foto" width="1200" height="720" aria-hidden="true"></canvas>
+        <canvas class="v-waerme" id="v-waerme" width="1200" height="720" aria-hidden="true"></canvas>
+        <span class="v-marke v-marke-l" aria-hidden="true">Foto</span>
+        <span class="v-marke v-marke-r" aria-hidden="true">Wärmebild</span>
+        <span class="v-linie" aria-hidden="true"><i></i></span>
+        <label class="v-regler"><span class="sr">Anteil Wärmebild</span><input type="range" id="v-wert" min="0" max="100" value="50" aria-valuetext="Hälfte Foto, Hälfte Wärmebild"></label>
+        <span class="v-ring" id="v-ring" aria-hidden="true"></span>
+        <figcaption>Illustration eines Beispielfalls, kein echtes Messergebnis.</figcaption>
+      </figure>
+      <div class="einsatz-text" data-zeig>
+        <ol class="einsatz-folge">
+          <li><b>Das Foto</b><span>Alle Module sehen gleich aus. Von außen ist nichts zu erkennen.</span></li>
+          <li><b>Das Wärmebild</b><span>Ein Modul ist deutlich wärmer als seine Nachbarn. Eine Zellgruppe läuft heiß.</span></li>
+          <li><b>Der Bericht</b><span>Das Modul wird mit Position und Bild dokumentiert. Danach folgt die Prüfung vor Ort.</span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Preislogik ═══ -->
+  <section class="preis" id="preis" aria-labelledby="preis-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Preislogik</p>
+      <h2 id="preis-titel" data-zeig>Der Preis folgt <em>dem Aufwand.</em></h2>
+      <p class="abschnitt-satz" data-zeig>Sie erhalten vor dem Flug ein schriftliches Angebot. Diese vier Dinge bestimmen es.</p>
+    </header>
+    <ul class="faktoren">
+      <li data-zeig><b>Objekt</b><span>Größe, Höhe und Art der Fläche.</span></li>
+      <li data-zeig><b>Zugang und Flugraum</b><span>Lage, Genehmigung, Auflagen vor Ort.</span></li>
+      <li data-zeig><b>Ergebnis</b><span>Fotos, Wärmebild, Modell oder voller Bericht.</span></li>
+      <li data-zeig><b>Auswertung</b><span>Wie tief wir in die Daten gehen.</span></li>
+    </ul>
+  </section>
+
+  <!-- ═══ Fragen ═══ -->
+  <section class="fragen" id="fragen" aria-labelledby="fragen-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Fragen</p>
+      <h2 id="fragen-titel" data-zeig>Was Kundinnen und Kunden <em>zuerst wissen wollen.</em></h2>
+    </header>
+    <div class="fragen-liste">
+      <details class="frage" name="frage" open data-zeig>
+        <summary><span>Brauche ich eine Genehmigung für den Flug über meinem Grundstück?</span><i aria-hidden="true"></i></summary>
+        <p>Das klären wir vor dem Flug mit Ihnen: Wer darf zustimmen, welcher Luftraum gilt, braucht der Einsatz eine Genehmigung. Einfache Einsätze fliegen wir in der offenen Kategorie, komplexere in der speziellen Kategorie mit Betriebsgenehmigung.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Was zeigt eine Thermografie, und reicht sie für Versicherung oder Gewährleistung?</span><i aria-hidden="true"></i></summary>
+        <p>Sie zeigt Temperaturunterschiede, etwa ein Modul, das heißer läuft als seine Nachbarn. Ob ein Bericht für Versicherung oder Gewährleistung ausreicht, hängt vom Fall ab. Sprechen Sie das vorab an, wir stimmen Inhalt und Form des Berichts darauf ab.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Wie lange dauert der Einsatz, und wann habe ich den Bericht?</span><i aria-hidden="true"></i></summary>
+        <p>Das hängt von Objekt und Wetter ab. Nach Ihrer Anfrage nennen wir Ihnen Flugtermin und Berichtstermin schriftlich.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Was kostet es?</span><i aria-hidden="true"></i></summary>
+        <p>Der Preis richtet sich nach dem Aufwand, nicht nach einer Pauschale. Sie erhalten ihn schriftlich, bevor wir fliegen.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Ist der Pilot qualifiziert und versichert?</span><i aria-hidden="true"></i></summary>
+        <p>Ja. Die Nachweise stehen im Abschnitt Zulassungen und Sicherheit, auf Wunsch senden wir Ihnen Kopien vorab.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ═══ Anfrage ═══ -->
+  <section class="anfrage" id="anfrage" aria-labelledby="anfrage-titel">
+    <div class="anfrage-text">
+      <p class="etikett" data-zeig>Einsatz anfragen</p>
+      <h2 id="anfrage-titel" data-zeig>Nennen Sie uns <em>Ort und Zweck.</em></h2>
+      <p class="abschnitt-satz" data-zeig>Mehr brauchen wir für die erste Rückmeldung nicht.</p>
+      <dl class="kontakt" data-zeig>
+        <div><dt>Standort</dt><dd>Beispielweg 1 · Brandenburg an der Havel</dd></div>
+        <div><dt>Einsatzgebiet</dt><dd>Berlin und Brandenburg</dd></div>
+        <div><dt>Erreichbar</dt><dd>Hier stehen Ihre Kontaktdaten.</dd></div>
+      </dl>
+    </div>
+    <div class="anfrage-form" data-zeig>
+      <form class="formular" id="anfrage-form" method="dialog" novalidate>
+        <div class="feld">
+          <label for="f-name">Ihr Name <span aria-hidden="true">*</span></label>
+          <input id="f-name" name="name" type="text" autocomplete="name" required aria-describedby="f-name-fehler">
+          <p class="feld-fehler" id="f-name-fehler" hidden>Bitte nennen Sie Ihren Namen.</p>
+        </div>
+        <div class="feld">
+          <label for="f-kontakt">E-Mail oder Telefon <span aria-hidden="true">*</span></label>
+          <input id="f-kontakt" name="kontakt" type="text" autocomplete="email" inputmode="email" required aria-describedby="f-kontakt-fehler">
+          <p class="feld-fehler" id="f-kontakt-fehler" hidden>Bitte geben Sie eine E-Mail-Adresse oder eine Telefonnummer an.</p>
+        </div>
+        <div class="feld-zeile">
+          <div class="feld">
+            <label for="f-ort">Ort des Objekts</label>
+            <input id="f-ort" name="ort" type="text" autocomplete="postal-code" placeholder="PLZ oder Ort">
+          </div>
+          <div class="feld">
+            <label for="f-zweck">Zweck</label>
+            <select id="f-zweck" name="zweck">
+              <option>Inspektion</option>
+              <option>Thermografie</option>
+              <option>Vermessung</option>
+              <option>Luftaufnahmen</option>
+              <option>Das weiß ich noch nicht</option>
+            </select>
+          </div>
+        </div>
+        <div class="feld">
+          <label for="f-objekt">Das Objekt <span class="feld-leise">Nur, wenn Sie mögen</span></label>
+          <textarea id="f-objekt" name="objekt" rows="3" placeholder="Zum Beispiel: Hallendach mit Photovoltaik"></textarea>
+        </div>
+        <div class="formular-fuss">
+          <button class="knopf" type="submit">Anfrage senden<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#pfeil"/></svg></button>
+          <p class="formular-hinweis">Felder mit * brauchen wir, um Ihnen zu antworten.</p>
+        </div>
+        <noscript><p class="formular-hinweis">Dies ist eine Beispielseite. Ihre Angaben werden nicht gesendet.</p></noscript>
+      </form>
+      <div class="formular-danke" id="anfrage-danke" role="status" tabindex="-1" hidden>
+        <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false"><use href="#drohne"/></svg>
+        <h3>Danke<span id="danke-name"></span>.</h3>
+        <p>Dies ist eine Beispielseite. Ihre Angaben werden nicht gesendet.</p>
+        <button class="textlink" type="button" id="danke-zurueck">Zurück zum Formular</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="fuss">
+  <div class="fuss-marke">
+    <a class="marke" href="#start" aria-label="Havelblick Luftservice, zum Seitenanfang">
+      <svg class="marke-zeichen" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><use href="#drohne"/></svg>
+      <span class="marke-text"><b>Havelblick</b><i>Luftservice</i></span>
+    </a>
+    <p>Inspektion, Thermografie, Vermessung und Luftaufnahmen<br>Beispielweg 1 · Brandenburg an der Havel</p>
+  </div>
+  <nav class="fuss-wege" aria-label="Fußmenü">
+    <ul>
+      <li><a href="#leistungen">Leistungen</a></li>
+      <li><a href="#ergebnisse">Ergebnisse</a></li>
+      <li><a href="#ablauf">Ablauf</a></li>
+      <li><a href="#nachweise">Nachweise</a></li>
+      <li><a href="#fragen">Fragen</a></li>
+      <li><a href="#anfrage">Anfrage</a></li>
+    </ul>
+  </nav>
+  <p class="fuss-klein">Beispielseite mit erfundenem Namen. Alle Bilder auf dieser Seite sind gezeichnete Illustrationen und zeigen keine echten Messergebnisse, Objekte oder Kunden.</p>
+</footer>
+
+<!-- ═══ Leiste von MAKE Studios: auf jeder Beispielseite, unverändert ═══ -->
+<div class="ms-platz" aria-hidden="true"></div>
+<nav class="ms-leiste" aria-label="MAKE Studios">
+  <a class="ms-marke" href="../../#beispielseiten" aria-label="Zurück zu den Beispielseiten von MAKE Studios"><img src="../../zeichen.svg" alt="" width="24" height="24"><b>MAKE</b><span>STUDIOS</span></a>
+  <span class="ms-hinweis"><b>Beispiel</b><span class="ms-lang"> · Namen erfunden</span></span>
+  <a class="ms-knopf" href="../../#erstgespraech-technik">Erstgespräch</a>
+</nav>
+
+</body>
+</html>

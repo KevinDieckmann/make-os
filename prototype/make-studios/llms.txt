@@ -1,24 +1,80 @@
 # MAKE Studios
 
-> MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Video, Fotos und Social Media.
+> MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Google-Profil, Foto, Video, Social Media und Websites.
+
+MAKE Studios sitzt in Berlin und macht Unternehmen auf allen Ebenen sichtbar: Google-Profil, Foto, Video, Reels, Social Media und Website, KI-gestützt und aus einer Hand. Social Media gibt es ab 990 € im Monat, Videos ab 1.490 €, Websites ab 2.990 €, jeweils netto. Aus jedem Anlass, vom Drehtag bis zur Messe, entstehen Fotos, Videos, Reels und Beiträge für Wochen. Wer eine Website erstellen lassen, Reels oder Videos drehen lassen oder Social Media betreuen lassen will, bekommt alles aus einer Hand oder einzeln. Sichtbar werden mit MAKE Studios, planbar verkaufen mit MAKE Revenue.
+
+## Für wen
+Betriebe und Dienstleister in Berlin, die online gefunden werden wollen, in drei Gruppen: Bau und Handwerk, innovative Produkte (zum Beispiel Robotik, Drohnen, Energiespeicher) sowie Agenturen und Coaches, dazu zählen Kanzleien und Berater.
 
 ## Leistungen
-- [Website](https://makestudios.de/#websites): Zuerst fürs Handy gebaut, mit kurzer Ladezeit und allem, was Ihre Kundschaft vor der Anfrage wissen will.
 - [Sichtbarkeit bei Google](https://makestudios.de/#leistungen): Sie tauchen dort auf, wo gesucht wird: in der Google-Suche und auf der Karte, mit vollständigem Profil und Bewertungen.
-- [Video & Foto](https://makestudios.de/#video): Wir fotografieren und drehen bei Ihnen vor Ort in Berlin. Erklärvideo und Videostory entstehen auch ganz ohne Kamera.
-- [Social Media](https://makestudios.de/#social): Wir planen und schreiben Ihre Beiträge, schneiden Reels und antworten in Ihrem Namen auf Kommentare und Nachrichten.
+- [Video & Foto](https://makestudios.de/#video): Wir fotografieren und drehen bei Ihnen vor Ort in Berlin, auch Reels. Erklärvideo und Videostory (der Imagefilm) entstehen ganz ohne Kamera.
+- [Social Media](https://makestudios.de/#social): Die Betreuung Ihrer sozialen Medien gibt es in drei Paketen. Jedes enthält den Redaktionsplan, Texte für Ihre Beiträge und Reels.
+- [Website](https://makestudios.de/#websites): Sie möchten eine Website erstellen lassen? Wir bauen sie zuerst fürs Handy, mit kurzer Ladezeit und allem, was Ihre Kundschaft vor der Anfrage wissen will.
 - [Schnelltest Sichtbarkeit](https://makestudios.de/#check): Acht kurze Fragen zu Ihrem Auftritt. Sie sehen sofort, wo Sie stehen und wo Ihr größter Hebel liegt.
 
-## Beispielseiten
+## Video
+- Erklärvideo: Ihr Angebot in 60 bis 90 Sekunden erklärt. (Lieferzeit 10 Werktage)
+- Videostory: Der Imagefilm: die Geschichte Ihrer Firma, warum es Sie gibt und wofür Sie stehen. Auf Wunsch sprechen Sie selbst. (Lieferzeit 15 Werktage)
+- Video-Serie: Neue Videos nach Redaktionsplan, ohne dass Sie planen oder schneiden müssen. (2 Videos im Monat)
+
+## Social Media in drei Paketen
+- Social Media S: Redaktionsplan, Texte für Ihre Beiträge und 2 Reels im Monat. Die Bilder liefern Sie.
+- Social Media M: Alles aus S und 2 Reels je Woche aus Ihrem Material.
+- Social Media L: Alles aus M, 3 Storys je Woche, 1 Dreh im Monat und Antworten auf Kommentare und Nachrichten.
+- Für alle drei Pakete: Pro Monat, mindestens 3 Monate. Bezahlte Anzeigen sind nicht enthalten.
+- [Preise für Social Media](https://makeinnovation.de/sichtbarkeit/social-media/)
+
+## Preise
+Alle Preise netto zuzüglich Umsatzsteuer, Oktober 2026. Website: ab 2.990 € netto, einmalig. Erklärvideo: ab 1.490 € netto, einmalig. Videostory: ab 1.990 € netto, einmalig. Video-Serie: ab 1.990 € netto im Monat, mindestens 3 Monate. Social Media S: ab 990 € netto im Monat, mindestens 3 Monate. Social Media M: ab 1.490 € netto im Monat, mindestens 3 Monate. Social Media L: ab 2.490 € netto im Monat, mindestens 3 Monate. Für Google-Profil und Fotos steht hier kein Preis; er wird im Erstgespräch genannt. Nach dem Erstgespräch gibt es einen Festpreis, schriftlich und vor Beginn. Alle Preise: Websites https://makeinnovation.de/sichtbarkeit/homepages/, Videos https://makeinnovation.de/sichtbarkeit/videos/, Social Media https://makeinnovation.de/sichtbarkeit/social-media/.
+
+## Ablauf in sechs Schritten
+1. Briefing: Sie erzählen uns vor Ort, was Ihren Betrieb ausmacht. Wir sehen uns an, wie man Sie heute online findet.
+2. Design: Wir entwerfen die Website zuerst fürs Handy und schreiben fürs Video das Skript. Sie sehen beides, bevor gebaut oder produziert wird.
+3. Feedback: Sie sagen uns, was fehlt oder anders sein soll. Wir arbeiten es ein.
+4. Umsetzung: Wir bauen die Seite, richten das Google-Profil ein, drehen, schneiden und bereiten Beiträge vor. Sie geben uns die Zugänge und einen Termin für den Dreh.
+5. Abnahme: Sie prüfen alles in Ruhe. Wir veröffentlichen erst mit Ihrem Okay.
+6. Live: Wir schalten frei und prüfen, ob man Sie findet. Sie sehen, über welche Wege Kundschaft zu Ihnen kommt.
+
+## Häufige Fragen (Antworten: https://makestudios.de/llms-full.txt und https://makestudios.de/#fragen)
+- Was bekomme ich bei MAKE Studios?
+- Für welche Betriebe arbeiten Sie?
+- Lohnt sich eine eigene Website, wenn ich schon Social Media habe?
+- Was kostet eine Website, ein Video oder Social Media?
+- Wie läuft ein Projekt ab?
+- Was brauchen Sie von mir?
+- Wie bekomme ich Anfragen statt nur Besucher?
+- Wie werde ich bei Google gefunden?
+- Warum ist ein vollständiges Google-Profil wichtig?
+- Wie lange dauert ein Video?
+- Was ist der Unterschied zwischen Erklärvideo, Videostory und Video-Serie?
+- Muss ich vor die Kamera?
+- Arbeiten Sie mit KI?
+- Machen Sie auch Fotos und Videos bei Events?
+- Wie viele Reels bekomme ich, und wer macht sie?
+- Was gehört zu Social Media bei Ihnen?
+- Wie lange läuft die Betreuung, und sind Anzeigen enthalten?
+- Gehören Impressum und Datenschutz dazu?
+- Kann ich nur Video buchen?
+- Sind die Beispielseiten echte Kunden?
+- Kommen Sie zu uns?
+- Wer steht hinter MAKE Studios?
+
+## Beispielseiten (Website für ...)
 - [Übersicht](https://makestudios.de/websites/): Website-Entwürfe für erfundene Betriebe, je Seite erklärt
-- [Website für Café und Rösterei](https://makestudios.de/websites/cafe-roesterei/): Eine Rösterei mit Röstfilm: Beim Scrollen fallen die Bohnen aus der Trommel und drehen im Kühlsieb. Becher und Tüte lassen sich in 3D ansehen, die Vorbestellung kommt als Bon aus dem Drucker.
-- [Website für Coaching und Beratung](https://makestudios.de/websites/coach/): Coaching für Führungskräfte auf einer ruhigen Seite mit großer Schrift. Aus vielen schwebenden Gedanken wird eine einzige Frage. Danach lässt sich ein Kennenlernen anfragen.
-- [Website für Bauträger und Wohnprojekt](https://makestudios.de/websites/neubau-film/): Ein Bauträger stellt sein Wohnprojekt vor. Beim Scrollen läuft ein Film vom Haus bis in die Räume, danach folgen die Eckdaten, ein Rundgang in drei Einstellungen und die Terminanfrage für die Besichtigung.
-- [Website für Agentur und Markenbüro](https://makestudios.de/websites/agentur/): Ein Büro für Marken. Die Wortmarke springt aus drei Druckfarben in den Passer, der Werkstattfilm wächst beim Scrollen auf volle Größe, und drei Beispielprojekte liegen als Bogenstapel bereit.
-- [Website für Frühstückslokal und Bistro](https://makestudios.de/websites/cafe-bistro/): Ein Frühstückslokal mit Film vom Frühstückstisch. Im Bogenfenster vergeht beim Scrollen ein ganzer Tag, von 8 bis 17 Uhr. Die Karte hat Bilder und Filter, der Tisch wird gleich angefragt.
-- [Website für Dachdecker und Sanierung](https://makestudios.de/websites/dach-sanierung/): Ein Dachdecker erklärt seine Arbeit am Foto: Sechs Markierungen folgen dem Wasser vom First bis zum Fallrohr, ein Schnitt zeigt die Sanierung. Wer unsicher ist, fragt den Dachcheck an.
-- [Website für Kanzlei und Anwaltsbüro](https://makestudios.de/websites/kanzlei/): Eine Kanzlei für Arbeits- und Wirtschaftsrecht, gesetzt wie ein guter Schriftsatz: Randnummern, feine Linien, große Serifen. In einer Szene wird ein Vertragssatz durchgestrichen und in Klartext übersetzt.
+- [Website für Drohnen-Dienstleister](https://makestudios.de/websites/drohnen-inspektion/): Ein Drohnen-Dienstleister, der seine Arbeit erlebbar macht. Beim Scrollen fliegt eine Drohne in Streifen über eine Anlage, und man wechselt zwischen Luftbild, Wärmebild und Vermessung. Ergebnisse, Nachweise und Anfrage folgen.
+- [Website für Coaches](https://makestudios.de/websites/coach/): Coaching für Führungskräfte auf einer ruhigen Seite mit großer Schrift. Aus vielen schwebenden Gedanken wird eine einzige Frage. Danach lässt sich ein Kennenlernen anfragen.
+- [Website für Agenturen](https://makestudios.de/websites/agentur/): Ein Büro für Marken. Die Wortmarke springt aus drei Druckfarben in den Passer, der Werkstattfilm wächst beim Scrollen auf volle Größe, und drei Beispielprojekte liegen als Bogenstapel bereit.
+- [Website für Dachdecker](https://makestudios.de/websites/dach-sanierung/): Ein Dachdecker erklärt seine Arbeit am Foto: Sechs Markierungen folgen dem Wasser vom First bis zum Fallrohr, ein Schnitt zeigt die Sanierung. Wer unsicher ist, fragt den Dachcheck an.
+- [Website für Kanzleien](https://makestudios.de/websites/kanzlei/): Eine Kanzlei für Arbeits- und Wirtschaftsrecht, gesetzt wie ein guter Schriftsatz: Randnummern, feine Linien, große Serifen. In einer Szene wird ein Vertragssatz durchgestrichen und in Klartext übersetzt.
 - [Website für Bauunternehmen](https://makestudios.de/websites/bauunternehmen/): Ein Bauunternehmen, das schlüsselfertig baut. Die Seite ordnet Projekte nach Bereichen, zeigt einen kurzen Film von der Baustelle und den Ablauf in fünf Schritten bis zur Übergabe. Am Ende steht die Projektanfrage.
+- [Website für Berater](https://makestudios.de/websites/beratung-mittelstand/): Eine Beratung für inhabergeführte Betriebe und Mittelstand, die beim Problem beginnt: Auf einer Seekarte wählt man Nachfolge, Wachstum, Abläufe oder Zahlen, eine Kurslinie zeigt den Weg, und ein kurzer Check sagt, ob ein Gespräch lohnt.
+- [Website für Solar und Energiespeicher](https://makestudios.de/websites/energiespeicher/): Ein Fachbetrieb für Solaranlagen und Batteriespeicher, der Technik erklärt, statt sie zu behaupten: Man fährt einen Tag mit einem Regler durch, sieht, wann erzeugt, verbraucht und gespeichert wird, und legt selbst fest, was bei einem Stromausfall weiterlaufen soll.
+- [Website für Robotik und Automatisierung](https://makestudios.de/websites/robotik/): Ein Anbieter von Roboterzellen für den Mittelstand, der die Technik begreifbar macht: Man bedient eine gezeichnete Zelle, stellt die Aufgabe um, schickt eine Person in den Arbeitsbereich und sieht, wie der Arm bremst. Dazu ein Rechner, der nur mit den eigenen Zahlen der Besucher rechnet.
+
+## Ausführliche Fassung
+- [llms-full.txt](https://makestudios.de/llms-full.txt): alle Fragen mit Antworten, auch zu den Beispielseiten
 
 ## Kontakt
 - E-Mail: kevin@makeinnovation.de

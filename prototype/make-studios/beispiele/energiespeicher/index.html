@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beispiel · Speicherwerk Havelland · MAKE Studios</title>
+<meta name="description" content="Beispielseite: Speicherwerk Havelland, Fachbetrieb für Solaranlagen und Batteriespeicher für Betriebe in Brandenburg. Der Tag, durchgefahren mit einem Regler.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#F4F0E4">
+<link rel="icon" href="../../zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/outfit.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../leiste.css">
+<link rel="stylesheet" href="seite.css">
+<noscript><link rel="stylesheet" href="ohne-skript.css"></noscript>
+<script type="module" src="basis.js"></script>
+<script type="module" src="szene.js"></script>
+</head>
+<body>
+
+<svg class="vorrat" aria-hidden="true" focusable="false" width="0" height="0">
+  <symbol id="zeichen" viewBox="0 0 40 40">
+    <circle cx="20" cy="20" r="8" fill="currentColor"/>
+    <g stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M20 3v5M20 32v5M3 20h5M32 20h5M8 8l3.5 3.5M28.5 28.5 32 32M32 8l-3.5 3.5M11.5 28.5 8 32"/></g>
+  </symbol>
+  <symbol id="pfeil" viewBox="0 0 24 24"><path d="M5 12h13M12.5 6.5 18 12l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="haken" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<a class="sprung" href="#inhalt">Zum Inhalt springen</a>
+
+<header class="kopf" id="kopf">
+  <a class="marke" href="#start" aria-label="Speicherwerk Havelland, zum Seitenanfang">
+    <svg class="marke-zeichen" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><use href="#zeichen"/></svg>
+    <span class="marke-text"><b>Speicherwerk</b><i>Havelland</i></span>
+  </a>
+  <button class="menue-knopf" type="button" aria-expanded="false" aria-controls="menue">
+    <span class="menue-knopf-text">Menü</span>
+    <span class="menue-knopf-strich" aria-hidden="true"></span>
+  </button>
+  <nav class="menue" id="menue" aria-label="Hauptmenü">
+    <ul class="menue-liste">
+      <li><a href="#leistungen">Leistungen</a></li>
+      <li><a href="#notstrom">Stromausfall</a></li>
+      <li><a href="#ablauf">Ablauf</a></li>
+      <li><a href="#anlagen">Anlagen</a></li>
+      <li><a href="#fragen">Fragen</a></li>
+    </ul>
+    <a class="knopf knopf-klein" href="#anfrage">Beratung anfragen</a>
+  </nav>
+</header>
+
+<main id="inhalt">
+
+  <!-- Einstieg: Aussage und der Tag zum Durchfahren -->
+  <section class="start" id="start" aria-labelledby="start-titel">
+    <div class="start-kopf">
+      <p class="etikett">Solar und Speicher für Betriebe · Havelland und Umgebung</p>
+      <h1 id="start-titel">Die Sonne scheint mittags. <em>Ihr Betrieb braucht Strom, wenn er arbeitet.</em></h1>
+      <p class="start-satz">Wir planen und bauen Solaranlagen und Batteriespeicher für Gewerbe und Landwirtschaft, melden sie beim Netzbetreiber an und klären vorab, was bei einem Stromausfall weiterlaufen soll.</p>
+      <p class="start-wege">
+        <a class="knopf" href="#anfrage">Beratung anfragen<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#pfeil"/></svg></a>
+        <a class="textlink" href="#leistungen">Unsere Leistungen</a>
+      </p>
+    </div>
+
+    <figure class="tag" id="tag">
+      <div class="tag-buehne">
+        <img class="tag-poster" src="medien/szene-poster.jpg" srcset="medien/szene-poster-800.jpg 800w, medien/szene-poster.jpg 1600w" sizes="(min-width: 1100px) 1100px, 100vw" width="1600" height="800" alt="Gezeichnete Gewerbehalle mit Solardach, Batteriespeicher und Netzmast bei Mittagssonne" decoding="async" fetchpriority="high">
+        <canvas class="tag-canvas" id="tag-canvas" aria-hidden="true"></canvas>
+        <p class="tag-uhr" id="tag-uhr" aria-hidden="true" hidden>13:00</p>
+        <p class="tag-lage" id="tag-lage" hidden aria-hidden="true"></p>
+      </div>
+      <div class="tag-steuerung" id="tag-steuerung" hidden>
+        <p class="tag-satz" id="tag-satz" aria-live="polite"></p>
+        <div class="tag-regler">
+          <button class="tag-play" type="button" id="tag-play" aria-pressed="false"><span class="sr">Tag automatisch abspielen</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="p-play" d="M8 5.5v13l11-6.5z" fill="currentColor"/><path class="p-pause" d="M7.5 5.5h3.5v13H7.5zM13 5.5h3.5v13H13z" fill="currentColor"/></svg></button>
+          <label class="tag-slider"><span class="tag-slider-text">Uhrzeit durchfahren</span><input type="range" id="tag-zeit" min="0" max="287" value="156" aria-valuetext="13 Uhr"></label>
+        </div>
+        <div class="segmente" role="group" aria-label="Anlage wählen">
+          <button type="button" class="segment" data-speicher="aus" aria-pressed="false">Nur Solar</button>
+          <button type="button" class="segment" data-speicher="an" aria-pressed="true">Solar mit Speicher</button>
+        </div>
+        <dl class="werte" aria-label="Lage zur gewählten Uhrzeit">
+          <div><dt>Erzeugung</dt><dd id="w-erzeugung">hoch</dd></div>
+          <div><dt>Verbrauch</dt><dd id="w-verbrauch">mittel</dd></div>
+          <div><dt>Netz</dt><dd id="w-netz">Einspeisung</dd></div>
+          <div><dt>Speicher</dt><dd id="w-speicher">füllt sich</dd></div>
+        </dl>
+      </div>
+      <canvas class="kurve" id="kurve" width="1200" height="260" aria-hidden="true" hidden></canvas>
+      <ul class="legende" aria-hidden="true"><li class="l-sonne"><i></i>Erzeugung der Anlage</li><li><i></i>Verbrauch des Betriebs</li><li class="l-gruen"><i></i>Füllstand des Speichers</li></ul>
+      <figcaption>Illustration eines typischen Tages, keine Messwerte und keine Prognose für Ihren Betrieb. Wie Ihr Tag aussieht, lesen wir aus Ihren eigenen Verbrauchsdaten.</figcaption>
+    </figure>
+  </section>
+
+  <!-- Leistungen -->
+  <section class="leistungen" id="leistungen" aria-labelledby="leistungen-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Leistungen</p>
+      <h2 id="leistungen-titel" data-zeig>Von der Anlage auf dem Dach <em>bis zum Zähler im Keller.</em></h2>
+    </header>
+    <ul class="kacheln">
+      <li class="kachel" data-zeig>
+        <svg class="kachel-bild" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
+          <path d="M14 58 36 22h72L86 58z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M25 40h72M32 28l-12 24M54 22 42 58M76 22 64 58M96 22 84 58" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".55"/>
+          <circle class="sonne" cx="100" cy="12" r="6" fill="var(--sonne)"/>
+        </svg>
+        <p class="kachel-nr">01</p>
+        <h3>Solaranlage fürs Betriebsdach</h3>
+        <p>Planung und Montage auf Hallen, Ställen und Bürogebäuden. Wir prüfen Dach, Statik und Leitungswege und legen die Anlage auf Ihren Verbrauch aus.</p>
+        <p class="kachel-preis">Preis nach Angebot</p>
+      </li>
+      <li class="kachel" data-zeig>
+        <svg class="kachel-bild" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
+          <rect x="26" y="14" width="68" height="54" rx="6" fill="none" stroke="currentColor" stroke-width="2.2"/>
+          <rect x="50" y="8" width="20" height="8" rx="2" fill="currentColor" opacity=".7"/>
+          <rect class="fuellung" x="33" y="38" width="54" height="23" rx="3" fill="var(--gruen)"/>
+          <path d="M62 24 54 38h7l-3 10 9-14h-7z" fill="var(--sonne)"/>
+        </svg>
+        <p class="kachel-nr">02</p>
+        <h3>Batteriespeicher</h3>
+        <p>Der Strom vom Mittag wird am Abend genutzt statt eingespeist. Wir dimensionieren den Speicher nach Ihrem Lastprofil und binden ihn in die bestehende Anlage ein, auch nachträglich.</p>
+        <p class="kachel-preis">Preis nach Angebot</p>
+      </li>
+      <li class="kachel" data-zeig>
+        <svg class="kachel-bild" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
+          <path d="M24 66V34l36-22 36 22v32z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <rect x="42" y="38" width="14" height="14" fill="var(--sonne)"/><rect x="64" y="38" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3 3" opacity=".6"/>
+          <path d="M8 66h104" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <p class="kachel-nr">03</p>
+        <h3>Konzept für den Stromausfall</h3>
+        <p>Sie legen fest, was nicht ausfallen darf. Wir planen die Stromkreise dafür und schreiben vorab auf, was Ihr System bei einem Ausfall wirklich leistet.</p>
+        <p class="kachel-preis">Preis nach Angebot</p>
+      </li>
+      <li class="kachel" data-zeig>
+        <svg class="kachel-bild" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
+          <path d="M60 10v60M40 22h40M44 34h32M36 22l-8 12M84 22l8 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <rect x="44" y="52" width="32" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M52 61h16" stroke="var(--sonne)" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <p class="kachel-nr">04</p>
+        <h3>Netzanmeldung und Inbetriebnahme</h3>
+        <p>Wir übernehmen den Papierweg zum Netzbetreiber und die Anmeldung der Anlage, nehmen sie in Betrieb und erklären Ihnen die Anzeige.</p>
+        <p class="kachel-preis">Preis nach Angebot</p>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Stromausfall: Auswahl -->
+  <section class="notstrom" id="notstrom" aria-labelledby="notstrom-titel">
+    <div class="notstrom-text">
+      <p class="etikett" data-zeig>Wenn das Netz ausfällt</p>
+      <h2 id="notstrom-titel" data-zeig>Was darf bei einem Stromausfall <em>nicht stehen bleiben?</em></h2>
+      <p class="abschnitt-satz" data-zeig>Die Begriffe Notstrom, Ersatzstrom und Inselbetrieb werden von Anbietern unterschiedlich benutzt. Manche Systeme versorgen im Ausfall nur eine einzelne Steckdose, andere einen Teil des Gebäudes. Wir schreiben Ihnen vorab auf, was Ihres kann.</p>
+      <p class="quelle" data-zeig>Zum Weiterlesen: <a href="https://www.photovoltaik.info/notstrom-ersatzstrom-inselbetrieb-stromspeicher/" rel="noopener noreferrer">photovoltaik.info zu Notstrom, Ersatzstrom und Inselbetrieb</a> · <a href="https://www.verbraucherzentrale.nrw/wissen/energie/batteriespeicher-die-sonne-in-die-verlaengerung-schicken-24589" rel="noopener noreferrer">Verbraucherzentrale NRW zu Batteriespeichern</a></p>
+    </div>
+    <div class="wahl" data-zeig>
+      <p class="wahl-titel" id="wahl-titel">Wählen Sie, was weiterlaufen soll</p>
+      <ul class="wahl-liste" role="group" aria-labelledby="wahl-titel">
+        <li><button type="button" class="wahl-knopf" aria-pressed="false" data-art="kuehlung"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#haken"/></svg>Kühlung und Kühlräume</button></li>
+        <li><button type="button" class="wahl-knopf" aria-pressed="false" data-art="it"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#haken"/></svg>Server und Netzwerk</button></li>
+        <li><button type="button" class="wahl-knopf" aria-pressed="false" data-art="licht"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#haken"/></svg>Licht und Tore</button></li>
+        <li><button type="button" class="wahl-knopf" aria-pressed="false" data-art="kasse"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#haken"/></svg>Kasse und Zahlungsverkehr</button></li>
+        <li><button type="button" class="wahl-knopf" aria-pressed="false" data-art="maschine"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#haken"/></svg>Maschinen mit großen Motoren</button></li>
+        <li><button type="button" class="wahl-knopf" aria-pressed="false" data-art="heizung"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#haken"/></svg>Heizung und Lüftung</button></li>
+      </ul>
+      <div class="wahl-ergebnis" id="wahl-ergebnis" aria-live="polite">
+        <p class="wahl-kopf" id="wahl-kopf">Noch nichts gewählt</p>
+        <p id="wahl-text">Tippen Sie an, was bei Ihnen nicht ausfallen darf. Daraus wird später ein eigener, abgesicherter Stromkreis.</p>
+        <p class="wahl-zusatz" id="wahl-zusatz" hidden></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ablauf -->
+  <section class="ablauf" id="ablauf" aria-labelledby="ablauf-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Ablauf</p>
+      <h2 id="ablauf-titel" data-zeig>Fünf Schritte, <em>ein Ansprechpartner.</em></h2>
+    </header>
+    <ol class="schritte" id="schritte">
+      <li class="schritt-karte" data-zeig><p class="schritt-nr">01</p><h3>Beratung</h3><p>Wir sehen uns Dach, Zählerschrank und Ihr Verbrauchsprofil an und fragen, was erreicht werden soll.</p></li>
+      <li class="schritt-karte" data-zeig><p class="schritt-nr">02</p><h3>Planung</h3><p>Anlage, Speicher und Stromkreise werden ausgelegt. Sie erhalten ein schriftliches Angebot.</p></li>
+      <li class="schritt-karte" data-zeig><p class="schritt-nr">03</p><h3>Installation</h3><p>Montage und Elektroarbeiten durch unser Team, abgestimmt mit Ihrem Betriebsablauf.</p></li>
+      <li class="schritt-karte" data-zeig><p class="schritt-nr">04</p><h3>Anmeldung</h3><p>Wir melden die Anlage beim Netzbetreiber an und kümmern uns um die Unterlagen.</p></li>
+      <li class="schritt-karte" data-zeig><p class="schritt-nr">05</p><h3>Betrieb</h3><p>Inbetriebnahme, Einweisung und ein Ansprechpartner, wenn später etwas auffällt.</p></li>
+    </ol>
+    <aside class="foerderung" data-zeig>
+      <p class="etikett">Förderung</p>
+      <p><b>Förderungen ändern sich häufig.</b> Wir prüfen für Ihr Vorhaben, welche aktuell in Frage kommt, und nennen im Angebot die zuständige Förderstelle. Beträge versprechen wir nicht.</p>
+    </aside>
+  </section>
+
+  <!-- Anlagen und Nachweise -->
+  <section class="anlagen" id="anlagen" aria-labelledby="anlagen-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Anlagen und Nachweise</p>
+      <h2 id="anlagen-titel" data-zeig>Jede Anlage, <em>sauber belegt.</em></h2>
+      <p class="abschnitt-satz" data-zeig>So gehen wir bei jeder Anlage vor und was Sie von uns schriftlich bekommen.</p>
+    </header>
+    <ul class="anlagen-liste">
+      <li class="anlage" data-zeig><p class="anlage-nr">Schritt 1</p><h3>Bestandsaufnahme vor Ort</h3><p>Wir sehen uns Anschluss, Zählerschrank und Platz an und halten fest, was die Anlage leisten soll.</p></li>
+      <li class="anlage" data-zeig><p class="anlage-nr">Schritt 2</p><h3>Auslegung und Angebot</h3><p>Sie erhalten eine nachvollziehbare Auslegung mit den Annahmen, auf denen sie beruht.</p></li>
+      <li class="anlage" data-zeig><p class="anlage-nr">Schritt 3</p><h3>Installation und Übergabe</h3><p>Nach der Inbetriebnahme bekommen Sie die Unterlagen und eine Einweisung in die Bedienung.</p></li>
+    </ul>
+    <ul class="nachweise">
+      <li data-zeig><b>Fachbetrieb</b><span>Den Nachweis über unsere Eintragung als Installationsbetrieb legen wir dem Angebot bei.</span></li>
+      <li data-zeig><b>Hersteller</b><span>Schulungsnachweise der Hersteller zeigen wir Ihnen auf Wunsch vor.</span></li>
+      <li data-zeig><b>Versicherung</b><span>Versicherer und Deckung der Betriebshaftpflicht nennen wir im Angebot.</span></li>
+    </ul>
+  </section>
+
+  <!-- Fragen -->
+  <section class="fragen" id="fragen" aria-labelledby="fragen-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Fragen</p>
+      <h2 id="fragen-titel" data-zeig>Was Betriebe <em>zuerst wissen wollen.</em></h2>
+    </header>
+    <div class="fragen-liste">
+      <details class="frage" name="frage" open data-zeig>
+        <summary><span>Lohnt sich ein Speicher?</span><i aria-hidden="true"></i></summary>
+        <p>Das hängt davon ab, wann Ihr Betrieb Strom braucht und wann Ihre Anlage erzeugt. Wir sehen uns Ihr Verbrauchsprofil an und rechnen mit Ihren Daten, bevor wir etwas empfehlen. Eine pauschale Antwort wäre unseriös.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Funktioniert er bei Stromausfall?</span><i aria-hidden="true"></i></summary>
+        <p>Nicht jeder Speicher tut das. Es kommt auf Wechselrichter, Aufbau und Verkabelung an, und manche Systeme versorgen im Ausfall nur einzelne Anschlüsse. Wir legen vorab schriftlich fest, was bei einem Ausfall weiterlaufen soll, und planen das System danach.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Wie lange hält ein Speicher?</span><i aria-hidden="true"></i></summary>
+        <p>Die Lebensdauer geben die Hersteller an, meist über Garantie und Ladezyklen. Wir nennen Ihnen die Herstellerangaben des gewählten Systems schriftlich und sagen, was sie bedeuten.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Gibt es Förderung?</span><i aria-hidden="true"></i></summary>
+        <p>Förderprogramme ändern sich häufig. Wir prüfen vor dem Angebot, was für Ihr Vorhaben aktuell in Frage kommt, und nennen die Förderstelle. Den Antrag stellen Sie, wo es vorgeschrieben ist, vor Beginn der Arbeiten.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Wie groß muss der Speicher sein?</span><i aria-hidden="true"></i></summary>
+        <p>Das richtet sich nach Ihrem Verbrauchsprofil, der Größe der Anlage und danach, ob Eigenverbrauch oder Schutz vor Ausfällen im Vordergrund steht. Größer ist nicht automatisch besser, deshalb rechnen wir mit Ihren Zahlen.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Anfrage -->
+  <section class="anfrage" id="anfrage" aria-labelledby="anfrage-titel">
+    <div class="anfrage-text">
+      <p class="etikett" data-zeig>Beratung anfragen</p>
+      <h2 id="anfrage-titel" data-zeig>Erzählen Sie uns <em>von Ihrem Betrieb.</em></h2>
+      <p class="abschnitt-satz" data-zeig>Ein paar Zeilen genügen. Wir melden uns und vereinbaren einen Termin am Gebäude.</p>
+      <dl class="kontakt" data-zeig>
+        <div><dt>Standort</dt><dd>Beispielweg 1 · Havelland, Brandenburg</dd></div>
+        <div><dt>Einsatzgebiet</dt><dd>Havelland und Umgebung</dd></div>
+        <div><dt>Erreichbar</dt><dd>Hier stehen Ihre Kontaktdaten.</dd></div>
+      </dl>
+    </div>
+    <div class="anfrage-form" data-zeig>
+      <form class="formular" id="anfrage-form" method="dialog" novalidate>
+        <div class="feld">
+          <label for="f-name">Ihr Name <span aria-hidden="true">*</span></label>
+          <input id="f-name" name="name" type="text" autocomplete="name" required aria-describedby="f-name-fehler">
+          <p class="feld-fehler" id="f-name-fehler" hidden>Bitte nennen Sie Ihren Namen.</p>
+        </div>
+        <div class="feld">
+          <label for="f-kontakt">E-Mail oder Telefon <span aria-hidden="true">*</span></label>
+          <input id="f-kontakt" name="kontakt" type="text" autocomplete="email" inputmode="email" required aria-describedby="f-kontakt-fehler">
+          <p class="feld-fehler" id="f-kontakt-fehler" hidden>Bitte geben Sie eine E-Mail-Adresse oder eine Telefonnummer an.</p>
+        </div>
+        <div class="feld-zeile">
+          <div class="feld">
+            <label for="f-ort">Standort</label>
+            <input id="f-ort" name="ort" type="text" autocomplete="postal-code" placeholder="PLZ oder Ort">
+          </div>
+          <div class="feld">
+            <label for="f-anlass">Anlass</label>
+            <select id="f-anlass" name="anlass">
+              <option>Neue Solaranlage</option>
+              <option>Speicher nachrüsten</option>
+              <option>Schutz vor Stromausfall</option>
+              <option>Das weiß ich noch nicht</option>
+            </select>
+          </div>
+        </div>
+        <div class="feld">
+          <label for="f-objekt">Ihr Betrieb <span class="feld-leise">Nur, wenn Sie mögen</span></label>
+          <textarea id="f-objekt" name="objekt" rows="3" placeholder="Zum Beispiel: Halle mit Kühlung, Dach nach Süden"></textarea>
+        </div>
+        <div class="formular-fuss">
+          <button class="knopf" type="submit">Anfrage senden<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#pfeil"/></svg></button>
+          <p class="formular-hinweis">Felder mit * brauchen wir, um Ihnen zu antworten.</p>
+        </div>
+        <noscript><p class="formular-hinweis">Dies ist eine Beispielseite. Ihre Angaben werden nicht gesendet.</p></noscript>
+      </form>
+      <div class="formular-danke" id="anfrage-danke" role="status" tabindex="-1" hidden>
+        <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false"><use href="#zeichen"/></svg>
+        <h3>Danke<span id="danke-name"></span>.</h3>
+        <p>Dies ist eine Beispielseite. Ihre Angaben werden nicht gesendet.</p>
+        <button class="textlink" type="button" id="danke-zurueck">Zurück zum Formular</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="fuss">
+  <div class="fuss-marke">
+    <a class="marke" href="#start" aria-label="Speicherwerk Havelland, zum Seitenanfang">
+      <svg class="marke-zeichen" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><use href="#zeichen"/></svg>
+      <span class="marke-text"><b>Speicherwerk</b><i>Havelland</i></span>
+    </a>
+    <p>Solaranlagen und Batteriespeicher für Betriebe<br>Beispielweg 1 · Havelland, Brandenburg</p>
+  </div>
+  <nav class="fuss-wege" aria-label="Fußmenü">
+    <ul>
+      <li><a href="#leistungen">Leistungen</a></li>
+      <li><a href="#notstrom">Stromausfall</a></li>
+      <li><a href="#ablauf">Ablauf</a></li>
+      <li><a href="#anlagen">Anlagen</a></li>
+      <li><a href="#fragen">Fragen</a></li>
+      <li><a href="#anfrage">Anfrage</a></li>
+    </ul>
+  </nav>
+  <p class="fuss-klein">Beispielseite mit erfundenem Namen. Alle Bilder sind gezeichnete Illustrationen. Sie zeigen keine echten Messwerte, Anlagen oder Kunden und keine Aussagen über Erträge, Kosten oder Einsparungen.</p>
+</footer>
+
+<!-- Leiste von MAKE Studios: auf jeder Beispielseite, unverändert -->
+<div class="ms-platz" aria-hidden="true"></div>
+<nav class="ms-leiste" aria-label="MAKE Studios">
+  <a class="ms-marke" href="../../#beispielseiten" aria-label="Zurück zu den Beispielseiten von MAKE Studios"><img src="../../zeichen.svg" alt="" width="24" height="24"><b>MAKE</b><span>STUDIOS</span></a>
+  <span class="ms-hinweis"><b>Beispiel</b><span class="ms-lang"> · Namen erfunden</span></span>
+  <a class="ms-knopf" href="../../#erstgespraech-technik">Erstgespräch</a>
+</nav>
+
+</body>
+</html>

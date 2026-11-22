@@ -22,7 +22,7 @@ for (const name of readdirSync(hier).sort()) {
   if (!/<title>Beispiel · [^<]+ · MAKE Studios<\/title>/.test(roh)) fehler.push('Titel nicht „Beispiel · … · MAKE Studios“');
   if (!roh.includes('href="../leiste.css"')) fehler.push('leiste.css nicht eingebunden');
   if (!roh.includes('class="ms-leiste"') || !roh.includes('class="ms-platz"')) fehler.push('Leiste oder Platzhalter fehlt');
-  if (!/href="\.\.\/\.\.\/#erstgespraech(?:-(?:gastro|agentur|immobilien|andere))?"/.test(roh)) fehler.push('Knopf „Erstgespräch“ fehlt');
+  if (!/href="\.\.\/\.\.\/#erstgespraech(?:-(?:bau|technik|agentur|andere))?"/.test(roh)) fehler.push('Knopf „Erstgespräch“ fehlt');
   if (/<script(?![^>]*\bsrc=)[^>]*>/i.test(ohneKommentare)) fehler.push('Inline-Skript');
   if (/<style[\s>]/i.test(ohneKommentare)) fehler.push('<style>-Block');
   if (/\sstyle\s*=/i.test(ohneKommentare)) fehler.push('style-Attribut');

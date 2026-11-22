@@ -1,0 +1,99 @@
+{
+  "stand": "2026-10-24",
+  "standText": "Oktober 2026",
+  "netto": true,
+  "hinweis": "Alle Preise netto zuzüglich Umsatzsteuer",
+  "quelle": "MAKE Innovation, Preisliste (Stand der Liste: 2026-10-24)",
+  "eintraege": {
+    "website": {
+      "angebot": "Homepage Landing",
+      "kurzname": "Website",
+      "betrag": 2990,
+      "ab": "ab 2.990 €",
+      "rhythmus": "einmalig",
+      "mindestlaufzeit": null,
+      "quelle": "homepage-landing"
+    },
+    "homepage-landing": {
+      "angebot": "Homepage Landing",
+      "kurzname": "Homepage Landing",
+      "betrag": 2990,
+      "ab": "ab 2.990 €",
+      "rhythmus": "einmalig",
+      "mindestlaufzeit": null,
+      "quelle": "homepage-landing"
+    },
+    "homepage-story": {
+      "angebot": "Homepage Story",
+      "kurzname": "Homepage Story",
+      "betrag": 4990,
+      "ab": "ab 4.990 €",
+      "rhythmus": "einmalig",
+      "mindestlaufzeit": null,
+      "quelle": "homepage-story"
+    },
+    "homepage-cinematic": {
+      "angebot": "Homepage Cinematic",
+      "kurzname": "Homepage Cinematic",
+      "betrag": 9990,
+      "ab": "ab 9.990 €",
+      "rhythmus": "einmalig",
+      "mindestlaufzeit": null,
+      "quelle": "homepage-cinematic"
+    },
+    "erklaervideo": {
+      "angebot": "Erklärvideo",
+      "kurzname": "Erklärvideo",
+      "betrag": 1490,
+      "ab": "ab 1.490 €",
+      "rhythmus": "einmalig",
+      "mindestlaufzeit": null,
+      "quelle": "erklaervideo"
+    },
+    "videostory": {
+      "angebot": "Videostory",
+      "kurzname": "Videostory",
+      "betrag": 1990,
+      "ab": "ab 1.990 €",
+      "rhythmus": "einmalig",
+      "mindestlaufzeit": null,
+      "quelle": "videostory"
+    },
+    "video-serie": {
+      "angebot": "Video Serie",
+      "kurzname": "Video-Serie",
+      "betrag": 1990,
+      "ab": "ab 1.990 €",
+      "rhythmus": "im Monat",
+      "mindestlaufzeit": "mindestens 3 Monate",
+      "quelle": "video-serie"
+    },
+    "social-s": {
+      "angebot": "Social Media S",
+      "kurzname": "Social Media S",
+      "betrag": 990,
+      "ab": "ab 990 €",
+      "rhythmus": "im Monat",
+      "mindestlaufzeit": "mindestens 3 Monate",
+      "quelle": "social-media/S"
+    },
+    "social-m": {
+      "angebot": "Social Media M",
+      "kurzname": "Social Media M",
+      "betrag": 1490,
+      "ab": "ab 1.490 €",
+      "rhythmus": "im Monat",
+      "mindestlaufzeit": "mindestens 3 Monate",
+      "quelle": "social-media/M"
+    },
+    "social-l": {
+      "angebot": "Social Media L",
+      "kurzname": "Social Media L",
+      "betrag": 2490,
+      "ab": "ab 2.490 €",
+      "rhythmus": "im Monat",
+      "mindestlaufzeit": "mindestens 3 Monate",
+      "quelle": "social-media/L"
+    }
+  }
+}

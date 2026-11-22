@@ -16,6 +16,6 @@ Einbinden aus `beispiele/<seite>/seite.js`:
 import * as THREE from '../vendor/three/build/three.module.js';
 import { GLTFLoader } from '../vendor/three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from '../vendor/three/examples/jsm/loaders/DRACOLoader.js';
-import Lenis from '../vendor/lenis/lenis.mjs';
+import Lenis from '../vendor/lenis/lenis.js';
 // Draco: new DRACOLoader().setDecoderPath('../vendor/three/examples/jsm/libs/draco/gltf/')
 ```

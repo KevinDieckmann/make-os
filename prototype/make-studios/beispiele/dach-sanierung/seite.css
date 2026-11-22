@@ -663,9 +663,9 @@ main { margin-top: -5rem; }
   .haupt { aspect-ratio: 350 / 230; }
   .haupt-tag { top: 1rem; right: 1rem; }
   .marke-zahl, .marke-zahl .marke-puls, .marke-zahl .marke-scheibe { width: 1.75rem; height: 1.75rem; }
+  .marke-zahl::after { inset: -.5rem; }
   .marke-zahl .marke-scheibe { font-size: .6875rem; }
   .marke-ort.offen .marke-zahl .marke-scheibe { width: 2.125rem; height: 2.125rem; }
-  .marke-zahl::after { inset: -.5rem; }
   .details { margin-top: -.5rem; padding: 1.25rem; }
   .details-titel { font-size: 1.5rem; line-height: 2rem; letter-spacing: -.03125rem; }
   .details-liste { grid-template-columns: minmax(0, 1fr); }

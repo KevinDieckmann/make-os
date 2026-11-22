@@ -1,0 +1,5 @@
+/* Nur ohne JavaScript: Alle vier Probleme stehen untereinander, das Formular bleibt sichtbar, nichts ist versteckt. */
+.problem { display: block !important; }
+.seekarte, .wahl, .karte { display: none !important; }
+.film-video { display: none; }
+.pruefen .pegel, .pruefen .urteil { display: none; }

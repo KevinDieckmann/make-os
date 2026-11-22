@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beispiel · Greifzelle Automation · MAKE Studios</title>
+<meta name="description" content="Beispielseite: Greifzelle Automation, Robotik und Automatisierung für den Mittelstand. Eine Roboterzelle zum Durchfahren, ein Rechner für Ihre eigenen Zahlen.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#E4E6E3">
+<link rel="icon" href="../../zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/big-shoulders.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../leiste.css">
+<link rel="stylesheet" href="seite.css">
+<noscript><link rel="stylesheet" href="ohne-skript.css"></noscript>
+<script type="module" src="basis.js"></script>
+<script type="module" src="szene.js"></script>
+</head>
+<body>
+
+<svg class="vorrat" aria-hidden="true" focusable="false" width="0" height="0">
+  <symbol id="zeichen" viewBox="0 0 40 40">
+    <circle cx="9" cy="31" r="5.5" fill="currentColor"/>
+    <path d="M9 31 20 14l13 6" fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M33 14v12M33 14h-4M33 26h-4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="pfeil" viewBox="0 0 24 24"><path d="M5 12h13M12.5 6.5 18 12l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<a class="sprung" href="#inhalt">Zum Inhalt springen</a>
+
+<header class="kopf" id="kopf">
+  <a class="marke" href="#start" aria-label="Greifzelle Automation, zum Seitenanfang">
+    <svg class="marke-zeichen" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><use href="#zeichen"/></svg>
+    <span class="marke-text"><b>Greifzelle</b><i>Automation</i></span>
+  </a>
+  <button class="menue-knopf" type="button" aria-expanded="false" aria-controls="menue">
+    <span class="menue-knopf-text">Menü</span>
+    <span class="menue-knopf-strich" aria-hidden="true"></span>
+  </button>
+  <nav class="menue" id="menue" aria-label="Hauptmenü">
+    <ul class="menue-liste">
+      <li><a href="#einsaetze">Einsätze</a></li>
+      <li><a href="#rechner">Rechner</a></li>
+      <li><a href="#ablauf">Ablauf</a></li>
+      <li><a href="#sicherheit">Sicherheit</a></li>
+      <li><a href="#fragen">Fragen</a></li>
+    </ul>
+    <a class="knopf knopf-klein" href="#anfrage">Analyse anfragen</a>
+  </nav>
+</header>
+
+<main id="inhalt">
+
+  <!-- Einstieg: Aussage und die Zelle zum Bedienen -->
+  <section class="start" id="start" aria-labelledby="start-titel">
+    <div class="start-kopf">
+      <p class="etikett">Robotik und Automatisierung · Mittelstand</p>
+      <h1 id="start-titel">Die Arbeit, die niemand gern macht. <em>Eine Zelle macht sie jeden Tag gleich.</em></h1>
+      <p class="start-satz">Wir bauen Roboterzellen für Be- und Entladen, Palettieren und das Bestücken von Maschinen, in Betrieben mit kleinen und mittleren Stückzahlen. Vom ersten Gespräch bis zum laufenden Betrieb.</p>
+      <p class="start-wege">
+        <a class="knopf" href="#anfrage">Analyse anfragen<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#pfeil"/></svg></a>
+        <a class="textlink" href="#rechner">Selbst nachrechnen</a>
+      </p>
+    </div>
+
+    <figure class="zelle" id="zelle">
+      <div class="zelle-buehne">
+        <img class="zelle-poster" src="medien/szene-poster.jpg" srcset="medien/szene-poster-800.jpg 800w, medien/szene-poster.jpg 1600w" sizes="(min-width: 1100px) 1100px, 100vw" width="1600" height="900" alt="Gezeichnete Roboterzelle von oben: Ein Roboterarm setzt Kartons vom Förderband auf eine Palette" decoding="async" fetchpriority="high">
+        <canvas class="zelle-canvas" id="zelle-canvas" data-aufgabe="palettieren" aria-hidden="true"></canvas>
+        <p class="zelle-status" id="zelle-status" data-tempo="voll" hidden><i aria-hidden="true"></i><span class="zelle-status-text">Tempo: <b id="zelle-tempo">volle Fahrt</b></span></p>
+      </div>
+      <div class="zelle-steuerung" id="zelle-steuerung" hidden>
+        <div class="zelle-zeile">
+          <div class="segmente" role="group" aria-label="Aufgabe wählen">
+            <button type="button" class="segment" data-aufgabe="palettieren" aria-pressed="true">Palettieren</button>
+            <button type="button" class="segment" data-aufgabe="maschine" aria-pressed="false">Maschine bestücken</button>
+          </div>
+          <button type="button" class="person-knopf" id="zelle-person" aria-pressed="false"><span class="person-punkt" aria-hidden="true"></span>Person tritt in den Bereich</button>
+        </div>
+        <ol class="takt" id="takt" aria-label="Schritte eines Durchgangs">
+          <li>Greifen</li><li>Heben</li><li>Fahren</li><li>Ablegen</li><li>Zurück</li>
+        </ol>
+        <div class="zelle-regler">
+          <button class="zelle-play" type="button" id="zelle-play" aria-pressed="false"><span class="sr">Ablauf automatisch abspielen</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="p-play" d="M8 5.5v13l11-6.5z" fill="currentColor"/><path class="p-pause" d="M7.5 5.5h3.5v13H7.5zM13 5.5h3.5v13H13z" fill="currentColor"/></svg></button>
+          <label class="zelle-slider"><span class="zelle-slider-text">Durchgang Schritt für Schritt</span><input type="range" id="zelle-takt" min="0" max="1000" value="200" aria-valuetext="Schritt 1"></label>
+          <p class="zelle-zaehler"><b id="zelle-zaehler">0</b><span>Teile in dieser Vorführung</span></p>
+        </div>
+        <p class="zelle-satz" id="zelle-satz" aria-live="polite">Der Greifer fasst den Karton am Ende des Förderbands.</p>
+      </div>
+      <figcaption>Gezeichnete Illustration einer Beispielzelle, keine Messwerte, keine Taktzeiten und keine Leistungsangabe. Welche Zelle zu Ihnen passt, klären wir an Ihrem Teil und Ihrer Halle.</figcaption>
+    </figure>
+  </section>
+
+  <!-- Einsätze -->
+  <section class="einsaetze" id="einsaetze" aria-labelledby="einsaetze-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Einsätze</p>
+      <h2 id="einsaetze-titel" data-zeig>Drei Aufgaben, <em>mit denen Betriebe anfangen.</em></h2>
+      <p class="abschnitt-satz" data-zeig>Wir empfehlen, mit einer Aufgabe zu beginnen, die sich oft wiederholt und die niemand vermisst. Weitere folgen, wenn die erste läuft.</p>
+    </header>
+    <ul class="kacheln">
+      <li class="kachel" data-zeig>
+        <svg class="kachel-bild" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
+          <rect x="22" y="48" width="76" height="20" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+          <rect class="k1" x="28" y="34" width="22" height="13" fill="var(--gelb)" stroke="currentColor" stroke-width="1.6"/><rect class="k2" x="52" y="34" width="22" height="13" fill="var(--gelb)" stroke="currentColor" stroke-width="1.6"/>
+          <rect class="k3" x="40" y="20" width="22" height="13" fill="var(--gelb)" stroke="currentColor" stroke-width="1.6"/>
+        </svg>
+        <p class="kachel-nr">01</p>
+        <h3>Palettieren</h3>
+        <p>Kartons und Säcke werden vom Band genommen und nach Packbild auf die Palette gesetzt, Lage für Lage, auch bei wechselnden Artikeln.</p>
+        <p class="kachel-preis">Festpreis nach der Analyse</p>
+      </li>
+      <li class="kachel" data-zeig>
+        <svg class="kachel-bild" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
+          <path d="M12 60h96" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+          <rect x="14" y="40" width="34" height="20" fill="none" stroke="currentColor" stroke-width="2"/><rect class="k1" x="72" y="30" width="30" height="30" fill="var(--gelb)" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M52 50h14m-5-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p class="kachel-nr">02</p>
+        <h3>Be- und Entladen</h3>
+        <p>Teile aus Behältern oder vom Band werden in Transportwagen, Kisten oder Regale gesetzt und wieder entnommen.</p>
+        <p class="kachel-preis">Festpreis nach der Analyse</p>
+      </li>
+      <li class="kachel" data-zeig>
+        <svg class="kachel-bild" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
+          <rect x="52" y="12" width="56" height="52" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/>
+          <rect x="60" y="22" width="40" height="30" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".5"/>
+          <circle class="k1" cx="80" cy="37" r="9" fill="var(--gelb)" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M12 56 30 36l14 10" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="56" r="5" fill="currentColor"/>
+        </svg>
+        <p class="kachel-nr">03</p>
+        <h3>Maschinen bestücken</h3>
+        <p>Rohteile in die Spannvorrichtung legen, Tür schließen, fertige Teile entnehmen. Die Maschine läuft, auch wenn die Schicht endet.</p>
+        <p class="kachel-preis">Festpreis nach der Analyse</p>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Rechner -->
+  <section class="rechner" id="rechner" aria-labelledby="rechner-titel">
+    <div class="rechner-text">
+      <p class="etikett" data-zeig>Rechnen Sie selbst</p>
+      <h2 id="rechner-titel" data-zeig>Wann hat sich die Zelle <em>für Ihren Betrieb bezahlt gemacht?</em></h2>
+      <p class="abschnitt-satz" data-zeig>Wir nennen hier bewusst keine Preise und keine Amortisationszeiten. Die hängen von Ihrer Aufgabe ab. Tragen Sie Ihre eigenen Zahlen ein und lesen Sie das Ergebnis.</p>
+      <ul class="rechner-hinweise" data-zeig>
+        <li>Rechnerischer Vorteil: übernommene Arbeitsstunden mal Kosten je Stunde, abzüglich laufender Kosten.</li>
+        <li>Nicht enthalten: Förderung, Steuer, Zinsen, Ausfallzeiten. Das gehört in die Analyse.</li>
+      </ul>
+    </div>
+    <div class="rechner-karte" data-zeig>
+      <form id="rechner-form" class="rechner-form" novalidate>
+        <div class="feld"><label for="r-invest">Investition in Euro</label><input id="r-invest" type="text" inputmode="decimal" autocomplete="off" placeholder="Was die Zelle insgesamt kostet"></div>
+        <div class="feld-zeile">
+          <div class="feld"><label for="r-stunden">Arbeitsstunden je Woche</label><input id="r-stunden" type="text" inputmode="decimal" autocomplete="off" placeholder="Die die Zelle übernimmt"></div>
+          <div class="feld"><label for="r-satz">Kosten je Arbeitsstunde in Euro</label><input id="r-satz" type="text" inputmode="decimal" autocomplete="off" placeholder="Ihr Kostensatz"></div>
+        </div>
+        <div class="feld"><label for="r-lauf">Laufende Kosten je Monat in Euro <span class="feld-leise">Wartung, Strom, Ersatzteile, freiwillig</span></label><input id="r-lauf" type="text" inputmode="decimal" autocomplete="off" placeholder="Zum Beispiel aus dem Angebot"></div>
+      </form>
+      <div class="rechner-ergebnis" id="rechner-ergebnis" data-zustand="leer" aria-live="polite">
+        <p class="rechner-kopf" id="rechner-kopf">Noch nicht berechnet</p>
+        <p id="rechner-text">Tragen Sie Investition, Arbeitsstunden und Kosten je Stunde ein. Die laufenden Kosten sind freiwillig.</p>
+      </div>
+      <noscript><p class="formular-hinweis">Der Rechner braucht JavaScript. Die Rechnung steht in Worten oben.</p></noscript>
+    </div>
+  </section>
+
+  <!-- Ablauf -->
+  <section class="ablauf" id="ablauf" aria-labelledby="ablauf-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Ablauf</p>
+      <h2 id="ablauf-titel" data-zeig>Analyse, Pilot, <em>Ausbau.</em></h2>
+      <p class="abschnitt-satz" data-zeig>Sie legen sich nicht auf eine große Anlage fest, bevor ein kleiner Anfang gezeigt hat, was er kann.</p>
+    </header>
+    <ol class="phasen">
+      <li class="phase" data-zeig>
+        <p class="phase-nr">01</p><h3>Analyse</h3>
+        <p>Wir sehen uns Ihre Aufgabe vor Ort an: Teile, Gewichte, Wege, Platz, Schichtmodell. Danach steht fest, ob sich eine Zelle eignet, und wenn ja, welche. Sie erhalten ein Angebot mit Festpreis.</p>
+        <p class="phase-ergebnis">Ergebnis: Konzept und Festpreis</p>
+      </li>
+      <li class="phase" data-zeig>
+        <p class="phase-nr">02</p><h3>Pilot</h3>
+        <p>Eine Zelle, eine Aufgabe. Wir bauen sie auf, richten sie ein, schulen Ihre Leute und begleiten die ersten Wochen, bis der Betrieb sie selbstverständlich nutzt.</p>
+        <p class="phase-ergebnis">Ergebnis: eine laufende Zelle</p>
+      </li>
+      <li class="phase" data-zeig>
+        <p class="phase-nr">03</p><h3>Ausbau</h3>
+        <p>Läuft der Pilot, übertragen wir ihn auf weitere Plätze und Aufgaben. Was sich bewährt hat, wird wiederverwendet, das spart Aufwand.</p>
+        <p class="phase-ergebnis">Ergebnis: weitere Zellen nach Bedarf</p>
+      </li>
+    </ol>
+    <aside class="einstieg" data-zeig>
+      <p class="etikett">Der Einstieg muss nicht gekauft sein</p>
+      <p>Wer nicht sofort investieren möchte, kann eine Zelle <b>mieten oder leasen</b>. Konditionen und Laufzeiten nennen wir im Angebot.</p>
+    </aside>
+  </section>
+
+  <!-- Sicherheit und Nachweise -->
+  <section class="sicherheit" id="sicherheit" aria-labelledby="sicherheit-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Sicherheit und Nachweise</p>
+      <h2 id="sicherheit-titel" data-zeig>Roboter und Menschen <em>am selben Ort.</em></h2>
+      <p class="abschnitt-satz" data-zeig>Zu jeder Zelle gehört eine Sicherheitsbewertung. Wir legen mit Ihnen fest, wo Menschen und Roboter getrennt und wo sie gemeinsam arbeiten, und dokumentieren das. Was Sie dazu von uns bekommen, steht unten.</p>
+    </header>
+    <ul class="nachweise">
+      <li data-zeig><b>Sicherheitsbewertung</b><span>Die Bewertung jeder Zelle dokumentieren wir und legen sie Ihnen vor der Inbetriebnahme vor.</span></li>
+      <li data-zeig><b>Hersteller und Schulung</b><span>Schulungsnachweise der Hersteller zeigen wir Ihnen auf Wunsch vor.</span></li>
+      <li data-zeig><b>Versicherung</b><span>Versicherer und Deckung der Betriebshaftpflicht nennen wir im Angebot.</span></li>
+    </ul>
+    <ul class="beispiele">
+      <li class="beispiel" data-zeig><p class="beispiel-nr">Beispielfall 1</p><h3>Palettieren am Ende der Linie</h3><p>Schwere, immer gleiche Handgriffe übernimmt ein Roboter. Die Kolleginnen und Kollegen kümmern sich um Kontrolle und Ausnahmen.</p></li>
+      <li class="beispiel" data-zeig><p class="beispiel-nr">Beispielfall 2</p><h3>Maschinen beschicken</h3><p>Ein Roboter legt Teile in die Maschine und nimmt sie wieder heraus. Die Maschine arbeitet auch dann weiter, wenn niemand danebensteht.</p></li>
+      <li class="beispiel" data-zeig><p class="beispiel-nr">Beispielfall 3</p><h3>Prüfen mit Kamera</h3><p>Eine Kamera am Roboterarm prüft Teile und sortiert Auffälliges aus. Das Ergebnis wird je Teil festgehalten.</p></li>
+    </ul>
+  </section>
+
+  <!-- Fragen -->
+  <section class="fragen" id="fragen" aria-labelledby="fragen-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett" data-zeig>Fragen</p>
+      <h2 id="fragen-titel" data-zeig>Was Geschäftsführer <em>zuerst wissen wollen.</em></h2>
+    </header>
+    <div class="fragen-liste">
+      <details class="frage" name="frage" open data-zeig>
+        <summary><span>Was kostet ein Cobot insgesamt?</span><i aria-hidden="true"></i></summary>
+        <p>Der Roboter selbst ist nur ein Teil. Greifer, Zuführung, Sicherheitstechnik, Einrichtung und Schulung kommen dazu, und sie hängen an Ihrer Aufgabe. Deshalb nennen wir erst nach der Analyse eine Zahl, dann als Festpreis für die ganze Zelle.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Wann amortisiert sich das?</span><i aria-hidden="true"></i></summary>
+        <p>Das hängt davon ab, wie viel Arbeit die Zelle übernimmt und was diese Arbeit bei Ihnen kostet. Mit dem Rechner oben können Sie es mit Ihren eigenen Zahlen durchspielen, in der Analyse rechnen wir es mit Ihnen genauer.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Brauche ich Fachpersonal?</span><i aria-hidden="true"></i></summary>
+        <p>Für den Alltag brauchen Sie keine Robotik-Fachleute. Wir schulen Ihre Mitarbeitenden für Bedienung, Teilewechsel und einfache Anpassungen. Für Änderungen am Ablauf und für Störungen sind wir Ansprechpartner.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Wie sicher ist die Zusammenarbeit mit Menschen?</span><i aria-hidden="true"></i></summary>
+        <p>Das entscheidet die Zelle, nicht der Roboter allein. Wir bewerten jede Zelle auf ihre Gefährdungen, legen Schutzbereiche und Reaktionen fest, etwa langsamer werden oder anhalten, wenn jemand näher kommt, und dokumentieren das. Die Vorführung oben zeigt das Prinzip.</p>
+      </details>
+      <details class="frage" name="frage" data-zeig>
+        <summary><span>Geht das auch mieten?</span><i aria-hidden="true"></i></summary>
+        <p>Ja. Neben dem Kauf bieten wir Miete oder Leasing als Einstieg an. Konditionen und Laufzeiten stehen im Angebot, damit Sie beides vergleichen können.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Anfrage -->
+  <section class="anfrage" id="anfrage" aria-labelledby="anfrage-titel">
+    <div class="anfrage-text">
+      <p class="etikett" data-zeig>Analyse anfragen</p>
+      <h2 id="anfrage-titel" data-zeig>Beschreiben Sie uns <em>die Aufgabe.</em></h2>
+      <p class="abschnitt-satz" data-zeig>Was wird bewegt, wie oft, und was stört heute? Mehr brauchen wir für den ersten Termin nicht.</p>
+      <dl class="kontakt" data-zeig>
+        <div><dt>Standort</dt><dd>Beispielweg 1 · Brandenburg</dd></div>
+        <div><dt>Einsatzgebiet</dt><dd>Berlin, Brandenburg und angrenzende Länder</dd></div>
+        <div><dt>Erreichbar</dt><dd>Hier stehen Ihre Kontaktdaten.</dd></div>
+      </dl>
+    </div>
+    <div class="anfrage-form" data-zeig>
+      <form class="formular" id="anfrage-form" method="dialog" novalidate>
+        <div class="feld">
+          <label for="f-name">Ihr Name <span aria-hidden="true">*</span></label>
+          <input id="f-name" name="name" type="text" autocomplete="name" required aria-describedby="f-name-fehler">
+          <p class="feld-fehler" id="f-name-fehler" hidden>Bitte nennen Sie Ihren Namen.</p>
+        </div>
+        <div class="feld">
+          <label for="f-kontakt">E-Mail oder Telefon <span aria-hidden="true">*</span></label>
+          <input id="f-kontakt" name="kontakt" type="text" autocomplete="email" inputmode="email" required aria-describedby="f-kontakt-fehler">
+          <p class="feld-fehler" id="f-kontakt-fehler" hidden>Bitte geben Sie eine E-Mail-Adresse oder eine Telefonnummer an.</p>
+        </div>
+        <div class="feld-zeile">
+          <div class="feld">
+            <label for="f-ort">Standort des Betriebs</label>
+            <input id="f-ort" name="ort" type="text" autocomplete="postal-code" placeholder="PLZ oder Ort">
+          </div>
+          <div class="feld">
+            <label for="f-aufgabe">Aufgabe</label>
+            <select id="f-aufgabe" name="aufgabe">
+              <option>Palettieren</option>
+              <option>Be- und Entladen</option>
+              <option>Maschinen bestücken</option>
+              <option>Das weiß ich noch nicht</option>
+            </select>
+          </div>
+        </div>
+        <div class="feld">
+          <label for="f-objekt">Die Aufgabe heute <span class="feld-leise">Nur, wenn Sie mögen</span></label>
+          <textarea id="f-objekt" name="objekt" rows="3" placeholder="Zum Beispiel: Kartons vom Band auf Paletten, zwei Schichten"></textarea>
+        </div>
+        <div class="formular-fuss">
+          <button class="knopf" type="submit">Anfrage senden<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#pfeil"/></svg></button>
+          <p class="formular-hinweis">Felder mit * brauchen wir, um Ihnen zu antworten.</p>
+        </div>
+        <noscript><p class="formular-hinweis">Dies ist eine Beispielseite. Ihre Angaben werden nicht gesendet.</p></noscript>
+      </form>
+      <div class="formular-danke" id="anfrage-danke" role="status" tabindex="-1" hidden>
+        <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false"><use href="#zeichen"/></svg>
+        <h3>Danke<span id="danke-name"></span>.</h3>
+        <p>Dies ist eine Beispielseite. Ihre Angaben werden nicht gesendet.</p>
+        <button class="textlink" type="button" id="danke-zurueck">Zurück zum Formular</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="fuss">
+  <div class="fuss-marke">
+    <a class="marke" href="#start" aria-label="Greifzelle Automation, zum Seitenanfang">
+      <svg class="marke-zeichen" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><use href="#zeichen"/></svg>
+      <span class="marke-text"><b>Greifzelle</b><i>Automation</i></span>
+    </a>
+    <p>Roboterzellen für den Mittelstand<br>Beispielweg 1 · Brandenburg</p>
+  </div>
+  <nav class="fuss-wege" aria-label="Fußmenü">
+    <ul>
+      <li><a href="#einsaetze">Einsätze</a></li>
+      <li><a href="#rechner">Rechner</a></li>
+      <li><a href="#ablauf">Ablauf</a></li>
+      <li><a href="#sicherheit">Sicherheit</a></li>
+      <li><a href="#fragen">Fragen</a></li>
+      <li><a href="#anfrage">Anfrage</a></li>
+    </ul>
+  </nav>
+  <p class="fuss-klein">Beispielseite mit erfundenem Namen. Alle Bilder sind gezeichnete Illustrationen. Sie zeigen keine echten Anlagen, Kunden, Taktzeiten, Preise oder Einsparungen.</p>
+</footer>
+
+<!-- Leiste von MAKE Studios: auf jeder Beispielseite, unverändert -->
+<div class="ms-platz" aria-hidden="true"></div>
+<nav class="ms-leiste" aria-label="MAKE Studios">
+  <a class="ms-marke" href="../../#beispielseiten" aria-label="Zurück zu den Beispielseiten von MAKE Studios"><img src="../../zeichen.svg" alt="" width="24" height="24"><b>MAKE</b><span>STUDIOS</span></a>
+  <span class="ms-hinweis"><b>Beispiel</b><span class="ms-lang"> · Namen erfunden</span></span>
+  <a class="ms-knopf" href="../../#erstgespraech-technik">Erstgespräch</a>
+</nav>
+
+</body>
+</html>
