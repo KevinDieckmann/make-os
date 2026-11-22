@@ -1,0 +1,724 @@
+/* Beispielseite Hellgrund · Projekt HALM (erfunden).
+   Aufbau nach der KELD-Vorlage: Vorhang, Szene mit Bildfolge, Glastafel, Details mit Zählern,
+   Stern und Rundgang-Film in drei Einstellungen, Haltung auf Sand, aufgedeckter Fuß, Glasmenü oben rechts.
+   Grundzustand ist die ruhige Fassung (auch ohne Skript und bei reduzierter Bewegung).
+   Das Skript setzt html.js und, wenn Bewegung erlaubt ist, html.bewegt. */
+
+@font-face {
+  font-family: 'Instrument Sans';
+  src: url('schriften/instrument-sans.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --schwarz: #000000;
+  --weiss: #ffffff;
+  --n950: #0a0b09;
+  --n900: #121311;
+  --wald: #212623;
+  --sand100: #f4f0eb;
+  --sand200: #e2ddd5;
+  --tinte: #2c2e2a;
+  --salbei: #646c61;
+  --warn: #f3b8a4;
+
+  --gleiten: cubic-bezier(.25, 1, .5, 1);
+  --schnell: 200ms;
+  --normal: 350ms;
+  --langsam: 600ms;
+
+  --t-display: 3.75rem;
+  --t-stat: 2.25rem;
+  --t-headline: 1.625rem;
+  --t-title: 1.25rem;
+  --t-lead: 1.125rem;
+  --t-body: .875rem;
+  --t-caption: .8125rem;
+  --t-badge: .6875rem;
+  --t-zitat: 5rem;
+
+  /* Unten sitzt die Leiste von MAKE Studios (56px hoch, 14px Abstand). Alles Wichtige bleibt darüber. */
+  --frei-unten: calc(88px + env(safe-area-inset-bottom, 0px));
+  --rand: 2.5rem;
+  --oben-wort: 2.5rem;
+  --oben-rechts: max(7.5rem, 104px);   /* oben rechts sitzt das Glasmenü */
+  --unten-wort: max(2.5rem, var(--frei-unten));
+  --unten-text: max(2.5rem, var(--frei-unten));
+  --unten-zahl: max(2.5rem, var(--frei-unten));
+  --oben-zahl: max(7.5rem, 104px);
+
+  color-scheme: dark;
+}
+@media (min-width: 640px) {
+  :root { --t-display: 8.9375rem; --t-headline: 2.5rem; --t-title: 2rem; --t-body: 1rem; }
+}
+@media (min-width: 768px) {
+  :root { --t-stat: 8.9375rem; --t-zitat: 10rem; }
+}
+@media (min-width: 1024px) {
+  :root { --t-display: 11.875rem; --t-stat: 11.875rem; --t-zitat: 14rem; }
+}
+@media (max-width: 767.98px) {
+  :root {
+    --rand: 1.5rem;
+    --oben-wort: 6rem;
+    --oben-rechts: max(6rem, 96px);
+    --unten-wort: max(13rem, calc(var(--frei-unten) + 2rem));
+    --unten-text: max(7rem, calc(var(--frei-unten) + .5rem));
+    --unten-zahl: max(8rem, calc(var(--frei-unten) + 1rem));
+    --oben-zahl: max(9rem, 120px);
+  }
+}
+
+/* Die Seite ist auf eine Fläche von 1440 Breite in rem geschrieben. */
+html { font-size: 16px; }
+@media (max-width: 1440px) { html { font-size: 1.111111vw; } }
+@media (max-width: 1024px) { html { font-size: 1.5625vw; } }
+@media (max-width: 639.98px) { html { font-size: 4.444444vw; } }
+@media (min-width: 1440.02px) { html { font-size: calc(16px + (100vw - 1440px) * .0074067); } }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--wald); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--wald);
+  color: var(--weiss);
+  font-family: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: var(--t-body);
+  line-height: 1.5;
+  letter-spacing: -.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+img, video, canvas, svg { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; letter-spacing: inherit; }
+h1, h2, h3, p, figure, blockquote, dl, dd, ul, fieldset { margin: 0; padding: 0; }
+h1, h2, h3 { font-weight: 400; }
+ul { list-style: none; }
+address { font-style: normal; }
+.vh {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+.seite { position: relative; z-index: 20; overflow-x: clip; }
+
+/* ═══ Vorhang ═══ */
+.vorhang { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .vorhang {
+    display: block; position: fixed; inset: 0; z-index: 1000; color: var(--weiss);
+    animation: vorhang-selbst .5s ease 1.6s forwards;
+  }
+  html.vorhang-js .vorhang { animation: none; }
+  /* Sobald der Vorhang aufgeht, fängt er keine Klicks mehr ab. */
+  html.vorhang-geht .vorhang { pointer-events: none; }
+}
+html.vorhang-weg .vorhang { display: none; }
+@keyframes vorhang-selbst { to { opacity: 0; visibility: hidden; } }
+.vh-spalten { position: absolute; inset: 0; display: flex; }
+.vh-spalten i { flex: 1 1 0; height: 100%; margin-right: -1px; background: var(--schwarz); transform-origin: top; }
+.vh-spalten i:nth-child(even) { transform-origin: bottom; }
+.vh-spalten i:last-child { margin-right: 0; }
+.vh-marke {
+  position: absolute; left: var(--rand); top: var(--rand); margin: 0;
+  font-size: var(--t-title); line-height: 1.1; letter-spacing: -.02em; text-transform: uppercase;
+}
+.vh-linie {
+  position: absolute; left: var(--rand); right: var(--rand); top: 50%; height: 1px;
+  transform-origin: right; background: rgb(255 255 255 / .15);
+}
+.vh-fuell { display: block; height: 100%; background: var(--weiss); transform-origin: left; transform: scaleX(0); }
+.vh-zahl {
+  position: absolute; left: var(--rand); right: var(--rand); bottom: var(--unten-wort); height: .9em;
+  font-size: var(--t-display); line-height: .9; letter-spacing: -.04em; font-variant-numeric: tabular-nums;
+}
+.vh-laeufer { position: absolute; bottom: 0; left: 0; display: flex; height: .9em; overflow: hidden; }
+.vh-spalte { display: block; }
+.vh-rolle { display: flex; flex-direction: column; text-align: center; }
+.vh-rolle span { display: block; height: .9em; white-space: pre; }
+.vh-prozent { display: block; margin-left: .25rem; }
+
+/* ═══ Hinweis bei Ladefehlern ═══ */
+.meldung {
+  position: fixed; left: 50%; top: calc(1.5rem + env(safe-area-inset-top, 0px)); z-index: 1100;
+  transform: translateX(-50%); width: max-content; max-width: min(28rem, calc(100vw - 2rem));
+  padding: .75rem 1rem; border: 1px solid rgb(255 255 255 / .12); border-radius: .375rem;
+  background: rgb(10 11 9 / .85); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  color: var(--weiss); font-size: max(.875rem, 14px); line-height: 1.4;
+}
+.meldung[hidden] { display: none; }
+@media (max-width: 767.98px) { .meldung { top: calc(max(7rem, 104px) + env(safe-area-inset-top, 0px)); } }
+
+/* ═══ Glasmenü oben rechts ═══ */
+.dock {
+  position: fixed; z-index: 100;
+  top: calc(1.5rem + env(safe-area-inset-top, 0px)); right: max(1.5rem, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; align-items: flex-end; gap: .5rem;
+  transition: opacity var(--normal) cubic-bezier(.25, 1, .5, 1), transform var(--normal) cubic-bezier(.25, 1, .5, 1);
+}
+.dock.weg { opacity: 0; transform: translateY(-2.5rem); pointer-events: none; }
+.dock-leiste {
+  display: flex; align-items: center; gap: .25rem; padding: .375rem;
+  border: 1px solid rgb(255 255 255 / .1); border-radius: .375rem;
+  background: rgb(10 11 9 / .7); -webkit-backdrop-filter: blur(24px) saturate(1.15); backdrop-filter: blur(24px) saturate(1.15);
+  transition: background-color var(--normal) var(--gleiten), border-color var(--normal) var(--gleiten), transform var(--normal) var(--gleiten);
+}
+.dock-leiste:hover { transform: translateY(-.125rem); border-color: rgb(255 255 255 / .22); background: rgb(18 19 17 / .9); }
+.dock-marke {
+  display: flex; align-items: center; gap: .625rem; min-height: 44px; padding: 0 1rem 0 .75rem;
+  font-size: max(var(--t-caption), 12px); font-weight: 500; line-height: 1.1; letter-spacing: .25em; text-transform: uppercase;
+  border-radius: .25rem; transition: opacity var(--schnell);
+}
+.dock-marke:hover { opacity: .8; }
+.dock-marke .zeichen { width: max(1.5rem, 22px); height: max(1.5rem, 22px); flex: none; }
+.dock-knopf {
+  display: grid; place-items: center; width: max(3rem, 44px); height: max(3rem, 44px);
+  border-radius: .25rem; background: rgb(255 255 255 / .06); transition: background-color var(--schnell);
+}
+.dock-knopf:hover { background: rgb(255 255 255 / .12); }
+.dock-knopf svg {
+  grid-area: 1 / 1; width: max(1.375rem, 20px); height: max(1.375rem, 20px);
+  transition: opacity var(--normal) var(--gleiten), transform var(--normal) var(--gleiten);
+}
+.dock-knopf .ic-zu { opacity: 0; transform: rotate(-45deg); }
+.dock.offen .dock-knopf .ic-menue { opacity: 0; transform: rotate(45deg); }
+.dock.offen .dock-knopf .ic-zu { opacity: 1; transform: none; }
+.dock-menue {
+  min-width: max(16rem, 220px); padding: .5rem;
+  border: 1px solid rgb(255 255 255 / .1); border-radius: .375rem;
+  background: rgb(10 11 9 / .85); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+  opacity: 0; transform: translateY(-12px); visibility: hidden; pointer-events: none;
+  transition: opacity var(--normal) cubic-bezier(.25, 1, .5, 1), transform var(--normal) cubic-bezier(.25, 1, .5, 1), visibility 0s linear var(--normal);
+}
+.dock.offen .dock-menue { opacity: 1; transform: none; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+.dock-menue a {
+  display: flex; align-items: center; min-height: 44px; padding: .5rem .875rem; border-radius: .25rem;
+  font-size: max(var(--t-lead), 15px); font-weight: 500; letter-spacing: -.01em; text-transform: uppercase;
+  transition: background-color var(--schnell), opacity var(--schnell);
+}
+.dock-menue a:hover { background: rgb(255 255 255 / .08); }
+.dock-menue .dock-anfrage { margin-top: .25rem; background: rgb(255 255 255 / .1); }
+.dock-menue .dock-anfrage:hover { background: rgb(255 255 255 / .16); }
+html:not(.js) .dock-knopf { display: none; }
+@media (max-width: 639.98px) {
+  .dock-marke { padding: 0 .625rem; }
+  .dock-marke span { display: none; }
+}
+
+/* ═══ Szene: ruhige Fassung (Grundzustand) ═══ */
+.szene { position: relative; background: var(--schwarz); }
+.film, .stern, .marke-zeiger { display: none; }
+.buehne > .raster { display: none; }
+
+.block { position: relative; min-height: 100vh; min-height: 100svh; overflow: hidden; background: var(--schwarz); }
+.block-bild { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; }
+.block::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgb(0 0 0 / .42) 0%, rgb(0 0 0 / .14) 36%, rgb(0 0 0 / .16) 62%, rgb(0 0 0 / .56) 100%);
+}
+.block-kopf { position: absolute; inset: 0; z-index: 2; }
+.block-aus { position: absolute; inset: 0; }
+.slot {
+  position: absolute; font-size: var(--t-display); line-height: .9; letter-spacing: -.04em; white-space: nowrap;
+}
+.slot-ol { left: var(--rand); top: var(--oben-wort); }
+.slot-or { right: var(--rand); top: var(--oben-rechts); }
+.slot-ml { left: var(--rand); top: 50%; transform: translateY(-50%); }
+.slot-mr { right: var(--rand); top: 50%; transform: translateY(-50%); }
+.slot-m { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.slot-ul { left: var(--rand); bottom: var(--unten-wort); }
+.slot-ur { right: var(--rand); bottom: var(--unten-wort); }
+.wort { display: inline-flex; }
+.block-text {
+  position: absolute; z-index: 3; left: var(--rand); bottom: var(--unten-text); width: 20rem;
+  font-size: max(var(--t-body), 14px); line-height: 1.5; letter-spacing: -.01em; color: rgb(255 255 255 / .82);
+}
+.block-text.rechts { left: auto; right: var(--rand); text-align: right; }
+/* Der Film beim Scrollen ist ein Beispiel: das steht gleich im ersten Bild dabei. */
+.beispielfilm {
+  display: block; margin-bottom: .75rem; white-space: nowrap;
+  font-size: max(var(--t-badge), 11px); font-weight: 500; line-height: 1.4; letter-spacing: .16em; text-transform: uppercase;
+  color: rgb(255 255 255 / .88);
+}
+@media (max-width: 767.98px) {
+  .block-text, .block-text.rechts { left: var(--rand); right: var(--rand); width: auto; text-align: left; }
+}
+
+/* Projekt HALM mit Glastafel */
+.projekt { position: relative; min-height: 100vh; min-height: 100svh; overflow: hidden; background: var(--schwarz); }
+.projekt-bild { position: absolute; inset: 0; }
+/* Das Foto ist kühler als die übrige Seite: ein Hauch Wärme und etwas weniger Licht gleichen es an. */
+.projekt-bild img { width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 62% 50%; filter: sepia(.22) saturate(1.08) brightness(.9); }
+.tafel {
+  position: relative; z-index: 15; display: flex; flex-direction: column; justify-content: space-between;
+  width: 50%; min-height: 100vh; min-height: 100svh; padding: 3.5rem;
+  padding-bottom: max(3.5rem, calc(var(--frei-unten) + 1rem));
+  border-right: 1px solid rgb(255 255 255 / .08);
+  background: rgb(18 19 17 / .45); -webkit-backdrop-filter: blur(40px); backdrop-filter: blur(40px);
+}
+.etikett {
+  font-size: var(--t-title); line-height: 1.1; letter-spacing: -.02em; text-transform: uppercase; color: rgb(255 255 255 / .95);
+}
+.zeilen .zeile { display: block; }
+.tafel-mitte { margin-top: 2.5rem; display: flex; flex-grow: 1; flex-direction: column; justify-content: center; }
+.halm {
+  display: flex; align-items: flex-start; margin-bottom: 1.5rem;
+  font-size: var(--t-display); line-height: .9; letter-spacing: -.04em; text-transform: uppercase;
+}
+@media (min-width: 768px) { .halm { font-size: min(var(--t-display), 14.5vw); } }
+.tafel-text { max-width: 85%; font-size: max(var(--t-body), 14px); line-height: 1.5; color: rgb(255 255 255 / .78); }
+.tafel-fuss { margin-top: 2rem; display: flex; flex-direction: column; gap: 1.25rem; }
+.ausstattung { display: flex; flex-wrap: wrap; gap: .75rem 1.75rem; }
+.ausstattung li {
+  display: inline-flex; align-items: center; gap: .625rem;
+  font-size: max(var(--t-caption), 12px); letter-spacing: .12em; text-transform: uppercase; color: rgb(255 255 255 / .85);
+}
+.ausstattung svg { width: max(1.5rem, 22px); height: max(1.5rem, 22px); flex: none; transition: transform var(--schnell) var(--gleiten); }
+.ausstattung li:hover svg { transform: scale(1.1); }
+@media (max-width: 767.98px) {
+  /* Handy: Die Tafel ist so breit wie das Bild. Damit vom Raum etwas bleibt, wird das Glas erst nach unten hin dicht. */
+  .tafel {
+    width: 100%; padding: max(6rem, 100px) 2rem max(8rem, calc(var(--frei-unten) + 1.5rem)); border-right: 0;
+    background: linear-gradient(180deg, rgb(18 19 17 / .28) 0%, rgb(18 19 17 / .5) 34%, rgb(18 19 17 / .62) 100%);
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .tafel::before {
+    content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    -webkit-backdrop-filter: blur(28px); backdrop-filter: blur(28px);
+    -webkit-mask-image: linear-gradient(180deg, transparent 6%, #000 40%); mask-image: linear-gradient(180deg, transparent 6%, #000 40%);
+  }
+  .tafel-text { max-width: none; }
+}
+
+/* Details mit Zählern */
+.details-ebene { position: relative; background: var(--schwarz); }
+.details-flaeche { position: relative; min-height: 100vh; min-height: 100svh; overflow: hidden; }
+.details-bild { position: absolute; inset: 0; }
+.details-bild img { width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 50% 38%; }
+/* Schleier: oben und vor allem unten dichter, damit die großen Zahlen auch vor dem hellen Teppich stehen. */
+.details-bild::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgb(0 0 0 / .34) 0%, rgb(0 0 0 / .1) 34%, rgb(0 0 0 / .16) 58%, rgb(0 0 0 / .62) 100%);
+}
+.kreuz { position: absolute; inset: 0; z-index: 22; pointer-events: none; }
+.kreuz i { position: absolute; background: rgb(255 255 255 / .18); }
+.kreuz i:first-child { left: 0; right: 0; top: 50%; height: 1px; }
+.kreuz i:last-child { top: 0; bottom: 0; left: 50%; width: 1px; }
+.details-kopf { position: absolute; z-index: 25; left: var(--rand); top: var(--rand); max-width: 45%; }
+.details-titel {
+  display: flex; flex-direction: column;
+  font-size: var(--t-title); line-height: 1.1; letter-spacing: -.02em; text-transform: uppercase;
+}
+.beispielwerte {
+  margin-top: .875rem; font-size: max(var(--t-caption), 12px); line-height: 1.4; letter-spacing: .18em; text-transform: uppercase;
+  color: rgb(255 255 255 / .8);
+}
+.stern-klein { display: inline-block; line-height: 1; transition: transform var(--normal) var(--gleiten); }
+.zahl { position: absolute; z-index: 25; display: flex; flex-direction: column-reverse; gap: .75rem; }
+.zahl dt { font-size: max(var(--t-body), 13px); line-height: 1.5; letter-spacing: -.01em; text-transform: uppercase; color: rgb(255 255 255 / .75); }
+.zahl dd { margin: 0; font-size: var(--t-stat); line-height: .9; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.trommel { display: inline-block; }
+.z-or { right: var(--rand); top: var(--oben-zahl); align-items: flex-end; text-align: right; }
+.z-ul { left: var(--rand); bottom: var(--unten-zahl); align-items: flex-start; }
+.z-ur { right: var(--rand); bottom: var(--unten-zahl); align-items: flex-end; text-align: right; }
+@media (max-width: 767.98px) {
+  .details-kopf { top: max(6rem, 100px); max-width: 55%; }
+  .zahl { max-width: 42%; gap: .5rem; }
+}
+
+/* Rundgang-Film: ruhige Fassung = normale Abteilung mit Titel, drei Einstellungen und Film.
+   Die Einstellungen liegen übereinander; sichtbar ist, was die Klasse „an“ trägt. */
+.film-teil {
+  position: relative; display: grid; grid-template-columns: 1fr; gap: 1.75rem;
+  padding: 5rem var(--rand) max(5rem, calc(var(--frei-unten) + 1rem));
+  background: var(--schwarz);
+  --ueber-o: 1; --titel-o: 1; --ueber-x: 0rem;
+}
+.besichtigung {
+  display: flex; align-items: center; gap: .75rem; min-height: 44px; padding-top: 1rem;
+  border-top: 1px solid rgb(255 255 255 / .22);
+  font-size: max(var(--t-body), 13px); letter-spacing: -.01em; text-transform: uppercase;
+  transition: transform var(--normal) var(--gleiten), border-color var(--normal) var(--gleiten), background-color var(--normal) var(--gleiten);
+}
+.besichtigung:hover { transform: translateY(-.125rem); border-color: rgb(255 255 255 / .85); }
+.besichtigung:hover .stern-klein { transform: rotate(90deg); }
+.rundgang { font-size: var(--t-headline); line-height: 1.15; letter-spacing: -.02em; text-transform: uppercase; }
+.film-hinweis {
+  margin-top: .875rem; font-size: max(var(--t-caption), 12px); line-height: 1.4; letter-spacing: .18em; text-transform: uppercase;
+  color: rgb(255 255 255 / .8);
+}
+.rolle { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: var(--n900); }
+html.js .rolle { cursor: pointer; }
+.rolle-film {
+  position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; max-width: none; object-fit: cover;
+  opacity: 0; transition: opacity 1s linear;
+}
+.rolle-film.an { opacity: 1; }
+.rolle-film.vorn { z-index: 2; }
+html:not(.js) .rolle-film { display: none; }
+html:not(.js) .rolle-film.an { display: block; }
+
+/* Einstellungen: drei Knöpfe mit Laufbalken */
+.stationen { display: flex; flex-wrap: wrap; gap: .375rem; margin: 0; padding: 0; list-style: none; }
+.stationen li { display: flex; }
+.station {
+  position: relative; display: flex; flex: 1 1 auto; align-items: center; gap: .625rem; overflow: hidden;
+  min-height: 44px; min-width: max(5.5rem, 84px); padding: 0 max(.875rem, 12px);
+  border: 1px solid rgb(255 255 255 / .16); border-radius: .25rem;
+  background: rgb(10 11 9 / .58); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  font-size: max(var(--t-caption), 12px); letter-spacing: .16em; text-transform: uppercase; color: rgb(255 255 255 / .78);
+  transition: background-color var(--schnell), color var(--schnell), border-color var(--schnell);
+}
+.station:hover { background: rgb(18 19 17 / .9); color: var(--weiss); }
+.station[aria-pressed="true"] { border-color: rgb(255 255 255 / .38); background: rgb(10 11 9 / .8); color: var(--weiss); }
+.st-nr { font-variant-numeric: tabular-nums; opacity: .7; }
+.st-lauf { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgb(255 255 255 / .16); }
+.st-lauf i { display: block; height: 100%; background: var(--weiss); transform-origin: left; transform: scaleX(0); }
+.station[aria-pressed="false"] .st-lauf i { transform: scaleX(0); }
+
+/* Anhalten / Abspielen */
+.film-knopf {
+  display: flex; align-items: center; gap: .5rem; width: fit-content; min-height: 44px; padding: 0 1.125rem 0 .875rem;
+  border: 1px solid rgb(255 255 255 / .16); border-radius: .25rem;
+  background: rgb(10 11 9 / .6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  font-size: max(var(--t-caption), 12px); letter-spacing: .2em; text-transform: uppercase;
+  transition: background-color var(--schnell);
+}
+.film-knopf:hover { background: rgb(18 19 17 / .9); }
+.film-knopf svg { width: max(1.125rem, 18px); height: max(1.125rem, 18px); flex: none; }
+.film-knopf .ic-play { display: none; }
+.film-knopf.pausiert .ic-play { display: block; }
+.film-knopf.pausiert .ic-pause { display: none; }
+html:not(.js) .nur-js { display: none; }
+
+/* Ruhige Fassung: Der Knopf liegt unten rechts auf dem Film, die Einstellungen stehen darunter (breit: neben dem Titel). */
+.besichtigung { grid-area: 1 / 1; }
+.ueber-links { grid-area: 2 / 1; }
+.rolle { grid-area: 3 / 1; }
+.film-knopf { grid-area: 3 / 1; z-index: 5; align-self: end; justify-self: end; margin: 0 .75rem .75rem 0; }
+.stationen { grid-area: 4 / 1; }
+@media (max-width: 767.98px) {
+  /* Handy: Film im Hochformat, Knopf nur als Zeichen, drei gleich breite Einstellungen in einer Zeile. */
+  .rolle { aspect-ratio: 4 / 5; }
+  .film-hinweis { white-space: nowrap; font-size: max(var(--t-badge), 11px); letter-spacing: .12em; }
+  .stationen { flex-wrap: nowrap; }
+  .stationen li { flex: 1 1 0; min-width: 0; }
+  .station { min-width: 0; justify-content: center; gap: .35rem; padding: 0 .25rem; letter-spacing: .06em; }
+  .film-knopf { width: 44px; padding: 0; justify-content: center; }
+  .film-knopf-text {
+    position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  }
+}
+@media (min-width: 768px) {
+  .film-teil { grid-template-columns: 1fr auto; align-items: end; }
+  .besichtigung { grid-area: 1 / 1 / 2 / -1; }
+  .stationen { grid-area: 2 / 2; }
+  .rolle, .film-knopf { grid-area: 3 / 1 / 4 / -1; }
+  .film-knopf { margin: 0 1.25rem 1.25rem 0; }
+}
+
+/* ═══ Szene in Bewegung ═══ */
+html.bewegt .szene { height: 1400vh; }
+html.bewegt .buehne {
+  position: sticky; top: 0; height: 100vh; height: 100dvh; width: 100%; overflow: hidden; background: var(--schwarz);
+}
+html.bewegt .film { display: block; position: absolute; inset: 0; z-index: 1; }
+.film-poster, .film-leinwand { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; }
+.film::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgb(0 0 0 / .42) 0%, rgb(0 0 0 / .12) 36%, rgb(0 0 0 / .14) 62%, rgb(0 0 0 / .56) 100%);
+}
+html.bewegt .buehne > .raster { display: block; position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0; }
+.raster-in { position: absolute; top: 0; bottom: 0; left: 2rem; right: 2rem; display: grid; grid-template-columns: repeat(4, 1fr); }
+.raster-in i { border-left: 1px solid rgb(255 255 255 / .3); }
+.raster-in i:last-child { border-right: 1px solid rgb(255 255 255 / .3); }
+
+html.bewegt .block { position: absolute; inset: 0; z-index: 5; min-height: 0; overflow: visible; background: none; pointer-events: none; }
+html.bewegt .block::after, html.bewegt .block-bild { display: none; }
+html.bewegt .block-2, html.bewegt .block-3 { visibility: hidden; }
+html.bewegt .block-2 .block-text, html.bewegt .block-3 .block-text { opacity: 0; }
+html.bewegt .block-aus { will-change: transform, opacity; }
+
+html.bewegt .projekt { position: absolute; inset: 0; z-index: 10; min-height: 0; transform: translate3d(0, 100%, 0); }
+html.bewegt .tafel { position: absolute; top: 0; bottom: 0; left: 0; min-height: 0; }
+html.bewegt .projekt-bild { transform: scale(1.1); }
+
+html.bewegt .details-ebene { position: absolute; inset: 0; z-index: 20; overflow: hidden; clip-path: inset(100% 0 0 0); }
+html.bewegt .details-flaeche { position: static; min-height: 0; overflow: visible; }
+html.bewegt .details-bild { transform: scale(1.1); }
+
+html.bewegt .stern {
+  display: block; position: absolute; left: 50%; top: 50%; z-index: 30; pointer-events: none;
+  width: min(156.25rem, 2500px); aspect-ratio: 1; translate: -50% -50%; transform: scale(.04);
+}
+.stern svg { width: 100%; height: 100%; max-width: none; }
+.stern-hell { fill: var(--weiss); }
+.stern-ton { fill: var(--salbei); opacity: 0; }
+
+html.bewegt .film-teil { position: static; display: block; padding: 0; background: none; --ueber-o: 0; --titel-o: 0; }
+html.bewegt .rolle {
+  position: absolute; left: 50%; top: 50%; z-index: 40; width: 65vw; aspect-ratio: 65 / 37;
+  clip-path: inset(100% 0 0 0); transform: translate(-50%, -40%); cursor: pointer;
+}
+/* Schleier links unter dem Titel: steht nur, solange der Titel auf dem Film liegt. */
+html.bewegt .rolle::after {
+  content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: var(--titel-o);
+  background: linear-gradient(90deg, rgb(10 11 9 / .6) 0%, rgb(10 11 9 / .34) 30%, rgb(10 11 9 / 0) 62%);
+}
+html.bewegt .ueber-links, html.bewegt .besichtigung, html.bewegt .film-knopf, html.bewegt .stationen {
+  opacity: var(--ueber-o); visibility: hidden;
+}
+html.bewegt .film-teil.sichtbar .ueber-links, html.bewegt .film-teil.sichtbar .besichtigung,
+html.bewegt .film-teil.sichtbar .film-knopf, html.bewegt .film-teil.sichtbar .stationen { visibility: visible; }
+/* Der Titel liegt über dem noch gedämpften Film und tritt zurück, wenn der Film groß, hell und farbig wird. */
+html.bewegt .ueber-links {
+  position: absolute; left: var(--rand); top: 50%; z-index: 45; width: 48vw; pointer-events: none;
+  opacity: var(--titel-o); transform: translate3d(var(--ueber-x), -50%, 0);
+}
+/* Was auf dem Film bleibt, liegt auf Glas und ist auf jedem Bild lesbar. */
+html.bewegt .besichtigung {
+  position: absolute; left: var(--rand); top: var(--rand); z-index: 45; padding: 0 1.125rem 0 .875rem;
+  border: 1px solid rgb(255 255 255 / .16); border-radius: .25rem;
+  background: rgb(10 11 9 / .58); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  font-size: max(var(--t-caption), 12px); letter-spacing: .2em;
+}
+html.bewegt .besichtigung:hover { background: rgb(18 19 17 / .9); border-color: rgb(255 255 255 / .32); }
+html.bewegt .stationen {
+  position: absolute; right: var(--rand); top: 50%; z-index: 46; flex-direction: column; flex-wrap: nowrap;
+  transform: translate3d(calc(var(--ueber-x) * -1), -50%, 0);
+}
+html.bewegt .film-knopf {
+  position: absolute; z-index: 46; right: var(--rand); bottom: max(var(--rand), calc(var(--frei-unten) + .25rem)); margin: 0;
+}
+/* Hochformat ab Tablet: höheres Filmfeld, damit der Film am Ende die Fläche füllt. */
+@media (min-width: 768px) and (max-aspect-ratio: 1/1) {
+  html.bewegt .rolle { width: 62vw; aspect-ratio: 4 / 5; }
+  html.bewegt .ueber-links { width: 70vw; }
+}
+@media (max-aspect-ratio: 1/1) {
+  .f-haus { object-position: 100% 50%; }
+  .f-raum { object-position: 30% 50%; }
+  .f-licht { object-position: 68% 50%; }
+}
+@media (max-width: 767.98px) {
+  /* Handy: Titel oben auf Salbei, Film als Hochformat darunter, Einstellungen und Anhalten in einer Zeile am unteren Rand.
+     Das Filmfeld richtet sich nach dem Platz zwischen Titel und Knöpfen (auch auf kurzen Bildschirmen). */
+  html.bewegt .film-teil {
+    --f-oben: calc(max(6.5rem, 104px) + 4.8rem + 24px);
+    --f-unten: calc(var(--frei-unten) + 62px);
+    --f-frei: calc(100svh - var(--f-oben) - var(--f-unten));
+  }
+  html.bewegt .rolle {
+    width: 88vw; aspect-ratio: auto; height: min(112vw, calc(var(--f-frei) / 1.1364));
+    top: calc(var(--f-oben) + var(--f-frei) / 2);
+  }
+  html.bewegt .rolle::after { display: none; }
+  html.bewegt .besichtigung { display: none; }
+  html.bewegt .ueber-links { left: var(--rand); right: var(--rand); top: max(6.5rem, 104px); width: auto; opacity: var(--ueber-o); transform: none; }
+  html.bewegt .stationen {
+    left: var(--rand); right: calc(var(--rand) + 44px + .5rem); top: auto; bottom: calc(var(--frei-unten) + .25rem);
+    flex-direction: row; transform: none;
+  }
+  html.bewegt .film-knopf { bottom: calc(var(--frei-unten) + .25rem); }
+}
+
+/* ═══ Buchstaben (vom Skript geteilt) ═══ */
+.bu { display: inline-block; white-space: pre; }
+.zw { display: inline-flex; }
+.zw.klemme {
+  overflow: hidden; padding-bottom: 1rem; margin-bottom: -.875rem;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 1rem), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 1rem), transparent);
+}
+.zeilen-in { display: flex; flex-direction: column; }
+.zeilen-in .zeile { display: flex; flex-wrap: wrap; column-gap: .28em; }
+
+/* ═══ Haltung auf Sand ═══ */
+.haltung {
+  position: relative; z-index: 2; display: flex; flex-direction: column; padding: 2.5rem;
+  background: var(--sand100); color: var(--tinte);
+}
+/* Oben rechts sitzt das Glasmenü: der Kopf der Abteilung beginnt darunter. */
+@media (min-width: 768px) { .haltung { min-height: 100vh; min-height: 100dvh; padding-top: max(6.5rem, 100px); } }
+@media (max-width: 767.98px) { .haltung { padding: 5rem 1.5rem; } }
+.haltung-kopf {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem;
+  padding-top: 1rem; border-top: 1px solid rgb(44 46 42 / .18);
+}
+.haltung-kopf h2 {
+  display: flex; align-items: center; gap: .5rem; white-space: nowrap;
+  font-size: max(var(--t-caption), 12px); font-weight: 500; letter-spacing: .22em; text-transform: uppercase;
+}
+.stern-ton-klein { color: var(--salbei); }
+.blaettern { display: flex; align-items: center; gap: .5rem; }
+.blaettern p {
+  margin-right: .75rem; font-size: max(var(--t-caption), 12px); font-weight: 500; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--salbei); font-variant-numeric: tabular-nums;
+}
+.blaettern button {
+  display: flex; align-items: center; justify-content: center; width: max(2.75rem, 44px); height: max(2.75rem, 44px);
+  border: 1px solid rgb(100 108 97 / .2);
+  transition: background-color var(--normal) var(--gleiten), border-color var(--normal) var(--gleiten);
+}
+.blaettern button:hover { border-color: var(--tinte); background: rgb(100 108 97 / .05); }
+.blaettern button:active { background: rgb(100 108 97 / .12); }
+.blaettern svg { width: max(1rem, 16px); height: max(1rem, 16px); }
+.haltung-figur { margin-top: 2.5rem; flex-grow: 1; display: grid; align-items: center; gap: 2.5rem; }
+@media (min-width: 768px) { .haltung-figur { grid-template-columns: 12.5rem 1fr; } }
+@media (min-width: 1024px) { .haltung-figur { grid-template-columns: 23.75rem 1fr; } }
+.portrait { position: relative; aspect-ratio: 3 / 4; width: 100%; overflow: hidden; background: var(--sand200); }
+.portrait-in { position: absolute; inset: 0; display: block; transition: transform var(--langsam) cubic-bezier(.5, 1, .89, 1); }
+.portrait:hover .portrait-in { transform: scale(1.05); }
+.portrait img { width: 100%; height: 100%; max-width: none; object-fit: cover; filter: grayscale(1); }
+.haltung-text { display: flex; flex-direction: column; }
+.zitatzeichen { display: block; margin-bottom: 1rem; font-size: var(--t-zitat); font-weight: 400; line-height: .5; }
+.aussagen { display: grid; margin: 0 0 2.5rem; }
+.aussage-satz { grid-area: 1 / 1; margin: 0; }
+html.js .aussage-satz { opacity: 0; visibility: hidden; transition: opacity var(--normal) ease, visibility 0s linear var(--normal); }
+html.js .aussage-satz.an { opacity: 1; visibility: visible; transition-delay: 0s; }
+html:not(.js) .aussagen { display: block; }
+html:not(.js) .aussage-satz + .aussage-satz { margin-top: 1.75rem; }
+.aussage { font-size: var(--t-headline); line-height: 1.15; letter-spacing: -.02em; text-transform: uppercase; }
+.haltung figcaption { display: flex; flex-direction: column; }
+.name { font-size: max(var(--t-lead), 15px); font-weight: 500; letter-spacing: -.01em; text-transform: uppercase; }
+.rolle-text { margin-top: .5rem; font-size: max(var(--t-body), 14px); line-height: 1.5; color: rgb(44 46 42 / .74); }
+@media (max-width: 767.98px) { .portrait { max-width: 15rem; } }
+@media (min-width: 768px) {
+  .portrait { transform: translateY(-4.375rem); }
+  /* Versatz als Abstand statt Verschiebung: ist der Text höher als das Bild, wächst die Abteilung mit und nichts ragt in den Fuß. */
+  .haltung-text { margin-top: 4.5rem; }
+  .zitatzeichen { margin-bottom: 2.5rem; transform: translate(-1.25rem, -10rem); }
+  .haltung figcaption { margin-top: 2.5rem; }
+}
+.dock-wache { position: absolute; left: 0; right: 0; bottom: 0; height: 1px; pointer-events: none; }
+
+/* ═══ Fuß ═══ */
+.fuss-platz { display: none; }
+.fuss {
+  position: relative; display: flex; flex-direction: column; align-items: center; overflow: hidden;
+  padding: 5rem 1.5rem 1rem; background: var(--wald); color: var(--weiss);
+}
+.fuss-bild { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; }
+.fuss-ton { position: absolute; inset: 0; background: rgb(33 38 35 / .3); }
+.fuss-raster { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+@media (max-width: 767.98px) { .fuss-raster .raster-in { left: 1.5rem; right: 1.5rem; } }
+.fuss-inhalt { position: relative; z-index: 15; display: flex; flex-direction: column; align-items: center; gap: 2.5rem; }
+.fuss-ruf { display: flex; flex-direction: column; align-items: center; gap: 1.75rem; text-align: center; }
+.fuss-frage { font-size: var(--t-headline); line-height: 1.15; letter-spacing: -.02em; text-transform: uppercase; }
+.fuss-frage .zeilen-in .zeile { justify-content: center; }
+.fuss-satz { max-width: 26rem; font-size: max(var(--t-body), 14px); line-height: 1.5; color: rgb(255 255 255 / .86); }
+.glas-knopf {
+  display: inline-flex; align-items: center; gap: .75rem; min-height: 44px; width: fit-content; padding: .875rem 1.75rem;
+  border: 1px solid rgb(255 255 255 / .1); border-radius: .25rem;
+  background: rgb(10 11 9 / .75); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+  font-size: max(var(--t-caption), 12px); line-height: 1.1; letter-spacing: .22em; text-transform: uppercase;
+  transition: transform var(--normal) var(--gleiten), background-color var(--normal) var(--gleiten), border-color var(--normal) var(--gleiten);
+}
+.glas-knopf svg { width: max(1.125rem, 16px); height: max(1.125rem, 16px); flex: none; transition: transform var(--normal) var(--gleiten); }
+.glas-knopf:hover { transform: translateY(-.125rem); border-color: rgb(255 255 255 / .22); background: rgb(18 19 17 / .95); }
+.glas-knopf:hover svg { transform: translate(.125rem, .125rem); }
+.fuss-adresse { display: flex; flex-direction: column; gap: .25rem; text-align: center; font-size: max(var(--t-body), 14px); color: rgb(255 255 255 / .88); }
+.fuss-adresse .adr-titel { margin-bottom: .25rem; font-size: max(var(--t-caption), 12px); letter-spacing: .22em; text-transform: uppercase; color: rgb(255 255 255 / .78); }
+.fuss-nav ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 1.5rem; }
+.fuss-nav a {
+  display: inline-flex; align-items: center; min-height: 44px;
+  font-size: max(var(--t-lead), 15px); font-weight: 500; letter-spacing: -.01em; text-transform: uppercase;
+  transition: transform var(--normal) var(--gleiten), opacity var(--normal) var(--gleiten);
+}
+.fuss-nav a:hover { transform: translateX(.25rem); opacity: .7; }
+@media (max-width: 767.98px) {
+  /* Handy: fünf Punkte brechen mittig in drei und zwei um. */
+  .fuss-nav ul { max-width: 21rem; margin: 0 auto; gap: 0 1.5rem; }
+}
+.wortmarke { position: relative; z-index: 5; display: flex; justify-content: center; width: 100%; margin-top: 4rem; }
+.wm-wort {
+  display: inline-block; padding-bottom: .22em; font-size: 18vw; line-height: .75; letter-spacing: -.04em;
+  text-align: center; white-space: nowrap;
+}
+.wm-wort .wm-bu { display: inline-block; }
+.kontakt-anker { display: block; height: 1px; }
+
+@media (min-width: 768px) {
+  .fuss { display: block; min-height: 85vh; padding: 0; }
+  .fuss-inhalt {
+    position: absolute; left: 2rem; right: 2rem; top: 2.5rem;
+    display: grid; grid-template-columns: repeat(4, 1fr); align-items: start; gap: 0;
+  }
+  .fuss-ruf { grid-column: span 2; max-width: 31.5rem; padding-left: 1.25rem; align-items: flex-start; text-align: left; }
+  .fuss-frage .zeilen-in .zeile { justify-content: flex-start; }
+  .fuss-adresse { grid-column: 3; padding-left: 1.25rem; text-align: left; }
+  .fuss-nav { grid-column: 4; padding-left: 1.25rem; }
+  .fuss-nav ul { flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; gap: .25rem; }
+  .wortmarke { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; padding-bottom: 2rem; }
+  .wm-wort { font-size: 19.5vw; }
+
+  html.bewegt .fuss-platz { display: block; height: 85vh; }
+  /* Der Fuß deckt auch den Platz der MAKE-Leiste darunter ab (92px + 1px Sprungmarke), sonst bliebe oben ein Streifen frei. */
+  html.bewegt .fuss {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; min-height: 0; visibility: hidden;
+    height: calc(85vh + 93px + env(safe-area-inset-bottom, 0px));
+  }
+  html.bewegt .fuss.offen { visibility: visible; }
+  html.bewegt .wortmarke { padding-bottom: var(--frei-unten); }
+}
+
+/* ═══ Anfrage (sendet nichts) ═══ */
+.anfrage {
+  width: min(34rem, calc(100vw - 2rem)); max-width: 560px; max-height: calc(100dvh - 2rem); padding: 0;
+  border: 1px solid rgb(255 255 255 / .12); border-radius: .5rem;
+  background: rgb(18 19 17 / .94); color: var(--weiss);
+  -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+  font-size: max(var(--t-body), 15px);
+}
+.anfrage::backdrop { background: rgb(0 0 0 / .6); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.anfrage-form { display: flex; flex-direction: column; gap: 1.125rem; padding: max(2rem, 22px); }
+.anfrage-kopf { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.anfrage-kopf h2 { font-size: max(var(--t-title), 22px); line-height: 1.1; letter-spacing: -.02em; text-transform: uppercase; }
+.anfrage-zu {
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: .25rem; background: rgb(255 255 255 / .06);
+}
+.anfrage-zu:hover { background: rgb(255 255 255 / .12); }
+.anfrage-zu svg { width: 20px; height: 20px; }
+.anliegen { border: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.anliegen legend { margin-bottom: .625rem; padding: 0; font-size: max(var(--t-caption), 12px); letter-spacing: .2em; text-transform: uppercase; color: rgb(255 255 255 / .7); }
+.anliegen label { position: relative; display: inline-flex; }
+.anliegen input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.anliegen span {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem;
+  border: 1px solid rgb(255 255 255 / .18); border-radius: .25rem;
+  transition: background-color var(--schnell), border-color var(--schnell);
+}
+.anliegen input:checked + span { background: var(--weiss); color: var(--n950); border-color: var(--weiss); }
+.anliegen input:focus-visible + span { outline: 2px solid var(--weiss); outline-offset: 3px; }
+.feld { display: flex; flex-direction: column; gap: .375rem; }
+.feld > label { font-size: max(var(--t-caption), 12px); letter-spacing: .14em; text-transform: uppercase; color: rgb(255 255 255 / .76); }
+.feld input, .feld textarea {
+  width: 100%; min-height: 44px; padding: .625rem .75rem;
+  border: 1px solid rgb(255 255 255 / .18); border-radius: .25rem; background: rgb(255 255 255 / .04);
+  color: var(--weiss); font: inherit; font-size: max(1rem, 16px); letter-spacing: 0;
+}
+.feld textarea { resize: vertical; }
+.feld input:focus-visible, .feld textarea:focus-visible { outline: 2px solid var(--weiss); outline-offset: 2px; }
+.feld [aria-invalid="true"] { border-color: var(--warn); }
+.feld-fehler { font-size: max(var(--t-caption), 13px); line-height: 1.4; color: var(--warn); }
+.feld-fehler[hidden] { display: none; }
+.senden { align-self: flex-start; cursor: pointer; }
+.anfrage-hinweis { min-height: 1.5em; font-size: max(var(--t-body), 15px); line-height: 1.45; color: rgb(255 255 255 / .92); }
+
+/* ═══ Marke am Zeiger über dem Film ═══ */
+html.bewegt .marke-zeiger { display: block; position: fixed; left: 0; top: 0; z-index: 110; pointer-events: none; opacity: 0; }
+.marke-zeiger span {
+  display: block; transform: translate(-50%, -50%); padding: .625rem 1.5rem;
+  border: 1px solid rgb(255 255 255 / .25); border-radius: .125rem;
+  background: rgb(255 255 255 / .12); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / .18), 0 4px 6px -4px rgb(0 0 0 / .18);
+  font-size: var(--t-badge); font-weight: 600; letter-spacing: .22em; text-transform: uppercase; white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; animation-delay: 0s !important; scroll-behavior: auto !important; }
+}
