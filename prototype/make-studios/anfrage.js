@@ -10,8 +10,8 @@
   const ZIEL = (() => { const a = D.querySelector('a[href^="mailto:"]'); return a ? decodeURIComponent(a.getAttribute('href').slice(7).split('?')[0]) : ''; })();
   const RUHIG = W.matchMedia && W.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const BRANCHEN = { gastro: 'Café oder Restaurant', agentur: 'Agentur', immobilien: 'Immobilien', andere: 'Etwas anderes' };
-  const BRANCHEN_GRUPPE = { gastro: 'Cafés & Restaurants', agentur: 'Agenturen', immobilien: 'Immobilien', andere: 'Ihr Betrieb' };
+  const BRANCHEN = { bau: 'Bau und Handwerk', technik: 'Innovative Produkte', agentur: 'Agenturen und Coaches', andere: 'Etwas anderes' };
+  const BRANCHEN_GRUPPE = { bau: 'Bau & Handwerk', technik: 'Innovative Produkte', agentur: 'Agenturen & Coaches', andere: 'Ihr Betrieb' };
 
   function el(tag, attrs, kinder) {
     const n = D.createElement(tag);
@@ -101,7 +101,6 @@
     const balken = dlg.querySelector('.buchen-balken');
     const zurueck = dlg.querySelector('[data-zurueck]');
     const weiter = dlg.querySelector('[data-weiter]');
-    const gastro = dlg.querySelector('.buchen-gastro');
     const checkKasten = dlg.querySelector('.buchen-check');
     const checkText = dlg.querySelector('.buchen-check-text');
     const kopieren = dlg.querySelector('[data-kopieren]');
@@ -134,7 +133,6 @@
           if (x !== t && (t.value === 'offen' || x.value === 'offen')) x.checked = false;
         });
       }
-      if (t.name === 'branche') gastroHinweis();
       const gruppe = t.closest('[data-feld]');
       if (gruppe && gruppe.classList.contains('hat-fehler')) fehlerWeg(gruppe);
     });
@@ -142,12 +140,6 @@
       const gruppe = e.target.closest && e.target.closest('[data-feld]');
       if (gruppe && gruppe.classList.contains('hat-fehler')) fehlerWeg(gruppe);
     });
-
-    function gastroHinweis() {
-      const g = wert('branche') === 'gastro';
-      gastro.hidden = !g;
-      if (g && !wert('zeit') && schritt === 1) { const n = form.querySelector('input[name="zeit"][value="nachmittag"]'); if (n) n.checked = true; }
-    }
 
     function zeigen(n, fokus) {
       schritt = n;
@@ -157,7 +149,6 @@
       balken.style.setProperty('--anteil', String((n + 1) / teile.length));
       zurueck.hidden = n === 0;
       weiter.textContent = n === teile.length - 1 ? 'Anfrage senden' : 'Weiter';
-      if (n === 1) gastroHinweis();
       if (n === 2) checkAnzeigen();
       inhalt.scrollTop = 0;
       if (fokus) { const h = teile[n].querySelector('.buchen-frage'); if (h) h.focus({ preventScroll: true }); }
@@ -293,13 +284,8 @@
   const QUELLE = {
     google: ['Google, Hilfe zum Unternehmensprofil', 'https://support.google.com/business/answer/10515606?hl=de', 'Herstellerangabe'],
     brightlocal: ['BrightLocal, Local Consumer Review Survey 2026', 'https://www.brightlocal.com/research/local-consumer-review-survey/', 'USA'],
-    bitkomGastro: ['Bitkom, Juni 2024', 'https://www.bitkom.org/Presse/Presseinformation/Restaurants-und-Cafes-Online-Bewertungen-entscheidend', 'Deutschland'],
     sixsense: ['6sense, Buyer Experience Report 2025', 'https://6sense.com/report/buyer-experience/', 'international'],
-    gartner: ['Gartner, Juni 2025', 'https://www.gartner.com/en/newsroom/press-releases/2025-06-25-gartner-sales-survey-finds-61-percent-of-b2b-buyers-prefer-a-rep-free-buying-experience', 'international'],
-    bitkomImmo: ['Bitkom, Oktober 2025', 'https://www.bitkom.org/Presse/Presseinformation/Zwischen-Klick-und-Klingel-neues-Zuhause-suchen', 'Deutschland'],
-    bitkomImmoAlt: ['Bitkom, November 2021', 'https://www.bitkom.org/Presse/Presseinformation/70-Prozent-suchen-online-Immobilien', 'Deutschland · älter'],
-    is24Video: ['ImmoScout24, April 2020', 'https://www.immobilienscout24.de/unternehmen/news-medien/news/default-title/gerade-in-zeiten-von-corona-video-besichtigung-fuer-60-prozent-der-deutschen-gute-alternative-bei-der-immobiliensuche/', 'Deutschland · älter'],
-    is24Eigen: ['ImmoScout24, Mai 2024', 'https://www.scout24.com/fileadmin/user_upload/20240508_IS24_Eigentuemer_und_Makler.pdf', 'Deutschland']
+    gartner: ['Gartner, Juni 2025', 'https://www.gartner.com/en/newsroom/press-releases/2025-06-25-gartner-sales-survey-finds-61-percent-of-b2b-buyers-prefer-a-rep-free-buying-experience', 'international']
   };
   const P = ' %';
   // Je Frage: Gewicht w, drei Antworten (2 · 1 · 0 Punkte), der Hebel dazu und, wo es eine gibt, die belegte Zahl von dieser Seite.
@@ -317,16 +303,13 @@
       hebel: 'Website fürs Handy bauen', tipp: 'Schnell laden, das Wichtigste oben, Anruf und Anfrage mit einem Tippen.', beleg: null }
   ];
   const JE_BRANCHE = {
-    gastro: [
-      { id: 'speisekarte', w: 2, kurz: 'Speisekarte', frage: 'Steht Ihre Speisekarte als Text auf Ihrer Website?', a: ['Ja, als Text und aktuell', 'Nur als PDF oder Foto', 'Nein'],
-        hebel: 'Speisekarte als Text zeigen', tipp: 'Gut lesbar am Handy, ohne PDF, und immer aktuell.',
-        beleg: { zahl: '53' + P, satz: 'sehen sich die Speisekarte vor dem Besuch online an.', q: 'bitkomGastro' } },
-      { id: 'reservieren', w: 1, kurz: 'Reservierung', frage: 'Kann man bei Ihnen online einen Tisch reservieren?', a: ['Ja, in wenigen Klicks', 'Nur per Telefon oder E-Mail', 'Nein, gar nicht'],
-        hebel: 'Online-Reservierung anbieten', tipp: 'Ein Tisch in wenigen Klicks, auch außerhalb Ihrer Öffnungszeiten.',
-        beleg: { zahl: '47' + P, satz: 'reservieren am liebsten online.', q: 'bitkomGastro' } },
-      { id: 'bilder', w: 2, kurz: 'Fotos', frage: 'Zeigen aktuelle Fotos Ihre Gerichte und Ihren Gastraum?', a: ['Ja, gute und aktuelle', 'Ein paar, eher ältere', 'Kaum welche'],
-        hebel: 'Aktuelle Fotos zeigen', tipp: 'Gerichte, Gastraum und Team, so wie es bei Ihnen aussieht.',
-        beleg: { zahl: '69' + P, satz: 'erwarten Fotos, wenn sie sich ein Café oder Restaurant online ansehen.', q: 'bitkomGastro' } }
+    technik: [
+      { id: 'produkt', w: 3, kurz: 'Produkt erklärt', frage: 'Erklärt Ihre Website Ihr Produkt in wenigen Sätzen und ohne Fachbegriffe?', a: ['Ja, klar und verständlich', 'Nur mit Fachbegriffen', 'Nein, oder es fehlt'],
+        hebel: 'Produkt in einfachen Worten erklären', tipp: 'Was es tut, für wen es ist und was es besser macht, in drei Sätzen am Anfang der Seite.', beleg: null },
+      { id: 'einsatz', w: 2, kurz: 'Im Einsatz gezeigt', frage: 'Zeigen Sie Ihr Produkt im Einsatz, mit Film oder konkreten Beispielen?', a: ['Ja, mit Film oder Beispielen', 'Nur Datenblätter oder Fotos', 'Nein'],
+        hebel: 'Das Produkt im Einsatz zeigen', tipp: 'Ein kurzer Film oder ein Beispiel zeigt in Sekunden, was Datenblätter nicht erklären.', beleg: null },
+      { id: 'nachweise', w: 1, kurz: 'Nachweise sichtbar', frage: 'Sind Zulassungen, Zertifikate oder Prüfzeichen auf Ihrer Website zu sehen?', a: ['Ja, gut sichtbar', 'Versteckt oder unvollständig', 'Nein'],
+        hebel: 'Zulassungen und Nachweise zeigen', tipp: 'Wer neue Technik kauft, will wissen, dass sie geprüft und erlaubt ist.', beleg: null }
     ],
     agentur: [
       { id: 'faelle', w: 3, kurz: 'Fallbeispiele', frage: 'Zeigen Sie Fallbeispiele mit Ergebnis?', a: ['Ja, mehrere und aktuell', 'Ein paar, ohne Ergebnis', 'Keine'],
@@ -339,16 +322,13 @@
         hebel: 'Ein Bild auf allen Kanälen', tipp: 'Website, LinkedIn und Gespräch erzählen dieselbe Geschichte.',
         beleg: { zahl: '69' + P, satz: 'bemerken Widersprüche zwischen dem, was die Website sagt, und dem, was der Vertrieb erzählt.', q: 'gartner' } }
     ],
-    immobilien: [
-      { id: 'objektfotos', w: 2, kurz: 'Objektfotos', frage: 'Haben Ihre Objekte professionelle Fotos?', a: ['Ja, alle', 'Manche', 'Eher nicht'],
-        hebel: 'Professionelle Objektfotos', tipp: 'Helle, ruhige Bilder für jedes Objekt, vom Eingang bis zum Ausblick.',
-        beleg: { zahl: '96' + P, satz: 'legen Wert auf aussagekräftige Fotos des Objekts.', q: 'bitkomImmoAlt' } },
-      { id: 'video', w: 2, kurz: 'Video', frage: 'Gibt es zu Ihren Objekten ein Video oder einen Rundgang?', a: ['Ja, regelmäßig', 'Selten', 'Nie'],
-        hebel: 'Video-Rundgang je Objekt', tipp: 'Ein kurzer Rundgang als erste Besichtigung, bevor jemand anruft.',
-        beleg: { zahl: '+40' + P, satz: 'mehr Kontaktanfragen bei Angeboten mit Video-Besichtigung, laut ImmoScout24.', q: 'is24Video' } },
-      { id: 'eigentuemer', w: 3, kurz: 'Eigentümer', frage: 'Gibt es auf Ihrer Seite einen eigenen Bereich für Eigentümer?', a: ['Ja, mit Anfrage zur Wertermittlung', 'Nur ein allgemeines Kontaktformular', 'Nein'],
-        hebel: 'Seite für Eigentümer', tipp: 'Mit Anfrage zur Wertermittlung, damit Eigentümer bei Ihnen anfragen.',
-        beleg: { zahl: '74' + P, satz: 'der Eigentümer wünschen sich eine kostenlose Bewertung, bevor sie einen Makler wählen.', q: 'is24Eigen' } }
+    bau: [
+      { id: 'projekte', w: 3, kurz: 'Projekte gezeigt', frage: 'Zeigen Sie fertige Projekte mit eigenen Fotos?', a: ['Ja, nach Bereichen geordnet', 'Ein paar, ohne Ordnung', 'Kaum oder keine'],
+        hebel: 'Fertige Projekte zeigen', tipp: 'Fotos echter Projekte, nach Bereichen geordnet, mit einem Satz zur Aufgabe.', beleg: null },
+      { id: 'film', w: 2, kurz: 'Film von der Baustelle', frage: 'Gibt es einen kurzen Film oder Reels von Ihrer Arbeit?', a: ['Ja, regelmäßig', 'Selten', 'Nie'],
+        hebel: 'Film von der Baustelle', tipp: 'Ein kurzer Film zeigt in Sekunden, wie Sie arbeiten, und lässt sich als Reel weiterverwenden.', beleg: null },
+      { id: 'anfrage', w: 2, kurz: 'Kurze Anfrage', frage: 'Kann man bei Ihnen mit wenigen Feldern anfragen, auch am Handy?', a: ['Ja, mit wenigen Feldern', 'Ja, aber umständlich', 'Nein'],
+        hebel: 'Anfrage mit wenigen Feldern', tipp: 'Name, Telefon, kurze Beschreibung: mehr braucht es für den ersten Schritt nicht.', beleg: null }
     ],
     andere: [
       { id: 'kontakt', w: 2, kurz: 'Kontakt', frage: 'Kann man Sie auf Ihrer Website mit einem Tippen anrufen oder anfragen?', a: ['Ja, auf jeder Seite', 'Irgendwo schon', 'Nein'],
@@ -360,7 +340,7 @@
     ]
   };
   const BRANCHEN_WAHL = [
-    ['gastro', 'Café oder Restaurant'], ['agentur', 'Agentur'], ['immobilien', 'Immobilien: Makler oder Hausverwaltung'], ['andere', 'Etwas anderes']
+    ['bau', 'Bau und Handwerk'], ['technik', 'Innovative Produkte'], ['agentur', 'Agenturen und Coaches'], ['andere', 'Etwas anderes']
   ];
   function stufeVon(p) {
     if (p >= 80) return ['Gut sichtbar', 'Sie sind gut aufgestellt. Jetzt geht es um die Feinheiten, die aus Besuchern Anfragen machen.'];

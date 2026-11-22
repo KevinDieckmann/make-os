@@ -1,6 +1,6 @@
 // seite.js · Lotwerk, Beispielseite für ein Bauunternehmen.
 // Jeder Abschnitt startet für sich; scheitert einer, laufen die anderen weiter.
-import Lenis from '../vendor/lenis/lenis.mjs';
+import Lenis from '../vendor/lenis/lenis.js';
 import {
   ruhig, feinerZeiger, imTakt, nach, Feder, bewegung, F, ENTRY_DELAY, ENTRY_STAGGER,
   imBlick, scrub, worte, zaehler, rollen, beimZeigen,

@@ -3,6 +3,11 @@
 // läuft nichts: dann bleiben die Standbilder, und die Einstellungen lassen sich von Hand wählen.
 import { Feder, imTakt, ruhig } from './motor.js';
 
+// Filme laden erst nach der ersten Eingabe (Scrollen, Tippen, Taste, Maus): vorher steht nur das Poster, der erste Bildschirm bleibt leicht.
+let eingabe = false;
+const wartende = new Set();
+['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach((n) => addEventListener(n, () => { if (eingabe) return; eingabe = true; wartende.forEach((f) => f()); }, { passive: true }));
+
 const BLENDE = 0.9;        // so viele Sekunden vor dem Ende beginnt die nächste Einstellung
 const STANDZEIT = 4;       // so lange steht ein Standbild, wenn sein Video nicht lädt
 const WARTEN_MAX = 8000;   // ms: so lange darf ein Video auf sich warten lassen
@@ -49,8 +54,9 @@ export function film(wurzel) {
     if (knopfText) knopfText.textContent = laeuft ? 'Film anhalten' : 'Film abspielen';
   };
 
+  wartende.add(() => spielen());
   const spielen = () => {
-    const soll = darf && sichtbar && laeuft && !document.hidden;
+    const soll = darf && eingabe && sichtbar && laeuft && !document.hidden;
     if (!soll) {
       videos.forEach((v, i) => { if (angefragt[i]) v.pause(); });
       if (taktAus) { taktAus(); taktAus = null; }

@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beispiel · Kurswerk Beratung · MAKE Studios</title>
+<meta name="description" content="Beispielseite: Kurswerk Beratung, Unternehmensberatung für Familienunternehmen und Mittelstand in Berlin und Brandenburg.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0B1C28">
+<link rel="icon" href="../../zeichen.svg" type="image/svg+xml">
+<link rel="preload" href="schriften/space-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../leiste.css">
+<link rel="stylesheet" href="seite.css">
+<noscript><link rel="stylesheet" href="ohne-skript.css"></noscript>
+<script type="module" src="seite.js"></script>
+</head>
+<body>
+
+<svg class="vorrat" aria-hidden="true" focusable="false" width="0" height="0">
+  <symbol id="kurs" viewBox="0 0 40 40">
+    <circle cx="20" cy="20" r="17" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M9 28C14 28 15 15 21 15S27 24 32 11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="32" cy="11" r="3" fill="currentColor"/>
+  </symbol>
+  <symbol id="pfeil" viewBox="0 0 24 24">
+    <path d="M5 12h13M12.5 6.5 18 12l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>
+
+<a class="sprung" href="#inhalt">Zum Inhalt springen</a>
+<div class="fortschritt" aria-hidden="true"><i></i></div>
+
+<header class="kopf" id="kopf">
+  <a class="marke" href="#probleme" aria-label="Kurswerk Beratung, zum Seitenanfang">
+    <svg class="marke-zeichen" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><use href="#kurs"/></svg>
+    <span class="marke-text"><b>Kurswerk</b><i>Beratung</i></span>
+  </a>
+  <nav class="wege" aria-label="Hauptmenü">
+    <ul>
+      <li><a href="#probleme">Probleme</a></li>
+      <li><a href="#leistungen">Leistungen</a></li>
+      <li><a href="#vorgehen">Vorgehen</a></li>
+      <li><a href="#faelle">Fälle</a></li>
+      <li><a href="#team">Team</a></li>
+      <li><a href="#fragen">Fragen</a></li>
+    </ul>
+  </nav>
+  <a class="kopf-knopf" href="#kontakt">Erstgespräch</a>
+</header>
+
+<main id="inhalt">
+
+  <!-- ═══ Einstieg ═══ -->
+  <!-- ═══ Probleme zuerst: die Szene ═══ -->
+  <section class="probleme einstieg" id="probleme" aria-labelledby="start-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett etikett-hell">Unternehmensberatung für den Mittelstand</p>
+      <h1 id="start-titel">Erst das Problem. <em>Dann der Kurs.</em></h1>
+      <p class="abschnitt-satz">Kurswerk berät Familienunternehmen und Mittelständler in Berlin und Brandenburg, wenn Nachfolge, Wachstum, Abläufe oder Zahlen nicht mehr von allein laufen. Wählen Sie Ihr Problem: Sie sehen den Weg, den wir mit Ihnen gehen würden.</p>
+      <div class="start-wege">
+        <a class="knopf" href="#kontakt">Erstgespräch vereinbaren<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#pfeil"/></svg></a>
+        <span class="start-klein">Eine halbe Stunde, kostenlos. Danach erhalten Sie ein schriftliches Angebot mit festem Preis je Phase.</span>
+      </div>
+    </header>
+
+    <div class="seekarte">
+      <div class="wahl" role="radiogroup" aria-label="Problem wählen">
+        <button class="wahl-knopf" type="button" role="radio" aria-checked="true" data-fall="nachfolge"><b>Nachfolge</b><span>Die Übergabe ist offen oder ungeklärt.</span></button>
+        <button class="wahl-knopf" type="button" role="radio" aria-checked="false" data-fall="wachstum"><b>Wachstum</b><span>Es läuft, aber es geht nicht weiter.</span></button>
+        <button class="wahl-knopf" type="button" role="radio" aria-checked="false" data-fall="ablaeufe"><b>Abläufe</b><span>Arbeit bleibt liegen, alles hängt an wenigen.</span></button>
+        <button class="wahl-knopf" type="button" role="radio" aria-checked="false" data-fall="zahlen"><b>Zahlen</b><span>Entscheidungen fallen nach Gefühl.</span></button>
+      </div>
+
+      <figure class="karte" aria-hidden="true">
+        <svg id="karte" viewBox="0 0 900 440" focusable="false">
+          <defs>
+            <pattern id="gitter" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="currentColor" stroke-width="1"/></pattern>
+          </defs>
+          <rect class="karte-grund" width="900" height="440" rx="6"/>
+          <rect class="karte-gitter" width="900" height="440" fill="url(#gitter)"/>
+          <g class="karte-tiefe" fill="none" stroke-width="1.2">
+            <path d="M0 400C140 360 240 410 380 380S640 330 900 372"/>
+            <path d="M0 360C150 322 250 372 392 342S650 292 900 330"/>
+            <path d="M0 322C160 286 260 332 404 304S660 256 900 290" />
+          </g>
+          <g class="karte-rose" transform="translate(800 372)">
+            <circle r="42" fill="none" stroke-width="1.2"/><circle r="30" fill="none" stroke-width=".8"/>
+            <path d="M0-52 8 0 0 52-8 0Z" class="rose-n"/><path d="M-52 0 0-7 52 0 0 7Z" fill="none" stroke-width="1"/>
+            <text y="-58" text-anchor="middle">N</text>
+          </g>
+          <path id="karte-weg" class="karte-weg" d="M70 360C190 360 230 200 350 200S560 330 650 250S800 130 850 110"/>
+          <path id="karte-gezogen" class="karte-gezogen" d="M70 360C190 360 230 200 350 200S560 330 650 250S800 130 850 110"/>
+          <g id="karte-punkte">
+            <g class="punkt" data-i="0"><circle r="11"/><text y="4">1</text><text class="punkt-name" y="-20">Peilung</text></g>
+            <g class="punkt" data-i="1"><circle r="11"/><text y="4">2</text><text class="punkt-name" y="-20">Plan</text></g>
+            <g class="punkt" data-i="2"><circle r="11"/><text y="4">3</text><text class="punkt-name" y="-20">Umsetzung</text></g>
+            <g class="punkt" data-i="3"><circle r="11"/><text y="4">4</text><text class="punkt-name punkt-name-ende" y="-20">Übergabe</text></g>
+          </g>
+          <path id="karte-schiff" class="karte-schiff" d="M0-9 7 7 0 3-7 7Z"/>
+        </svg>
+      </figure>
+    </div>
+
+    <div class="faelle-liste">
+
+      <article class="problem" id="p-nachfolge" data-fall="nachfolge" tabindex="-1" aria-labelledby="pt-nachfolge">
+        <h3 id="pt-nachfolge">Nachfolge</h3>
+        <div class="problem-raster">
+          <ol class="schritte">
+            <li data-i="0"><b>Peilung</b><span>Wer will übernehmen, wer kann es, und was ist der Betrieb für die Familie und für die Mitarbeitenden?</span></li>
+            <li data-i="1"><b>Plan</b><span>Ein Übergabeplan mit Rollen, Zeitpunkten und der Frage, wer was entscheidet, solange beide Generationen im Haus sind.</span></li>
+            <li data-i="2"><b>Umsetzung</b><span>Verantwortung geht Schritt für Schritt über. Wir begleiten die Gespräche, die in Familien sonst liegen bleiben.</span></li>
+            <li data-i="3"><b>Übergabe</b><span>Der Betrieb läuft ohne Sie. Sie bestimmen, wie weit Sie noch dabei sind.</span></li>
+          </ol>
+          <div class="ergebnis">
+            <h4>Das liegt am Ende bei Ihnen</h4>
+            <ul><li>Ein Übergabeplan mit Terminen</li><li>Beschriebene Rollen für die Zeit danach</li><li>Ein Leitfaden für die Gespräche mit Familie und Team</li></ul>
+          </div>
+          <fieldset class="pruefen">
+            <legend>Trifft das bei Ihnen zu?</legend>
+            <label><input type="checkbox"><span>Es gibt keinen Zeitplan für die Übergabe.</span></label>
+            <label><input type="checkbox"><span>Wichtiges Wissen steckt nur in einem Kopf.</span></label>
+            <label><input type="checkbox"><span>In der Familie wird das Thema vermieden.</span></label>
+            <div class="pegel" aria-hidden="true"><i></i></div>
+            <p class="urteil" role="status" aria-live="polite"></p>
+          </fieldset>
+        </div>
+      </article>
+
+      <article class="problem" id="p-wachstum" data-fall="wachstum" tabindex="-1" aria-labelledby="pt-wachstum">
+        <h3 id="pt-wachstum">Wachstum</h3>
+        <div class="problem-raster">
+          <ol class="schritte">
+            <li data-i="0"><b>Peilung</b><span>Woher kommt Ihr Umsatz, und wo gehen Anfragen verloren, bevor ein Auftrag daraus wird?</span></li>
+            <li data-i="1"><b>Plan</b><span>Wenige Hebel statt einer langen Ideenliste. Jeder Hebel bekommt einen Verantwortlichen und einen Termin.</span></li>
+            <li data-i="2"><b>Umsetzung</b><span>Die Hebel werden im Alltag verankert, in Terminen, die ohnehin stattfinden.</span></li>
+            <li data-i="3"><b>Übergabe</b><span>Ihr Team führt es weiter. Sie sehen an einer Seite, ob der Kurs hält.</span></li>
+          </ol>
+          <div class="ergebnis">
+            <h4>Das liegt am Ende bei Ihnen</h4>
+            <ul><li>Eine Übersicht, wo Umsatz entsteht und verloren geht</li><li>Ein Maßnahmenplan mit Verantwortlichen</li><li>Eine Seite Kennzahlen für die Monatsrunde</li></ul>
+          </div>
+          <fieldset class="pruefen">
+            <legend>Trifft das bei Ihnen zu?</legend>
+            <label><input type="checkbox"><span>Neue Aufträge kommen fast nur über Empfehlungen.</span></label>
+            <label><input type="checkbox"><span>Sie wissen nicht genau, was ein Neukunde Sie kostet.</span></label>
+            <label><input type="checkbox"><span>Es gibt viele Ideen, aber keine Reihenfolge.</span></label>
+            <div class="pegel" aria-hidden="true"><i></i></div>
+            <p class="urteil" role="status" aria-live="polite"></p>
+          </fieldset>
+        </div>
+      </article>
+
+      <article class="problem" id="p-ablaeufe" data-fall="ablaeufe" tabindex="-1" aria-labelledby="pt-ablaeufe">
+        <h3 id="pt-ablaeufe">Abläufe</h3>
+        <div class="problem-raster">
+          <ol class="schritte">
+            <li data-i="0"><b>Peilung</b><span>Wir folgen einem Auftrag vom Eingang bis zur Rechnung und markieren, wo er wartet.</span></li>
+            <li data-i="1"><b>Plan</b><span>Ein einfacher Soll-Ablauf, den Ihr Team selbst mitzeichnet, damit er gelebt wird.</span></li>
+            <li data-i="2"><b>Umsetzung</b><span>Wir stellen um, ohne den Betrieb anzuhalten, Station für Station.</span></li>
+            <li data-i="3"><b>Übergabe</b><span>Zuständigkeiten sind aufgeschrieben. Es hängt nicht mehr alles an wenigen Personen.</span></li>
+          </ol>
+          <div class="ergebnis">
+            <h4>Das liegt am Ende bei Ihnen</h4>
+            <ul><li>Ein gezeichneter Ablauf vom Auftrag bis zur Rechnung</li><li>Eine Liste, wer wofür zuständig ist</li><li>Kurze Checklisten für die häufigsten Fälle</li></ul>
+          </div>
+          <fieldset class="pruefen">
+            <legend>Trifft das bei Ihnen zu?</legend>
+            <label><input type="checkbox"><span>Aufträge bleiben an derselben Stelle liegen.</span></label>
+            <label><input type="checkbox"><span>Bei Urlaub oder Krankheit steht etwas still.</span></label>
+            <label><input type="checkbox"><span>Dieselben Fehler passieren mehrfach.</span></label>
+            <div class="pegel" aria-hidden="true"><i></i></div>
+            <p class="urteil" role="status" aria-live="polite"></p>
+          </fieldset>
+        </div>
+      </article>
+
+      <article class="problem" id="p-zahlen" data-fall="zahlen" tabindex="-1" aria-labelledby="pt-zahlen">
+        <h3 id="pt-zahlen">Zahlen</h3>
+        <div class="problem-raster">
+          <ol class="schritte">
+            <li data-i="0"><b>Peilung</b><span>Welche Fragen sollen Ihre Zahlen beantworten? Wir beginnen bei den Entscheidungen, nicht bei den Tabellen.</span></li>
+            <li data-i="1"><b>Plan</b><span>Wenige Kennzahlen, die Sie wirklich brauchen, und woher sie kommen.</span></li>
+            <li data-i="2"><b>Umsetzung</b><span>Die Auswertung entsteht aus Ihren vorhandenen Programmen, nicht aus neuer Handarbeit.</span></li>
+            <li data-i="3"><b>Übergabe</b><span>Eine Monatsübersicht, die Ihr Büro selbst pflegt und die Sie in wenigen Minuten lesen können.</span></li>
+          </ol>
+          <div class="ergebnis">
+            <h4>Das liegt am Ende bei Ihnen</h4>
+            <ul><li>Eine Liste der Fragen, die Zahlen beantworten sollen</li><li>Eine Monatsübersicht mit wenigen Kennzahlen</li><li>Eine Beschreibung, wer sie wann aktualisiert</li></ul>
+          </div>
+          <fieldset class="pruefen">
+            <legend>Trifft das bei Ihnen zu?</legend>
+            <label><input type="checkbox"><span>Zahlen kommen erst Wochen nach Monatsende.</span></label>
+            <label><input type="checkbox"><span>Jede Abteilung hat eigene Tabellen.</span></label>
+            <label><input type="checkbox"><span>Sie entscheiden Investitionen nach Gefühl.</span></label>
+            <div class="pegel" aria-hidden="true"><i></i></div>
+            <p class="urteil" role="status" aria-live="polite"></p>
+          </fieldset>
+        </div>
+      </article>
+
+    </div>
+    <p class="probleme-fuss">Diese Einschätzung ist eine Orientierung und ersetzt kein Gespräch. Es wird nichts gespeichert oder gesendet.</p>
+  </section>
+
+  <!-- ═══ Leistungen ═══ -->
+  <section class="leistungen" id="leistungen" aria-labelledby="leistungen-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett">Leistungen</p>
+      <h2 id="leistungen-titel">Was wir tun, in einfachen Worten</h2>
+    </header>
+    <ul class="verzeichnis">
+      <li><span class="nr">01</span><h3>Strategie</h3><p>Wir klären, wohin der Betrieb in den nächsten Jahren soll, womit er sein Geld verdient und was er dafür lassen muss.</p></li>
+      <li><span class="nr">02</span><h3>Prozessoptimierung</h3><p>Wir machen Abläufe schneller und weniger fehleranfällig, mit Ihrem Team und ohne Handbuch, das niemand liest.</p></li>
+      <li><span class="nr">03</span><h3>Organisationsentwicklung</h3><p>Wer entscheidet was, wer führt wen, wie sprechen die Bereiche miteinander. Aufgeschrieben und eingeübt.</p></li>
+      <li><span class="nr">04</span><h3>Nachfolge</h3><p>Der Weg von der Frage „Wer macht weiter?“ bis zur Übergabe, fachlich und im Gespräch mit der Familie.</p></li>
+      <li><span class="nr">05</span><h3>Transformation</h3><p>Wenn sich Markt, Technik oder Eigentümer ändern: ein Veränderungsprojekt, das Ihre Leute mitnimmt.</p></li>
+    </ul>
+  </section>
+
+  <!-- ═══ Vorgehen ═══ -->
+  <section class="vorgehen" id="vorgehen" aria-labelledby="vorgehen-titel">
+    <figure class="vorgehen-film">
+      <div class="film">
+        <img class="film-poster" src="medien/werkstatt-960.jpg" width="960" height="540" alt="Beispielbild: Fünf Menschen sitzen an einem Holztisch mit Laptops und Papieren, an der Wand dahinter hängt eine Korkwand mit blauen Haftnotizen." loading="lazy" decoding="async">
+        <video class="film-video" src="medien/werkstatt-960.mp4" muted playsinline loop preload="none" width="960" height="540" tabindex="-1" aria-hidden="true"></video>
+        <button class="film-knopf" type="button" hidden aria-label="Film anhalten"><span aria-hidden="true"></span></button>
+      </div>
+      <figcaption><span>Beispielfilm</span><span>Arbeit am Tisch, nicht in Folien</span></figcaption>
+    </figure>
+    <div class="vorgehen-text">
+      <header class="abschnitt-kopf">
+        <p class="etikett">Vorgehen</p>
+        <h2 id="vorgehen-titel">Drei Phasen, jede mit eigenem Preis</h2>
+      </header>
+      <ol class="phasen">
+        <li><h3>Analyse</h3><p>Wir hören zu, sehen uns Zahlen und Abläufe an und sprechen mit den Menschen im Betrieb. Am Ende steht ein kurzer Befund, den Sie auch ohne uns lesen können.</p><p class="bleibt">Bleibt bei Ihnen: der Befund, auch wenn Sie nicht weitermachen.</p></li>
+        <li><h3>Plan</h3><p>Aus dem Befund wird ein Plan mit wenigen Schritten, Verantwortlichen und Terminen. Sie entscheiden, was wir davon begleiten und was Sie selbst übernehmen.</p><p class="bleibt">Bleibt bei Ihnen: der Plan und alle Arbeitsunterlagen.</p></li>
+        <li><h3>Umsetzung</h3><p>Wir begleiten, bis es im Alltag trägt, und ziehen uns dann zurück. Ziel ist, dass Sie uns nicht mehr brauchen.</p><p class="bleibt">Bleibt bei Ihnen: ein Team, das es selbst weiterführt.</p></li>
+      </ol>
+      <p class="honorar"><b>So rechnen wir ab.</b> Jede Phase hat einen festen Preis, den Sie vorher schriftlich bekommen. Mehr Aufwand berechnen wir nur, wenn Sie ihn vorher zugesagt haben.</p>
+    </div>
+  </section>
+
+  <!-- ═══ Fälle ═══ -->
+  <section class="faelle" id="faelle" aria-labelledby="faelle-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett">Fälle</p>
+      <h2 id="faelle-titel">So sieht ein Ergebnis aus</h2>
+      <p class="abschnitt-satz">Drei erfundene Beispielfälle, bewusst ohne Zahlen. Auf einer echten Seite stünden hier Ihre Referenzen mit Einverständnis der Kunden.</p>
+    </header>
+    <div class="akten">
+      <article class="akte">
+        <p class="akte-kopf"><span>Beispielfall A</span><span>Handwerksbetrieb, zweite Generation</span></p>
+        <dl>
+          <dt>Ausgangslage</dt><dd>Der Inhaber will in einigen Jahren übergeben, die Tochter ist unsicher, die Meister fragen sich, was aus ihnen wird.</dd>
+          <dt>Vorgehen</dt><dd>Einzelgespräche, dann ein gemeinsamer Tag. Danach ein Übergabeplan mit Rollen für die Meister.</dd>
+          <dt>Ergebnis</dt><dd>Ein Zeitplan, dem alle zugestimmt haben, und ein erster Schritt, der schon begonnen hat.</dd>
+        </dl>
+      </article>
+      <article class="akte">
+        <p class="akte-kopf"><span>Beispielfall B</span><span>Großhändler mit Außendienst</span></p>
+        <dl>
+          <dt>Ausgangslage</dt><dd>Der Umsatz stagniert. Niemand weiß, welche Kunden sich lohnen und welche nur Arbeit machen.</dd>
+          <dt>Vorgehen</dt><dd>Auswertung der vorhandenen Aufträge, danach eine einfache Einteilung der Kunden und neue Besuchsrhythmen.</dd>
+          <dt>Ergebnis</dt><dd>Der Außendienst besucht gezielter, und die Geschäftsführung sieht monatlich, ob es wirkt.</dd>
+        </dl>
+      </article>
+      <article class="akte">
+        <p class="akte-kopf"><span>Beispielfall C</span><span>Dienstleister mit mehreren Standorten</span></p>
+        <dl>
+          <dt>Ausgangslage</dt><dd>Jeder Standort arbeitet anders. Fehler wiederholen sich, und Vertretung klappt nur mündlich.</dd>
+          <dt>Vorgehen</dt><dd>Ein gemeinsamer Ablauf, erarbeitet mit Leuten aus allen Standorten, dazu kurze Checklisten.</dd>
+          <dt>Ergebnis</dt><dd>Ein Ablauf für alle, der von den Standorten selbst gepflegt wird.</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- ═══ Team und Haltung ═══ -->
+  <section class="team" id="team" aria-labelledby="team-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett etikett-hell">Team und Haltung</p>
+      <h2 id="team-titel">Wer mit Ihnen arbeitet</h2>
+    </header>
+    <figure class="team-film">
+      <div class="film">
+        <img class="film-poster" loading="lazy" src="medien/gespraech-960.jpg" srcset="medien/gespraech-960.jpg 960w, medien/gespraech-1920.jpg 1920w" sizes="(min-width: 960px) 60vw, 100vw" width="1920" height="1080" alt="Beispielbild: Ein Berater in dunklem Anzug sitzt in einem Besprechungsraum mit Backsteinwand und hört zwei Gesprächspartnern zu, die dem Bild den Rücken zuwenden." decoding="async" fetchpriority="high">
+        <video class="film-video" src="medien/gespraech-960.mp4" data-gross="medien/gespraech-1920.mp4" data-nur-rechner muted playsinline loop preload="none" width="960" height="540" tabindex="-1" aria-hidden="true"></video>
+        <button class="film-knopf" type="button" hidden aria-label="Film anhalten"><span aria-hidden="true"></span></button>
+      </div>
+      <figcaption><span>Beispielfilm</span><span>Zuhören vor Beraten</span></figcaption>
+    </figure>
+    <div class="team-raster">
+      <ul class="menschen">
+        <li>
+          <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><circle cx="60" cy="60" r="58" class="bild-grund"/><circle cx="60" cy="60" r="50" class="bild-ring"/><text x="60" y="62" class="bild-schrift">AR</text></svg>
+          <div><h3>Anja Reuter</h3><p>Gründerin · Strategie und Nachfolge</p><span class="beispiel">Erfundene Person</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><circle cx="60" cy="60" r="58" class="bild-grund"/><circle cx="60" cy="60" r="50" class="bild-ring"/><text x="60" y="62" class="bild-schrift">TB</text></svg>
+          <div><h3>Tobias Brandt</h3><p>Partner · Abläufe und Zahlen</p><span class="beispiel">Erfundene Person</span></div>
+        </li>
+      </ul>
+      <ol class="haltung">
+        <li><b>Klartext.</b> Wenn eine Beratung nicht nötig ist, sagen wir es Ihnen im Erstgespräch.</li>
+        <li><b>Ihr Team arbeitet mit.</b> Pläne, die nur wir verstehen, tragen nicht.</li>
+        <li><b>Wir machen uns überflüssig.</b> Nach dem Projekt läuft es ohne uns.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ═══ Fragen ═══ -->
+  <section class="fragen" id="fragen" aria-labelledby="fragen-titel">
+    <header class="abschnitt-kopf">
+      <p class="etikett">Fragen</p>
+      <h2 id="fragen-titel">Was Unternehmer vor dem ersten Gespräch wissen wollen</h2>
+    </header>
+    <div class="fragen-liste">
+      <details name="frage"><summary>Was kostet Beratung, und wie wird abgerechnet?</summary><p>Jede der drei Phasen hat einen festen Preis, den Sie vorher schriftlich bekommen. Sie können nach jeder Phase aufhören. Das Erstgespräch kostet nichts.</p></details>
+      <details name="frage"><summary>Wie lange dauert ein Projekt?</summary><p>Das hängt vom Problem ab. Im Erstgespräch schätzen wir den Rahmen ehrlich ab, und der Plan nennt Termine für jeden Schritt. Es gibt kein Projekt ohne Enddatum.</p></details>
+      <details name="frage"><summary>Was bleibt nach dem Projekt bei uns?</summary><p>Alles: der Befund, der Plan, die Arbeitsunterlagen und ein Team, das die Schritte selbst weiterführt. Wir behalten nichts zurück, was Sie später von uns abhängig macht.</p></details>
+      <details name="frage"><summary>Haben Sie Erfahrung in unserer Branche?</summary><p>Auf dieser Beispielseite stünden hier die Branchen echter Referenzen. Wichtiger als die Branche ist oft die Frage, ob Ihr Problem zu unserer Arbeitsweise passt. Das klären wir im Erstgespräch.</p></details>
+      <details name="frage"><summary>Wie läuft das Erstgespräch?</summary><p>Eine halbe Stunde, per Telefon, Video oder bei Ihnen. Sie schildern Ihr Problem, wir fragen nach und sagen Ihnen, ob und wie wir helfen können. Danach entscheiden Sie in Ruhe.</p></details>
+    </div>
+  </section>
+
+  <!-- ═══ Kontakt ═══ -->
+  <section class="kontakt" id="kontakt" aria-labelledby="kontakt-titel">
+    <div class="kontakt-text">
+      <p class="etikett etikett-hell">Erstgespräch</p>
+      <h2 id="kontakt-titel">Beschreiben Sie Ihr Problem in zwei Sätzen.</h2>
+      <p>Wir melden uns mit einem Terminvorschlag. Mehr als diese zwei Sätze brauchen wir für den Anfang nicht.</p>
+      <p class="kontakt-direkt">Oder rufen Sie an: <a href="tel:+4930555010">030 555 010</a><br>Beispielweg 1, 10115 Berlin</p>
+    </div>
+    <div class="kontakt-form">
+      <form class="formular" id="anfrage-form" method="dialog" novalidate>
+        <div class="feld">
+          <label for="f-name">Ihr Name <span aria-hidden="true">*</span></label>
+          <input id="f-name" type="text" autocomplete="name" required aria-describedby="f-name-fehler">
+          <p class="feld-fehler" id="f-name-fehler" hidden>Bitte nennen Sie Ihren Namen.</p>
+        </div>
+        <div class="feld">
+          <label for="f-kontakt">E-Mail oder Telefon <span aria-hidden="true">*</span></label>
+          <input id="f-kontakt" type="text" autocomplete="email" inputmode="email" required aria-describedby="f-kontakt-fehler">
+          <p class="feld-fehler" id="f-kontakt-fehler" hidden>Bitte geben Sie eine E-Mail-Adresse oder eine Telefonnummer an.</p>
+        </div>
+        <div class="feld">
+          <label for="f-problem">Ihr Problem <span class="feld-leise">Nur, wenn Sie mögen</span></label>
+          <textarea id="f-problem" rows="3"></textarea>
+        </div>
+        <button class="knopf knopf-hell" type="submit">Erstgespräch anfragen<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#pfeil"/></svg></button>
+        <noscript><p class="formular-hinweis">Dies ist eine Beispielseite. Ihre Angaben werden nicht gesendet.</p></noscript>
+      </form>
+      <div class="formular-danke" id="anfrage-danke" role="status" tabindex="-1" hidden>
+        <h3>Danke<span id="danke-name"></span>.</h3>
+        <p>Dies ist eine Beispielseite. Ihre Angaben werden nicht gesendet.</p>
+        <button class="textlink textlink-hell" type="button" id="danke-zurueck">Zurück zum Formular</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="fuss">
+  <div class="fuss-marke">
+    <a class="marke" href="#probleme" aria-label="Kurswerk Beratung, zum Seitenanfang">
+      <svg class="marke-zeichen" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><use href="#kurs"/></svg>
+      <span class="marke-text"><b>Kurswerk</b><i>Beratung</i></span>
+    </a>
+    <p>Unternehmensberatung für den Mittelstand<br>Beispielweg 1 · 10115 Berlin</p>
+  </div>
+  <nav class="fuss-wege" aria-label="Fußmenü">
+    <ul>
+      <li><a href="#probleme">Probleme</a></li>
+      <li><a href="#leistungen">Leistungen</a></li>
+      <li><a href="#vorgehen">Vorgehen</a></li>
+      <li><a href="#faelle">Fälle</a></li>
+      <li><a href="#fragen">Fragen</a></li>
+      <li><a href="#kontakt">Kontakt</a></li>
+    </ul>
+  </nav>
+  <p class="fuss-klein">Beispielseite mit erfundenem Namen, erfundenen Personen und erfundenen Fällen. Hier stehen Ihre Angaben: Impressum, Datenschutz und, falls vorhanden, Mitgliedschaft in einem Berufsverband. Die Fotos und Filme zeigen nicht die genannten Personen.</p>
+</footer>
+
+<!-- ═══ Leiste von MAKE Studios: auf jeder Beispielseite, unverändert ═══ -->
+<div class="ms-platz" aria-hidden="true"></div>
+<nav class="ms-leiste" aria-label="MAKE Studios">
+  <a class="ms-marke" href="../../#beispielseiten" aria-label="Zurück zu den Beispielseiten von MAKE Studios"><img src="../../zeichen.svg" alt="" width="24" height="24"><b>MAKE</b><span>STUDIOS</span></a>
+  <span class="ms-hinweis"><b>Beispiel</b><span class="ms-lang"> · Namen erfunden</span></span>
+  <a class="ms-knopf" href="../../#erstgespraech-agentur">Erstgespräch</a>
+</nav>
+
+</body>
+</html>

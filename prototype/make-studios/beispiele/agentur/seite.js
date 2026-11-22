@@ -1,6 +1,6 @@
 // Passer · Büro für Marken (Beispielseite)
 // Ohne dieses Skript bleibt die Seite vollständig lesbar: Alles hier ist Zugabe.
-import Lenis from '../vendor/lenis/lenis.mjs';
+import Lenis from '../vendor/lenis/lenis.js';
 import { imTakt, beiBewegung, Feder, klemme } from './feder.js';
 import { reelEinrichten } from './reel.js';
 import { plattenEinrichten } from './platten.js';

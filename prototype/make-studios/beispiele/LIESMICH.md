@@ -4,7 +4,7 @@ Unter `beispiele/<name>/` liegen ausgearbeitete Beispielseiten. Sie hängen unte
 
 ## Neue Seite anlegen
 
-1. Ordner `_vorlage` kopieren und kurz benennen, zum Beispiel `cafe-am-markt` (nur Kleinbuchstaben, Ziffern und Bindestriche).
+1. Ordner `_vorlage` kopieren und kurz benennen, zum Beispiel `werkstatt-am-markt` (nur Kleinbuchstaben, Ziffern und Bindestriche).
 2. In `index.html` den Titel setzen: `Beispiel · Name des Betriebs · MAKE Studios`.
 3. Inhalt in `<main>` bauen, Design in `seite.css` derselben Seite. Eigene Bilder und Schriften legen Sie in den Ordner der Seite.
 4. Die Leiste am Ende (`ms-platz` und `ms-leiste`) bleibt unverändert.
@@ -23,4 +23,4 @@ Unter `beispiele/<name>/` liegen ausgearbeitete Beispielseiten. Sie hängen unte
 ## Verbindung zur Hauptseite
 
 - Das Zeichen und die Wortmarke in der Leiste führen zu `../../#beispielseiten` (Abschnitt „Beispielseiten“ auf der Hauptseite).
-- „Erstgespräch“ führt zu `../../#erstgespraech` und öffnet dort das Buchungsfenster. Mit `#erstgespraech-gastro`, `-agentur`, `-immobilien` oder `-andere` ist die Branche schon gewählt (Bau, Handwerk und Sanierung laufen über `-andere`).
+- „Erstgespräch“ führt zu `../../#erstgespraech` und öffnet dort das Buchungsfenster. Mit `#erstgespraech-bau`, `-technik`, `-agentur` oder `-andere` ist die Gruppe schon gewählt (Bau, Handwerk und Sanierung laufen über `-andere`).
