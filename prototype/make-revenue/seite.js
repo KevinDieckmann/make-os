@@ -1,6 +1,6 @@
 /* ─── MAKE Revenue · Verhalten der Seite ───────────────────────────────────────────────────────────────
-   Menü für schmale Fenster, Fläche und Farbe des Kopfes, Erscheinen beim Scrollen, Filmplätze (echte Filme erst in Sicht).
-   Der Film-Einstieg der Startseite steht in film.js, die Stücke zum Anfassen in anfassen.js.
+   Menü für schmale Fenster, Fläche und Farbe des Kopfes, Erscheinen beim Scrollen, die feste Leiste mit dem Hauptknopf am Handy.
+   Die Stücke zum Anfassen stehen in anfassen.js, der Rechner in rechner.js, das Buchungsfenster in buchen.js.
    Alles ist Zugabe: Ohne dieses Skript ist die Seite vollständig lesbar und bedienbar.
    Stile nur über Klassen und CSSOM (style.setProperty): kein Inline-Stil, CSP-tauglich. */
 (() => {
@@ -35,8 +35,8 @@
   }
 
   // ═══ Kopf: Fläche, sobald Inhalt darunter durchläuft; dunkel über dem dunklen Einstieg, danach hell ═══
-  // Jede Seite beginnt mit einem dunklen Einstieg ([data-dunkelkopf]: Film oder Seitenkopf). Solange dessen Unterkante
-  // unter der Mitte des Kopfes liegt, bleibt der Kopf dunkel. Das gilt auch, wenn die Bühne des Films am Ende nach oben wegläuft.
+  // Jede Seite beginnt mit einem dunklen Einstieg ([data-dunkelkopf]). Solange dessen Unterkante
+  // unter der Mitte des Kopfes liegt, bleibt der Kopf dunkel.
   const kopf = D.querySelector('.kopf'), dunkelTeil = D.querySelector('[data-dunkelkopf]');
   let gescrollt = null, hell = null;
   const kopfStand = () => {
@@ -57,50 +57,18 @@
     erscheinende.forEach((el) => el.classList.add('da'));
   }
 
-  // ═══ Filmplätze: echte Filme (Symbolbilder) ═══
-  // Im HTML steht nur das Poster. Der Film wird erst geholt, wenn sein Platz in Sicht kommt: stumm, in Schleife, ohne Bedienleiste,
-  // preload="none". Außer Sicht hält er an. Der Knopf hält ihn dauerhaft an. Bei „Bewegung reduzieren“ oder Datensparen bleibt das Poster.
-  const plaetze = Array.from(D.querySelectorAll('[data-filmplatz]'));
-  const sparen = !!(navigator.connection && navigator.connection.saveData);
-  if (plaetze.length && 'IntersectionObserver' in W && !sparen) {
-    const stand = new Map();
-    const ordnen = (z) => {
-      const soll = z.sicht && !z.halt && !ruhig.matches && !D.hidden;
-      if (soll && !z.video) {
-        const v = D.createElement('video');
-        v.muted = true; v.defaultMuted = true; v.playsInline = true; v.loop = true; v.preload = 'none';
-        v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('aria-hidden', 'true'); v.tabIndex = -1;
-        v.disablePictureInPicture = true;
-        v.addEventListener('playing', () => { if (z.video === v) z.el.classList.add('laeuft'); });
-        v.addEventListener('error', () => { if (z.video === v) { z.kaputt = true; z.el.classList.remove('laeuft'); v.remove(); z.video = null; if (z.knopf) z.knopf.hidden = true; } });
-        v.src = z.el.getAttribute('data-filmplatz');
-        const poster = z.flaeche.querySelector('.filmplatz-poster');
-        if (poster) poster.after(v); else z.flaeche.prepend(v);
-        z.video = v;
-        if (z.knopf) z.knopf.hidden = false;
-      }
-      if (!z.video) return;
-      if (soll) { const p = z.video.play(); if (p && p.catch) p.catch(() => {}); } else z.video.pause();
-      if (ruhig.matches) { z.el.classList.remove('laeuft'); if (z.knopf) z.knopf.hidden = true; } else if (z.knopf) z.knopf.hidden = false;
-    };
-    const waechter = new IntersectionObserver((liste) => {
-      liste.forEach((e) => { const z = stand.get(e.target); if (z && !z.kaputt) { z.sicht = e.isIntersecting; ordnen(z); } });
-    }, { rootMargin: '120px 0px', threshold: 0.01 });
-    plaetze.forEach((el) => {
-      const z = { el, flaeche: el.querySelector('.filmplatz-flaeche'), knopf: el.querySelector('.filmplatz-pause'), video: null, sicht: false, halt: false, kaputt: false };
-      if (!z.flaeche) return;
-      stand.set(el, z);
-      if (z.knopf) z.knopf.addEventListener('click', () => {
-        z.halt = !z.halt;
-        z.knopf.setAttribute('aria-pressed', String(z.halt));
-        const wort = z.knopf.querySelector('.vh'); if (wort) wort.textContent = z.halt ? 'Film abspielen' : 'Film anhalten';
-        ordnen(z);
-      });
-      waechter.observe(el);
-    });
-    const alle = () => stand.forEach(ordnen);
-    D.addEventListener('visibilitychange', alle);
-    if (ruhig.addEventListener) ruhig.addEventListener('change', alle);
+  // ═══ Handy: der Hauptknopf als feste Leiste unten ═══
+  // Erst nach dem ersten Bildschirm, nie über dem Schluss der Seite (dort steht der Knopf groß) und nie über einem offenen Fenster.
+  const leiste = D.querySelector('[data-leiste]'), schluss = D.getElementById('kontakt');
+  let leisteDa = null, schlussInSicht = false;
+  if (leiste) {
+    leiste.hidden = false;
+    if (schluss && 'IntersectionObserver' in W) new IntersectionObserver((l) => { schlussInSicht = l[0].isIntersecting; leisteStand(); }, { threshold: 0.12 }).observe(schluss);
+  }
+  function leisteStand() {
+    if (!leiste) return;
+    const da = W.scrollY > W.innerHeight * 0.7 && !schlussInSicht;
+    if (da !== leisteDa) { leisteDa = da; H.classList.toggle('leiste-da', da); }
   }
 
   let wartet = false;
@@ -110,11 +78,29 @@
     W.requestAnimationFrame(() => {
       wartet = false;
       kopfStand();
+      leisteStand();
     });
   };
   W.addEventListener('scroll', beimScrollen, { passive: true });
   W.addEventListener('resize', beimScrollen, { passive: true });
   kopfStand();
+  leisteStand();
+
+  // ═══ Fragen: im HTML offen (ohne Skript alles lesbar), mit Skript zu ═══
+  D.querySelectorAll('details[data-faq]').forEach((d) => { d.open = false; });
+
+  // ═══ Handy kürzer: Zuklappbares (details.mobil-zu, details.einwand-zu) ist breit und ohne Skript offen, unter 701 px zu ═══
+  // Ausnahme: data-offen (der erste Einwand). Beim Wechsel zurück auf breit öffnet alles wieder.
+  const zu = D.querySelectorAll('details.mobil-zu, details.einwand-zu');
+  if (zu.length) {
+    const schmal = mq('(max-width: 700px)');
+    const stand = () => zu.forEach((d) => { d.open = !schmal.matches || d.hasAttribute('data-offen'); });
+    stand();
+    if (schmal.addEventListener) schmal.addEventListener('change', stand);
+    // Ein Sprung zu einem Anker im Zugeklappten (z. B. #wochenreport) öffnet es.
+    const oeffnen = () => { const t = W.location.hash && D.getElementById(W.location.hash.slice(1)); const d = t && t.closest && t.closest('details'); if (d) d.open = true; const i = t && t.querySelector && t.querySelector('details.mobil-zu'); if (i) i.open = true; };
+    W.addEventListener('hashchange', oeffnen); oeffnen();
+  }
 
   W.MAKE_REVENUE_BEREIT = true;
 })();

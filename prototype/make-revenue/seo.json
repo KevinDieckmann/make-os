@@ -2,5 +2,12 @@
   "marke": "revenue",
   "oeffentlich": false,
   "kontakt": "kevin@makeinnovation.de",
+  "anbieter": {
+    "name": "MAKE Innovation GmbH",
+    "strasse": "Attilastraße 18",
+    "plz": "12529",
+    "ort": "Schönefeld",
+    "land": "DE"
+  },
   "indexnow": "41c9f12ed17f46672ab5758571f61327"
 }

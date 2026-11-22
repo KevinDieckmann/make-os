@@ -2,21 +2,30 @@
 
 > MAKE Revenue ist eine Marke von MAKE Innovation aus Berlin für Vertrieb mit System, Vertrieb auf Zeit sowie Netzwerken und Events.
 
-## Leistungen
-- [Digitaler Systemvertrieb](https://makerevenue.de/systemvertrieb/): Zielgruppe, Prozess im CRM, Gesprächsleitfäden, Kennzahlen und Nachfassen. Ein Vertrieb, den Sie steuern können und der nicht an Ihnen hängt.
-- [Vertrieb auf Zeit](https://makerevenue.de/vertrieb-auf-zeit/): Head of Sales oder Chief Sales Officer auf Zeit, für 6 oder 12 Monate. Wer erst testen will, startet mit dem Tagesworkshop Vertrieb.
-- [Netzwerken und Events](https://makerevenue.de/netzwerken/): Abende in kleiner Runde, auf Einladung. Dazu der Weg, auf dem aus Begegnungen und Empfehlungen Kontakte werden, die nicht liegen bleiben.
-- [Sichtbarkeits- und Vertriebs-Check](https://makerevenue.de/check/): Fünfzehn Fragen zu Sichtbarkeit und Vertrieb, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, ob es eher an den Anfragen liegt oder am Abschluss.
+MAKE Revenue baut Vertrieb für Gründer und Mittelstand auf: mit Tagesworkshop, Vertriebsleitung auf Zeit (Head of Sales oder Chief Sales Officer) und dem Fokus Abend. Alle Preise netto zuzüglich Umsatzsteuer.
 
-## Mehr
-- [Fragen](https://makerevenue.de/fragen/): Antworten auf häufige Fragen zu Systemvertrieb, Head of Sales und Chief Sales Officer auf Zeit, Tagesworkshop, Events und dem kostenlosen Check.
+## Angebote mit Preis
+- [Tagesworkshop](https://makerevenue.de/vertrieb-auf-zeit/#tagesworkshop): ab 1.900 € einmalig, netto, ein Tag. Für Gründer und Unternehmer, die wissen wollen, wo der größte Hebel liegt, bevor sie investieren.
+- [Head of Sales auf Zeit](https://makerevenue.de/vertrieb-auf-zeit/#ablauf): ab 2.990 € im Monat, netto, 6 oder 12 Monate. Für Unternehmer mit fertigem Produkt, deren Vertrieb heute am Gründer hängt oder ohne System läuft.
+- [Chief Sales Officer auf Zeit](https://makerevenue.de/vertrieb-auf-zeit/#vergleich): ab 4.990 € im Monat, netto, 6 oder 12 Monate. Für Unternehmen, die ein Vertriebsteam aufbauen, einen neuen Markt angehen oder mit Partnern wachsen wollen.
+- [Abendpartner beim Fokus Abend](https://makerevenue.de/netzwerken/#partner): ab 1.990 € je Abend, netto. Für Gäste ist der Abend kostenlos.
+
+## Seiten
+- [Vertrieb mit System](https://makerevenue.de/systemvertrieb/): Planbar verkaufen mit festem Vertriebsprozess: Zielgruppe, Ablauf im CRM, Leitfäden, Kennzahlen und Wochenreport. Mit Beispielen zum Ausprobieren.
+- [Vertriebsleitung auf Zeit](https://makerevenue.de/vertrieb-auf-zeit/): Vertriebsleitung auf Zeit für 6 oder 12 Monate: Head of Sales ab 2.990 €, Chief Sales Officer ab 4.990 € im Monat, netto. Einstieg: Tagesworkshop ab 1.900 €.
+- [Fokus Abend](https://makerevenue.de/netzwerken/): Fokus Abend: der monatliche Netzwerkabend für Unternehmer in Berlin. 30 bis 40 Gäste, auf Einladung, für Gäste kostenlos. Abendpartner ab 1.990 € je Abend, netto.
+- [Sichtbarkeits- und Vertriebs-Check](https://makerevenue.de/check/): Der kostenlose Vertriebs-Check: fünfzehn Fragen zu Sichtbarkeit und Vertrieb in rund 7 Minuten. Sie sehen sofort, ob es an den Anfragen oder am Abschluss liegt.
+- [Fragen](https://makerevenue.de/fragen/): Vertriebsberatung für Start-ups und Mittelstand: Antworten zu Preisen, Ablauf, Aufwand, Vertriebsleitung auf Zeit, Tagesworkshop und Fokus Abend.
+- [Ausführliche Fassung für KI-Suchen](https://makerevenue.de/llms-full.txt): Angebote, Preise, Ablauf, Zusagen, Fragen und Antworten
 
 ## Kontakt
+- Erstgespräch buchen: https://makerevenue.de/#erstgespraech (30 Minuten per Video, kostenlos, kein Verkaufsgespräch)
 - E-Mail: kevin@makeinnovation.de
-- Erstgespräch: kostenlos, 30 Minuten per Video
+- Anbieterin: MAKE Innovation GmbH, Attilastraße 18, 12529 Schönefeld
+- Impressum: https://makeinnovation.de/impressum/
 
 ## Auch von uns
 - [MAKE Innovation](https://makeinnovation.de/): MAKE Innovation aus Berlin führt KI, bessere Abläufe und eigene Software in Unternehmen ein. Zu MAKE Innovation gehören die Marken MAKE Studios und MAKE Revenue.
-- [MAKE Studios](https://makestudios.de/): MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Websites, Google-Profil, Video, Fotos und Social Media.
+- [MAKE Studios](https://makestudios.de/): MAKE Studios ist eine Marke von MAKE Innovation aus Berlin für Google-Profil, Foto, Video, Social Media und Websites.
 
-Stand: November 2026
+Stand: November 2026 · Preise: Stand Oktober 2026

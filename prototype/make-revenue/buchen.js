@@ -1,4 +1,4 @@
-/* ─── MAKE Revenue · Erstgespräch vereinbaren ─────────────────────────────────────────────────────────
+/* ─── MAKE Revenue · Erstgespräch buchen ───────────────────────────────────────────────────────────────
    Themenwahl, Anliegen, Kontakt: drei Schritte bis zur fertigen E-Mail.
    Verhalten unverändert: Nichts wird gespeichert oder gesendet. Die Anfrage öffnet das E-Mail-Programm mit fertigem Text.
    Ohne JavaScript führen alle Knöpfe zum Kontakt bzw. zur E-Mail.
@@ -9,7 +9,20 @@
   // Die Kontaktadresse steht nur im HTML (erster mailto-Verweis der Seite), nicht im Skript: eine Stelle je Seite.
   const ZIEL = (() => { const a = D.querySelector('a[href^="mailto:"]'); return a ? decodeURIComponent(a.getAttribute('href').slice(7).split('?')[0]) : ''; })();
 
-  const THEMEN = { systemvertrieb: 'Digitaler Systemvertrieb', zeit: 'Vertrieb auf Zeit', workshop: 'Tagesworkshop Vertrieb', netzwerk: 'Netzwerken und Events', offen: 'Noch offen' };
+  const THEMEN = { zeit: 'Vertriebsleitung auf Zeit', workshop: 'Tagesworkshop', systemvertrieb: 'Vertrieb mit System aufbauen', netzwerk: 'Fokus Abend, Abendpartner', offen: 'Noch offen' };
+
+  // Die Stile des Fensters (buchen.css) blockieren den ersten Bildaufbau nicht: Sie werden hier nachgeladen. Geöffnet wird erst, wenn sie da sind.
+  const stil = (() => {
+    const adresse = D.currentScript && D.currentScript.dataset.stil;
+    if (!adresse) return Promise.resolve();
+    return new Promise((fertig) => {
+      const l = D.createElement('link');
+      l.rel = 'stylesheet'; l.href = adresse;
+      l.addEventListener('load', fertig); l.addEventListener('error', fertig);
+      D.head.append(l);
+      setTimeout(fertig, 2500);
+    });
+  })();
 
   function el(tag, attrs, kinder) {
     const n = D.createElement(tag);
@@ -57,7 +70,7 @@
   }
   function tagAusSchluessel(s) { const t = s.split('-').map(Number); return new Date(t[0], t[1] - 1, t[2], 12); }
 
-  // ═══ Erstgespräch vereinbaren ═══
+  // ═══ Erstgespräch buchen ═══
   const dlg = D.getElementById('buchen');
   let oeffnen = null;
   if (dlg && typeof dlg.showModal === 'function') oeffnen = buchenAufbauen(dlg);
@@ -135,7 +148,7 @@
       zaehler.textContent = String(n + 1);
       balken.style.setProperty('--anteil', String((n + 1) / teile.length));
       zurueck.hidden = n === 0;
-      weiter.textContent = n === teile.length - 1 ? 'Anfrage senden' : 'Weiter';
+      weiter.textContent = n === teile.length - 1 ? 'Per E-Mail senden' : 'Weiter';
       inhalt.scrollTop = 0;
       if (fokus) { const h = teile[n].querySelector('.buchen-frage'); if (h) h.focus({ preventScroll: true }); }
     }
@@ -244,9 +257,11 @@
         if (r) r.checked = true;
       }
       if (abgeschickt) { abgeschickt = false; schritt = 0; }
-      H.classList.add('dialog-offen');
-      if (!dlg.open) dlg.showModal();
-      zeigen(schritt, true);
+      stil.then(() => {
+        H.classList.add('dialog-offen');
+        if (!dlg.open) dlg.showModal();
+        zeigen(schritt, true);
+      });
     };
   }
 })();

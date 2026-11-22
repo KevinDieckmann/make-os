@@ -10,4 +10,6 @@ export const FAMILIE = {
   revenue: 'https://makerevenue.de/',
   // Der kostenlose Sichtbarkeits- und Vertriebs-Check läuft bei MAKE Innovation (siehe lib/check/katalog.ts).
   check: 'https://makeinnovation.de/check?thema=sichtbarkeit-vertrieb&q=revenue',
+  // Die Kalenderbuchung (Termin online buchen) läuft in der Anwendung von MAKE Innovation, Weg „/erstgespraech“ (Caddyfile, Block makeinnovation.de).
+  termin: 'https://makeinnovation.de/erstgespraech',
 };

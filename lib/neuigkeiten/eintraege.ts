@@ -33,6 +33,22 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-22',
+    datum: '2026-11-22',
+    titel: 'Website-Vorschau: das Haus mit Räumen und Menschen',
+    kurz: 'Die Vorschau der Websites ist neu gebaut: Die Startseite führt durch ein Haus mit Räumen zum Hineinsehen, und die Seite für Sichtbarkeit zeigt jetzt den ganzen Auftritt statt nur Websites. Alles bleibt hinter dem Kennwort.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Die Startseite der Website-Vorschau führt mit dem Aufzug durch ein Haus: In jedem Raum lassen sich Leistungen ansehen, mit Ab-Preis, und herausnehmen. Vom Tag geht es nach oben in den Abend.', bereich: 'business' },
+        { text: 'Die Seite für Sichtbarkeit beginnt mit dem ganzen Auftritt (Suchprofil, Foto, Video, Reels, soziale Medien, Website) und zeigt, wie aus einem Anlass Inhalt für Wochen wird.', bereich: 'business' },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Die gezeichneten Menschen und Räume sind deutlich ausführlicher, die Bewegungen ruhiger.', bereich: 'business' },
+        { text: 'Die Beispielseiten sind nach drei Gruppen geordnet; die Beispiele für Immobilien sind herausgenommen.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-19',
     datum: '2026-11-19',
     titel: 'Newsletter-Anmeldung und Gastvorschlag direkt auf der Website',

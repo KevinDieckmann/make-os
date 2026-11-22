@@ -52,15 +52,15 @@ try {
 .oben { position: absolute; left: 72px; top: 64px; display: flex; align-items: center; gap: 18px; }
 .oben svg { width: 52px; height: 52px; }
 .wort { font-size: 26px; letter-spacing: .19em; } .wort b { font-weight: 800; } .wort span { font-weight: 300; }
-h1 { position: absolute; left: 72px; top: 190px; margin: 0; font-size: 128px; line-height: .92; font-weight: 700; font-stretch: 82%; letter-spacing: -.022em; }
+h1 { position: absolute; left: 72px; top: 168px; margin: 0; font-size: 84px; line-height: .98; font-weight: 700; font-stretch: 82%; letter-spacing: -.022em; }
 h1 em { font-family: "Instrument", serif; font-weight: 400; color: ${farbe.hell}; font-size: 1.04em; }
-p { position: absolute; left: 72px; top: 446px; width: 600px; margin: 0; font-size: 29px; line-height: 1.3; color: rgba(238, 241, 246, .8); }
+p { position: absolute; left: 72px; top: 440px; width: 560px; margin: 0; font-size: 29px; line-height: 1.3; color: rgba(238, 241, 246, .8); }
 .gross { position: absolute; right: 56px; top: 96px; width: 440px; height: 440px; color: ${farbe.blau}; }
 .gross circle:not([fill]) { color: ${farbe.hell}; fill: ${farbe.hell}; }
 .fuss { position: absolute; left: 72px; bottom: 54px; font: 500 18px/1 "Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: #9AA7BD; }`,
   `<div class="og"><div class="oben">${svg()}<span class="wort"><b>MAKE</b> <span>REVENUE</span></span></div>
-<h1>Vertrieb<br>mit <em>System.</em></h1>
-<p>Von der Anfrage zum Abschluss.</p>
+<h1>Vertrieb aufbauen,<br>der nicht mehr<br>an Ihnen <em>hängt.</em></h1>
+<p>Vertriebsleitung auf Zeit für Gründer und Mittelstand.</p>
 ${svg('gross')}
 <span class="fuss">Eine Marke von MAKE Innovation · Berlin</span></div>`);
   copyFileSync(og, join(ORDNER, 'bild', 'og.png'));

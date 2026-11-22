@@ -1,0 +1,54 @@
+{
+  "hinweis_datei": "Erzeugt von preise-bauen.mjs aus der Preisliste von MAKE Innovation. Nicht von Hand ändern.",
+  "stand": "2026-10-24",
+  "standText": "Oktober 2026",
+  "netto": true,
+  "hinweis": "Alle Preise netto zuzüglich Umsatzsteuer",
+  "quelle": "MAKE Innovation, Preisliste (Stand der Liste: 2026-10-24)",
+  "eintraege": {
+    "tagesworkshop": {
+      "angebot": "Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit",
+      "kurzname": "Tagesworkshop",
+      "betrag": 1900,
+      "ab": "ab 1.900 €",
+      "rhythmus": "einmalig",
+      "laufzeit": "ein Tag",
+      "anrechnung": true,
+      "empfohlen": false,
+      "quelle": "tagesworkshop"
+    },
+    "head-of-sales": {
+      "angebot": "Head of Sales",
+      "kurzname": "Head of Sales auf Zeit",
+      "betrag": 2990,
+      "ab": "ab 2.990 €",
+      "rhythmus": "im Monat",
+      "laufzeit": "6 oder 12 Monate",
+      "anrechnung": false,
+      "empfohlen": true,
+      "quelle": "head-of-sales"
+    },
+    "cso": {
+      "angebot": "Chief Sales Officer (CSO)",
+      "kurzname": "Chief Sales Officer auf Zeit",
+      "betrag": 4990,
+      "ab": "ab 4.990 €",
+      "rhythmus": "im Monat",
+      "laufzeit": "6 oder 12 Monate",
+      "anrechnung": false,
+      "empfohlen": false,
+      "quelle": "cso"
+    },
+    "abendpartner": {
+      "angebot": "Abendpartner beim Fokus Abend",
+      "kurzname": "Abendpartner beim Fokus Abend",
+      "betrag": 1990,
+      "ab": "ab 1.990 €",
+      "rhythmus": "je Abend",
+      "laufzeit": "ein Abend",
+      "anrechnung": false,
+      "empfohlen": false,
+      "quelle": "abendpartner"
+    }
+  }
+}

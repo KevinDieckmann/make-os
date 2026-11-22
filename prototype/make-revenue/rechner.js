@@ -38,6 +38,7 @@
   for (const r of document.querySelectorAll('[data-rechner]')) {
     const felder = [...r.querySelectorAll('[data-feld]')];
     const meldung = r.querySelector('[data-rechner-meldung]');
+    const satz = r.querySelector('[data-rechner-satz]');
     const setze = (n, text) => { for (const el of r.querySelectorAll(`[data-aus="${n}"]`)) el.textContent = text; };
     const nameVon = (f) => { const l = f.closest('label'); const s = l && l.querySelector('span'); return s ? s.textContent.trim() : 'Dieses Feld'; };
     // Was an einem Feld nicht stimmt: leer oder keine Zahl größer 0, Quote über 100, mehr als 53 Wochen
@@ -58,6 +59,7 @@
       }
       if (falsch.length) {
         for (const el of r.querySelectorAll('[data-aus]')) el.textContent = LEER;
+        if (satz) satz.textContent = 'Bitte prüfen Sie Ihre Eingaben, dann steht hier Ihr Ergebnis in einem Satz.';
         return;
       }
       const e = rechnen(w);
@@ -77,6 +79,8 @@
       setze('quoteAlt', `${zahlDe(w.angebotsquote)} %`);
       setze('hebelQuote', zahlDe(e.hebelQuote, 1));
       setze('hebelAuftrag', zahlDe(e.hebelAuftrag, 1));
+      // Das Ergebnis in einem Satz (derselbe Wortlaut wie rechnerSatz in bauen.mjs: beide gleich halten)
+      if (satz) satz.textContent = `Für ${zahlDe(w.ziel)}\u00a0€ Umsatz im Jahr brauchen Sie jede Woche ${zahlDe(ganz(e.kontakteWoche))} Erstkontakte, ${zahlDe(ganz(e.termineWoche))} Termine und ${zahlDe(ganz(e.angeboteWoche))} Angebote. Allein die Termine binden ${zahlDe(e.stunden, 1)} Stunden je Woche.`;
       // Wochenziele für den Wochenreport (anfassen.js): nur, wenn hier wirklich jemand eigene Werte eingetragen hat.
       // Bleibt im Browser (sessionStorage, damit die Ziele auch auf der Seite „Systemvertrieb“ stehen); gesendet wird nichts.
       if (selbst) {

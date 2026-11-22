@@ -1,9 +1,9 @@
 /* ─── MAKE Revenue · Stile ──────────────────────────────────────────────────────────────────────────────
    Farbe Tiefblau, Zeichen Trichter.
    Leitmotiv: der Vertrieb als Strecke in vier Stufen: Anfrage, Gespräch, Angebot, Abschluss.
-   Aufbau dieser Datei: Grundlage · Kopf · Abschnitte · Unterseiten · Film · Zum Anfassen · Filmplätze · Breiten.
+   Aufbau dieser Datei: Grundlage · Kopf · Abschnitte · Unterseiten · Einstieg · Zum Anfassen · Verkaufsbausteine (Umbau 21.11.2026).
    Die ruhige Fassung ist der Normalfall: Ohne JavaScript und mit „Bewegung reduzieren“ steht alles untereinander und
-   nichts bewegt sich. Den Film schaltet erst die Klasse html.film-an frei (frueh.js), Bewegung nur hinter html.js.
+   nichts bewegt sich. Bewegung gibt es nur hinter html.js (frueh.js). Einen Film-Einstieg gibt es seit dem 21.11.2026 nicht mehr.
    Keine Inline-Stile; JavaScript setzt nur Klassen und Eigenschaften über CSSOM.
    Schriften: Bricolage Grotesque, Instrument Serif, JetBrains Mono, alle SIL OFL, lokal (schriften/LIZENZ.txt). */
 
@@ -11,6 +11,23 @@
 @font-face { font-family: "Instrument"; src: url("schriften/instrument-serif-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "Instrument"; src: url("schriften/instrument-serif-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
 @font-face { font-family: "Mono"; src: url("schriften/jetbrains-mono.woff2") format("woff2"); font-weight: 400 600; font-display: swap; }
+
+/* Ersatzschrift mit den Maßen der Hausschrift (in Chrome gemessen bei den Handy-Größen: 18 px Fließtext, 30 bis 38 px Überschriften; die Hausschrift hat eine optische Größenachse, ihre Breite hängt von der Größe ab. Ascent 93 %, Descent 27 %).
+   Die Stufe nach Gewicht und font-stretch wählt der Browser; so bricht eine Überschrift mit Ersatzschrift in dieselben Zeilen wie mit der Hausschrift. */
+
+@font-face { font-family: "Instrument Ersatz"; src: local("Georgia Italic"), local("Georgia-Italic"); font-style: italic; font-weight: 400; size-adjust: 78%; ascent-override: 127%; descent-override: 39.7%; line-gap-override: 0%; }
+
+
+@font-face { font-family: "Bricolage Ersatz"; src: local("Arial"), local("ArialMT"); font-weight: 400; font-stretch: 100%; size-adjust: 105.1%; ascent-override: 88.5%; descent-override: 25.7%; line-gap-override: 0%; }
+@font-face { font-family: "Bricolage Ersatz"; src: local("Arial"), local("ArialMT"); font-weight: 500; font-stretch: 100%; size-adjust: 106.5%; ascent-override: 87.3%; descent-override: 25.4%; line-gap-override: 0%; }
+@font-face { font-family: "Bricolage Ersatz"; src: local("Arial Bold"), local("Arial-BoldMT"); font-weight: 600; font-stretch: 100%; size-adjust: 100.3%; ascent-override: 92.7%; descent-override: 26.9%; line-gap-override: 0%; }
+@font-face { font-family: "Bricolage Ersatz"; src: local("Arial Bold"), local("Arial-BoldMT"); font-weight: 600 800; font-stretch: 75%; size-adjust: 75.5%; ascent-override: 123.2%; descent-override: 35.8%; line-gap-override: 0%; }
+@font-face { font-family: "Bricolage Ersatz"; src: local("Arial Bold"), local("Arial-BoldMT"); font-weight: 600 800; font-stretch: 82%; size-adjust: 82.3%; ascent-override: 112.9%; descent-override: 32.8%; line-gap-override: 0%; }
+@font-face { font-family: "Bricolage Ersatz"; src: local("Arial Bold"), local("Arial-BoldMT"); font-weight: 600 800; font-stretch: 84%; size-adjust: 84.3%; ascent-override: 110.4%; descent-override: 32.0%; line-gap-override: 0%; }
+@font-face { font-family: "Bricolage Ersatz"; src: local("Arial Bold"), local("Arial-BoldMT"); font-weight: 600 800; font-stretch: 86%; size-adjust: 86.2%; ascent-override: 107.9%; descent-override: 31.3%; line-gap-override: 0%; }
+@font-face { font-family: "Bricolage Ersatz"; src: local("Arial Bold"), local("Arial-BoldMT"); font-weight: 600 800; font-stretch: 88%; size-adjust: 88.0%; ascent-override: 105.6%; descent-override: 30.7%; line-gap-override: 0%; }
+@font-face { font-family: "Bricolage Ersatz"; src: local("Arial Bold"), local("Arial-BoldMT"); font-weight: 600 800; font-stretch: 92%; size-adjust: 91.8%; ascent-override: 101.3%; descent-override: 29.4%; line-gap-override: 0%; }
+@font-face { font-family: "Bricolage Ersatz"; src: local("Arial Bold"), local("Arial-BoldMT"); font-weight: 600 800; font-stretch: 94%; size-adjust: 93.6%; ascent-override: 99.3%; descent-override: 28.8%; line-gap-override: 0%; }
 
 :root {
   /* Die Farbwelt an EINER Stelle. Blau bleibt Blau: Farbton 213 bis 221 Grad, nie ins Violett (das gehört dem Dach). */
@@ -46,7 +63,7 @@ body {
   margin: 0;
   background: var(--papier);
   color: var(--tinte);
-  font-family: "Bricolage", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "Bricolage", "Bricolage Ersatz", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 18px;
   line-height: 1.5;
   font-optical-sizing: auto;
@@ -60,7 +77,7 @@ h1, h2, h3, h4, p, ul, ol, dl, dd, figure, blockquote { margin: 0; }
 ul, ol { padding: 0; list-style: none; }
 table { border-collapse: collapse; }
 button, input, textarea { font: inherit; color: inherit; }
-em { font-family: "Instrument", Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: -.005em; color: var(--blau-text); }
+em { font-family: "Instrument", "Instrument Ersatz", Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: -.005em; color: var(--blau-text); }
 .dunkel em { color: var(--blau-hell); }
 :focus-visible { outline: 2px solid var(--blau); outline-offset: 3px; border-radius: 6px; }
 .dunkel :focus-visible, .fuss :focus-visible { outline-color: var(--blau-hell); }
@@ -73,9 +90,8 @@ em { font-family: "Instrument", Georgia, serif; font-style: italic; font-weight:
 }
 
 /* Anzeige-Schrift: dieselbe Familie wie MAKE Studios, etwas breiter und ruhiger gesetzt */
-.held-titel, .abschnitt-titel, .seiten-titel, .zahl-wert, .thema-titel, .rechner-haupt dd, .ablauf-liste h3,
-.satz-gross, .kontakt-titel, .menue-nav a, .karte-titel, .buchen-frage, .baustein h3, .monat-nr, .format h3, .report-titel, .kasten h3 {
-  font-family: "Bricolage", system-ui, sans-serif;
+.held-titel, .abschnitt-titel, .seiten-titel, .zahl-wert, .thema-titel, .rechner-haupt dd, .ablauf-liste h3, .satz-gross, .kontakt-titel, .menue-nav a, .karte-titel, .buchen-frage, .baustein h3, .monat-nr, .format h3, .report-titel, .kasten h3 {
+  font-family: "Bricolage", "Bricolage Ersatz", system-ui, sans-serif;
   font-weight: 700;
   font-stretch: 86%;
   letter-spacing: -.014em;
@@ -105,7 +121,7 @@ em { font-family: "Instrument", Georgia, serif; font-style: italic; font-weight:
   display: inline-flex; align-items: center; justify-content: center; gap: 12px;
   min-height: 52px; padding: 0 26px; border: 0; border-radius: 999px;
   background: var(--tinte); color: var(--papier); cursor: pointer;
-  font: 600 16.5px/1 "Bricolage", system-ui, sans-serif; text-decoration: none; white-space: nowrap;
+  font: 600 16.5px/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; text-decoration: none; white-space: nowrap;
   transition: background .25s, color .25s, transform .3s var(--kurve);
 }
 .knopf::after {
@@ -132,12 +148,12 @@ em { font-family: "Instrument", Georgia, serif; font-style: italic; font-weight:
 .dunkel .knopf-leise:hover { background: var(--papier); color: var(--tinte); }
 
 .link-pfeil {
-  display: inline-block; padding: 12px 0;   /* 44 px Tippziel; der Pfeil bleibt beim Umbruch am Text */
-  font: 600 16.5px/1.2 "Bricolage", system-ui, sans-serif; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px;
+  display: inline-flex; align-items: center; padding: 12px 0;   /* 44 px Tippziel; der Pfeil steht beim Umbruch des Textes rechts daneben, nie allein in einer Zeile */
+  font: 600 16.5px/1.2 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px;
   text-decoration-color: rgba(10, 19, 38, .4);
 }
 .link-pfeil::after {
-  content: ""; display: inline-block; width: 8px; height: 8px; margin-left: 10px; vertical-align: .06em; border-top: 2px solid var(--blau); border-right: 2px solid var(--blau);
+  content: ""; flex: none; display: inline-block; width: 8px; height: 8px; margin-left: 10px; vertical-align: .06em; border-top: 2px solid var(--blau); border-right: 2px solid var(--blau);
   transform: rotate(45deg); transition: transform .3s var(--kurve);
 }
 .link-pfeil:hover { text-decoration-color: currentColor; }
@@ -152,7 +168,7 @@ em { font-family: "Instrument", Georgia, serif; font-style: italic; font-weight:
 .dunkel .textlink { text-decoration-color: rgba(238, 241, 246, .5); }
 
 /* ─── Kopf ───
-   Jede Seite beginnt mit einem dunklen Einstieg (Film oder Seitenkopf). Darüber ist der Kopf dunkel; danach wird er
+   Jede Seite beginnt mit einem dunklen Einstieg (Startseite: Einstieg mit Problem, sonst der Seitenkopf). Darüber ist der Kopf dunkel; danach wird er
    hell (seite.js setzt html.kopf-hell). Er hat immer dann eine Fläche, wenn Inhalt unter ihm durchlaufen kann:
    ohne JavaScript immer, mit JavaScript ab dem ersten Scrollen. */
 .kopf {
@@ -173,14 +189,14 @@ html.js.kopf-hell .kopf :focus-visible { outline-color: var(--blau); }
 .marke { display: inline-flex; align-items: center; gap: 11px; min-height: 44px; text-decoration: none; color: inherit; }
 .marke-zeichen { width: 30px; height: 30px; flex: none; color: var(--blau-hell); fill: currentColor; transition: color .3s; }
 html.js.kopf-hell .kopf .marke-zeichen { color: var(--blau); }
-.marke-wort { font: 400 15px/1 "Bricolage", system-ui, sans-serif; letter-spacing: .19em; white-space: nowrap; }
+.marke-wort { font: 400 15px/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; letter-spacing: .19em; white-space: nowrap; }
 .marke-wort b { font-weight: 800; }
 .marke-wort span { font-weight: 300; }
 
 .kopf-nav { display: flex; align-items: center; gap: clamp(2px, .6vw, 10px); }
 .kopf-nav a {
   position: relative; display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px;
-  font: 500 15px/1 "Bricolage", system-ui, sans-serif; text-decoration: none; white-space: nowrap; border-radius: 999px;
+  font: 500 15px/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; text-decoration: none; white-space: nowrap; border-radius: 999px;
   transition: background .2s;
 }
 .kopf-nav a:hover { background: rgba(238, 241, 246, .12); }
@@ -197,7 +213,7 @@ html.js.kopf-hell .kopf .knopf:hover { background: var(--blau); }
 .menue-knopf {
   display: none; align-items: center; gap: 12px; min-height: 44px; padding: 0 16px 0 18px;
   border: 1px solid rgba(238, 241, 246, .4); border-radius: 999px; background: transparent; cursor: pointer;
-  font: 600 15px/1 "Bricolage", system-ui, sans-serif;
+  font: 600 15px/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif;
 }
 html.js.kopf-hell .menue-knopf { border-color: rgba(10, 19, 38, .3); }
 .menue-knopf-zeichen { display: grid; gap: 5px; width: 18px; }
@@ -303,7 +319,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .rechner-eingabe input {
   width: 8.2em; min-height: 46px; padding: 8px 12px; border: 1px solid rgba(238, 241, 246, .3); border-radius: 12px;
   background: rgba(238, 241, 246, .06); color: var(--papier); text-align: right;
-  font: 600 17px/1.2 "Bricolage", system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  font: 600 17px/1.2 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-variant-numeric: tabular-nums;
   transition: border-color .2s, box-shadow .2s, background .2s;
 }
 .rechner-eingabe input:hover { border-color: rgba(238, 241, 246, .55); }
@@ -319,7 +335,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .rechner-ergebnis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 clamp(16px, 2vw, 32px); }
 .rechner-ergebnis > div { padding: 16px 0; border-top: 1px solid var(--linie-hell); }
 .rechner-ergebnis dt { font: 500 12px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau-hell); }
-.rechner-ergebnis dd { margin-top: 8px; font: 700 clamp(24px, 2.4vw, 36px)/1 "Bricolage", system-ui, sans-serif; font-stretch: 82%; font-variant-numeric: tabular-nums; }
+.rechner-ergebnis dd { margin-top: 8px; font: 700 clamp(24px, 2.4vw, 36px)/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 82%; font-variant-numeric: tabular-nums; }
 .rechner-ergebnis .rechner-haupt { grid-column: 1 / -1; padding: 0 0 clamp(20px, 2.4vw, 34px); border-top: 0; }
 .rechner-haupt dd { margin-top: 12px; font-size: clamp(92px, 12vw, 200px); line-height: .82; letter-spacing: -.04em; color: var(--blau-hell); }
 
@@ -329,7 +345,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .trichter svg { width: 100%; height: 16px; }
 .trichter .grund { fill: rgba(238, 241, 246, .1); }
 .trichter .wert { fill: var(--blau-hell); transition: width .5s var(--kurve), x .5s var(--kurve); }
-.trichter b { text-align: right; font: 600 17px/1 "Bricolage", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.trichter b { text-align: right; font: 600 17px/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 .rechner-saetze { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: clamp(26px, 3vw, 44px); }
 .rechner-satz { padding: 20px 22px; border: 1px solid var(--linie-hell); border-radius: 18px; }
 .rechner-satz p + p { margin-top: 10px; font-size: 16px; line-height: 1.45; color: rgba(238, 241, 246, .86); }
@@ -364,10 +380,10 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .karte .link-pfeil { margin-top: auto; padding-top: 22px; align-self: flex-start; }
 .karte-kuerzel {
   display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 22px; border-radius: 50%;
-  background: var(--blau); color: var(--papier); font: 700 18px/1 "Bricolage", system-ui, sans-serif; font-stretch: 82%; letter-spacing: .02em;
+  background: var(--blau); color: var(--papier); font: 700 18px/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 82%; letter-spacing: .02em;
 }
 .karte-familie { min-height: 300px; }
-.karte-familie .familie-marke { display: inline-flex; align-items: center; gap: 10px; font: 400 14px/1 "Bricolage", system-ui, sans-serif; letter-spacing: .18em; }
+.karte-familie .familie-marke { display: inline-flex; align-items: center; gap: 10px; font: 400 14px/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; letter-spacing: .18em; }
 .karte-familie .familie-marke b { font-weight: 800; }
 .karte-familie .familie-marke span { font-weight: 300; }
 .familie-punkt { width: 12px; height: 12px; border-radius: 50%; flex: none; }
@@ -386,7 +402,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .fragen-liste details { border-bottom: 1px solid var(--linie); }
 .fragen-liste summary {
   position: relative; display: flex; align-items: center; min-height: 68px; padding: 18px 60px 18px 0; cursor: pointer; list-style: none;
-  font: 600 clamp(18px, 1.6vw, 23px)/1.25 "Bricolage", system-ui, sans-serif;
+  font: 600 clamp(18px, 1.6vw, 23px)/1.25 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif;
 }
 .fragen-liste summary::-webkit-details-marker { display: none; }
 .fragen-liste summary::before, .fragen-liste summary::after {
@@ -398,7 +414,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .fragen-antwort { max-width: 46em; padding: 0 0 26px; font-size: 17px; line-height: 1.55; color: var(--tinte-weich); }
 .fragen-antwort p + p { margin-top: 10px; }
 .fragen-gruppe + .fragen-gruppe { margin-top: clamp(48px, 6vw, 88px); }
-.fragen-gruppe h2 { margin-bottom: 22px; font: 700 clamp(26px, 2.6vw, 40px)/1 "Bricolage", system-ui, sans-serif; font-stretch: 82%; letter-spacing: -.02em; }
+.fragen-gruppe h2 { margin-bottom: 22px; font: 700 clamp(26px, 2.6vw, 40px)/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 82%; letter-spacing: -.02em; }
 .fragen-fuss { margin-top: 30px; }
 
 .fragen-offen dt { font-size: clamp(19px, 1.6vw, 22px); line-height: 1.2; }
@@ -410,7 +426,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .kontakt-titel { margin-top: 26px; font-size: clamp(48px, 8vw, 132px); line-height: .92; }
 .kontakt .abschnitt-text { margin-top: 26px; text-align: center; }
 .kontakt-aktionen { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px 28px; margin-top: 38px; }
-.kontakt-mail { display: inline-flex; align-items: center; min-height: 44px; margin-top: 26px; font: 600 clamp(17px, 1.5vw, 21px)/1.2 "Bricolage", system-ui, sans-serif; color: var(--papier); text-underline-offset: 6px; text-decoration-thickness: 1px; }
+.kontakt-mail { display: inline-flex; align-items: center; min-height: 44px; margin-top: 26px; font: 600 clamp(17px, 1.5vw, 21px)/1.2 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; color: var(--papier); text-underline-offset: 6px; text-decoration-thickness: 1px; }
 .kontakt-drei { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 clamp(18px, 2.4vw, 40px); width: 100%; margin-top: clamp(48px, 6vw, 88px); text-align: left; counter-reset: schritt; }
 .kontakt-drei li { padding-top: 18px; border-top: 1px solid var(--linie-hell); counter-increment: schritt; }
 .kontakt-drei li::before { content: counter(schritt, decimal-leading-zero); font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .12em; color: var(--blau-hell); }
@@ -463,7 +479,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .spalten-kopf .link-pfeil, .spalten-kopf .knopf { margin-top: 24px; }
 .fliess > * + * { margin-top: 16px; }
 .fliess p { max-width: 40em; font-size: 17.5px; line-height: 1.55; color: var(--tinte-weich); }
-.fliess h3 { margin-top: 34px; font: 700 clamp(22px, 2vw, 28px)/1.1 "Bricolage", system-ui, sans-serif; font-stretch: 82%; letter-spacing: -.015em; }
+.fliess h3 { margin-top: 34px; font: 700 clamp(22px, 2vw, 28px)/1.1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 82%; letter-spacing: -.015em; }
 .fliess h3:first-child { margin-top: 0; }
 
 .bausteine { display: grid; gap: 0; border-top: 1px solid var(--tinte); counter-reset: baustein; }
@@ -495,7 +511,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .tafel { width: 100%; font-size: 16.5px; line-height: 1.4; }
 .tafel caption { caption-side: top; padding-bottom: 14px; text-align: left; font: 500 12px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--grau); }
 .tafel th, .tafel td { padding: 14px 16px 14px 0; border-bottom: 1px solid var(--linie); text-align: left; vertical-align: top; }
-.tafel thead th { border-bottom: 2px solid var(--tinte); font: 600 15px/1.3 "Bricolage", system-ui, sans-serif; }
+.tafel thead th { border-bottom: 2px solid var(--tinte); font: 600 15px/1.3 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; }
 .tafel tbody th { font-weight: 600; }
 .tafel td { color: var(--tinte-weich); }
 .tafel .ja { color: var(--blau-text); font-weight: 600; }
@@ -524,7 +540,7 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 /* Begriffe */
 .begriffe { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 clamp(24px, 4vw, 72px); border-top: 1px solid var(--tinte); }
 .begriffe div { padding: 18px 0; border-bottom: 1px solid var(--linie); }
-.begriffe dt { font: 700 20px/1.1 "Bricolage", system-ui, sans-serif; font-stretch: 82%; letter-spacing: -.01em; }
+.begriffe dt { font: 700 20px/1.1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 82%; letter-spacing: -.01em; }
 .begriffe dd { margin-top: 8px; font-size: 16px; line-height: 1.5; color: var(--tinte-weich); }
 
 .stand { margin-top: clamp(28px, 3vw, 44px); font: 500 12px/1.6 "Mono", ui-monospace, monospace; letter-spacing: .06em; color: var(--grau); }
@@ -642,26 +658,20 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
   .dunkel, .satz-band, .fuss, .vorweg, .report { background: #fff !important; color: #000 !important; }
 }
 
-/* ═══════════════════════════════════════ Der Film-Einstieg ═══════════════════════════════════════
-   Normalfall (ohne JavaScript, „Bewegung reduzieren“, zu kleines Fenster): eine ruhige, dunkle Seite. Der Einstieg steht
-   neben dem Trichter, darunter folgen alle Szenen als Blöcke. Nichts überlagert sich, nichts bewegt sich.
-   html.film-an (frueh.js, vor dem ersten Bild): Die Bühne klebt, die Szenen liegen übereinander, film.js rechnet jeden
-   Zustand in jedem Bild allein aus dem Scroll-Fortschritt. Die erste Szene ist schon ohne film.js sichtbar. */
-.film { position: relative; background: var(--tinte); color: var(--papier); }
+/* ═══════════════════════════════════════ Der Einstieg der Startseite ═══════════════════════════════════════
+   Ruhig und fest: links der erste Bildschirm, rechts der Trichter, darunter drei Zusagen, dann die vier Stufen „Heute / Mit System“. */
 .buehne {
   position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: clamp(36px, 5vw, 80px) clamp(20px, 2.4vw, 40px);
   max-width: calc(var(--breite) + 2 * var(--rand)); margin-inline: auto;
   padding: calc(var(--kopf-h) + clamp(36px, 6vw, 88px)) var(--rand) clamp(64px, 8vw, 120px);
 }
-.film-leiste { display: none; }
+
 .szene { grid-column: 1 / -1; min-width: 0; }
 .szene-einstieg { grid-column: 1 / span 7; align-self: center; }
 .strecke { grid-column: 8 / -1; align-self: center; min-width: 0; }
 
 .held-titel { margin-top: 24px; font-size: clamp(42px, 5.4vw, 88px); line-height: .96; text-wrap: balance; }
 .held-titel em { font-size: 1.04em; }
-/* Zweite Zeile der h1: sagt nüchtern, was die Seite anbietet (für Menschen und Suchmaschinen) */
-.held-zusatz { display: block; max-width: 24em; margin-top: clamp(14px, 1.6vw, 24px); font-size: clamp(18px, 1.75vw, 27px); line-height: 1.2; font-weight: 500; font-stretch: 92%; letter-spacing: -.01em; color: var(--blau-hell); text-wrap: balance; }
 .held-text { max-width: 33em; margin-top: clamp(18px, 2.2vw, 30px); font-size: clamp(17px, 1.4vw, 21px); line-height: 1.45; color: rgba(238, 241, 246, .8); }
 .held-aktionen { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 26px; margin-top: clamp(24px, 2.8vw, 40px); }
 
@@ -687,21 +697,17 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .strecke-stufe-3 .strecke-name { left: 36%; }
 .strecke-stufe-4 .strecke-name { left: 63%; top: -18%; bottom: 40%; }
 .strecke-name i { font: 500 clamp(12px, 2.4cqw, 13px)/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; font-style: normal; color: var(--blau-blass); }
-.strecke-name b { font: 700 clamp(13px, 4.7cqw, 28px)/1 "Bricolage", system-ui, sans-serif; font-stretch: 84%; letter-spacing: -.01em; }
+.strecke-name b { font: 700 clamp(13px, 4.7cqw, 28px)/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 84%; letter-spacing: -.01em; }
 .strecke-lage { position: absolute; left: 54%; right: 0; top: 100%; height: 96%; display: flex; align-items: center; font: 500 clamp(12px, 2.75cqw, 16px)/1.25 "Mono", ui-monospace, monospace; letter-spacing: .02em; }
 .strecke-stufe-4 .strecke-lage { left: 63%; top: 52%; height: auto; align-items: flex-start; white-space: nowrap; }
 .strecke-heute, .strecke-system { display: block; }
 .strecke-heute { position: absolute; left: 0; right: 0; color: var(--warn-hell); opacity: 0; visibility: hidden; }
 .strecke-system { color: var(--blau-hell); }
 
-/* Szenen in der ruhigen Fassung */
-.grosszahl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px clamp(28px, 5vw, 80px); align-items: end; margin-top: 22px; padding-top: clamp(28px, 4vw, 56px); border-top: 1px solid var(--linie-hell); }
-.grosszahl-wert { display: block; font: 700 clamp(88px, 15vw, 250px)/.8 "Bricolage", system-ui, sans-serif; font-stretch: 82%; letter-spacing: -.045em; color: var(--blau-hell); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.grosszahl-satz { max-width: 30em; font-size: clamp(18px, 1.55vw, 24px); line-height: 1.4; }
-.szene-titel { margin-top: 20px; font: 700 clamp(34px, 4.6vw, 72px)/.98 "Bricolage", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; text-wrap: balance; }
+.szene-titel { margin-top: 20px; font: 700 clamp(34px, 4.6vw, 72px)/.98 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; text-wrap: balance; }
 .szene-titel em { font-size: 1.04em; }
 .szene-text { max-width: 34em; margin-top: clamp(16px, 2vw, 26px); font-size: clamp(17px, 1.4vw, 21px); line-height: 1.5; color: rgba(238, 241, 246, .8); }
-.szene-heute { padding-top: clamp(28px, 4vw, 56px); border-top: 1px solid var(--linie-hell); }
+
 .szene-stufe { grid-column: span 3; display: flex; flex-direction: column; }
 .szene-stufe .szene-titel { font-size: clamp(28px, 3vw, 46px); }
 .szene-paar { flex: 1; display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
@@ -715,61 +721,6 @@ html.menue-offen, html.dialog-offen { overflow: hidden; }
 .paar-system { flex: 1; background: var(--blau); border: 1px solid rgba(125, 183, 255, .5); }
 .paar-system .paar-marke { color: var(--blau-blass); }
 .paar-system .paar-marke::before { border-top-style: solid; }
-.szene-ende { padding-top: clamp(28px, 4vw, 56px); border-top: 1px solid var(--linie-hell); }
-.szene-titel-gross { font-size: clamp(38px, 5.4vw, 92px); }
-.szene-weiter { margin-top: 14px; }
-/* Szenen ohne Kleinzeile: Überschrift oder Zahl stehen oben an */
-.szene > .szene-titel:first-child, .szene > .grosszahl:first-child { margin-top: 0; }
-
-/* ─── Die Bühne ─── */
-html.film-an .film { --film-rand: max(var(--rand), calc((100vw - 1560px) / 2)); --unten: 76px; height: 580vh; height: calc(100svh + 480vh); }
-html.film-an .buehne {
-  position: sticky; top: 0; display: block; max-width: none; height: 100vh; height: 100svh; margin: 0; padding: 0;
-  overflow: hidden; overflow: clip; isolation: isolate;
-}
-html.film-an .szene {
-  position: absolute; left: var(--film-rand); top: calc(var(--kopf-h) + 8px); bottom: var(--unten); width: min(54vw - var(--film-rand), 900px);
-  display: flex; flex-direction: column; justify-content: center; padding: 0; border: 0;
-  opacity: 0; visibility: hidden; will-change: opacity, transform;
-}
-html.film-an .szene-einstieg { opacity: 1; visibility: visible; }
-html.film-an .strecke {
-  position: absolute; right: var(--film-rand); top: calc(var(--kopf-h) + 8px); bottom: var(--unten); width: min(38vw, 640px);
-  display: grid; place-items: center;
-}
-html.film-an .strecke-rahmen { width: min(100%, calc((100svh - var(--kopf-h) - var(--unten) - 40px) * .851), 620px); }
-html.film-an .strecke-voll { opacity: 0; }
-html.film-an .strecke-ring { opacity: 0; }
-html.film-an .strecke-system { opacity: 0; visibility: hidden; }
-html.film-an .strecke-fluss { stroke-dasharray: 1; stroke-dashoffset: 1; }
-
-html.film-an .held-titel { margin-top: clamp(12px, 2.4svh, 24px); font-size: clamp(34px, min(5.2vw, 8.2svh), 88px); }
-html.film-an .held-zusatz { margin-top: clamp(10px, 1.8svh, 24px); font-size: clamp(17px, min(1.75vw, 3.2svh), 27px); }
-html.film-an .held-text { margin-top: clamp(10px, 2.2svh, 30px); font-size: clamp(16px, min(1.4vw, 2.6svh), 21px); }
-html.film-an .held-aktionen { margin-top: clamp(14px, 3svh, 40px); }
-html.film-an .grosszahl { display: block; margin-top: clamp(10px, 2svh, 22px); padding: 0; border: 0; }
-html.film-an .grosszahl-wert { font-size: clamp(96px, min(17vw, 34svh), 320px); margin-left: -.03em; }
-html.film-an .grosszahl-satz { margin-top: clamp(16px, 3.4svh, 40px); }
-html.film-an .szene-titel { margin-top: clamp(10px, 2.2svh, 22px); font-size: clamp(30px, min(4.4vw, 8svh), 72px); }
-html.film-an .szene-stufe .szene-titel { font-size: clamp(44px, min(7vw, 13svh), 120px); line-height: .9; }
-html.film-an .szene-titel-gross { font-size: clamp(34px, min(5.2vw, 9svh), 92px); }
-html.film-an .szene-paar { flex: none; flex-direction: row; gap: 14px; margin-top: clamp(16px, 3.6svh, 40px); }
-html.film-an .paar-heute, html.film-an .paar-system { flex: 1 1 0; }
-html.film-an .paar-marke + p { font-size: clamp(16.5px, 1.05vw, 20px); }
-html.film-an .szene-text { margin-top: clamp(12px, 2.4svh, 26px); }
-
-/* Die Anzeige unten: wo man im Film ist, und der Weg hinaus */
-html.film-an .film-leiste {
-  position: absolute; left: var(--film-rand); right: var(--film-rand); bottom: 10px; z-index: 5; height: 56px;
-  display: flex; align-items: center; gap: 18px;
-  font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau-hell);
-}
-.film-kapitel { flex: none; min-width: 12.5em; white-space: nowrap; }
-.film-kapitel b { margin-right: 10px; font-weight: 600; color: var(--blau-hell); }
-.film-balken { position: relative; flex: 1; height: 2px; border-radius: 2px; background: rgba(238, 241, 246, .2); overflow: hidden; }
-.film-balken i { position: absolute; inset: 0; background: var(--blau-hell); transform-origin: 0 50%; transform: scaleX(0); }
-.film-weiter { flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px; color: var(--papier); text-underline-offset: 5px; }
-.film-weiter:hover { color: var(--blau-hell); }
 
 @media (max-width: 999px) {
   .szene-einstieg, .strecke { grid-column: 1 / -1; }
@@ -784,66 +735,22 @@ html.film-an .film-leiste {
   .strecke-name b { font-size: clamp(16px, 4.4vw, 22px); }
   .strecke-lage, .strecke-stufe-4 .strecke-lage { position: relative; inset: auto; display: block; font-size: clamp(12px, 3vw, 13.5px); }
 
-  html.film-an .film { --bild-h: clamp(132px, 23svh, 250px); --unten: 62px; }
-  html.film-an .szene { left: var(--rand); right: var(--rand); width: auto; top: calc(var(--kopf-h) + var(--bild-h) + 22px); justify-content: flex-start; }
-  html.film-an .szene-einstieg, html.film-an .szene-zahl, html.film-an .szene-ende { top: calc(var(--kopf-h) + 4px); justify-content: center; }
-  html.film-an .strecke { left: var(--rand); right: var(--rand); top: calc(var(--kopf-h) + 10px); bottom: auto; width: auto; height: var(--bild-h); display: block; place-items: normal; opacity: 0; visibility: hidden; }
-  html.film-an .strecke-rahmen { width: calc(var(--bild-h) * .851); height: var(--bild-h); }
-  html.film-an .strecke-stufen { width: calc(100vw - 2 * var(--rand) - var(--bild-h) * .851 - 18px); }
-  html.film-an .strecke-name b { font-size: clamp(15px, min(4.4vw, 2.6svh), 22px); }
-  html.film-an .strecke-lage { font-size: clamp(12px, min(3vw, 1.7svh), 13.5px); }
-  html.film-an .held-titel { font-size: clamp(30px, min(9.4vw, 5.5svh), 76px); }
-  html.film-an .held-zusatz { font-size: clamp(16px, min(4.6vw, 2.7svh), 26px); }
-  html.film-an .held-text { font-size: clamp(15px, min(4.2vw, 2.4svh), 20px); }
-  html.film-an .grosszahl-wert { font-size: clamp(88px, min(27vw, 22svh), 260px); }
-  html.film-an .grosszahl-satz { font-size: clamp(16px, min(4.4vw, 2.5svh), 22px); }
-  html.film-an .szene-titel { font-size: clamp(27px, min(7.4vw, 4.4svh), 56px); }
-  html.film-an .szene-stufe .szene-titel { font-size: clamp(34px, min(11vw, 6svh), 84px); }
-  html.film-an .szene-titel-gross { font-size: clamp(30px, min(8.6vw, 5.2svh), 68px); }
-  html.film-an .szene-text { font-size: clamp(15.5px, min(4.2vw, 2.4svh), 20px); }
-  html.film-an .szene-paar { flex-direction: column; gap: 8px; margin-top: clamp(10px, 2svh, 22px); }
-  html.film-an .paar-heute, html.film-an .paar-system { flex: none; padding: clamp(10px, 1.7svh, 18px) 16px clamp(11px, 1.9svh, 20px); }
-  html.film-an .paar-marke + p { margin-top: clamp(6px, 1.1svh, 12px); font-size: clamp(14.5px, min(4vw, 2.3svh), 18px); line-height: 1.4; }
-  html.film-an .szene-weiter { display: none; }
-  html.film-an .film-leiste { left: var(--rand); right: var(--rand); bottom: 4px; gap: 12px; font-size: 12px; }
-  .film-kapitel { min-width: 0; }
 }
-@media (max-width: 999px) and (min-width: 700px) {
-  html.film-an .film { --bild-h: clamp(180px, 30svh, 360px); }
-  html.film-an .szene-heute, html.film-an .szene-stufe { top: calc(var(--kopf-h) + var(--bild-h) + 56px); }
-  html.film-an .szene-paar { flex-direction: row; }
-  html.film-an .paar-heute, html.film-an .paar-system { flex: 1 1 0; }
-  html.film-an .held-aktionen .knopf { width: auto; }
-}
+
 @media (max-width: 699px) {
   .szene-stufe { grid-column: 1 / -1; }
   /* Die Zeile neben dem Trichter steht mit 12 px in einer Zeile; dafür ist der Trichter am Handy etwas schmaler */
   .strecke-rahmen { width: min(40%, 260px); }
   .strecke-stufe { gap: 2px; }
-  .strecke-lage, .strecke-stufe-4 .strecke-lage, html.film-an .strecke-lage { font-size: 12px; line-height: 1.15; letter-spacing: 0; white-space: nowrap; }
-  html.film-an .film { --bild-h: clamp(132px, min(23svh, 44vw), 250px); }
-  .grosszahl { grid-template-columns: minmax(0, 1fr); }
-  html.film-an .held-aktionen { gap: 6px 26px; }
-  html.film-an .held-aktionen .knopf-gross { min-height: 56px; }
-  html.film-an .film-kapitel span { display: none; }
-  html.film-an .film-kapitel b { margin-right: 0; }
+  .strecke-lage, .strecke-stufe-4 .strecke-lage { font-size: 12px; line-height: 1.15; letter-spacing: 0; white-space: nowrap; }
+
 }
-@media (max-width: 699px) and (max-height: 719px) {
-  html.film-an .film { --bild-h: clamp(118px, 20svh, 150px); }
-  html.film-an .szene-heute, html.film-an .szene-stufe { top: calc(var(--kopf-h) + var(--bild-h) + 16px); }
-  html.film-an .strecke-stufe { gap: 1px; }
-  html.film-an .strecke-name b { font-size: 14px; }
-  html.film-an .strecke-lage { line-height: 1.05; }
-}
+
 /* Sehr schmale Handys (320 px): Die Beschriftung rückt näher an den Trichter, damit die Zeile mit 12 px in das Gerät passt */
 @media (max-width: 345px) {
   .strecke-stufen { margin-left: 10px; }
   .strecke-name b { font-size: 15px; }
-  .strecke-lage, .strecke-stufe-4 .strecke-lage, html.film-an .strecke-lage { line-height: 1.1; }
-}
-@media (min-width: 1000px) and (max-width: 1279px) {
-  html.film-an .szene-paar { flex-direction: column; gap: 10px; }
-  html.film-an .paar-heute, html.film-an .paar-system { flex: none; }
+  .strecke-lage, .strecke-stufe-4 .strecke-lage { line-height: 1.1; }
 }
 
 /* ═══════════════════════════════════════ Vertrieb zum Anfassen ═══════════════════════════════════════ */
@@ -851,7 +758,7 @@ html.film-an .film-leiste {
 .stueck + .stueck { margin-top: clamp(56px, 7vw, 110px); }
 .stueck-text { position: sticky; top: calc(var(--kopf-h) + 28px); }
 .stueck-nr { font: 500 13px/1 "Mono", ui-monospace, monospace; letter-spacing: .12em; color: var(--blau-text); }
-.stueck-titel { margin-top: 14px; font: 700 clamp(26px, 2.6vw, 40px)/1.02 "Bricolage", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; text-wrap: balance; }
+.stueck-titel { margin-top: 14px; font: 700 clamp(26px, 2.6vw, 40px)/1.02 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; text-wrap: balance; }
 .stueck-text > p { margin-top: 16px; font-size: 17px; line-height: 1.5; color: var(--tinte-weich); }
 .stueck-text > .stueck-nr { margin-top: 0; }
 .stueck-kopf { max-width: 46em; margin-bottom: clamp(24px, 3vw, 40px); }
@@ -862,7 +769,7 @@ html.film-an .film-leiste {
 .stueck-hinweis { margin-top: 14px; font: 500 12px/1.55 "Mono", ui-monospace, monospace; letter-spacing: .03em; color: var(--grau-hell); }
 .knopf-zart {
   display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border: 1px solid rgba(238, 241, 246, .4); border-radius: 999px;
-  background: transparent; color: var(--papier); cursor: pointer; font: 600 15px/1 "Bricolage", system-ui, sans-serif; white-space: nowrap; transition: background .2s, color .2s, border-color .2s;
+  background: transparent; color: var(--papier); cursor: pointer; font: 600 15px/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; white-space: nowrap; transition: background .2s, color .2s, border-color .2s;
 }
 .knopf-zart:hover { background: var(--papier); color: var(--tinte); border-color: var(--papier); }
 .knopf-zart[disabled] { opacity: .45; cursor: default; pointer-events: none; }
@@ -874,18 +781,18 @@ html.film-an .film-leiste {
 .brett-kopf { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 28px; }
 .brett-zaehler { display: flex; gap: clamp(18px, 2.4vw, 36px); }
 .brett-zaehler dt { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau-hell); }
-.brett-zaehler dd { margin-top: 6px; font: 700 clamp(30px, 3vw, 44px)/.9 "Bricolage", system-ui, sans-serif; font-stretch: 82%; font-variant-numeric: tabular-nums; }
+.brett-zaehler dd { margin-top: 6px; font: 700 clamp(30px, 3vw, 44px)/.9 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 82%; font-variant-numeric: tabular-nums; }
 .brett-zaehler-ohne dd { color: var(--warn-hell); }
 .brett-zaehler-ohne.null dd { color: var(--blau-hell); }
 .brett-spalten { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 22px; }
 .brett-spalte { display: flex; flex-direction: column; min-width: 0; padding: 12px 10px 10px; border-radius: 16px; background: var(--tinte-2); }
 .brett-stufe { display: flex; align-items: baseline; gap: 8px; padding: 0 4px 10px; border-bottom: 2px solid var(--blau-kraft); }
 .brett-stufe span { font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--blau-hell); }
-.brett-stufe b { font: 700 18px/1.1 "Bricolage", system-ui, sans-serif; font-stretch: 86%; }
+.brett-stufe b { font: 700 18px/1.1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 86%; }
 .brett-stufe i { margin-left: auto; min-width: 26px; padding: 4px 8px; border-radius: 999px; background: var(--tinte-3); font: 600 12px/1 "Mono", ui-monospace, monospace; font-style: normal; text-align: center; }
 .brett-karten { flex: 1; display: grid; gap: 8px; align-content: start; min-height: 60px; margin-top: 10px; }
 .brett-karte { display: grid; gap: 4px; padding: 12px 12px 10px; border-radius: 12px; background: var(--papier); color: var(--tinte); }
-.brett-firma { font: 700 17px/1.1 "Bricolage", system-ui, sans-serif; font-stretch: 88%; }
+.brett-firma { font: 700 17px/1.1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 88%; }
 .brett-kontakt { font-size: 13.5px; line-height: 1.3; color: var(--tinte-weich); }
 .brett-aktion { display: grid; gap: 2px; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--linie); font-size: 14px; line-height: 1.3; }
 .brett-aktion-wort { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau); }
@@ -894,7 +801,7 @@ html.film-an .film-leiste {
 .brett-karte-offen [data-aktion] { color: var(--warn); font-weight: 600; }
 .brett-weiter {
   position: relative; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; margin-top: 6px; padding: 0 12px; border: 0; border-radius: 10px;
-  background: var(--blau); color: var(--papier); cursor: pointer; font: 600 14px/1.1 "Bricolage", system-ui, sans-serif; text-align: left; transition: background .2s;
+  background: var(--blau); color: var(--papier); cursor: pointer; font: 600 14px/1.1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; text-align: left; transition: background .2s;
 }
 .brett-weiter::after { content: ""; width: 7px; height: 7px; flex: none; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: rotate(45deg); }
 .brett-weiter:hover { background: var(--tinte); }
@@ -909,7 +816,7 @@ html:not(.js) .brett-meldung { display: none; }
 
 /* Der Wochenreport */
 .report-kopf { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
-.report-titel { font: 700 clamp(22px, 2vw, 29px)/1.05 "Bricolage", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; }
+.report-titel { font: 700 clamp(22px, 2vw, 29px)/1.05 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; }
 .report table { width: 100%; margin-top: 20px; font-size: 16.5px; }
 .report th, .report td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--linie-hell); text-align: right; font-variant-numeric: tabular-nums; vertical-align: middle; }
 .report th:first-child, .report td:first-child { text-align: left; }
@@ -920,7 +827,7 @@ html:not(.js) .brett-meldung { display: none; }
 .report-ist b { color: var(--blau-hell); font-weight: 700; font-size: 19px; }
 .report-ist input {
   width: 4.4em; min-height: 44px; padding: 6px 10px; border: 1px solid rgba(238, 241, 246, .34); border-radius: 10px; background: rgba(238, 241, 246, .06); color: var(--blau-hell);
-  text-align: right; font: 700 18px/1.2 "Bricolage", system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  text-align: right; font: 700 18px/1.2 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-variant-numeric: tabular-nums;
 }
 .report-ist input:hover { border-color: rgba(238, 241, 246, .6); }
 .report-ist input:focus { outline: none; border-color: var(--blau-hell); box-shadow: 0 0 0 3px rgba(125, 183, 255, .3); }
@@ -930,7 +837,7 @@ html:not(.js) .brett-meldung { display: none; }
 .report-balken .grund { fill: rgba(238, 241, 246, .14); }
 .report-balken .wert { fill: var(--blau-hell); transition: width .4s var(--kurve); }
 .report tr.unter .report-balken .wert { fill: var(--warn-hell); }
-.report-luecke { margin-top: 18px; font: 600 17px/1.35 "Bricolage", system-ui, sans-serif; }
+.report-luecke { margin-top: 18px; font: 600 17px/1.35 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; }
 .report-satz { margin-top: 10px; font-size: 16px; line-height: 1.45; color: rgba(238, 241, 246, .86); }
 .report-satz b { color: var(--papier); }
 .report-hinweis { margin-top: 14px; font: 500 12px/1.55 "Mono", ui-monospace, monospace; letter-spacing: .03em; color: var(--grau-hell); }
@@ -941,7 +848,7 @@ html:not(.js) .brett-meldung { display: none; }
 .lf-wahl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 20px; }
 .lf-wahl button {
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: 100%; min-height: 56px; padding: 10px 12px; border: 1px solid var(--linie-hell); border-radius: 12px;
-  background: transparent; color: var(--papier); cursor: pointer; font: 600 15.5px/1.1 "Bricolage", system-ui, sans-serif; text-align: left; transition: background .2s, border-color .2s, color .2s;
+  background: transparent; color: var(--papier); cursor: pointer; font: 600 15.5px/1.1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; text-align: left; transition: background .2s, border-color .2s, color .2s;
 }
 .lf-wahl button span { font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--blau-hell); }
 .lf-wahl button:hover { border-color: rgba(238, 241, 246, .5); }
@@ -951,7 +858,7 @@ html:not(.js) .brett-meldung { display: none; }
 .lf-tafel { padding: 22px 0 6px; border-top: 1px solid var(--linie-hell); }
 .lf-tafel:first-child { border-top: 0; }
 .leitfaden.lebt .lf-tafel { border-top: 0; padding-top: 18px; }
-.lf-titel { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; font: 700 clamp(24px, 2.3vw, 34px)/1 "Bricolage", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; }
+.lf-titel { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; font: 700 clamp(24px, 2.3vw, 34px)/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; }
 .lf-titel:focus { outline: none; }
 .lf-titel span { font: 500 12px/1 "Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--blau-hell); }
 .lf-titel small { font: 500 12px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau-hell); }
@@ -959,19 +866,19 @@ html:not(.js) .brett-meldung { display: none; }
 .lf-marke { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--blau-blass); }
 .lf-saetze, .lf-zusatz { margin-top: 18px; padding: 16px 18px 18px; border-radius: 16px; background: var(--blau); }
 .lf-saetze ul { display: grid; gap: 8px; margin-top: 12px; }
-.lf-satz { font: 400 clamp(20px, 1.9vw, 26px)/1.25 "Instrument", Georgia, serif; font-style: italic; quotes: "„" "“"; }
+.lf-satz { font: 400 clamp(20px, 1.9vw, 26px)/1.25 "Instrument", "Instrument Ersatz", Georgia, serif; font-style: italic; quotes: "„" "“"; }
 .luecke { padding: 0 .28em; border-bottom: 1.5px dashed var(--blau-blass); font: 500 .62em/1 "Mono", ui-monospace, monospace; font-style: normal; letter-spacing: .04em; text-transform: uppercase; color: var(--blau-blass); }
 .lf-zusatz p + p { margin-top: 10px; font-size: 16px; line-height: 1.5; }
 .lf-fragen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; margin-top: 16px; border-top: 1px solid var(--linie-hell); }
 .lf-fragen div { padding: 12px 0; border-bottom: 1px solid var(--linie-hell); }
-.lf-fragen dt { font: 700 17px/1.1 "Bricolage", system-ui, sans-serif; font-stretch: 86%; color: var(--blau-hell); }
+.lf-fragen dt { font: 700 17px/1.1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 86%; color: var(--blau-hell); }
 .lf-fragen dd { margin-top: 6px; font-size: 15.5px; line-height: 1.45; color: rgba(238, 241, 246, .9); }
 .lf-zeichen { display: grid; gap: 4px; margin-top: 8px; font-size: 14px; line-height: 1.4; color: rgba(238, 241, 246, .78); }
 .lf-zeichen span { display: block; }
 .lf-zeichen b { font-weight: 600; color: var(--papier); }
 .lf-schritte { display: grid; gap: 0; margin-top: 16px; border-top: 1px solid var(--linie-hell); counter-reset: lf; }
 .lf-schritte li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 4px 18px; padding: 12px 0; border-bottom: 1px solid var(--linie-hell); counter-increment: lf; }
-.lf-schritte b { font: 700 17px/1.2 "Bricolage", system-ui, sans-serif; font-stretch: 86%; color: var(--blau-hell); }
+.lf-schritte b { font: 700 17px/1.2 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 86%; color: var(--blau-hell); }
 .lf-schritte b::before { content: counter(lf) "  "; font: 500 12px/1 "Mono", ui-monospace, monospace; color: var(--grau-hell); white-space: pre; }
 .lf-schritte span { font-size: 15.5px; line-height: 1.45; color: rgba(238, 241, 246, .9); }
 .lf-schritte .lf-satz { grid-column: 2; font-size: clamp(18px, 1.6vw, 22px); color: var(--papier); }
@@ -979,42 +886,14 @@ html:not(.js) .brett-meldung { display: none; }
 .lf-fuss { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--linie-hell); }
 .lf-stand { font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau-hell); }
 
-/* ═══════════════════════════════════════ Filmplätze ═══════════════════════════════════════
-   Echte Filme sind Symbolbilder (medien/LIESMICH.md). Erst das Poster, der Film lädt erst in Sicht (seite.js).
-   Ruhiger Rahmen und etwas weniger Sättigung, kein Farbfilter. Ohne Datei steht eine gezeichnete Fläche. */
-.filmplatz { position: relative; min-width: 0; margin: 0; }
-.filmplatz-flaeche { position: relative; overflow: hidden; border-radius: 22px; background: var(--tinte-2); box-shadow: 0 0 0 1px rgba(238, 241, 246, .16), 0 40px 80px -50px rgba(4, 9, 20, .9); isolation: isolate; }
-.filmplatz-poster, .filmplatz video { display: block; width: 100%; height: auto; filter: saturate(.84); }
-.filmplatz video { position: absolute; inset: 0; height: 100%; object-fit: cover; opacity: 0; transition: opacity .6s; }
-.filmplatz.laeuft video { opacity: 1; }
-.filmplatz-marke {
-  position: absolute; left: 12px; bottom: 12px; z-index: 2; max-width: calc(100% - 82px); padding: 7px 10px; border-radius: 12px; background: rgba(10, 19, 38, .82); color: var(--papier);
-  font: 500 12px/1.35 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase;
-}
-.filmplatz-pause {
-  position: absolute; right: 10px; bottom: 10px; z-index: 2; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid rgba(238, 241, 246, .5); border-radius: 50%;
-  background: rgba(10, 19, 38, .78); color: var(--papier); cursor: pointer;
-}
-.filmplatz-pause:hover { background: var(--papier); color: var(--tinte); }
-.filmplatz-pause:focus-visible { outline: 2px solid var(--blau-hell); outline-offset: 3px; }
-.filmplatz-pause-zeichen { width: 12px; height: 12px; border-left: 4px solid currentColor; border-right: 4px solid currentColor; }
-.filmplatz-pause[aria-pressed="true"] .filmplatz-pause-zeichen { width: 0; height: 0; margin-left: 3px; border: 0; border-left: 11px solid currentColor; border-top: 7px solid transparent; border-bottom: 7px solid transparent; }
-.filmplatz-leer .filmplatz-flaeche { display: grid; place-items: center; aspect-ratio: 16 / 9; background: linear-gradient(160deg, var(--tinte-2), var(--tinte-3)); }
-.filmplatz-zeichnung { width: 22%; color: var(--blau-kraft); fill: currentColor; opacity: .7; }
-/* Band unter dem Seitenkopf: breit und flach geschnitten */
-.filmplatz-band { margin-top: clamp(36px, 5vw, 72px); }
-.filmplatz-band .filmplatz-flaeche { aspect-ratio: 21 / 8; }
-.filmplatz-band .filmplatz-poster { position: absolute; inset: 0; height: 100%; object-fit: cover; }
-.satz-raster { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(28px, 5vw, 88px); align-items: center; }
-
 @media (max-width: 1279px) {
   .stueck { grid-template-columns: minmax(0, 1fr); }
   .stueck-text { position: static; max-width: 46em; }
 }
 @media (max-width: 999px) {
-  .satz-raster { grid-template-columns: minmax(0, 1fr); }
+
   .brett-spalten { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .filmplatz-band .filmplatz-flaeche { aspect-ratio: 16 / 8; }
+
 }
 @media (max-width: 700px) {
   .brett, .report, .leitfaden { margin-inline: calc(var(--rand) * -.5); padding: 18px 14px; border-radius: 20px; }
@@ -1032,9 +911,275 @@ html:not(.js) .brett-meldung { display: none; }
   .lf-fragen { grid-template-columns: minmax(0, 1fr); }
   .lf-schritte li { grid-template-columns: minmax(0, 1fr); }
   .lf-schritte .lf-satz { grid-column: 1; }
-  .filmplatz-band .filmplatz-flaeche { aspect-ratio: 16 / 10; border-radius: 16px; }
+
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .filmplatz video { display: none; }
+
 }
+
+/* ═══════════════════════════════════════ Verkaufsbausteine (Umbau 21.11.2026) ═══════════════════════════════════════
+   Der eine Hauptknopf, die drei Zusagen, die Angebotsleiter mit Ab-Preisen, der Zeitstrahl, Einwände, Menschen, die Leiste am Handy. */
+:root { --ruf: #FFC53D; --ruf-hell: #FFD772; }   /* Bernstein: NUR für den Hauptknopf „Erstgespräch buchen“. Nacht darauf 11,5 : 1 */
+
+.knopf.knopf-ruf, .dunkel .knopf.knopf-ruf, .kopf .knopf.knopf-ruf, html.js.kopf-hell .kopf .knopf.knopf-ruf, .menue-fuss .knopf.knopf-ruf {
+  background: var(--ruf); color: var(--tinte); box-shadow: 0 0 0 1.5px var(--tinte); font-weight: 700;
+}
+.knopf.knopf-ruf::after, .dunkel .knopf.knopf-ruf::after, .kopf .knopf.knopf-ruf::after, html.js.kopf-hell .kopf .knopf.knopf-ruf::after, .menue-fuss .knopf.knopf-ruf::after { border-color: var(--tinte); }
+.knopf.knopf-ruf:hover, .dunkel .knopf.knopf-ruf:hover, .kopf .knopf.knopf-ruf:hover, html.js.kopf-hell .kopf .knopf.knopf-ruf:hover { background: var(--ruf-hell); }
+.knopf.knopf-ruf:focus-visible { outline: 3px solid var(--blau-kraft); outline-offset: 3px; border-radius: 999px; }
+.ruf { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.ruf-mikro { font: 500 12.5px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .04em; color: var(--grau); }
+.dunkel .ruf-mikro, .ruf-band .ruf-mikro, .menue .ruf-mikro { color: var(--grau-hell); }
+.menue-fuss .ruf { align-items: stretch; text-align: center; }
+/* Heller Knopf für das Ziel einer Unterseite, das nicht das Erstgespräch ist (Gästeliste, Check): bewusst nicht in der Farbe des Hauptknopfs */
+.dunkel .knopf.knopf-hell { background: var(--papier); color: var(--tinte); }
+.dunkel .knopf.knopf-hell::after { border-color: var(--blau); }
+.dunkel .knopf.knopf-hell:hover { background: var(--blau-blass); }
+[data-preis] { white-space: nowrap; }
+
+/* ─── Erster Bildschirm ─── */
+.einstieg { background: var(--tinte); }
+.held { padding-bottom: clamp(40px, 5vw, 72px); row-gap: clamp(32px, 4vw, 56px); }
+.held .held-titel { margin-top: 20px; font-size: clamp(40px, 5vw, 80px); }
+.held .strecke-rahmen { width: min(100%, 420px); }
+.held-leise { margin-top: 18px; font-size: 15.5px; color: var(--grau-hell); }
+.held-fakten { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 clamp(20px, 3vw, 48px); border-top: 1px solid var(--linie-hell); }
+.held-fakten li { padding: 20px 0 0 30px; position: relative; }
+.held-fakten li::before { content: ""; position: absolute; left: 2px; top: 27px; width: 14px; height: 8px; border-left: 2px solid var(--blau-hell); border-bottom: 2px solid var(--blau-hell); transform: rotate(-45deg); }
+.held-fakten b { display: block; font: 700 clamp(18px, 1.5vw, 22px)/1.15 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 88%; letter-spacing: -.01em; }
+.held-fakten span { display: block; margin-top: 6px; font-size: 15.5px; line-height: 1.45; color: rgba(238, 241, 246, .78); }
+.held-fakten [data-preis] { display: inline; margin: 0; font-size: inherit; color: var(--papier); font-weight: 600; }
+.problem { padding-top: clamp(48px, 7vw, 110px); }
+.szene-problem .szene-titel { margin-top: 20px; max-width: 18em; }
+.problem-schluss { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 40px; padding-top: clamp(24px, 3vw, 40px); border-top: 1px solid var(--linie-hell); }
+.problem-schluss p { max-width: 38em; font-size: clamp(17px, 1.35vw, 20px); line-height: 1.45; color: rgba(238, 241, 246, .86); }
+
+/* ─── Angebotsleiter ─── */
+.leiter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 1.8vw, 26px); align-items: stretch; }
+.stufe { position: relative; display: flex; flex-direction: column; padding: clamp(22px, 2.4vw, 36px); border-radius: 24px; background: var(--weiss); border: 1px solid rgba(10, 19, 38, .12); }
+.ton-2 .stufe { background: var(--papier); }
+.stufe-empfohlen { border: 2px solid var(--blau); box-shadow: 0 24px 60px -30px rgba(23, 70, 158, .55); }
+.stufe-marke { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-height: 26px; font: 500 12px/1.2 "Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--blau-text); }
+.stufe-abzeichen { padding: 6px 10px; border-radius: 999px; background: var(--blau); color: var(--papier); font-weight: 600; letter-spacing: .1em; }
+.stufe-name { margin-top: 14px; font: 700 clamp(25px, 2.3vw, 36px)/1.02 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; }
+.stufe-preis, .preis-zeile { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--linie); }
+.stufe-preis strong, .preis-zeile strong { display: block; font: 700 clamp(30px, 2.8vw, 44px)/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 84%; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.stufe-preis span, .preis-zeile span { display: block; margin-top: 8px; font: 500 12.5px/1.4 "Mono", ui-monospace, monospace; letter-spacing: .04em; color: var(--grau); }
+.stufe-preis strong [data-preis], .preis-zeile strong [data-preis] { display: inline; margin: 0; font: inherit; letter-spacing: inherit; color: inherit; }
+.dunkel .preis-zeile { border-top-color: var(--linie-hell); }
+.dunkel .preis-zeile strong { color: var(--blau-hell); }
+.dunkel .preis-zeile span { color: var(--grau-hell); }
+.stufe-fuer { margin-top: 18px; font-size: 16.5px; line-height: 1.45; font-weight: 600; }
+.stufe-liste { margin-top: 14px; border-top: 1px solid var(--linie); }
+.stufe-liste div { padding: 12px 0; border-bottom: 1px solid var(--linie); }
+.stufe-liste dt { font: 500 12px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--grau); }
+.stufe-liste dd { margin-top: 5px; font-size: 16px; line-height: 1.45; color: var(--tinte-weich); }
+.stufe-zusatz { margin-top: 14px; padding: 10px 14px; border-radius: 12px; background: rgba(23, 70, 158, .09); font-size: 15px; line-height: 1.4; font-weight: 600; color: var(--blau-text); }
+.stufe .link-pfeil { margin-top: auto; padding-top: 20px; align-self: flex-start; }
+.leiter-fuss { margin-top: 18px; font-size: 14.5px; line-height: 1.5; color: var(--grau); }
+.ruf-band { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 40px; margin-top: clamp(28px, 3.4vw, 52px); padding: clamp(22px, 2.6vw, 36px) clamp(22px, 3vw, 44px); border-radius: 24px; background: var(--tinte); color: var(--papier); }
+.ruf-band p { flex: 1 1 22em; max-width: 34em; font: 600 clamp(19px, 1.6vw, 24px)/1.25 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 92%; }
+.ruf-band :focus-visible { outline-color: var(--blau-hell); }
+
+/* ─── Zeitstrahl und Zusage ─── */
+.zeitstrahl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(28px, 3vw, 44px) clamp(18px, 2.4vw, 40px); }
+.zeitstrahl li { position: relative; padding-top: 22px; border-top: 3px solid var(--tinte); }
+.zeitstrahl li::before { content: ""; position: absolute; left: 0; top: -9px; width: 15px; height: 15px; border-radius: 50%; background: var(--blau); box-shadow: 0 0 0 4px var(--papier-2); }
+.zeit-wann { display: block; font: 700 clamp(20px, 1.8vw, 27px)/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 84%; letter-spacing: -.01em; color: var(--blau-text); }
+.zeitstrahl b { display: block; margin-top: 12px; font-size: 17.5px; font-weight: 600; line-height: 1.25; }
+.zeitstrahl li > span:last-child { display: block; margin-top: 6px; font-size: 16px; line-height: 1.45; color: var(--tinte-weich); }
+.zusage { margin-top: clamp(40px, 5vw, 72px); padding: clamp(26px, 3.4vw, 52px); border-radius: 28px; background: var(--blau); color: var(--papier); }
+.zusage-titel { max-width: 16em; font: 700 clamp(30px, 3.8vw, 58px)/1 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; text-wrap: balance; }
+.zusage-titel em { color: var(--blau-blass); font-size: 1.04em; }
+.zusage p { max-width: 44em; margin-top: 18px; font-size: clamp(17px, 1.3vw, 20px); line-height: 1.5; color: rgba(238, 241, 246, .92); }
+
+/* ─── Belege: eine Zahl, ein Satz, was daraus folgt ─── */
+.zahlen-drei { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(28px, 3vw, 48px) clamp(24px, 3vw, 56px); }
+.zahl-folge { padding-top: 22px; border-top: 1px solid var(--linie-hell); }
+.zahl-folge .zahl-wert { font-size: clamp(56px, 6vw, 96px); color: var(--blau-hell); }
+.zahl-daraus { margin-top: 14px; padding: 14px 16px; border-radius: 14px; background: var(--tinte-2); border: 1px solid var(--linie-hell); font-size: 16.5px; line-height: 1.45; color: var(--papier); }
+.zahl-daraus b { display: block; margin-bottom: 4px; font: 500 12px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--blau-hell); }
+
+/* ─── Rechner: Ergebnis in Worten, nächster Schritt ─── */
+.rechner-klartext { margin-bottom: clamp(20px, 2.4vw, 32px); padding: 18px 22px; border-radius: 18px; background: var(--blau); border: 1px solid rgba(125, 183, 255, .5); font: 600 clamp(18px, 1.55vw, 23px)/1.35 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 94%; color: var(--papier); }
+.rechner-schluss { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 36px; margin-top: clamp(28px, 3.4vw, 48px); padding-top: clamp(24px, 3vw, 40px); border-top: 1px solid var(--linie-hell); }
+.rechner-schluss p { flex: 1 1 24em; max-width: 36em; font-size: clamp(17px, 1.3vw, 20px); line-height: 1.45; color: rgba(238, 241, 246, .86); }
+.rechner-schluss p b { color: var(--papier); }
+
+/* ─── Einwände ─── */
+.einwaende { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 2vw, 28px); }
+.einwand { padding: clamp(22px, 2.6vw, 38px); border-radius: 22px; background: var(--papier); border: 1px solid rgba(10, 19, 38, .1); }
+.einwand:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.einwand h3 { font: 700 clamp(22px, 2.1vw, 31px)/1.08 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif; font-stretch: 86%; letter-spacing: -.014em; text-wrap: balance; }
+.einwand p { max-width: 46em; margin-top: 14px; font-size: 17px; line-height: 1.55; color: var(--tinte-weich); }
+
+/* ─── Menschen mit echten Fotos ─── */
+.foto-rahmen { display: block; overflow: hidden; border-radius: 18px; background: var(--papier-3); }
+.foto { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
+.foto-kevin .foto { transform: scale(1.5); transform-origin: 50% 9%; }   /* das Foto zeigt den ganzen Oberkörper: näher heran, damit das Gesicht trägt */
+.karte.mensch { flex-direction: row; align-items: flex-start; gap: clamp(18px, 2.2vw, 32px); }
+.mensch .foto-rahmen { flex: none; width: 38%; max-width: 230px; aspect-ratio: 4 / 5; }
+.mensch > div { min-width: 0; }
+.gast-raster { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: clamp(28px, 5vw, 96px); align-items: center; }
+.foto-hoch { width: 100%; max-width: 380px; aspect-ratio: 4 / 5; }
+.gast-raster .abschnitt-titel { margin-top: 22px; }
+.gast-raster .abschnitt-text { margin-top: 20px; }
+
+/* ─── Schluss der Seite ─── */
+.kontakt { text-align: left; }
+.kontakt .w.kontakt-raster { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(28px, 5vw, 88px); align-items: center; }
+.kontakt-person { display: grid; justify-items: center; gap: 14px; text-align: center; }
+.kontakt-person .foto-rund { width: clamp(120px, 14vw, 190px); height: clamp(120px, 14vw, 190px); border-radius: 50%; box-shadow: 0 0 0 1px var(--linie-hell), 0 0 0 8px var(--tinte-2); }
+.kontakt-person b { display: block; font-size: 17px; font-weight: 600; }
+.kontakt-person span { display: block; font: 500 12px/1.4 "Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--grau-hell); }
+.kontakt .kontakt-titel { margin-top: 20px; font-size: clamp(40px, 6vw, 96px); }
+.kontakt .abschnitt-text { margin-top: 22px; text-align: left; max-width: 38em; }
+.kontakt .kontakt-aktionen { justify-content: flex-start; margin-top: 30px; }
+.kontakt-leise { margin-top: 22px; font-size: 15.5px; line-height: 1.6; color: var(--grau-hell); }
+.kontakt-leise a { color: var(--papier); }
+
+/* ─── Kopf der Unterseiten: etwas kleinere Überschrift, damit Knopf und Eckdaten im ersten Bildschirm stehen ─── */
+.seiten-titel { font-size: clamp(38px, 4.7vw, 82px); }
+.seiten-aktionen { align-items: flex-start; }
+.seiten-aktionen > .link-pfeil { margin-top: 9px; }
+@media (min-width: 701px) { .vorweg dl div { grid-template-columns: 8.6em minmax(0, 1fr); } }
+
+/* ─── Inhalt der Fragen-Seite ─── */
+.inhalt-liste { margin-top: 12px; counter-reset: inhalt; }
+.inhalt-liste li { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid rgba(238, 241, 246, .26); }
+.inhalt-liste a { flex: 1; display: flex; align-items: center; min-height: 44px; font-size: 16px; font-weight: 600; text-decoration: none; }
+.inhalt-liste a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.inhalt-liste span { font: 500 12px/1 "Mono", ui-monospace, monospace; color: var(--blau-blass); }
+.buchen-mikro { margin: 12px 0 22px; font: 500 12.5px/1.3 "Mono", ui-monospace, monospace; letter-spacing: .04em; color: var(--grau); }
+.buchen-direkt { margin: -8px 0 22px; font-size: 15px; line-height: 1.5; color: var(--tinte-weich); }
+.buchen-direkt .link-pfeil { min-height: 44px; padding: 10px 0; margin-left: 4px; font-size: 15px; }
+
+/* ─── Handy: der Hauptknopf als feste Leiste unten (seite.js setzt html.leiste-da) ─── */
+.leiste-unten { display: none; }
+
+/* Kopf zwischen 1000 und 1180 px: sechs Menüpunkte und der Hauptknopf brauchen Platz */
+@media (max-width: 1180px) {
+  .kopf { padding-inline: 16px; gap: 10px; }
+  .kopf-nav { gap: 0; }
+  .kopf-nav a { padding: 0 7px; font-size: 14px; }
+  .kopf .marke-wort { letter-spacing: .14em; }
+  .kopf-rechts .knopf-klein { padding: 0 14px; font-size: 14px; }
+  .kopf-rechts .knopf-klein::after { display: none; }
+}
+@media (max-width: 1279px) {
+  .leiter { grid-template-columns: minmax(0, 1fr); }
+  .stufe { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); column-gap: clamp(24px, 4vw, 56px); align-items: start; }
+  .stufe > .stufe-marke, .stufe > .stufe-name, .stufe > .stufe-preis { grid-column: 1; }
+  .stufe > .stufe-fuer, .stufe > .stufe-liste, .stufe > .stufe-zusatz, .stufe > .link-pfeil { grid-column: 2; }
+  .stufe > .stufe-fuer { grid-row: 1 / span 2; margin-top: 0; }
+  .stufe > .stufe-liste { grid-row: 3 / span 2; }
+  .kopf-nav a { padding: 0 8px; }
+}
+@media (max-width: 999px) {
+  .held-fakten { grid-template-columns: minmax(0, 1fr); }
+  .held-fakten li { padding: 16px 0 16px 30px; border-bottom: 1px solid var(--linie-hell); }
+  .held-fakten li::before { top: 23px; }
+  .held .strecke { display: none; }   /* schmal zählt der erste Bildschirm: Nutzen, Knopf, Zusagen */
+  .zeitstrahl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .zahlen-drei { grid-template-columns: minmax(0, 1fr); }
+  .gast-raster { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 700px) {
+  .kopf-rechts .knopf-klein { display: none; }   /* am Handy trägt die Leiste unten den Hauptknopf */
+  .held { padding-top: calc(var(--kopf-h) + 20px); }
+  .ruf { width: 100%; align-items: stretch; }
+  .ruf .knopf { width: 100%; }
+  .ruf-mikro { text-align: center; }
+  .stufe { display: flex; }
+  .stufe > .stufe-fuer { margin-top: 18px; }
+  .ruf-band { padding: 22px 18px; }
+  .zeitstrahl { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+  .einwaende { grid-template-columns: minmax(0, 1fr); }
+  .karte.mensch { flex-direction: column; }
+  .mensch .foto-rahmen { width: 132px; max-width: none; aspect-ratio: 1; }
+  .mensch .foto { object-position: 50% 14%; }
+  .mensch .foto-kevin .foto { transform: scale(1.3); transform-origin: 50% 8%; object-position: 50% 8%; }
+  .kontakt .w.kontakt-raster { grid-template-columns: minmax(0, 1fr); }
+  .kontakt-person { grid-template-columns: auto minmax(0, 1fr); justify-items: start; align-items: center; text-align: left; gap: 16px; }
+  .kontakt-person .foto-rund { width: 84px; height: 84px; box-shadow: 0 0 0 1px var(--linie-hell), 0 0 0 5px var(--tinte-2); }
+  .rechner-schluss .link-pfeil { width: 100%; }
+  .fuss { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
+  html.js .leiste-unten {
+    position: fixed; inset: auto 0 0 0; z-index: 40; display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: rgba(10, 19, 38, .96); border-top: 1px solid var(--linie-hell);
+    transform: translateY(110%); visibility: hidden;
+  }
+  html.js.leiste-da .leiste-unten { transform: none; visibility: visible; }
+  html.dialog-offen .leiste-unten, html.menue-offen .leiste-unten { display: none; }
+  .leiste-unten .knopf { flex: 1; min-height: 50px; }
+  .leiste-unten small { flex: none; font: 500 12px/1.35 "Mono", ui-monospace, monospace; letter-spacing: .02em; color: var(--grau-hell); }
+  .buchen-fuss .knopf { min-width: 0; padding-inline: 18px; }
+}
+@media (max-width: 359px) {
+  .leiste-unten small { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html.js .leiste-unten { transition: transform .35s var(--kurve), visibility .35s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+@media print {
+  .leiste-unten { display: none !important; }
+}
+
+/* ─── Handy kürzer: Zuklappbares (seite.js schließt es nur unter 701 px; breit und ohne Skript steht alles offen) ─── */
+.mobil-zu > summary, .einwand-zu > summary { list-style: none; }
+.mobil-zu > summary::-webkit-details-marker, .einwand-zu > summary::-webkit-details-marker { display: none; }
+.mobil-zu > summary { display: none; }
+.einwand-zu > summary { pointer-events: none; cursor: default; }
+@media (max-width: 700px) {
+  .mobil-zu > summary {
+    position: relative; display: flex; align-items: center; min-height: 52px; margin-top: 14px; padding: 12px 52px 12px 16px; cursor: pointer;
+    border: 1px solid var(--linie); border-radius: 14px; font: 600 16px/1.3 "Bricolage", "Bricolage Ersatz", system-ui, sans-serif;
+  }
+  .dunkel .mobil-zu > summary { border-color: var(--linie-hell); }
+  .mobil-zu > summary::before, .mobil-zu > summary::after, .einwand-zu > summary::before, .einwand-zu > summary::after {
+    content: ""; position: absolute; right: 18px; top: 50%; width: 16px; height: 2px; margin-top: -1px; background: var(--blau); transition: transform .35s var(--kurve);
+  }
+  .dunkel .mobil-zu > summary::before, .dunkel .mobil-zu > summary::after { background: var(--blau-hell); }
+  .mobil-zu > summary::after, .einwand-zu > summary::after { transform: rotate(90deg); }
+  .mobil-zu[open] > summary::after, .einwand-zu[open] > summary::after { transform: rotate(0deg); }
+  .mobil-zu[open] > summary { margin-bottom: 14px; }
+  .stufe .mobil-zu > summary { margin-top: 18px; }
+  .rechner-mehr > summary { margin-top: 22px; }
+  .rechner-mehr[open] > summary { margin-bottom: 4px; }
+  .einwand { padding: 0; }
+  .einwand-zu > summary { position: relative; display: block; min-height: 52px; padding: 16px 52px 16px 18px; pointer-events: auto; cursor: pointer; }
+  .einwand-zu > summary h3 { font-size: 19px; line-height: 1.2; }
+  .einwand-zu > p { margin: 0; padding: 0 18px 20px; font-size: 16.5px; }
+  .einwand-zu > summary::before, .einwand-zu > summary::after { right: 18px; }
+  .stufe .mobil-zu .stufe-liste { margin-top: 0; }
+}
+
+/* ─── Handy straffer: Problem-Stufen und Zeitstrahl (nichts gestrichen, nur Abstände und Anordnung) ─── */
+@media (max-width: 700px) {
+  .szene-stufe { padding-block: 6px; }
+  .szene-stufe .szene-titel { margin-top: 6px; font-size: 26px; }
+  .szene-paar { gap: 8px; margin-top: 12px; }
+  .paar-heute, .paar-system { padding: 14px 16px 16px; border-radius: 14px; }
+  .paar-marke + p { margin-top: 8px; font-size: 16px; line-height: 1.4; }
+  .zeitstrahl { gap: 0; }
+  .zeitstrahl li { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 2px 12px; align-items: baseline; padding: 16px 0 18px; border-top-width: 1px; }
+  .zeitstrahl li::before { display: none; }
+  .zeitstrahl li:first-child { border-top-width: 3px; }
+  .zeit-wann { grid-row: 1; grid-column: 1; font-size: 20px; }
+  .zeitstrahl b { grid-row: 1; grid-column: 2; margin-top: 0; font-size: 17px; }
+  .zeitstrahl li > span:last-child { grid-row: 2; grid-column: 2; margin-top: 0; font-size: 15.5px; line-height: 1.4; }
+}
+
+/* Bewegung aus: Wer weniger Bewegung wünscht, bekommt keine Übergänge und keine Animation (Zustände wechseln sofort). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; transition-delay: 0s !important; animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
+
+/* Band „Sichtbar werden. Planbar verkaufen.“: schmal wie ein Band, kein großer Leerraum unter dem Link */
+#paar .abschnitt-kopf { margin-bottom: 0; }
+#paar .fragen-fuss { margin-top: 22px; }
+#paar { padding-bottom: 0; }
